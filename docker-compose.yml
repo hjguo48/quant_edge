@@ -1,0 +1,70 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-quantedge}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-quantedge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - quantedge_net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - quantedge_net
+
+  mlflow:
+    image: python:3.11-slim
+    working_dir: /mlflow
+    command: >-
+      sh -c "python -m pip install --no-cache-dir --retries 20 --timeout 1000 'mlflow>=2.11' &&
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlflow"
+    restart: on-failure
+    ports:
+      - "5001:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000', timeout=2).read(1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 10m
+    networks:
+      - quantedge_net
+
+volumes:
+  pgdata:
+  redisdata:
+  mlflow_data:
+
+networks:
+  quantedge_net:
