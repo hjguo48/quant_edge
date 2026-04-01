@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pandas as pd
 import pytest
+import sqlalchemy as sa
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
 
 import src.universe.builder as builder_module
+from src.data.db.models import Base, UniverseMembership
+from src.data.db.pit import get_universe_pit
 from src.data.sources.fmp import FMPDataSource
 
 
@@ -17,6 +22,7 @@ def test_fmp_knowledge_time_per_metric(monkeypatch: pytest.MonkeyPatch) -> None:
         ticker: str,
         *,
         limit: int = 120,
+        page: int = 0,
         period: str | None = "quarter",
     ) -> list[dict[str, object]]:
         data = {
@@ -158,3 +164,123 @@ def test_build_universe_historical_path_applies_adv_filter(
     )
 
     assert result == ["AAA"]
+
+
+def test_fmp_paginates_beyond_first_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    source = FMPDataSource(api_key="test-key")
+    page_calls: list[int] = []
+
+    def fake_get_endpoint_rows(
+        endpoint: str,
+        ticker: str,
+        *,
+        limit: int = 120,
+        page: int = 0,
+        period: str | None = "quarter",
+    ) -> list[dict[str, object]]:
+        page_calls.append(page)
+        if endpoint != "income-statement":
+            return []
+
+        rows_by_page = {
+            0: [
+                {
+                    "date": "2025-03-31",
+                    "period": "Q1",
+                    "acceptedDate": "2025-05-01 16:00:00",
+                    "revenue": 1000,
+                },
+                {
+                    "date": "2024-12-31",
+                    "period": "Q4",
+                    "acceptedDate": "2025-02-01 16:00:00",
+                    "revenue": 900,
+                },
+            ],
+            1: [
+                {
+                    "date": "2024-09-30",
+                    "period": "Q3",
+                    "acceptedDate": "2024-11-01 16:00:00",
+                    "revenue": 800,
+                },
+            ],
+            2: [],
+        }
+        return rows_by_page.get(page, [])
+
+    monkeypatch.setattr(source, "_get_endpoint_rows", fake_get_endpoint_rows)
+
+    rows = source._get_all_endpoint_rows("income-statement", "AAPL", page_limit=2)
+
+    assert [row["date"] for row in rows] == ["2025-03-31", "2024-12-31", "2024-09-30"]
+    assert page_calls == [0, 1]
+
+
+def test_backfill_universe_membership_reconstructs_history(
+    db_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    Base.metadata.create_all(bind=db_engine, tables=[UniverseMembership.__table__], checkfirst=True)
+    session_factory = sessionmaker(bind=db_engine, expire_on_commit=False)
+
+    with session_factory() as session:
+        session.execute(
+            sa.delete(UniverseMembership).where(
+                UniverseMembership.ticker.in_(["AAA", "BBB", "CCC", "DDD"]),
+            ),
+        )
+        session.commit()
+
+    monkeypatch.setattr(builder_module, "_fetch_index_constituents", lambda index_name="SP500": ["AAA", "CCC"])
+    monkeypatch.setattr(
+        builder_module,
+        "_fetch_index_change_events",
+        lambda index_name="SP500": [
+            builder_module.UniverseChangeEvent(
+                effective_date=date(2024, 3, 1),
+                added_ticker="BBB",
+                removed_ticker="DDD",
+                reason="rebalance",
+                source="test",
+            ),
+            builder_module.UniverseChangeEvent(
+                effective_date=date(2025, 6, 15),
+                added_ticker="CCC",
+                removed_ticker="BBB",
+                reason="rebalance",
+                source="test",
+            ),
+        ],
+    )
+
+    builder_module.backfill_universe_membership(
+        start_date=date(2024, 1, 1),
+        end_date=date(2025, 12, 31),
+        index_name="SP500",
+    )
+
+    january_members = get_universe_pit(
+        as_of=datetime(2024, 1, 15, 12, tzinfo=timezone.utc),
+        index_name="SP500",
+    )
+    april_members = get_universe_pit(
+        as_of=datetime(2024, 4, 1, 12, tzinfo=timezone.utc),
+        index_name="SP500",
+    )
+    july_members = get_universe_pit(
+        as_of=datetime(2025, 7, 1, 12, tzinfo=timezone.utc),
+        index_name="SP500",
+    )
+
+    assert january_members == ["AAA", "DDD"]
+    assert april_members == ["AAA", "BBB"]
+    assert july_members == ["AAA", "CCC"]
+
+    with session_factory() as session:
+        session.execute(
+            sa.delete(UniverseMembership).where(
+                UniverseMembership.ticker.in_(["AAA", "BBB", "CCC", "DDD"]),
+            ),
+        )
+        session.commit()

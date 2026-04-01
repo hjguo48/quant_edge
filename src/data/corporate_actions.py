@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal
 import random
+from threading import Lock
 import time as time_module
 from typing import Any
 
@@ -15,6 +16,24 @@ from src.config import settings
 from src.data.db.models import CorporateAction, Stock
 from src.data.db.session import get_session_factory
 from src.data.sources.base import DataSourceAuthError, DataSourceError, DataSourceTransientError, RetryConfig
+
+
+class _PolygonRequestThrottle:
+    def __init__(self, min_request_interval: float) -> None:
+        self._min_request_interval = max(min_request_interval, 0.0)
+        self._last_request_at = 0.0
+        self._lock = Lock()
+
+    def wait(self) -> None:
+        if self._min_request_interval <= 0:
+            return
+
+        with self._lock:
+            elapsed = time_module.monotonic() - self._last_request_at
+            remaining = self._min_request_interval - elapsed
+            if remaining > 0:
+                time_module.sleep(remaining)
+            self._last_request_at = time_module.monotonic()
 
 
 def adjust_for_splits(prices_df: pd.DataFrame, splits_df: pd.DataFrame) -> pd.DataFrame:
@@ -154,6 +173,8 @@ def fetch_corporate_actions(
     tickers: Sequence[str],
     start_date: date | datetime,
     end_date: date | datetime,
+    *,
+    min_request_interval: float = 0.0,
 ) -> pd.DataFrame:
     normalized_tickers = tuple(dict.fromkeys(ticker.strip().upper() for ticker in tickers if ticker))
     if not normalized_tickers:
@@ -162,11 +183,12 @@ def fetch_corporate_actions(
     start = start_date.date() if isinstance(start_date, datetime) else start_date
     end = end_date.date() if isinstance(end_date, datetime) else end_date
     session = _get_http_session()
+    throttle = _PolygonRequestThrottle(min_request_interval)
 
     rows: list[dict[str, Any]] = []
     for ticker in normalized_tickers:
-        rows.extend(_fetch_splits(session, ticker, start, end))
-        rows.extend(_fetch_dividends(session, ticker, start, end))
+        rows.extend(_fetch_splits(session, ticker, start, end, throttle))
+        rows.extend(_fetch_dividends(session, ticker, start, end, throttle))
 
     frame = pd.DataFrame(rows)
     if frame.empty:
@@ -210,12 +232,19 @@ def _get_http_session() -> Any:
     return session
 
 
-def _fetch_splits(session: Any, ticker: str, start: date, end: date) -> list[dict[str, Any]]:
+def _fetch_splits(
+    session: Any,
+    ticker: str,
+    start: date,
+    end: date,
+    throttle: _PolygonRequestThrottle,
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for item in _iterate_polygon_results(
         session,
         "https://api.polygon.io/v3/reference/splits",
         {"ticker": ticker, "limit": 1_000, "sort": "execution_date"},
+        throttle=throttle,
     ):
         ex_date = pd.to_datetime(item.get("execution_date"), errors="coerce")
         if pd.isna(ex_date):
@@ -244,12 +273,19 @@ def _fetch_splits(session: Any, ticker: str, start: date, end: date) -> list[dic
     return rows
 
 
-def _fetch_dividends(session: Any, ticker: str, start: date, end: date) -> list[dict[str, Any]]:
+def _fetch_dividends(
+    session: Any,
+    ticker: str,
+    start: date,
+    end: date,
+    throttle: _PolygonRequestThrottle,
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for item in _iterate_polygon_results(
         session,
         "https://api.polygon.io/v3/reference/dividends",
         {"ticker": ticker, "limit": 1_000, "sort": "ex_dividend_date"},
+        throttle=throttle,
     ):
         ex_date = pd.to_datetime(item.get("ex_dividend_date"), errors="coerce")
         if pd.isna(ex_date):
@@ -273,13 +309,19 @@ def _fetch_dividends(session: Any, ticker: str, start: date, end: date) -> list[
     return rows
 
 
-def _iterate_polygon_results(session: Any, url: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+def _iterate_polygon_results(
+    session: Any,
+    url: str,
+    params: dict[str, Any],
+    *,
+    throttle: _PolygonRequestThrottle,
+) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     next_url: str | None = url
     next_params = params | {"apiKey": settings.POLYGON_API_KEY}
 
     while next_url:
-        payload = _request_polygon_payload(session, next_url, next_params)
+        payload = _request_polygon_payload(session, next_url, next_params, throttle=throttle)
         results.extend(payload.get("results", []))
         next_url = payload.get("next_url")
         next_params = {"apiKey": settings.POLYGON_API_KEY} if next_url else {}
@@ -316,13 +358,20 @@ def _request_polygon_payload(
     url: str,
     params: dict[str, Any],
     *,
+    throttle: _PolygonRequestThrottle,
     retry_config: RetryConfig | None = None,
 ) -> dict[str, Any]:
-    active_retry_config = retry_config or RetryConfig()
+    active_retry_config = retry_config or RetryConfig(
+        max_attempts=6,
+        initial_delay=2.0,
+        max_delay=60.0,
+    )
     delay = active_retry_config.initial_delay
 
     for attempt in range(1, active_retry_config.max_attempts + 1):
+        rate_limited = False
         try:
+            throttle.wait()
             response = session.get(url, params=params, timeout=30)
         except Exception as exc:
             transient_error = DataSourceTransientError(
@@ -347,6 +396,7 @@ def _request_polygon_payload(
                     f"Polygon corporate action request failed with HTTP {response.status_code}: {response.text[:500]}",
                 )
             elif response.status_code == 429 or response.status_code >= 500:
+                rate_limited = response.status_code == 429
                 transient_error = DataSourceTransientError(
                     f"Polygon corporate action request failed with HTTP {response.status_code}: {response.text[:500]}",
                 )
@@ -364,6 +414,8 @@ def _request_polygon_payload(
             raise transient_error
 
         sleep_for = min(delay, active_retry_config.max_delay)
+        if rate_limited:
+            sleep_for = max(sleep_for, 15.0)
         jitter_multiplier = 1 + random.uniform(
             -active_retry_config.jitter,
             active_retry_config.jitter,
