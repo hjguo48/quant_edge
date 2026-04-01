@@ -42,7 +42,7 @@ class ValidationWindowConfig:
 
 @dataclass(frozen=True)
 class ValidationWindowResult:
-    best_alpha: float | None
+    best_alpha: Any | None
     validation_metrics: EvaluationSummary
     test_metrics: EvaluationSummary
     passed: bool
@@ -81,6 +81,7 @@ class ExperimentTracker:
                     "model_type": model.model_type,
                     "horizon": target_horizon,
                     "window_id": window_id,
+                    "run_kind": "training",
                 },
             )
             if params:
@@ -114,6 +115,91 @@ class ExperimentTracker:
             experiment_id=experiment_id,
             run_id=run.info.run_id,
         )
+
+    def log_search_trials(
+        self,
+        *,
+        model_type: str,
+        target_horizon: str,
+        window_id: str,
+        trials: pd.DataFrame,
+        best_index: int,
+        timestamp: str | None = None,
+        search_method: str = "RandomizedSearchCV",
+    ) -> list[LoggedModelRun]:
+        tracking_uri = self._setup_tracking_uri()
+        experiment_name = build_experiment_name(
+            model_type=model_type,
+            target_horizon=target_horizon,
+            timestamp=timestamp,
+        )
+        experiment_id = self._ensure_experiment(experiment_name)
+        logged_runs: list[LoggedModelRun] = []
+
+        for trial_number, row in enumerate(trials.itertuples(index=False), start=0):
+            row_data = row._asdict()
+            metrics = {
+                key: float(value)
+                for key, value in row_data.items()
+                if key in {"validation_ic", "validation_ic_std", "mean_fit_time"}
+                and value is not None
+                and not pd.isna(value)
+            }
+            params = {
+                key: value
+                for key, value in row_data.items()
+                if key not in {"rank_test_score", "validation_ic", "validation_ic_std", "mean_fit_time"}
+                and value is not None
+                and not pd.isna(value)
+            }
+
+            with mlflow.start_run(experiment_id=experiment_id) as run:
+                mlflow.set_tags(
+                    {
+                        "model_type": model_type,
+                        "horizon": target_horizon,
+                        "window_id": window_id,
+                        "run_kind": "search_trial",
+                        "search_method": search_method,
+                        "trial_number": str(trial_number),
+                        "is_best_trial": str(trial_number == best_index).lower(),
+                    },
+                )
+                if params:
+                    mlflow.log_params({key: str(value) for key, value in params.items()})
+                if metrics:
+                    mlflow.log_metrics(metrics)
+                if "rank_test_score" in row_data and not pd.isna(row_data["rank_test_score"]):
+                    mlflow.log_metric("rank_test_score", float(row_data["rank_test_score"]))
+
+                mlflow.log_dict(
+                    {
+                        "model_type": model_type,
+                        "search_method": search_method,
+                        "window_id": window_id,
+                        "trial_number": trial_number,
+                        "params": params,
+                        "metrics": metrics,
+                    },
+                    f"metadata/search_trial_{trial_number:03d}.json",
+                )
+
+            logged_runs.append(
+                LoggedModelRun(
+                    tracking_uri=tracking_uri,
+                    experiment_name=experiment_name,
+                    experiment_id=experiment_id,
+                    run_id=run.info.run_id,
+                ),
+            )
+
+        logger.info(
+            "logged {} {} search trials experiment={}",
+            len(logged_runs),
+            model_type,
+            experiment_name,
+        )
+        return logged_runs
 
     def search_runs(
         self,
@@ -197,7 +283,19 @@ def run_single_window_validation(
         rebalance_weekday=active_config.rebalance_weekday,
     )
 
-    if hasattr(model, "select_alpha"):
+    if hasattr(model, "select_hyperparameters"):
+        selection = getattr(model, "select_hyperparameters")(
+            train_X,
+            train_y,
+            validation_X,
+            validation_y,
+            tracker=tracker,
+            target_horizon=active_config.target_horizon,
+            window_id="search",
+            timestamp=timestamp,
+        )
+        best_alpha = getattr(selection, "best_params", None)
+    elif hasattr(model, "select_alpha"):
         selection = getattr(model, "select_alpha")(train_X, train_y, validation_X, validation_y)
         best_alpha = getattr(selection, "best_alpha", None)
     else:
@@ -223,16 +321,10 @@ def run_single_window_validation(
     )
     logged_run = None
     if tracker is not None:
-        metrics = {
-            "validation_ic": validation_metrics.ic,
-            "validation_rank_ic": validation_metrics.rank_ic,
-            "validation_icir": validation_metrics.icir,
-            "validation_hit_rate": validation_metrics.hit_rate,
-            "test_ic": test_metrics.ic,
-            "test_rank_ic": test_metrics.rank_ic,
-            "test_icir": test_metrics.icir,
-            "test_hit_rate": test_metrics.hit_rate,
-        }
+        metrics = _prefixed_metrics(validation_metrics, prefix="validation") | _prefixed_metrics(
+            test_metrics,
+            prefix="test",
+        )
         params = model.get_params() | {
             "train_start": active_config.train_start.isoformat(),
             "train_end": active_config.train_end.isoformat(),
@@ -306,3 +398,15 @@ def _date_level_name(index: pd.MultiIndex) -> str | int:
         if candidate in index.names:
             return candidate
     return 0
+
+
+def _prefixed_metrics(summary: EvaluationSummary, *, prefix: str) -> dict[str, float]:
+    return {
+        f"{prefix}_ic": summary.ic,
+        f"{prefix}_rank_ic": summary.rank_ic,
+        f"{prefix}_icir": summary.icir,
+        f"{prefix}_hit_rate": summary.hit_rate,
+        f"{prefix}_top_decile_return": summary.top_decile_return,
+        f"{prefix}_long_short_return": summary.long_short_return,
+        f"{prefix}_turnover": summary.turnover,
+    }
