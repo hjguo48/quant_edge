@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 from src.config import settings
 from src.data.db.models import StockPrice
 from src.data.db.session import get_session_factory
-from src.data.sources.base import DataSource, DataSourceError, DataSourceTransientError
+from src.data.sources.base import DataSource, DataSourceAuthError, DataSourceError, DataSourceTransientError
 
 PRICE_COLUMNS = [
     "ticker",
@@ -93,11 +93,11 @@ class PolygonDataSource(DataSource):
         tickers: Sequence[str],
         since_date: date | datetime,
     ) -> pd.DataFrame:
-        return self.fetch_historical(tickers, self.coerce_date(since_date), date.today())
+        return self.fetch_historical(tickers, self.coerce_date(since_date), self._current_market_end_date())
 
     def health_check(self) -> bool:
         try:
-            end = date.today()
+            end = self._current_market_end_date()
             start = end - timedelta(days=10)
             return bool(self._list_aggs("SPY", start, end, adjusted=False))
         except Exception as exc:
@@ -132,6 +132,11 @@ class PolygonDataSource(DataSource):
                 ),
             )
         except Exception as exc:
+            error_message = str(exc)
+            if "NOT_AUTHORIZED" in error_message or "doesn't include this data timeframe" in error_message:
+                raise DataSourceAuthError(
+                    f"Polygon aggregates request is not authorized for {ticker}: {error_message}",
+                ) from exc
             raise DataSourceTransientError(
                 f"Polygon aggregates request failed for {ticker}: {exc}",
             ) from exc
@@ -210,6 +215,10 @@ class PolygonDataSource(DataSource):
             tzinfo=ZoneInfo("America/New_York"),
         )
         return next_close_local.astimezone(timezone.utc)
+
+    @staticmethod
+    def _current_market_end_date() -> date:
+        return datetime.now(ZoneInfo("America/New_York")).date() - timedelta(days=1)
 
     @staticmethod
     def _extract_field(payload: Any, *candidate_names: str) -> Any:

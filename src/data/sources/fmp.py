@@ -29,25 +29,33 @@ FUNDAMENTAL_COLUMNS = [
 ENDPOINT_CONFIG = {
     "income-statement": {
         "revenue": "revenue",
+        "gross_profit": "grossProfit",
+        "operating_income": "operatingIncome",
         "net_income": "netIncome",
+        "ebitda": "ebitda",
         "eps": "eps",
+        "weighted_average_shares_outstanding": "weightedAverageShsOut",
     },
     "balance-sheet-statement": {
         "total_assets": "totalAssets",
         "total_liabilities": "totalLiabilities",
+        "total_debt": "totalDebt",
+        "cash_and_cash_equivalents": "cashAndCashEquivalents",
+        "current_assets": "totalCurrentAssets",
+        "current_liabilities": "totalCurrentLiabilities",
+        "total_stockholders_equity": "totalStockholdersEquity",
     },
     "cash-flow-statement": {
         "operating_cash_flow": "operatingCashFlow",
-    },
-    "key-metrics": {
-        "book_value_per_share": "bookValuePerShare",
+        "capital_expenditure": "capitalExpenditure",
+        "free_cash_flow": "freeCashFlow",
     },
 }
 
 
 class FMPDataSource(DataSource):
     source_name = "fmp"
-    base_url = "https://financialmodelingprep.com/api/v3"
+    base_url = "https://financialmodelingprep.com/stable"
 
     def __init__(
         self,
@@ -105,7 +113,7 @@ class FMPDataSource(DataSource):
 
     def health_check(self) -> bool:
         try:
-            rows = self._get_endpoint_rows("profile", "AAPL", limit=1, period=None)
+            rows = self._get_endpoint_rows("income-statement", "AAPL", limit=1, period="quarter")
             return bool(rows)
         except Exception as exc:
             logger.warning("fmp health check failed: {}", exc)
@@ -118,18 +126,24 @@ class FMPDataSource(DataSource):
         ticker: str,
         *,
         limit: int = 120,
+        page: int = 0,
         period: str | None = "quarter",
     ) -> list[dict[str, Any]]:
         session = self._get_http_session()
         self._before_request(f"{endpoint}/{ticker}")
 
-        params: dict[str, Any] = {"apikey": self.api_key, "limit": limit}
+        params: dict[str, Any] = {
+            "apikey": self.api_key,
+            "symbol": ticker,
+            "limit": limit,
+            "page": page,
+        }
         if period:
             params["period"] = period
 
         try:
             response = session.get(
-                f"{self.base_url}/{endpoint}/{ticker}",
+                f"{self.base_url}/{endpoint}",
                 params=params,
                 timeout=30,
             )
@@ -138,6 +152,23 @@ class FMPDataSource(DataSource):
                 f"FMP request transport failure for {endpoint}/{ticker}: {exc}",
             ) from exc
         if response.status_code != 200:
+            if (
+                response.status_code == 402
+                and limit > 5
+                and "values for 'limit' must be between 0 and 5" in response.text
+            ):
+                logger.warning(
+                    "FMP plan limits {} to five rows for {}; retrying with limit=5",
+                    endpoint,
+                    ticker,
+                )
+                return self._get_endpoint_rows(
+                    endpoint,
+                    ticker,
+                    limit=5,
+                    page=page,
+                    period=period,
+                )
             self.classify_http_error(
                 response.status_code,
                 response.text,
@@ -160,12 +191,57 @@ class FMPDataSource(DataSource):
             )
         return payload
 
+    def _get_all_endpoint_rows(
+        self,
+        endpoint: str,
+        ticker: str,
+        *,
+        period: str | None = "quarter",
+        page_limit: int = 250,
+    ) -> list[dict[str, Any]]:
+        page = 0
+        collected: list[dict[str, Any]] = []
+        seen_row_keys: set[tuple[Any, ...]] = set()
+
+        while True:
+            rows = self._get_endpoint_rows(
+                endpoint,
+                ticker,
+                limit=page_limit,
+                page=page,
+                period=period,
+            )
+            if not rows:
+                break
+
+            new_rows = 0
+            for row in rows:
+                row_key = (
+                    row.get("date"),
+                    row.get("acceptedDate"),
+                    row.get("fillingDate"),
+                    row.get("calendarYear"),
+                    row.get("period"),
+                )
+                if row_key in seen_row_keys:
+                    continue
+                seen_row_keys.add(row_key)
+                collected.append(row)
+                new_rows += 1
+
+            if len(rows) < page_limit or new_rows == 0:
+                break
+            page += 1
+
+        return collected
+
     def _fetch_ticker_records(self, ticker: str) -> list[dict[str, Any]]:
         metric_records: list[dict[str, Any]] = []
+        derived_inputs: dict[tuple[str, date], dict[str, Any]] = {}
 
         for endpoint, metric_mapping in ENDPOINT_CONFIG.items():
             try:
-                rows = self._get_endpoint_rows(endpoint, ticker)
+                rows = self._get_all_endpoint_rows(endpoint, ticker)
             except DataSourceTransientError:
                 raise
             except Exception as exc:
@@ -180,11 +256,28 @@ class FMPDataSource(DataSource):
 
                 fiscal_period = self._derive_fiscal_period(row, event_time)
                 knowledge_time = self._parse_knowledge_time(row) or self._fallback_knowledge_time(event_time)
+                derived_bucket = derived_inputs.setdefault(
+                    (fiscal_period, event_time),
+                    {
+                        "fiscal_period": fiscal_period,
+                        "event_time": event_time,
+                        "equity": None,
+                        "equity_knowledge_time": None,
+                        "shares": None,
+                        "shares_knowledge_time": None,
+                    },
+                )
 
                 for metric_name, source_field in metric_mapping.items():
                     metric_value = self._to_decimal(row.get(source_field))
                     if metric_value is None:
                         continue
+                    if metric_name == "total_stockholders_equity":
+                        derived_bucket["equity"] = metric_value
+                        derived_bucket["equity_knowledge_time"] = knowledge_time
+                    elif metric_name == "weighted_average_shares_outstanding":
+                        derived_bucket["shares"] = metric_value
+                        derived_bucket["shares_knowledge_time"] = knowledge_time
                     metric_records.append(
                         {
                             "ticker": ticker,
@@ -197,6 +290,32 @@ class FMPDataSource(DataSource):
                             "source": self.source_name,
                         },
                     )
+
+        for payload in derived_inputs.values():
+            equity = payload["equity"]
+            shares = payload["shares"]
+            equity_knowledge_time = payload["equity_knowledge_time"]
+            shares_knowledge_time = payload["shares_knowledge_time"]
+            if equity is None or shares is None or equity_knowledge_time is None or shares_knowledge_time is None:
+                continue
+
+            shares_float = float(shares)
+            if shares_float <= 0:
+                continue
+
+            knowledge_time = max(equity_knowledge_time, shares_knowledge_time)
+            metric_records.append(
+                {
+                    "ticker": ticker,
+                    "fiscal_period": payload["fiscal_period"],
+                    "metric_name": "book_value_per_share",
+                    "metric_value": self._to_decimal(float(equity) / shares_float),
+                    "event_time": payload["event_time"],
+                    "knowledge_time": knowledge_time,
+                    "is_restated": False,
+                    "source": self.source_name,
+                },
+            )
 
         return sorted(
             metric_records,
@@ -251,6 +370,8 @@ class FMPDataSource(DataSource):
             ) from exc
 
         session = requests.Session()
+        # FMP may reject requests routed through the local proxy/VPN path.
+        session.trust_env = False
         session.headers.update({"User-Agent": "QuantEdge/0.1.0"})
         self._http_session = session
         return self._http_session
