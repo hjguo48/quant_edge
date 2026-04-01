@@ -75,24 +75,8 @@ class FMPDataSource(DataSource):
                 continue
 
             for record in records:
-                if record["event_time"] < start or record["event_time"] > end:
-                    continue
-
-                fiscal_period = record["fiscal_period"]
-                knowledge_time = record["knowledge_time"]
-                for metric_name, metric_value in record["metric_values"].items():
-                    rows.append(
-                        {
-                            "ticker": ticker,
-                            "fiscal_period": fiscal_period,
-                            "metric_name": metric_name,
-                            "metric_value": metric_value,
-                            "event_time": record["event_time"],
-                            "knowledge_time": knowledge_time,
-                            "is_restated": False,
-                            "source": self.source_name,
-                        },
-                    )
+                if start <= record["event_time"] <= end:
+                    rows.append(record)
 
         frame = self.dataframe_or_empty(rows, FUNDAMENTAL_COLUMNS)
         if not frame.empty:
@@ -177,7 +161,7 @@ class FMPDataSource(DataSource):
         return payload
 
     def _fetch_ticker_records(self, ticker: str) -> list[dict[str, Any]]:
-        quarterly_records: dict[date, dict[str, Any]] = {}
+        metric_records: list[dict[str, Any]] = []
 
         for endpoint, metric_mapping in ENDPOINT_CONFIG.items():
             try:
@@ -194,40 +178,34 @@ class FMPDataSource(DataSource):
                 if event_time is None:
                     continue
 
-                entry = quarterly_records.setdefault(
-                    event_time,
-                    {
-                        "event_time": event_time,
-                        "fiscal_period": self._derive_fiscal_period(row, event_time),
-                        "knowledge_candidates": [],
-                        "metric_values": {},
-                    },
-                )
-                knowledge_candidate = self._parse_knowledge_time(row)
-                if knowledge_candidate is not None:
-                    entry["knowledge_candidates"].append(knowledge_candidate)
+                fiscal_period = self._derive_fiscal_period(row, event_time)
+                knowledge_time = self._parse_knowledge_time(row) or self._fallback_knowledge_time(event_time)
 
                 for metric_name, source_field in metric_mapping.items():
                     metric_value = self._to_decimal(row.get(source_field))
-                    if metric_value is not None:
-                        entry["metric_values"][metric_name] = metric_value
+                    if metric_value is None:
+                        continue
+                    metric_records.append(
+                        {
+                            "ticker": ticker,
+                            "fiscal_period": fiscal_period,
+                            "metric_name": metric_name,
+                            "metric_value": metric_value,
+                            "event_time": event_time,
+                            "knowledge_time": knowledge_time,
+                            "is_restated": False,
+                            "source": self.source_name,
+                        },
+                    )
 
-        records: list[dict[str, Any]] = []
-        for event_time, payload in sorted(quarterly_records.items()):
-            if not payload["metric_values"]:
-                continue
-
-            knowledge_time = min(payload["knowledge_candidates"]) if payload["knowledge_candidates"] else self._fallback_knowledge_time(event_time)
-            records.append(
-                {
-                    "event_time": event_time,
-                    "fiscal_period": payload["fiscal_period"],
-                    "knowledge_time": knowledge_time,
-                    "metric_values": payload["metric_values"],
-                },
-            )
-
-        return records
+        return sorted(
+            metric_records,
+            key=lambda record: (
+                record["event_time"],
+                record["metric_name"],
+                record["knowledge_time"],
+            ),
+        )
 
     def persist_fundamentals(self, frame: pd.DataFrame, *, batch_size: int = 1_000) -> int:
         if frame.empty:

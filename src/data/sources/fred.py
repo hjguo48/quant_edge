@@ -153,7 +153,7 @@ class FredDataSource(DataSource):
         frame["observation_date"] = pd.to_datetime(frame["observation_date"], errors="coerce").dt.date
         frame["realtime_start"] = frame["realtime_start"].map(self._parse_release_timestamp)
         frame["value"] = pd.to_numeric(frame["value"], errors="coerce")
-        frame.dropna(subset=["observation_date", "value"], inplace=True)
+        frame.dropna(subset=["observation_date", "realtime_start", "value"], inplace=True)
         return frame[["observation_date", "realtime_start", "value"]]
 
     def persist_series(self, frame: pd.DataFrame, *, batch_size: int = 1_000) -> int:
@@ -218,10 +218,11 @@ class FredDataSource(DataSource):
         return tuple(dict.fromkeys(resolved))
 
     @staticmethod
-    def _parse_release_timestamp(value: Any) -> datetime:
+    def _parse_release_timestamp(value: Any) -> datetime | None:
         timestamp = pd.to_datetime(value, errors="coerce")
         if pd.isna(timestamp):
-            timestamp = pd.Timestamp(datetime.now(tz=timezone.utc))
+            logger.warning("fred skipped malformed realtime_start value: {}", value)
+            return None
         if timestamp.tzinfo is None:
             return timestamp.to_pydatetime().replace(tzinfo=timezone.utc)
         return timestamp.tz_convert(timezone.utc).to_pydatetime()

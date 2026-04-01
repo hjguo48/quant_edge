@@ -24,22 +24,17 @@ def build_universe(
     as_of_date = as_of_ts.date()
 
     if as_of_date < date.today():
-        historical_members = get_historical_members(as_of_ts, index_name=index_name)
-        if historical_members:
-            logger.info(
-                "returning {} historical {} members for {}",
-                len(historical_members),
-                index_name,
-                as_of_date,
+        constituents = get_historical_members(as_of_ts, index_name=index_name)
+        if not constituents:
+            raise ValueError(
+                "Historical universe membership is missing. Refusing to backfill from current constituents.",
             )
-            return historical_members
-        raise ValueError(
-            "Historical universe membership is missing. Refusing to backfill from current constituents.",
-        )
+    else:
+        constituents = _fetch_index_constituents(index_name=index_name)
 
-    constituents = _fetch_index_constituents(index_name=index_name)
     filtered = _filter_by_adv(constituents, as_of_ts, min_adv_usd=min_adv_usd)
-    _sync_membership(filtered, as_of_date=as_of_date, index_name=index_name, reason="rebalance")
+    if as_of_date >= date.today():
+        _sync_membership(filtered, as_of_date=as_of_date, index_name=index_name, reason="rebalance")
     logger.info(
         "built {} universe with {} members after ADV filtering",
         index_name,

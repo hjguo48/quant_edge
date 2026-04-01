@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal
+import random
+import time as time_module
 from typing import Any
 
 import pandas as pd
@@ -12,7 +14,7 @@ from loguru import logger
 from src.config import settings
 from src.data.db.models import CorporateAction, Stock
 from src.data.db.session import get_session_factory
-from src.data.sources.base import DataSourceError
+from src.data.sources.base import DataSourceAuthError, DataSourceError, DataSourceTransientError, RetryConfig
 
 
 def adjust_for_splits(prices_df: pd.DataFrame, splits_df: pd.DataFrame) -> pd.DataFrame:
@@ -20,9 +22,11 @@ def adjust_for_splits(prices_df: pd.DataFrame, splits_df: pd.DataFrame) -> pd.Da
     if adjusted.empty or splits_df.empty:
         return adjusted
 
+    _require_base_price_columns(adjusted)
     adjusted["trade_date"] = pd.to_datetime(adjusted["trade_date"]).dt.date
     split_events = splits_df.copy()
     split_events["ex_date"] = pd.to_datetime(split_events["ex_date"]).dt.date
+    split_events = _ensure_action_tickers(split_events, adjusted)
     if "ratio" not in split_events.columns and {"split_from", "split_to"} <= set(split_events.columns):
         split_events["ratio"] = split_events["split_to"] / split_events["split_from"]
 
@@ -31,7 +35,7 @@ def adjust_for_splits(prices_df: pd.DataFrame, splits_df: pd.DataFrame) -> pd.Da
         ratio = float(getattr(split, "ratio", 0) or 0)
         if ratio <= 0:
             continue
-        mask = adjusted["trade_date"] < split.ex_date
+        mask = (adjusted["ticker"] == split.ticker) & (adjusted["trade_date"] < split.ex_date)
         adjustment_factor.loc[mask] = adjustment_factor.loc[mask] * ratio
 
     for column in ["open", "high", "low", "close", "adj_close"]:
@@ -51,11 +55,15 @@ def adjust_for_dividends(prices_df: pd.DataFrame, dividends_df: pd.DataFrame) ->
     if adjusted.empty or dividends_df.empty:
         return adjusted
 
+    _require_base_price_columns(adjusted)
+    if "close" not in adjusted.columns:
+        raise ValueError("prices_df must contain close for dividend adjustments.")
     adjusted["trade_date"] = pd.to_datetime(adjusted["trade_date"]).dt.date
-    adjusted.sort_values("trade_date", inplace=True)
+    adjusted.sort_values(["ticker", "trade_date"], inplace=True)
 
     dividend_events = dividends_df.copy()
     dividend_events["ex_date"] = pd.to_datetime(dividend_events["ex_date"]).dt.date
+    dividend_events = _ensure_action_tickers(dividend_events, adjusted)
     if "cash_amount" in dividend_events.columns:
         amount_column = "cash_amount"
     elif "amount" in dividend_events.columns:
@@ -71,7 +79,10 @@ def adjust_for_dividends(prices_df: pd.DataFrame, dividends_df: pd.DataFrame) ->
         if cash_amount <= 0:
             continue
 
-        prior_rows = adjusted.loc[adjusted["trade_date"] < dividend.ex_date]
+        ticker_mask = adjusted["ticker"] == dividend.ticker
+        prior_rows = adjusted.loc[ticker_mask & (adjusted["trade_date"] < dividend.ex_date)].sort_values(
+            "trade_date",
+        )
         if prior_rows.empty:
             continue
 
@@ -80,7 +91,7 @@ def adjust_for_dividends(prices_df: pd.DataFrame, dividends_df: pd.DataFrame) ->
             continue
 
         factor = max((prior_close - cash_amount) / prior_close, 0.0)
-        mask = adjusted["trade_date"] < dividend.ex_date
+        mask = ticker_mask & (adjusted["trade_date"] < dividend.ex_date)
         adjustment_factor.loc[mask] = adjustment_factor.loc[mask] * factor
 
     for column in ["open", "high", "low", "close", "adj_close"]:
@@ -268,18 +279,108 @@ def _iterate_polygon_results(session: Any, url: str, params: dict[str, Any]) -> 
     next_params = params | {"apiKey": settings.POLYGON_API_KEY}
 
     while next_url:
-        response = session.get(next_url, params=next_params, timeout=30)
-        if response.status_code != 200:
-            raise DataSourceError(
-                f"Polygon corporate action request failed with HTTP {response.status_code}: {response.text[:500]}",
-            )
-
-        payload = response.json()
+        payload = _request_polygon_payload(session, next_url, next_params)
         results.extend(payload.get("results", []))
         next_url = payload.get("next_url")
         next_params = {"apiKey": settings.POLYGON_API_KEY} if next_url else {}
 
     return results
+
+
+def _require_base_price_columns(df: pd.DataFrame) -> None:
+    required_columns = {"ticker", "trade_date"}
+    missing_columns = sorted(required_columns - set(df.columns))
+    if missing_columns:
+        raise ValueError(
+            f"prices_df is missing required columns for corporate-action adjustments: {missing_columns}",
+        )
+
+
+def _ensure_action_tickers(action_df: pd.DataFrame, prices_df: pd.DataFrame) -> pd.DataFrame:
+    if "ticker" in action_df.columns:
+        normalized = action_df.copy()
+        normalized["ticker"] = normalized["ticker"].astype(str).str.upper()
+        return normalized
+
+    unique_tickers = prices_df["ticker"].dropna().astype(str).str.upper().unique()
+    if len(unique_tickers) == 1:
+        normalized = action_df.copy()
+        normalized["ticker"] = unique_tickers[0]
+        return normalized
+
+    raise ValueError("Action data must include ticker when adjusting a multi-ticker price dataframe.")
+
+
+def _request_polygon_payload(
+    session: Any,
+    url: str,
+    params: dict[str, Any],
+    *,
+    retry_config: RetryConfig | None = None,
+) -> dict[str, Any]:
+    active_retry_config = retry_config or RetryConfig()
+    delay = active_retry_config.initial_delay
+
+    for attempt in range(1, active_retry_config.max_attempts + 1):
+        try:
+            response = session.get(url, params=params, timeout=30)
+        except Exception as exc:
+            transient_error = DataSourceTransientError(
+                f"Polygon corporate action request transport failure: {exc}",
+            )
+        else:
+            if response.status_code == 200:
+                try:
+                    payload = response.json()
+                except ValueError as exc:
+                    transient_error = DataSourceTransientError(
+                        f"Polygon corporate action response was not valid JSON: {exc}",
+                    )
+                else:
+                    if not isinstance(payload, dict):
+                        raise DataSourceError(
+                            f"Unexpected Polygon corporate action payload type: {type(payload).__name__}",
+                        )
+                    return payload
+            elif response.status_code in {401, 403}:
+                raise DataSourceAuthError(
+                    f"Polygon corporate action request failed with HTTP {response.status_code}: {response.text[:500]}",
+                )
+            elif response.status_code == 429 or response.status_code >= 500:
+                transient_error = DataSourceTransientError(
+                    f"Polygon corporate action request failed with HTTP {response.status_code}: {response.text[:500]}",
+                )
+            else:
+                raise DataSourceError(
+                    f"Polygon corporate action request failed with HTTP {response.status_code}: {response.text[:500]}",
+                )
+
+        if attempt >= active_retry_config.max_attempts:
+            logger.error(
+                "polygon corporate action request exhausted retries after {} attempts for {}",
+                active_retry_config.max_attempts,
+                url,
+            )
+            raise transient_error
+
+        sleep_for = min(delay, active_retry_config.max_delay)
+        jitter_multiplier = 1 + random.uniform(
+            -active_retry_config.jitter,
+            active_retry_config.jitter,
+        )
+        sleep_for = max(sleep_for * jitter_multiplier, 0.0)
+        logger.warning(
+            "polygon corporate action request failed on attempt {}/{} for {}: {}. Retrying in {:.2f}s",
+            attempt,
+            active_retry_config.max_attempts,
+            url,
+            transient_error,
+            sleep_for,
+        )
+        time_module.sleep(sleep_for)
+        delay = min(delay * active_retry_config.backoff_factor, active_retry_config.max_delay)
+
+    raise DataSourceError("Unreachable Polygon retry state.")
 
 
 def _persist_corporate_actions(
