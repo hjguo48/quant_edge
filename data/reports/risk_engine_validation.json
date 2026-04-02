@@ -1,0 +1,475 @@
+{
+  "actual_w6_selected_sector_weights": {
+    "Basic Materials": 0.07142857142857142,
+    "Communication Services": 0.04081632653061224,
+    "Consumer Cyclical": 0.11224489795918366,
+    "Consumer Defensive": 0.030612244897959183,
+    "Energy": 0.02040816326530612,
+    "Financial Services": 0.21428571428571427,
+    "Healthcare": 0.08163265306122448,
+    "Industrials": 0.07142857142857142,
+    "Real Estate": 0.13265306122448978,
+    "Technology": 0.16326530612244897,
+    "Utilities": 0.061224489795918366
+  },
+  "after_constraints": {
+    "audit_trail": [
+      {
+        "action": "cap_weights",
+        "after": {
+          "max_weight": 0.03085399449035813
+        },
+        "before": {
+          "limit": 0.1,
+          "max_weight": 0.03085399449035813
+        },
+        "message": "Cap each name at the maximum single-stock weight.",
+        "priority": "P0",
+        "rule_name": "single_stock_cap",
+        "triggered": false
+      },
+      {
+        "action": "trim_overweight_sectors",
+        "after": {
+          "max_abs_deviation": 0.15000000000000005,
+          "sector_weights": {
+            "Basic Materials": 0.0675185925185925,
+            "Communication Services": 0.03756749786161549,
+            "Consumer Cyclical": 0.13149252708076237,
+            "Consumer Defensive": 0.026134486428604057,
+            "Energy": 0.02600259217906275,
+            "Financial Services": 0.2893939393939395,
+            "Healthcare": 0.08115201791672379,
+            "Industrials": 0.08066753507929976,
+            "Real Estate": 0.0856801695036989,
+            "Technology": 0.1277237468413939,
+            "Utilities": 0.04666689519630694
+          }
+        },
+        "before": {
+          "max_abs_deviation": 0.19999999999999998,
+          "sector_weights": {
+            "Basic Materials": 0.06379479106751834,
+            "Communication Services": 0.03299730572457845,
+            "Consumer Cyclical": 0.12780956417320055,
+            "Consumer Defensive": 0.020238347511074787,
+            "Energy": 0.020898293625566354,
+            "Financial Services": 0.3393939393939394,
+            "Healthcare": 0.07545383909020273,
+            "Industrials": 0.07391396482305573,
+            "Real Estate": 0.08183331819695457,
+            "Technology": 0.12209003118094029,
+            "Utilities": 0.041576605212968853
+          }
+        },
+        "message": "Keep sector deviation versus benchmark within the configured band.",
+        "priority": "P0",
+        "rule_name": "sector_deviation_cap",
+        "triggered": true
+      },
+      {
+        "action": "scale_down_gross",
+        "after": {
+          "cvar_99": -0.029011186985579186,
+          "gross_exposure": 0.9999999999999999
+        },
+        "before": {
+          "cvar_99": -0.029011186985579186,
+          "floor": -0.05,
+          "gross_exposure": 0.9999999999999999
+        },
+        "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+        "priority": "P0",
+        "rule_name": "cvar_haircut",
+        "triggered": false
+      },
+      {
+        "action": "tilt_toward_target_beta",
+        "after": {
+          "portfolio_beta": 1.0925787149193922,
+          "target_bounds": [
+            0.8,
+            1.2
+          ]
+        },
+        "before": {
+          "hard_bounds": [
+            0.7,
+            1.3
+          ],
+          "portfolio_beta": 1.0925787149193922
+        },
+        "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+        "priority": "P1",
+        "rule_name": "beta_alignment",
+        "triggered": false
+      },
+      {
+        "action": "remove_redundant_names",
+        "after": {
+          "high_corr_pairs": 0
+        },
+        "before": {
+          "high_corr_pairs": 13
+        },
+        "message": "Trim highly correlated duplicate positions.",
+        "priority": "P1",
+        "rule_name": "correlation_dedup",
+        "triggered": true
+      },
+      {
+        "action": "blend_with_current_weights",
+        "after": {
+          "turnover": 0.12410082490613913
+        },
+        "before": {
+          "limit": 0.4,
+          "turnover": 0.12410082490613913
+        },
+        "message": "Cap one-period turnover at the configured limit.",
+        "priority": "P1",
+        "rule_name": "turnover_cap",
+        "triggered": false
+      },
+      {
+        "action": "add_small_satellite_positions",
+        "after": {
+          "holding_count": 90
+        },
+        "before": {
+          "holding_count": 90,
+          "minimum": 20
+        },
+        "message": "Maintain a diversified minimum number of holdings.",
+        "priority": "P2",
+        "rule_name": "minimum_holdings",
+        "triggered": false
+      },
+      {
+        "action": "warning_only",
+        "after": {
+          "stressed_return": -0.11164283289764686
+        },
+        "before": {
+          "shock": -0.1,
+          "warning_threshold": -0.12
+        },
+        "message": "Run a simple market shock stress test without modifying weights.",
+        "priority": "P2",
+        "rule_name": "stress_test",
+        "triggered": false
+      }
+    ],
+    "cash_weight": 0.0,
+    "cvar_99": -0.02855813851098245,
+    "gross_exposure": 1.0,
+    "holding_count": 90,
+    "portfolio_beta": 1.1164283289764685,
+    "sector_weights": {
+      "Basic Materials": 0.07490457836972844,
+      "Communication Services": 0.04167707712442468,
+      "Consumer Cyclical": 0.13432712041279152,
+      "Consumer Defensive": 0.02899338706305107,
+      "Energy": 0.02884706465343385,
+      "Financial Services": 0.2390511746094967,
+      "Healthcare": 0.09002938981927046,
+      "Industrials": 0.08949190849285474,
+      "Real Estate": 0.07921073702222786,
+      "Technology": 0.14169568778143687,
+      "Utilities": 0.05177187465128376
+    },
+    "turnover": 0.12410082490613913,
+    "warnings": [],
+    "weights": {
+      "AEE": 0.0010957010508208203,
+      "AES": 0.016435515762312305,
+      "ALB": 0.014464332374844112,
+      "ANET": 0.012765377277606925,
+      "APP": 0.004340228274386354,
+      "ARE": 0.016097665910968888,
+      "AVGO": 0.0063826886388034625,
+      "BALL": 0.0022597085676918207,
+      "BEN": 0.02084748615780494,
+      "BF-B": 0.01827843967018437,
+      "BLDR": 0.018377802636925525,
+      "BXP": 0.018908369482725357,
+      "CBRE": 0.0035772590913264193,
+      "CEG": 0.010135234720092588,
+      "CF": 0.001808041546855514,
+      "CHTR": 0.016392983668940375,
+      "COF": 0.011118659284162637,
+      "COHR": 0.01914806591641039,
+      "COO": 0.0125988650475947,
+      "CRH": 0.013947749075742536,
+      "CRL": 0.005512003458322681,
+      "CTVA": 0.01704724887035199,
+      "CVNA": 0.010545306649228493,
+      "D": 0.004108878940578076,
+      "DECK": 0.016069038703586277,
+      "DG": 0.0015757275577745144,
+      "EFX": 0.01731242277391535,
+      "EPAM": 0.018126835734201832,
+      "EQR": 0.00894314772831605,
+      "ES": 0.016983366287722717,
+      "EXR": 0.00408829610437305,
+      "FCX": 0.006973874537871268,
+      "FSLR": 0.005465759618545361,
+      "GM": 0.01757551108204749,
+      "GNRC": 0.013849938219132281,
+      "HAS": 0.013307172676407384,
+      "HOOD": 0.026406815799886265,
+      "HRL": 0.009139219835092185,
+      "HST": 0.004854851623942997,
+      "IBKR": 0.02501698338936593,
+      "INCY": 0.00629943252379735,
+      "INTC": 0.000510615091104277,
+      "INVH": 0.0030662220782797884,
+      "IVZ": 0.02362715097884561,
+      "KEY": 0.009728826873642309,
+      "KEYS": 0.0025530754555213846,
+      "KIM": 0.005621407143512945,
+      "KKR": 0.018067821336764284,
+      "LITE": 0.011999454640950511,
+      "LRCX": 0.011488839549846232,
+      "LUV": 0.010920143595854297,
+      "LVS": 0.015315802514355669,
+      "MAS": 0.0069249691095661405,
+      "MGM": 0.010796385378972033,
+      "MOS": 0.005940707939668117,
+      "MRNA": 0.01889829757139205,
+      "MS": 0.0041694972315609894,
+      "NEE": 0.0030131778897572554,
+      "NFLX": 0.002222777446635983,
+      "NTRS": 0.0027796648210406593,
+      "NWS": 0.010836040052350416,
+      "PHM": 0.01707335362256042,
+      "PLD": 0.0033217405848031036,
+      "PNC": 0.015288156515723626,
+      "RF": 0.029186480620926922,
+      "RJF": 0.006949162052601648,
+      "RVTY": 0.007874290654746686,
+      "SATS": 0.01710560555199328,
+      "SCHW": 0.0013898324105203297,
+      "SMCI": 0.0002553075455521385,
+      "STLD": 0.0147226240243949,
+      "STX": 0.010212301822085539,
+      "SWK": 0.008523038904081402,
+      "SYF": 0.022237318568325275,
+      "TECH": 0.01443619953370226,
+      "TFC": 0.005559329642081319,
+      "TPL": 0.02338130503488849,
+      "TPR": 0.019081983460508704,
+      "TRMB": 0.00842514900322057,
+      "TROW": 0.016677988926243958,
+      "URI": 0.013583593253379737,
+      "VRSN": 0.0007659226366564156,
+      "VTR": 0.009198666234839364,
+      "VTRS": 0.01916077392655027,
+      "WAT": 0.005249527103164458,
+      "WBD": 0.012225275956497904,
+      "WDC": 0.007914533912116294,
+      "WSM": 0.012302857757433242,
+      "WY": 0.0015331110391398942,
+      "ZBRA": 0.009701686730981263
+    }
+  },
+  "audit_rule_order": [
+    [
+      "P0",
+      "single_stock_cap"
+    ],
+    [
+      "P0",
+      "sector_deviation_cap"
+    ],
+    [
+      "P0",
+      "cvar_haircut"
+    ],
+    [
+      "P1",
+      "beta_alignment"
+    ],
+    [
+      "P1",
+      "correlation_dedup"
+    ],
+    [
+      "P1",
+      "turnover_cap"
+    ],
+    [
+      "P2",
+      "minimum_holdings"
+    ],
+    [
+      "P2",
+      "stress_test"
+    ]
+  ],
+  "benchmark": {
+    "sector_weights": {
+      "Basic Materials": 0.0404040404040404,
+      "Communication Services": 0.03838383838383838,
+      "Consumer Cyclical": 0.10303030303030303,
+      "Consumer Defensive": 0.0707070707070707,
+      "Energy": 0.044444444444444446,
+      "Financial Services": 0.1393939393939394,
+      "Healthcare": 0.1191919191919192,
+      "Industrials": 0.15353535353535352,
+      "Real Estate": 0.06262626262626263,
+      "Technology": 0.16363636363636364,
+      "Utilities": 0.06464646464646465
+    },
+    "universe_size": 495
+  },
+  "benchmark_source": "equal_weight_prediction_universe_on_signal_date",
+  "example_method": "Start from the W6 rebalance with the largest Financial Services tilt and reallocate the selected basket so Financial Services carries benchmark+20% weight.",
+  "generated_at_utc": "2026-04-02T08:08:58.907957+00:00",
+  "git_branch": "feature/week13-risk-engine",
+  "inputs": {
+    "portfolio_report_path": "/home/jiahao/quant_edge/data/reports/extended_portfolio_buffered.json",
+    "predictions_path": "/home/jiahao/quant_edge/data/backtest/extended_walkforward_predictions.parquet",
+    "prices_path": "/home/jiahao/quant_edge/data/backtest/extended_walkforward_prices.parquet"
+  },
+  "script": "run_risk_engine_validation.py",
+  "sector_validation": {
+    "after_target_sector_deviation": 0.0996572352155573,
+    "before_target_sector_deviation": 0.2,
+    "corrected": true,
+    "limit": 0.15
+  },
+  "signal_date": "2024-04-05",
+  "synthetic_before": {
+    "cvar_99": -0.029121971535783296,
+    "portfolio_beta": 1.0898711497821179,
+    "sector_deviation": {
+      "Basic Materials": 0.02339075066347794,
+      "Communication Services": -0.005386532659259931,
+      "Consumer Cyclical": 0.024779261142897524,
+      "Consumer Defensive": -0.05046872319599592,
+      "Energy": -0.023546150818878092,
+      "Financial Services": 0.2,
+      "Healthcare": -0.04373808010171647,
+      "Industrials": -0.07962138871229779,
+      "Real Estate": 0.01920705557069194,
+      "Technology": -0.04154633245542334,
+      "Utilities": -0.023069859433495793
+    },
+    "sector_weights": {
+      "Basic Materials": 0.06379479106751834,
+      "Communication Services": 0.03299730572457845,
+      "Consumer Cyclical": 0.12780956417320055,
+      "Consumer Defensive": 0.020238347511074787,
+      "Energy": 0.020898293625566354,
+      "Financial Services": 0.3393939393939394,
+      "Healthcare": 0.07545383909020273,
+      "Industrials": 0.07391396482305573,
+      "Real Estate": 0.08183331819695457,
+      "Technology": 0.12209003118094029,
+      "Utilities": 0.041576605212968853
+    },
+    "weights": {
+      "AEE": 0.0008799281526554254,
+      "AES": 0.013198922289831381,
+      "ALB": 0.012318994137175956,
+      "ANET": 0.010999101908192819,
+      "APP": 0.0037396946487855583,
+      "ARE": 0.013858868404322952,
+      "AVGO": 0.005499550954096409,
+      "BALL": 0.0019798383434747073,
+      "BEN": 0.02203856749311295,
+      "BF-B": 0.01275895821350367,
+      "BLDR": 0.015178760633306088,
+      "BXP": 0.01627867082412537,
+      "CBRE": 0.003079748534293989,
+      "CEG": 0.008139335412062685,
+      "CF": 0.0015398742671469945,
+      "CFG": 0.020569329660238753,
+      "CHTR": 0.012978940251667525,
+      "COF": 0.011753902662993573,
+      "COHR": 0.01649865286228923,
+      "COO": 0.010559137831865106,
+      "CRH": 0.011879030060848244,
+      "CRL": 0.004619622801440983,
+      "CTVA": 0.01451881451881452,
+      "CVNA": 0.009239245602881967,
+      "D": 0.0032997305724578453,
+      "DECK": 0.014078850442486806,
+      "DG": 0.0010999101908192818,
+      "EFX": 0.014298832480650663,
+      "EPAM": 0.015618724709633802,
+      "EQR": 0.007699371335734973,
+      "ES": 0.013638886366159095,
+      "ESS": 0.0074793892975711165,
+      "EXR": 0.0035197126106217016,
+      "FCX": 0.005939515030424122,
+      "FITB": 0.014692378328741965,
+      "FSLR": 0.0039596766869494145,
+      "GM": 0.015398742671469946,
+      "GNRC": 0.011439065984520531,
+      "HAS": 0.011659048022684386,
+      "HBAN": 0.00881542699724518,
+      "HOOD": 0.02791551882460974,
+      "HRL": 0.006379479106751835,
+      "HST": 0.004179658725113271,
+      "IBKR": 0.026446280991735537,
+      "INCY": 0.005279568915932553,
+      "INTC": 0.0004399640763277127,
+      "INVH": 0.0026397844579662765,
+      "IVZ": 0.024977043158861345,
+      "KEY": 0.010284664830119377,
+      "KEYS": 0.0021998203816385635,
+      "KIM": 0.00483960483960484,
+      "KKR": 0.019100091827364555,
+      "LEN": 0.010119173755537392,
+      "LITE": 0.01033915579370125,
+      "LRCX": 0.009899191717373537,
+      "LUV": 0.00901926356471811,
+      "LVS": 0.013418904327995237,
+      "MAS": 0.0057195329922602655,
+      "MGM": 0.009459227641045825,
+      "MOS": 0.005059586877768696,
+      "MRNA": 0.015838706747797658,
+      "MS": 0.00440771349862259,
+      "MTB": 0.02938475665748393,
+      "NEE": 0.00241980241980242,
+      "NFLX": 0.0017598563053108508,
+      "NTRS": 0.0029384756657483933,
+      "NWS": 0.008579299488390398,
+      "PHM": 0.014958778595142233,
+      "PLD": 0.0028597664961301328,
+      "PNC": 0.01616161616161616,
+      "RF": 0.03085399449035813,
+      "RJF": 0.0073461891643709825,
+      "RVTY": 0.006599461144915691,
+      "SATS": 0.014738796556978377,
+      "SCHW": 0.0014692378328741967,
+      "SMCI": 0.00021998203816385635,
+      "STLD": 0.012538976175339812,
+      "STX": 0.008799281526554254,
+      "SWK": 0.007039425221243403,
+      "SYF": 0.023507805325987147,
+      "TECH": 0.0120990120990121,
+      "TFC": 0.005876951331496787,
+      "TPL": 0.016938616938616938,
+      "TPR": 0.016718634900453083,
+      "TRMB": 0.00725940725940726,
+      "TROW": 0.01763085399449036,
+      "UDR": 0.006159497068587978,
+      "URI": 0.011219083946356675,
+      "USB": 0.013223140495867768,
+      "VRSN": 0.0006599461144915691,
+      "VTR": 0.007919353373898829,
+      "VTRS": 0.016058688785961513,
+      "WAT": 0.004399640763277127,
+      "WBD": 0.00967920967920968,
+      "WDC": 0.006819443183079548,
+      "WSM": 0.01077911987002896,
+      "WY": 0.0013198922289831383,
+      "ZBRA": 0.008359317450226542
+    }
+  },
+  "target_sector": "Financial Services",
+  "window_id": "W6"
+}
