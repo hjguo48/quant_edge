@@ -29,6 +29,14 @@ PRICE_COLUMNS = [
 ]
 
 
+def normalize_polygon_ticker(ticker: str) -> str:
+    return ticker.strip().upper().replace(".", "-")
+
+
+def to_polygon_request_ticker(ticker: str) -> str:
+    return normalize_polygon_ticker(ticker).replace("-", ".")
+
+
 class PolygonDataSource(DataSource):
     source_name = "polygon"
 
@@ -51,12 +59,21 @@ class PolygonDataSource(DataSource):
         end = self.coerce_date(end_date)
         rows: list[dict[str, Any]] = []
 
-        for ticker in self.normalize_tickers(tickers):
-            raw_bars = self._list_aggs(ticker, start, end, adjusted=False)
-            adjusted_bars = self._list_aggs(ticker, start, end, adjusted=True)
+        canonical_tickers = tuple(
+            dict.fromkeys(normalize_polygon_ticker(ticker) for ticker in self.normalize_tickers(tickers))
+        )
+
+        for ticker in canonical_tickers:
+            provider_ticker = to_polygon_request_ticker(ticker)
+            raw_bars = self._list_aggs(provider_ticker, start, end, adjusted=False)
+            adjusted_bars = self._list_aggs(provider_ticker, start, end, adjusted=True)
 
             if not raw_bars:
-                logger.warning("polygon returned no daily bars for {}", ticker)
+                logger.warning(
+                    "polygon returned no daily bars for {} using provider symbol {}",
+                    ticker,
+                    provider_ticker,
+                )
                 continue
 
             for trade_date, raw_bar in sorted(raw_bars.items()):

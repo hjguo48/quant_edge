@@ -12,6 +12,7 @@ import src.universe.builder as builder_module
 from src.data.db.models import Base, UniverseMembership
 from src.data.db.pit import get_universe_pit
 from src.data.sources.fmp import FMPDataSource
+from src.data.sources.polygon import PolygonDataSource, normalize_polygon_ticker, to_polygon_request_ticker
 
 
 def test_fmp_knowledge_time_per_metric(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -60,6 +61,55 @@ def test_fmp_knowledge_time_per_metric(monkeypatch: pytest.MonkeyPatch) -> None:
     assert revenue_record["event_time"] == date(2024, 3, 31)
     assert revenue_record["fiscal_period"] == "2024Q1"
     assert revenue_record["knowledge_time"] < cash_flow_record["knowledge_time"]
+
+
+def test_polygon_ticker_mapping_helpers() -> None:
+    assert normalize_polygon_ticker("BF.B") == "BF-B"
+    assert normalize_polygon_ticker("BRK.B") == "BRK-B"
+    assert to_polygon_request_ticker("BF-B") == "BF.B"
+    assert to_polygon_request_ticker("BRK-B") == "BRK.B"
+    assert normalize_polygon_ticker("AAPL") == "AAPL"
+    assert to_polygon_request_ticker("AAPL") == "AAPL"
+
+
+def test_polygon_fetch_historical_uses_provider_ticker_but_persists_canonical_ticker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = PolygonDataSource(api_key="test-key")
+    requested_tickers: list[tuple[str, bool]] = []
+    persisted: dict[str, pd.DataFrame] = {}
+
+    def fake_list_aggs(
+        ticker: str,
+        start_date: date,
+        end_date: date,
+        *,
+        adjusted: bool,
+    ) -> dict[date, dict[str, object]]:
+        requested_tickers.append((ticker, adjusted))
+        return {
+            date(2024, 1, 2): {
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.5 if adjusted else 100.0,
+                "volume": 1_000,
+            },
+        }
+
+    monkeypatch.setattr(source, "_list_aggs", fake_list_aggs)
+
+    def fake_persist_prices(frame: pd.DataFrame, *, batch_size: int = 1_000) -> int:
+        persisted["frame"] = frame.copy()
+        return len(frame)
+
+    monkeypatch.setattr(source, "persist_prices", fake_persist_prices)
+
+    frame = source.fetch_historical(["BF-B"], date(2024, 1, 2), date(2024, 1, 2))
+
+    assert requested_tickers == [("BF.B", False), ("BF.B", True)]
+    assert frame["ticker"].tolist() == ["BF-B"]
+    assert persisted["frame"]["ticker"].tolist() == ["BF-B"]
 
 
 def test_build_universe_historical_path_applies_adv_filter(
