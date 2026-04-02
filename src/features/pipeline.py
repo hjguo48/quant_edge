@@ -285,6 +285,8 @@ def compute_composite_features(base_features_df: pd.DataFrame) -> pd.DataFrame:
     composite["liquidity_momentum"] = wide.get("volume_ratio_20d") * wide.get("ret_20d")
     composite["mean_reversion_combo"] = wide.get("bb_position") - _safe_series_divide(wide.get("rsi_14"), 100)
     composite["trend_confirmation"] = wide.get("macd_histogram") + _safe_series_divide(wide.get("stoch_d"), 100)
+    # MACRO_REGIME: these composites depend only on market-wide inputs and
+    # should be treated as regime/context overlays rather than stock selectors.
     composite["risk_sentiment"] = wide.get("market_ret_20d") - wide.get("vix_change_5d")
     composite["spread_stress"] = wide.get("credit_spread") - wide.get("yield_spread_10y2y")
     composite["breadth_momentum"] = wide.get("sp500_breadth") + wide.get("market_ret_20d")
