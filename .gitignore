@@ -16,6 +16,8 @@ build/
 .env
 
 mlruns/
+mlartifacts/
+mlflow.db
 *.parquet
 *.h5
 *.pkl
