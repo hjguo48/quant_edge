@@ -1,0 +1,392 @@
+{
+  "candidate_feature_count": 58,
+  "candidate_feature_source": "data/features/ic_screening_report_v2.csv",
+  "comparison": {
+    "10D": {
+      "candidate_feature_count": 58,
+      "selected_feature_count": 6,
+      "selected_features": [
+        "atr_14",
+        "vol_60d",
+        "vol_20d",
+        "vol_rank",
+        "gk_vol",
+        "pb_ratio"
+      ],
+      "selection_mode": "threshold_gt_0.02",
+      "threshold": 0.02,
+      "top_features": [
+        {
+          "feature_name": "atr_14",
+          "rank_ic": 0.023931466019094683
+        },
+        {
+          "feature_name": "vol_60d",
+          "rank_ic": 0.023091906888455443
+        },
+        {
+          "feature_name": "vol_20d",
+          "rank_ic": 0.021663720389098525
+        },
+        {
+          "feature_name": "vol_rank",
+          "rank_ic": 0.021663720389098525
+        },
+        {
+          "feature_name": "gk_vol",
+          "rank_ic": 0.02126609861764839
+        },
+        {
+          "feature_name": "pb_ratio",
+          "rank_ic": 0.021082738266316865
+        },
+        {
+          "feature_name": "revenue_growth_yoy",
+          "rank_ic": 0.018231813494506467
+        },
+        {
+          "feature_name": "ev_ebitda",
+          "rank_ic": 0.01710268505523674
+        },
+        {
+          "feature_name": "amihud",
+          "rank_ic": 0.016532735375109856
+        },
+        {
+          "feature_name": "bb_width",
+          "rank_ic": 0.014713561569322593
+        },
+        {
+          "feature_name": "low_52w_ratio",
+          "rank_ic": 0.012690361550583746
+        },
+        {
+          "feature_name": "earnings_growth_yoy",
+          "rank_ic": 0.012361591480290424
+        },
+        {
+          "feature_name": "current_ratio",
+          "rank_ic": 0.011376489572191156
+        },
+        {
+          "feature_name": "operating_margin",
+          "rank_ic": -0.00226936461982326
+        },
+        {
+          "feature_name": "turnover_rate",
+          "rank_ic": -0.003114052062297644
+        },
+        {
+          "feature_name": "fcf_mom_20d",
+          "rank_ic": -0.005854012064456013
+        },
+        {
+          "feature_name": "obv_slope",
+          "rank_ic": -0.007242550293045816
+        },
+        {
+          "feature_name": "mom_vol_adj_20d",
+          "rank_ic": -0.00856303717698286
+        },
+        {
+          "feature_name": "rsi_14",
+          "rank_ic": -0.008852235354794917
+        },
+        {
+          "feature_name": "high_52w_ratio",
+          "rank_ic": -0.008903141901885665
+        }
+      ]
+    },
+    "20D": {
+      "candidate_feature_count": 58,
+      "selected_feature_count": 7,
+      "selected_features": [
+        "vol_60d",
+        "atr_14",
+        "vol_20d",
+        "vol_rank",
+        "gk_vol",
+        "pb_ratio",
+        "amihud"
+      ],
+      "selection_mode": "threshold_gt_0.02",
+      "threshold": 0.02,
+      "top_features": [
+        {
+          "feature_name": "vol_60d",
+          "rank_ic": 0.03305963857519666
+        },
+        {
+          "feature_name": "atr_14",
+          "rank_ic": 0.03281646823485345
+        },
+        {
+          "feature_name": "vol_20d",
+          "rank_ic": 0.029167012743706477
+        },
+        {
+          "feature_name": "vol_rank",
+          "rank_ic": 0.029167012743706477
+        },
+        {
+          "feature_name": "gk_vol",
+          "rank_ic": 0.027636411703993394
+        },
+        {
+          "feature_name": "pb_ratio",
+          "rank_ic": 0.026026951540007358
+        },
+        {
+          "feature_name": "amihud",
+          "rank_ic": 0.02593965072989322
+        },
+        {
+          "feature_name": "low_52w_ratio",
+          "rank_ic": 0.01948681042810911
+        },
+        {
+          "feature_name": "ev_ebitda",
+          "rank_ic": 0.019405431700742794
+        },
+        {
+          "feature_name": "bb_width",
+          "rank_ic": 0.019121325934308927
+        },
+        {
+          "feature_name": "revenue_growth_yoy",
+          "rank_ic": 0.01873099783546099
+        },
+        {
+          "feature_name": "current_ratio",
+          "rank_ic": 0.015204707764019571
+        },
+        {
+          "feature_name": "earnings_growth_yoy",
+          "rank_ic": 0.014546266475122365
+        },
+        {
+          "feature_name": "turnover_rate",
+          "rank_ic": -0.004409010052778922
+        },
+        {
+          "feature_name": "fcf_mom_20d",
+          "rank_ic": -0.0058532139473369245
+        },
+        {
+          "feature_name": "operating_margin",
+          "rank_ic": -0.0063214698353925925
+        },
+        {
+          "feature_name": "ret_5d",
+          "rank_ic": -0.006818455799894077
+        },
+        {
+          "feature_name": "vwap_deviation",
+          "rank_ic": -0.006866153389290771
+        },
+        {
+          "feature_name": "mean_reversion_combo",
+          "rank_ic": -0.007086883341326231
+        },
+        {
+          "feature_name": "stoch_d",
+          "rank_ic": -0.007287261701129598
+        }
+      ]
+    },
+    "5D": {
+      "candidate_feature_count": 58,
+      "selected_feature_count": 0,
+      "selected_features": [],
+      "selection_mode": "comparison_only",
+      "threshold": 0.02,
+      "top_features": [
+        {
+          "feature_name": "revenue_growth_yoy",
+          "rank_ic": 0.016483809589781188
+        },
+        {
+          "feature_name": "pb_ratio",
+          "rank_ic": 0.016456064663366365
+        },
+        {
+          "feature_name": "atr_14",
+          "rank_ic": 0.015663166238100684
+        },
+        {
+          "feature_name": "ev_ebitda",
+          "rank_ic": 0.01429307015252551
+        },
+        {
+          "feature_name": "vol_20d",
+          "rank_ic": 0.013642196505934553
+        },
+        {
+          "feature_name": "vol_rank",
+          "rank_ic": 0.013642196505934553
+        },
+        {
+          "feature_name": "gk_vol",
+          "rank_ic": 0.013410010458900369
+        },
+        {
+          "feature_name": "vol_60d",
+          "rank_ic": 0.013143767278055524
+        },
+        {
+          "feature_name": "earnings_growth_yoy",
+          "rank_ic": 0.0121236851003916
+        },
+        {
+          "feature_name": "amihud",
+          "rank_ic": 0.010617067734171742
+        },
+        {
+          "feature_name": "low_52w_ratio",
+          "rank_ic": 0.00910022484364296
+        },
+        {
+          "feature_name": "bb_width",
+          "rank_ic": 0.007496764748788956
+        },
+        {
+          "feature_name": "current_ratio",
+          "rank_ic": 0.006768366874634027
+        },
+        {
+          "feature_name": "operating_margin",
+          "rank_ic": -0.00037809002657698495
+        },
+        {
+          "feature_name": "turnover_rate",
+          "rank_ic": -0.0021888518768297532
+        },
+        {
+          "feature_name": "high_52w_ratio",
+          "rank_ic": -0.003672072724586339
+        },
+        {
+          "feature_name": "fcf_mom_20d",
+          "rank_ic": -0.006050362798467466
+        },
+        {
+          "feature_name": "obv_slope",
+          "rank_ic": -0.006516228152619783
+        },
+        {
+          "feature_name": "rsi_28",
+          "rank_ic": -0.00670266066058499
+        },
+        {
+          "feature_name": "mom_vol_adj_60d",
+          "rank_ic": -0.006763558472180026
+        }
+      ]
+    },
+    "60D": {
+      "candidate_feature_count": 58,
+      "selected_feature_count": 11,
+      "selected_features": [
+        "vol_60d",
+        "atr_14",
+        "gk_vol",
+        "vol_20d",
+        "vol_rank",
+        "amihud",
+        "bb_width",
+        "low_52w_ratio",
+        "pb_ratio",
+        "current_ratio",
+        "ev_ebitda"
+      ],
+      "selection_mode": "comparison_only",
+      "threshold": 0.02,
+      "top_features": [
+        {
+          "feature_name": "vol_60d",
+          "rank_ic": 0.06443969628926996
+        },
+        {
+          "feature_name": "atr_14",
+          "rank_ic": 0.060505046216722314
+        },
+        {
+          "feature_name": "gk_vol",
+          "rank_ic": 0.05544146830925813
+        },
+        {
+          "feature_name": "vol_20d",
+          "rank_ic": 0.053365894340316126
+        },
+        {
+          "feature_name": "vol_rank",
+          "rank_ic": 0.053365894340316126
+        },
+        {
+          "feature_name": "amihud",
+          "rank_ic": 0.04907293739552725
+        },
+        {
+          "feature_name": "bb_width",
+          "rank_ic": 0.04532802477231256
+        },
+        {
+          "feature_name": "low_52w_ratio",
+          "rank_ic": 0.04120158737274521
+        },
+        {
+          "feature_name": "pb_ratio",
+          "rank_ic": 0.035468286465457535
+        },
+        {
+          "feature_name": "current_ratio",
+          "rank_ic": 0.025591147813500255
+        },
+        {
+          "feature_name": "ev_ebitda",
+          "rank_ic": 0.024128517768549757
+        },
+        {
+          "feature_name": "revenue_growth_yoy",
+          "rank_ic": 0.016667180845810526
+        },
+        {
+          "feature_name": "earnings_growth_yoy",
+          "rank_ic": 0.015184491852398707
+        },
+        {
+          "feature_name": "turnover_rate",
+          "rank_ic": -0.0029961504220190893
+        },
+        {
+          "feature_name": "vwap_deviation",
+          "rank_ic": -0.004632011469831504
+        },
+        {
+          "feature_name": "macd_histogram",
+          "rank_ic": -0.007951213868521606
+        },
+        {
+          "feature_name": "trend_confirmation",
+          "rank_ic": -0.00920708101052782
+        },
+        {
+          "feature_name": "fcf_mom_20d",
+          "rank_ic": -0.010640811911776463
+        },
+        {
+          "feature_name": "ret_5d",
+          "rank_ic": -0.01172415773319726
+        },
+        {
+          "feature_name": "mean_reversion_combo",
+          "rank_ic": -0.012038344492755072
+        }
+      ]
+    }
+  },
+  "generated_at_utc": "2026-04-02T11:46:10.055011+00:00",
+  "git_branch": "feature/alpha-enhancement",
+  "script": "scripts/run_signal_fusion_experiment.py"
+}
