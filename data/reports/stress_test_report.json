@@ -1,0 +1,2450 @@
+{
+  "cost_calibration_note": {
+    "available": true,
+    "calibrated": {
+      "eta": 0.42599999999999993,
+      "gamma": 0.942
+    },
+    "calibration_ratio": 3.0,
+    "message": "Week 15 showed that Almgren-Chriss impact needed a 3x uplift to match realized slippage. This remains a documentation and future-research item rather than a Week 17 code change.",
+    "original": {
+      "eta": 0.142,
+      "gamma": 0.314
+    }
+  },
+  "cvxpy_fallback_analysis": {
+    "action_taken": "documented_only",
+    "historical_fallback_rate": 0.4489795918367347,
+    "historical_solver_status_counts": {
+      "fallback": 88,
+      "optimal": 108
+    },
+    "recommended_follow_up": "Keep the current fallback path. Any material reduction in fallback would require softening production constraint semantics rather than a narrow numerical fix.",
+    "report_source": "/home/jiahao/quant_edge/data/reports/portfolio_optimization_comparison.json",
+    "root_cause_assessment": "Observed fallback could not be cleanly reproduced with the synthetic case; retain the current implementation and monitor.",
+    "synthetic_reproduction": {
+      "full_constraints_portfolio_beta": 0.7088235294117647,
+      "full_constraints_sector_weights": {
+        "Financial Services": 0.8991596638655462,
+        "Technology": 0.10084033613445378
+      },
+      "full_constraints_status": "fallback",
+      "relaxed_constraints_portfolio_beta": 0.7088235294117647,
+      "relaxed_constraints_sector_weights": {
+        "Financial Services": 0.8991596638655462,
+        "Technology": 0.10084033613445378
+      },
+      "relaxed_constraints_status": "fallback",
+      "reproduced": false
+    }
+  },
+  "generated_at_utc": "2026-04-02T09:26:53.010326+00:00",
+  "git_branch": "feature/week17-shadow-mode",
+  "layers": {
+    "layer1_data_risk": [
+      {
+        "expected": {
+          "severity": "green"
+        },
+        "layer": "layer1_data_risk",
+        "name": "Missing rate 3% remains GREEN",
+        "observed": {
+          "check_name": "missing_rate",
+          "halt_pipeline": false,
+          "message": "Observed 97 / 100 tickers; missing_rate=3.00%.",
+          "observed_value": 0.03,
+          "severity": "green",
+          "threshold_red": 0.15,
+          "threshold_yellow": 0.05
+        },
+        "passed": true,
+        "test_id": "1.1.green"
+      },
+      {
+        "expected": {
+          "halt_pipeline": false,
+          "severity": "yellow"
+        },
+        "layer": "layer1_data_risk",
+        "name": "Missing rate 8% escalates to YELLOW",
+        "observed": {
+          "check_name": "missing_rate",
+          "halt_pipeline": false,
+          "message": "Observed 92 / 100 tickers; missing_rate=8.00%.",
+          "observed_value": 0.08,
+          "severity": "yellow",
+          "threshold_red": 0.15,
+          "threshold_yellow": 0.05
+        },
+        "passed": true,
+        "test_id": "1.1.yellow"
+      },
+      {
+        "expected": {
+          "halt_pipeline": true,
+          "severity": "red"
+        },
+        "layer": "layer1_data_risk",
+        "name": "Missing rate 20% escalates to RED and halts pipeline",
+        "observed": {
+          "check_name": "missing_rate",
+          "halt_pipeline": true,
+          "message": "Observed 80 / 100 tickers; missing_rate=20.00%.",
+          "observed_value": 0.2,
+          "severity": "red",
+          "threshold_red": 0.15,
+          "threshold_yellow": 0.05
+        },
+        "passed": true,
+        "test_id": "1.1.red"
+      },
+      {
+        "expected": {
+          "alerts": 0
+        },
+        "layer": "layer1_data_risk",
+        "name": "Normal feature distribution shows no KS drift alerts",
+        "observed": {
+          "alerts": []
+        },
+        "passed": true,
+        "test_id": "1.2.normal"
+      },
+      {
+        "expected": {
+          "alerts_at_least": 1
+        },
+        "layer": "layer1_data_risk",
+        "name": "Shifted feature distribution triggers KS alerts",
+        "observed": {
+          "alerts": [
+            {
+              "current_sample_size": 120,
+              "feature_name": "feature_b",
+              "historical_sample_size": 500,
+              "lookback_days": 60,
+              "message": "Feature feature_b drifted relative to the trailing 60D distribution (KS p=2.496e-131).",
+              "p_value": 2.4958559565699784e-131,
+              "severity": "yellow",
+              "statistic": 1.0
+            },
+            {
+              "current_sample_size": 120,
+              "feature_name": "feature_a",
+              "historical_sample_size": 500,
+              "lookback_days": 60,
+              "message": "Feature feature_a drifted relative to the trailing 60D distribution (KS p=1.472e-74).",
+              "p_value": 1.472020330963293e-74,
+              "severity": "yellow",
+              "statistic": 0.8496666666666667
+            }
+          ]
+        },
+        "passed": true,
+        "test_id": "1.2.shifted"
+      },
+      {
+        "expected": {
+          "severity": "yellow",
+          "switch_to_backup": false
+        },
+        "layer": "layer1_data_risk",
+        "name": "Single API failure stays non-failover",
+        "observed": {
+          "consecutive_failures": 1,
+          "error_count": 1,
+          "halt_pipeline": false,
+          "max_consecutive_failures": 3,
+          "mean_response_time": 0.27666666666666667,
+          "message": "API health warning: errors=1, mean_response_time=0.277s.",
+          "severity": "yellow",
+          "switch_to_backup": false
+        },
+        "passed": true,
+        "test_id": "1.3.greenish"
+      },
+      {
+        "expected": {
+          "severity": "red",
+          "switch_to_backup": true
+        },
+        "layer": "layer1_data_risk",
+        "name": "Three consecutive API failures trigger backup-source switch",
+        "observed": {
+          "consecutive_failures": 3,
+          "error_count": 3,
+          "halt_pipeline": false,
+          "max_consecutive_failures": 3,
+          "mean_response_time": 2.8000000000000003,
+          "message": "API health degraded: consecutive_failures=3 reached the failover threshold 3.",
+          "severity": "red",
+          "switch_to_backup": true
+        },
+        "passed": true,
+        "test_id": "1.3.failover"
+      }
+    ],
+    "layer2_signal_risk": [
+      {
+        "expected": {
+          "severity": "green",
+          "switch_model": false
+        },
+        "layer": "layer2_signal_risk",
+        "name": "Healthy IC history remains GREEN",
+        "observed": {
+          "consecutive_breaches": 0,
+          "consecutive_limit": 4,
+          "historical_mean_ic": 0.07950000000000002,
+          "message": "rolling_ic=0.0795, historical_mean=0.0795, consecutive_breaches=0.",
+          "rolling_mean_ic": 0.07950000000000002,
+          "severity": "green",
+          "switch_model": false,
+          "threshold_ratio": 0.5
+        },
+        "passed": true,
+        "test_id": "2.1.green"
+      },
+      {
+        "expected": {
+          "severity": "red",
+          "switch_model": true
+        },
+        "layer": "layer2_signal_risk",
+        "name": "Four consecutive low-IC periods trigger switch alert",
+        "observed": {
+          "consecutive_breaches": 4,
+          "consecutive_limit": 4,
+          "historical_mean_ic": 0.066,
+          "message": "rolling_ic=0.0660, historical_mean=0.0660, consecutive_breaches=4.",
+          "rolling_mean_ic": 0.066,
+          "severity": "red",
+          "switch_model": true,
+          "threshold_ratio": 0.5
+        },
+        "passed": true,
+        "test_id": "2.1.degraded"
+      },
+      {
+        "expected": {
+          "severity": "green"
+        },
+        "layer": "layer2_signal_risk",
+        "name": "Monotonic score-to-return mapping passes calibration",
+        "observed": {
+          "bin_summary": [
+            {
+              "bin": 0,
+              "count": 20.0,
+              "mean_realized": -0.8976029759244348,
+              "mean_score": -0.9045226130653266
+            },
+            {
+              "bin": 1,
+              "count": 20.0,
+              "mean_realized": -0.7026683709862175,
+              "mean_score": -0.7035175879396985
+            },
+            {
+              "bin": 2,
+              "count": 20.0,
+              "mean_realized": -0.505693870301754,
+              "mean_score": -0.5025125628140703
+            },
+            {
+              "bin": 3,
+              "count": 20.0,
+              "mean_realized": -0.32577651337750035,
+              "mean_score": -0.3015075376884422
+            },
+            {
+              "bin": 4,
+              "count": 20.0,
+              "mean_realized": -0.09375646996316017,
+              "mean_score": -0.10050251256281406
+            },
+            {
+              "bin": 5,
+              "count": 20.0,
+              "mean_realized": 0.09351385294184492,
+              "mean_score": 0.10050251256281409
+            },
+            {
+              "bin": 6,
+              "count": 20.0,
+              "mean_realized": 0.3132742218265031,
+              "mean_score": 0.30150753768844224
+            },
+            {
+              "bin": 7,
+              "count": 20.0,
+              "mean_realized": 0.5224429080803322,
+              "mean_score": 0.5025125628140704
+            },
+            {
+              "bin": 8,
+              "count": 20.0,
+              "mean_realized": 0.7202504127893088,
+              "mean_score": 0.7035175879396985
+            },
+            {
+              "bin": 9,
+              "count": 20.0,
+              "mean_realized": 0.9165860712973786,
+              "mean_score": 0.9045226130653268
+            }
+          ],
+          "message": "Calibration check completed with spearman=1.0000 and monotonic=True.",
+          "monotonic": true,
+          "n_bins": 10,
+          "severity": "green",
+          "spearman": 0.9999999999999999
+        },
+        "passed": true,
+        "test_id": "2.2.green"
+      },
+      {
+        "expected": {
+          "severity": "red"
+        },
+        "layer": "layer2_signal_risk",
+        "name": "Rank-reversed returns trigger calibration alert",
+        "observed": {
+          "bin_summary": [
+            {
+              "bin": 0,
+              "count": 20.0,
+              "mean_realized": 0.9106829664369858,
+              "mean_score": -0.9045226130653266
+            },
+            {
+              "bin": 1,
+              "count": 20.0,
+              "mean_realized": 0.6977314097893696,
+              "mean_score": -0.7035175879396985
+            },
+            {
+              "bin": 2,
+              "count": 20.0,
+              "mean_realized": 0.5250790655554296,
+              "mean_score": -0.5025125628140703
+            },
+            {
+              "bin": 3,
+              "count": 20.0,
+              "mean_realized": 0.31342983310985706,
+              "mean_score": -0.3015075376884422
+            },
+            {
+              "bin": 4,
+              "count": 20.0,
+              "mean_realized": 0.10045897465792289,
+              "mean_score": -0.10050251256281406
+            },
+            {
+              "bin": 5,
+              "count": 20.0,
+              "mean_realized": -0.11531429638727694,
+              "mean_score": 0.10050251256281409
+            },
+            {
+              "bin": 6,
+              "count": 20.0,
+              "mean_realized": -0.327133028002183,
+              "mean_score": 0.30150753768844224
+            },
+            {
+              "bin": 7,
+              "count": 20.0,
+              "mean_realized": -0.49340857544959854,
+              "mean_score": 0.5025125628140704
+            },
+            {
+              "bin": 8,
+              "count": 20.0,
+              "mean_realized": -0.70999930000525,
+              "mean_score": 0.7035175879396985
+            },
+            {
+              "bin": 9,
+              "count": 20.0,
+              "mean_realized": -0.9054720086328689,
+              "mean_score": 0.9045226130653268
+            }
+          ],
+          "message": "Calibration check completed with spearman=-1.0000 and monotonic=False.",
+          "monotonic": false,
+          "n_bins": 10,
+          "severity": "red",
+          "spearman": -0.9999999999999999
+        },
+        "passed": true,
+        "test_id": "2.2.reversal"
+      },
+      {
+        "expected": {
+          "recommend_switch": false,
+          "severity": "green"
+        },
+        "layer": "layer2_signal_risk",
+        "name": "Three challenger wins are not enough to recommend a switch",
+        "observed": {
+          "challenger_ic": 0.05,
+          "champion_ic": 0.04,
+          "consecutive_challenger_wins": 3,
+          "message": "Champion remains active: challenger_wins=3, required=4.",
+          "recommend_switch": false,
+          "required_wins": 4,
+          "severity": "green"
+        },
+        "passed": true,
+        "test_id": "2.3.no_switch"
+      },
+      {
+        "expected": {
+          "recommend_switch": true,
+          "severity": "yellow"
+        },
+        "layer": "layer2_signal_risk",
+        "name": "Four challenger wins recommend a model switch",
+        "observed": {
+          "challenger_ic": 0.05,
+          "champion_ic": 0.04,
+          "consecutive_challenger_wins": 4,
+          "message": "Challenger IC 0.0500 exceeded champion IC 0.0400 for 4 consecutive periods.",
+          "recommend_switch": true,
+          "required_wins": 4,
+          "severity": "yellow"
+        },
+        "passed": true,
+        "test_id": "2.3.switch"
+      }
+    ],
+    "layer3_portfolio_risk": [
+      {
+        "expected": {
+          "max_weight": 0.1
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "Single-stock 30% concentration is capped at 10%",
+        "observed": {
+          "audit_trail": [
+            {
+              "action": "cap_weights",
+              "after": {
+                "max_weight": 0.1
+              },
+              "before": {
+                "limit": 0.1,
+                "max_weight": 0.3
+              },
+              "message": "Cap each name at the maximum single-stock weight.",
+              "priority": "P0",
+              "rule_name": "single_stock_cap",
+              "triggered": true
+            },
+            {
+              "action": "trim_overweight_sectors",
+              "after": {
+                "max_abs_deviation": 0.4666666666666665,
+                "sector_weights": {
+                  "Financial Services": 0.7999999999999998,
+                  "Healthcare": 0.1,
+                  "Technology": 0.1
+                }
+              },
+              "before": {
+                "max_abs_deviation": 0.6666666666666667,
+                "sector_weights": {
+                  "Financial Services": 1.0
+                }
+              },
+              "message": "Keep sector deviation versus benchmark within the configured band.",
+              "priority": "P0",
+              "rule_name": "sector_deviation_cap",
+              "triggered": true
+            },
+            {
+              "action": "scale_down_gross",
+              "after": {
+                "cvar_99": -0.020491485264146552,
+                "gross_exposure": 0.9999999999999998
+              },
+              "before": {
+                "cvar_99": -0.020491485264146552,
+                "floor": -0.05,
+                "gross_exposure": 0.9999999999999998
+              },
+              "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+              "priority": "P0",
+              "rule_name": "cvar_haircut",
+              "triggered": false
+            },
+            {
+              "action": "tilt_toward_target_beta",
+              "after": {
+                "portfolio_beta": 0.7548275862068964,
+                "target_bounds": [
+                  0.8,
+                  1.2
+                ]
+              },
+              "before": {
+                "hard_bounds": [
+                  0.7,
+                  1.3
+                ],
+                "portfolio_beta": 0.7548275862068964
+              },
+              "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+              "priority": "P1",
+              "rule_name": "beta_alignment",
+              "triggered": false
+            },
+            {
+              "action": "remove_redundant_names",
+              "after": {
+                "high_corr_pairs": 0
+              },
+              "before": {
+                "high_corr_pairs": 1
+              },
+              "message": "Trim highly correlated duplicate positions.",
+              "priority": "P1",
+              "rule_name": "correlation_dedup",
+              "triggered": true
+            },
+            {
+              "action": "blend_with_current_weights",
+              "after": {
+                "turnover": 0.2888888888888888
+              },
+              "before": {
+                "limit": 0.4,
+                "turnover": 0.2888888888888888
+              },
+              "message": "Cap one-period turnover at the configured limit.",
+              "priority": "P1",
+              "rule_name": "turnover_cap",
+              "triggered": false
+            },
+            {
+              "action": "add_small_satellite_positions",
+              "after": {
+                "holding_count": 20
+              },
+              "before": {
+                "holding_count": 11,
+                "minimum": 20
+              },
+              "message": "Maintain a diversified minimum number of holdings.",
+              "priority": "P2",
+              "rule_name": "minimum_holdings",
+              "triggered": true
+            },
+            {
+              "action": "warning_only",
+              "after": {
+                "stressed_return": -0.08022758620689659
+              },
+              "before": {
+                "shock": -0.1,
+                "warning_threshold": -0.12
+              },
+              "message": "Run a simple market shock stress test without modifying weights.",
+              "priority": "P2",
+              "rule_name": "stress_test",
+              "triggered": false
+            }
+          ],
+          "cash_weight": 0.0,
+          "cvar_99": -0.021040809832808673,
+          "gross_exposure": 1.0000000000000002,
+          "holding_count": 20,
+          "portfolio_beta": 0.8022758620689656,
+          "sector_weights": {
+            "Financial Services": 0.6622222222222223,
+            "Healthcare": 0.08000000000000002,
+            "Technology": 0.25777777777777783
+          },
+          "turnover": 0.33777777777777784,
+          "warnings": [],
+          "weights": {
+            "T00": 0.07111111111111111,
+            "T01": 0.022222222222222227,
+            "T02": 0.07111111111111111,
+            "T03": 0.07111111111111111,
+            "T04": 0.07111111111111111,
+            "T05": 0.07111111111111111,
+            "T06": 0.07111111111111111,
+            "T07": 0.07111111111111111,
+            "T08": 0.07111111111111111,
+            "T09": 0.07111111111111111,
+            "T10": 0.08000000000000002,
+            "T11": 0.022222222222222227,
+            "T12": 0.022222222222222227,
+            "T13": 0.022222222222222227,
+            "T14": 0.022222222222222227,
+            "T15": 0.022222222222222227,
+            "T16": 0.022222222222222227,
+            "T17": 0.022222222222222227,
+            "T18": 0.022222222222222227,
+            "T20": 0.08000000000000002
+          }
+        },
+        "passed": true,
+        "test_id": "3.1"
+      },
+      {
+        "expected": {
+          "max_sector_deviation": 0.15
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "Financial Services overweight is clipped back inside \u00b115%",
+        "observed": {
+          "after": {
+            "audit_trail": [
+              {
+                "action": "cap_weights",
+                "after": {
+                  "max_weight": 0.05333333333333333
+                },
+                "before": {
+                  "limit": 0.1,
+                  "max_weight": 0.05333333333333333
+                },
+                "message": "Cap each name at the maximum single-stock weight.",
+                "priority": "P0",
+                "rule_name": "single_stock_cap",
+                "triggered": false
+              },
+              {
+                "action": "trim_overweight_sectors",
+                "after": {
+                  "max_abs_deviation": 0.14999999999999997,
+                  "sector_weights": {
+                    "Financial Services": 0.4833333333333333,
+                    "Healthcare": 0.25833333333333336,
+                    "Technology": 0.25833333333333336
+                  }
+                },
+                "before": {
+                  "max_abs_deviation": 0.2,
+                  "sector_weights": {
+                    "Financial Services": 0.5333333333333333,
+                    "Healthcare": 0.23333333333333334,
+                    "Technology": 0.23333333333333334
+                  }
+                },
+                "message": "Keep sector deviation versus benchmark within the configured band.",
+                "priority": "P0",
+                "rule_name": "sector_deviation_cap",
+                "triggered": true
+              },
+              {
+                "action": "scale_down_gross",
+                "after": {
+                  "cvar_99": -0.024499139580794485,
+                  "gross_exposure": 1.0000000000000002
+                },
+                "before": {
+                  "cvar_99": -0.024499139580794485,
+                  "floor": -0.05,
+                  "gross_exposure": 1.0000000000000002
+                },
+                "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+                "priority": "P0",
+                "rule_name": "cvar_haircut",
+                "triggered": false
+              },
+              {
+                "action": "tilt_toward_target_beta",
+                "after": {
+                  "portfolio_beta": 0.9301724137931036,
+                  "target_bounds": [
+                    0.8,
+                    1.2
+                  ]
+                },
+                "before": {
+                  "hard_bounds": [
+                    0.7,
+                    1.3
+                  ],
+                  "portfolio_beta": 0.9301724137931036
+                },
+                "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+                "priority": "P1",
+                "rule_name": "beta_alignment",
+                "triggered": false
+              },
+              {
+                "action": "remove_redundant_names",
+                "after": {
+                  "high_corr_pairs": 0
+                },
+                "before": {
+                  "high_corr_pairs": 5
+                },
+                "message": "Trim highly correlated duplicate positions.",
+                "priority": "P1",
+                "rule_name": "correlation_dedup",
+                "triggered": true
+              },
+              {
+                "action": "blend_with_current_weights",
+                "after": {
+                  "turnover": 0.09999999999999988
+                },
+                "before": {
+                  "limit": 0.4,
+                  "turnover": 0.09999999999999988
+                },
+                "message": "Cap one-period turnover at the configured limit.",
+                "priority": "P1",
+                "rule_name": "turnover_cap",
+                "triggered": false
+              },
+              {
+                "action": "add_small_satellite_positions",
+                "after": {
+                  "holding_count": 27
+                },
+                "before": {
+                  "holding_count": 27,
+                  "minimum": 20
+                },
+                "message": "Maintain a diversified minimum number of holdings.",
+                "priority": "P2",
+                "rule_name": "minimum_holdings",
+                "triggered": false
+              },
+              {
+                "action": "warning_only",
+                "after": {
+                  "stressed_return": -0.09217528735632181
+                },
+                "before": {
+                  "shock": -0.1,
+                  "warning_threshold": -0.12
+                },
+                "message": "Run a simple market shock stress test without modifying weights.",
+                "priority": "P2",
+                "rule_name": "stress_test",
+                "triggered": false
+              }
+            ],
+            "cash_weight": 1.1102230246251565e-16,
+            "cvar_99": -0.02407040683170511,
+            "gross_exposure": 0.9999999999999999,
+            "holding_count": 27,
+            "portfolio_beta": 0.9217528735632182,
+            "sector_weights": {
+              "Financial Services": 0.4833333333333332,
+              "Healthcare": 0.22962962962962966,
+              "Technology": 0.2870370370370371
+            },
+            "turnover": 0.09999999999999988,
+            "warnings": [],
+            "weights": {
+              "T00": 0.05370370370370369,
+              "T02": 0.05370370370370369,
+              "T03": 0.05370370370370369,
+              "T04": 0.05370370370370369,
+              "T05": 0.05370370370370369,
+              "T06": 0.05370370370370369,
+              "T07": 0.05370370370370369,
+              "T08": 0.05370370370370369,
+              "T09": 0.05370370370370369,
+              "T10": 0.028703703703703707,
+              "T11": 0.028703703703703707,
+              "T12": 0.028703703703703707,
+              "T13": 0.028703703703703707,
+              "T14": 0.028703703703703707,
+              "T15": 0.028703703703703707,
+              "T16": 0.028703703703703707,
+              "T17": 0.028703703703703707,
+              "T18": 0.028703703703703707,
+              "T19": 0.028703703703703707,
+              "T20": 0.028703703703703707,
+              "T21": 0.028703703703703707,
+              "T22": 0.028703703703703707,
+              "T23": 0.028703703703703707,
+              "T24": 0.028703703703703707,
+              "T25": 0.028703703703703707,
+              "T26": 0.028703703703703707,
+              "T29": 0.028703703703703707
+            }
+          },
+          "before_deviation": {
+            "Financial Services": 0.20000000000000012,
+            "Healthcare": -0.09999999999999992,
+            "Technology": -0.09999999999999992
+          }
+        },
+        "passed": true,
+        "test_id": "3.2"
+      },
+      {
+        "expected": {
+          "beta_bounds": [
+            0.8,
+            1.2
+          ]
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "Low-beta portfolio is nudged into the target beta band",
+        "observed": {
+          "audit_trail": [
+            {
+              "action": "cap_weights",
+              "after": {
+                "max_weight": 0.06333333333333334
+              },
+              "before": {
+                "limit": 0.1,
+                "max_weight": 0.06333333333333334
+              },
+              "message": "Cap each name at the maximum single-stock weight.",
+              "priority": "P0",
+              "rule_name": "single_stock_cap",
+              "triggered": false
+            },
+            {
+              "action": "trim_overweight_sectors",
+              "after": {
+                "max_abs_deviation": 0.2333333333333333,
+                "sector_weights": {
+                  "Financial Services": 0.49478672985781985,
+                  "Healthcare": 0.1,
+                  "Technology": 0.4052132701421801
+                }
+              },
+              "before": {
+                "max_abs_deviation": 0.3333333333333333,
+                "sector_weights": {
+                  "Financial Services": 0.6333333333333334,
+                  "Technology": 0.3666666666666667
+                }
+              },
+              "message": "Keep sector deviation versus benchmark within the configured band.",
+              "priority": "P0",
+              "rule_name": "sector_deviation_cap",
+              "triggered": true
+            },
+            {
+              "action": "scale_down_gross",
+              "after": {
+                "cvar_99": -0.021471094307624398,
+                "gross_exposure": 0.9999999999999998
+              },
+              "before": {
+                "cvar_99": -0.021471094307624398,
+                "floor": -0.05,
+                "gross_exposure": 0.9999999999999998
+              },
+              "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+              "priority": "P0",
+              "rule_name": "cvar_haircut",
+              "triggered": false
+            },
+            {
+              "action": "tilt_toward_target_beta",
+              "after": {
+                "portfolio_beta": 0.8406497645188608,
+                "target_bounds": [
+                  0.8,
+                  1.2
+                ]
+              },
+              "before": {
+                "hard_bounds": [
+                  0.7,
+                  1.3
+                ],
+                "portfolio_beta": 0.8406497645188608
+              },
+              "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+              "priority": "P1",
+              "rule_name": "beta_alignment",
+              "triggered": false
+            },
+            {
+              "action": "remove_redundant_names",
+              "after": {
+                "high_corr_pairs": 0
+              },
+              "before": {
+                "high_corr_pairs": 1
+              },
+              "message": "Trim highly correlated duplicate positions.",
+              "priority": "P1",
+              "rule_name": "correlation_dedup",
+              "triggered": true
+            },
+            {
+              "action": "blend_with_current_weights",
+              "after": {
+                "turnover": 0.16211969241056512
+              },
+              "before": {
+                "limit": 0.4,
+                "turnover": 0.16211969241056512
+              },
+              "message": "Cap one-period turnover at the configured limit.",
+              "priority": "P1",
+              "rule_name": "turnover_cap",
+              "triggered": false
+            },
+            {
+              "action": "add_small_satellite_positions",
+              "after": {
+                "holding_count": 20
+              },
+              "before": {
+                "holding_count": 20,
+                "minimum": 20
+              },
+              "message": "Maintain a diversified minimum number of holdings.",
+              "priority": "P2",
+              "rule_name": "minimum_holdings",
+              "triggered": false
+            },
+            {
+              "action": "warning_only",
+              "after": {
+                "stressed_return": -0.08523224689743211
+              },
+              "before": {
+                "shock": -0.1,
+                "warning_threshold": -0.12
+              },
+              "message": "Run a simple market shock stress test without modifying weights.",
+              "priority": "P2",
+              "rule_name": "stress_test",
+              "triggered": false
+            }
+          ],
+          "cash_weight": 0.0,
+          "cvar_99": -0.021387431235873368,
+          "gross_exposure": 1.0,
+          "holding_count": 20,
+          "portfolio_beta": 0.8523224689743211,
+          "sector_weights": {
+            "Financial Services": 0.47121364092276824,
+            "Healthcare": 0.1,
+            "Technology": 0.4287863590772317
+          },
+          "turnover": 0.16211969241056512,
+          "warnings": [],
+          "weights": {
+            "T00": 0.052357071213640916,
+            "T02": 0.052357071213640916,
+            "T03": 0.052357071213640916,
+            "T04": 0.052357071213640916,
+            "T05": 0.052357071213640916,
+            "T06": 0.052357071213640916,
+            "T07": 0.052357071213640916,
+            "T08": 0.052357071213640916,
+            "T09": 0.052357071213640916,
+            "T10": 0.0740630983860673,
+            "T11": 0.0740630983860673,
+            "T12": 0.0740630983860673,
+            "T13": 0.0740630983860673,
+            "T14": 0.0740630983860673,
+            "T15": 0.01169417342937905,
+            "T16": 0.01169417342937905,
+            "T17": 0.01169417342937905,
+            "T18": 0.01169417342937905,
+            "T19": 0.01169417342937905,
+            "T20": 0.1
+          }
+        },
+        "passed": true,
+        "test_id": "3.3.low_beta"
+      },
+      {
+        "expected": {
+          "beta_bounds": [
+            0.8,
+            1.2
+          ]
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "High-beta portfolio is nudged back into the target beta band",
+        "observed": {
+          "audit_trail": [
+            {
+              "action": "cap_weights",
+              "after": {
+                "max_weight": 0.06333333333333334
+              },
+              "before": {
+                "limit": 0.1,
+                "max_weight": 0.06333333333333334
+              },
+              "message": "Cap each name at the maximum single-stock weight.",
+              "priority": "P0",
+              "rule_name": "single_stock_cap",
+              "triggered": false
+            },
+            {
+              "action": "trim_overweight_sectors",
+              "after": {
+                "max_abs_deviation": 0.17499999999999993,
+                "sector_weights": {
+                  "Financial Services": 0.15833333333333338,
+                  "Healthcare": 0.4833333333333333,
+                  "Technology": 0.35833333333333334
+                }
+              },
+              "before": {
+                "max_abs_deviation": 0.3000000000000001,
+                "sector_weights": {
+                  "Financial Services": 0.05000000000000001,
+                  "Healthcare": 0.6333333333333334,
+                  "Technology": 0.3166666666666667
+                }
+              },
+              "message": "Keep sector deviation versus benchmark within the configured band.",
+              "priority": "P0",
+              "rule_name": "sector_deviation_cap",
+              "triggered": true
+            },
+            {
+              "action": "scale_down_gross",
+              "after": {
+                "cvar_99": -0.02970479183817979,
+                "gross_exposure": 1.0000000000000002
+              },
+              "before": {
+                "cvar_99": -0.02970479183817979,
+                "floor": -0.05,
+                "gross_exposure": 1.0000000000000002
+              },
+              "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+              "priority": "P0",
+              "rule_name": "cvar_haircut",
+              "triggered": false
+            },
+            {
+              "action": "tilt_toward_target_beta",
+              "after": {
+                "portfolio_beta": 1.1163793103448272,
+                "target_bounds": [
+                  0.8,
+                  1.2
+                ]
+              },
+              "before": {
+                "hard_bounds": [
+                  0.7,
+                  1.3
+                ],
+                "portfolio_beta": 1.1163793103448272
+              },
+              "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+              "priority": "P1",
+              "rule_name": "beta_alignment",
+              "triggered": false
+            },
+            {
+              "action": "remove_redundant_names",
+              "after": {
+                "high_corr_pairs": 0
+              },
+              "before": {
+                "high_corr_pairs": 5
+              },
+              "message": "Trim highly correlated duplicate positions.",
+              "priority": "P1",
+              "rule_name": "correlation_dedup",
+              "triggered": true
+            },
+            {
+              "action": "blend_with_current_weights",
+              "after": {
+                "turnover": 0.1997386870618229
+              },
+              "before": {
+                "limit": 0.4,
+                "turnover": 0.1997386870618229
+              },
+              "message": "Cap one-period turnover at the configured limit.",
+              "priority": "P1",
+              "rule_name": "turnover_cap",
+              "triggered": false
+            },
+            {
+              "action": "add_small_satellite_positions",
+              "after": {
+                "holding_count": 20
+              },
+              "before": {
+                "holding_count": 17,
+                "minimum": 20
+              },
+              "message": "Maintain a diversified minimum number of holdings.",
+              "priority": "P2",
+              "rule_name": "minimum_holdings",
+              "triggered": true
+            },
+            {
+              "action": "warning_only",
+              "after": {
+                "stressed_return": -0.10180213621678645
+              },
+              "before": {
+                "shock": -0.1,
+                "warning_threshold": -0.12
+              },
+              "message": "Run a simple market shock stress test without modifying weights.",
+              "priority": "P2",
+              "rule_name": "stress_test",
+              "triggered": false
+            }
+          ],
+          "cash_weight": 0.0,
+          "cvar_99": -0.02727607397565249,
+          "gross_exposure": 1.0,
+          "holding_count": 20,
+          "portfolio_beta": 1.0180213621678644,
+          "sector_weights": {
+            "Financial Services": 0.3162523900573614,
+            "Healthcare": 0.3548757170172084,
+            "Technology": 0.32887189292543023
+          },
+          "turnover": 0.278457616316125,
+          "warnings": [],
+          "weights": {
+            "T00": 0.029063097514340355,
+            "T01": 0.06666666666666667,
+            "T02": 0.029063097514340355,
+            "T03": 0.029063097514340355,
+            "T04": 0.029063097514340355,
+            "T05": 0.06666666666666667,
+            "T06": 0.06666666666666667,
+            "T15": 0.06577437858508604,
+            "T16": 0.06577437858508604,
+            "T17": 0.06577437858508604,
+            "T18": 0.06577437858508604,
+            "T19": 0.06577437858508604,
+            "T20": 0.04435946462715105,
+            "T21": 0.04435946462715105,
+            "T22": 0.04435946462715105,
+            "T23": 0.04435946462715105,
+            "T24": 0.04435946462715105,
+            "T25": 0.04435946462715105,
+            "T26": 0.04435946462715105,
+            "T29": 0.04435946462715105
+          }
+        },
+        "passed": true,
+        "test_id": "3.3.high_beta"
+      },
+      {
+        "expected": {
+          "correlation_dedup_triggered": true,
+          "high_corr_pairs_after": 0
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "Highly correlated pair drops the weaker-ranked name",
+        "observed": {
+          "audit_trail": [
+            {
+              "action": "cap_weights",
+              "after": {
+                "max_weight": 0.1
+              },
+              "before": {
+                "limit": 0.1,
+                "max_weight": 0.17999999999999997
+              },
+              "message": "Cap each name at the maximum single-stock weight.",
+              "priority": "P0",
+              "rule_name": "single_stock_cap",
+              "triggered": true
+            },
+            {
+              "action": "trim_overweight_sectors",
+              "after": {
+                "max_abs_deviation": 0.2333333333333333,
+                "sector_weights": {
+                  "Financial Services": 0.5137441121280587,
+                  "Healthcare": 0.1,
+                  "Technology": 0.38625588787194104
+                }
+              },
+              "before": {
+                "max_abs_deviation": 0.35897435897435886,
+                "sector_weights": {
+                  "Financial Services": 0.6923076923076922,
+                  "Technology": 0.3076923076923076
+                }
+              },
+              "message": "Keep sector deviation versus benchmark within the configured band.",
+              "priority": "P0",
+              "rule_name": "sector_deviation_cap",
+              "triggered": true
+            },
+            {
+              "action": "scale_down_gross",
+              "after": {
+                "cvar_99": -0.021330850935211663,
+                "gross_exposure": 0.9999999999999997
+              },
+              "before": {
+                "cvar_99": -0.021330850935211663,
+                "floor": -0.05,
+                "gross_exposure": 0.9999999999999997
+              },
+              "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+              "priority": "P0",
+              "rule_name": "cvar_haircut",
+              "triggered": false
+            },
+            {
+              "action": "tilt_toward_target_beta",
+              "after": {
+                "portfolio_beta": 0.8205768826994613,
+                "target_bounds": [
+                  0.8,
+                  1.2
+                ]
+              },
+              "before": {
+                "hard_bounds": [
+                  0.7,
+                  1.3
+                ],
+                "portfolio_beta": 0.8205768826994613
+              },
+              "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+              "priority": "P1",
+              "rule_name": "beta_alignment",
+              "triggered": false
+            },
+            {
+              "action": "remove_redundant_names",
+              "after": {
+                "high_corr_pairs": 0
+              },
+              "before": {
+                "high_corr_pairs": 1
+              },
+              "message": "Trim highly correlated duplicate positions.",
+              "priority": "P1",
+              "rule_name": "correlation_dedup",
+              "triggered": true
+            },
+            {
+              "action": "blend_with_current_weights",
+              "after": {
+                "turnover": 0.27096566857973875
+              },
+              "before": {
+                "limit": 0.4,
+                "turnover": 0.27096566857973875
+              },
+              "message": "Cap one-period turnover at the configured limit.",
+              "priority": "P1",
+              "rule_name": "turnover_cap",
+              "triggered": false
+            },
+            {
+              "action": "add_small_satellite_positions",
+              "after": {
+                "holding_count": 20
+              },
+              "before": {
+                "holding_count": 15,
+                "minimum": 20
+              },
+              "message": "Maintain a diversified minimum number of holdings.",
+              "priority": "P2",
+              "rule_name": "minimum_holdings",
+              "triggered": true
+            },
+            {
+              "action": "warning_only",
+              "after": {
+                "stressed_return": -0.08626155400572678
+              },
+              "before": {
+                "shock": -0.1,
+                "warning_threshold": -0.12
+              },
+              "message": "Run a simple market shock stress test without modifying weights.",
+              "priority": "P2",
+              "rule_name": "stress_test",
+              "triggered": false
+            }
+          ],
+          "portfolio": {
+            "audit_trail": [
+              {
+                "action": "cap_weights",
+                "after": {
+                  "max_weight": 0.1
+                },
+                "before": {
+                  "limit": 0.1,
+                  "max_weight": 0.17999999999999997
+                },
+                "message": "Cap each name at the maximum single-stock weight.",
+                "priority": "P0",
+                "rule_name": "single_stock_cap",
+                "triggered": true
+              },
+              {
+                "action": "trim_overweight_sectors",
+                "after": {
+                  "max_abs_deviation": 0.2333333333333333,
+                  "sector_weights": {
+                    "Financial Services": 0.5137441121280587,
+                    "Healthcare": 0.1,
+                    "Technology": 0.38625588787194104
+                  }
+                },
+                "before": {
+                  "max_abs_deviation": 0.35897435897435886,
+                  "sector_weights": {
+                    "Financial Services": 0.6923076923076922,
+                    "Technology": 0.3076923076923076
+                  }
+                },
+                "message": "Keep sector deviation versus benchmark within the configured band.",
+                "priority": "P0",
+                "rule_name": "sector_deviation_cap",
+                "triggered": true
+              },
+              {
+                "action": "scale_down_gross",
+                "after": {
+                  "cvar_99": -0.021330850935211663,
+                  "gross_exposure": 0.9999999999999997
+                },
+                "before": {
+                  "cvar_99": -0.021330850935211663,
+                  "floor": -0.05,
+                  "gross_exposure": 0.9999999999999997
+                },
+                "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+                "priority": "P0",
+                "rule_name": "cvar_haircut",
+                "triggered": false
+              },
+              {
+                "action": "tilt_toward_target_beta",
+                "after": {
+                  "portfolio_beta": 0.8205768826994613,
+                  "target_bounds": [
+                    0.8,
+                    1.2
+                  ]
+                },
+                "before": {
+                  "hard_bounds": [
+                    0.7,
+                    1.3
+                  ],
+                  "portfolio_beta": 0.8205768826994613
+                },
+                "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+                "priority": "P1",
+                "rule_name": "beta_alignment",
+                "triggered": false
+              },
+              {
+                "action": "remove_redundant_names",
+                "after": {
+                  "high_corr_pairs": 0
+                },
+                "before": {
+                  "high_corr_pairs": 1
+                },
+                "message": "Trim highly correlated duplicate positions.",
+                "priority": "P1",
+                "rule_name": "correlation_dedup",
+                "triggered": true
+              },
+              {
+                "action": "blend_with_current_weights",
+                "after": {
+                  "turnover": 0.27096566857973875
+                },
+                "before": {
+                  "limit": 0.4,
+                  "turnover": 0.27096566857973875
+                },
+                "message": "Cap one-period turnover at the configured limit.",
+                "priority": "P1",
+                "rule_name": "turnover_cap",
+                "triggered": false
+              },
+              {
+                "action": "add_small_satellite_positions",
+                "after": {
+                  "holding_count": 20
+                },
+                "before": {
+                  "holding_count": 15,
+                  "minimum": 20
+                },
+                "message": "Maintain a diversified minimum number of holdings.",
+                "priority": "P2",
+                "rule_name": "minimum_holdings",
+                "triggered": true
+              },
+              {
+                "action": "warning_only",
+                "after": {
+                  "stressed_return": -0.08626155400572678
+                },
+                "before": {
+                  "shock": -0.1,
+                  "warning_threshold": -0.12
+                },
+                "message": "Run a simple market shock stress test without modifying weights.",
+                "priority": "P2",
+                "rule_name": "stress_test",
+                "triggered": false
+              }
+            ],
+            "cash_weight": 2.220446049250313e-16,
+            "cvar_99": -0.022370875429186567,
+            "gross_exposure": 0.9999999999999998,
+            "holding_count": 20,
+            "portfolio_beta": 0.862615540057268,
+            "sector_weights": {
+              "Financial Services": 0.423227465136209,
+              "Healthcare": 0.08000000000000002,
+              "Technology": 0.4967725348637909
+            },
+            "turnover": 0.326772534863791,
+            "warnings": [],
+            "weights": {
+              "T00": 0.06470074086715216,
+              "T01": 0.04000000000000001,
+              "T02": 0.0398158405336321,
+              "T03": 0.0398158405336321,
+              "T04": 0.0398158405336321,
+              "T05": 0.0398158405336321,
+              "T06": 0.0398158405336321,
+              "T07": 0.0398158405336321,
+              "T08": 0.0398158405336321,
+              "T09": 0.0398158405336321,
+              "T10": 0.06735450697275817,
+              "T11": 0.06735450697275817,
+              "T12": 0.06735450697275817,
+              "T13": 0.06735450697275817,
+              "T14": 0.06735450697275817,
+              "T15": 0.04000000000000001,
+              "T16": 0.04000000000000001,
+              "T17": 0.04000000000000001,
+              "T18": 0.04000000000000001,
+              "T20": 0.08000000000000002
+            }
+          }
+        },
+        "passed": true,
+        "test_id": "3.4"
+      },
+      {
+        "expected": {
+          "turnover_cap": 0.4
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "60%+ one-period turnover is clipped to the 40% cap",
+        "observed": {
+          "audit_trail": [
+            {
+              "action": "cap_weights",
+              "after": {
+                "max_weight": 0.04999999999999999
+              },
+              "before": {
+                "limit": 0.1,
+                "max_weight": 0.04999999999999999
+              },
+              "message": "Cap each name at the maximum single-stock weight.",
+              "priority": "P0",
+              "rule_name": "single_stock_cap",
+              "triggered": false
+            },
+            {
+              "action": "trim_overweight_sectors",
+              "after": {
+                "max_abs_deviation": 0.2999999999999999,
+                "sector_weights": {
+                  "Financial Services": 0.03333333333333344,
+                  "Healthcare": 0.4833333333333333,
+                  "Technology": 0.4833333333333333
+                }
+              },
+              "before": {
+                "max_abs_deviation": 0.3333333333333333,
+                "sector_weights": {
+                  "Healthcare": 0.4999999999999999,
+                  "Technology": 0.4999999999999999
+                }
+              },
+              "message": "Keep sector deviation versus benchmark within the configured band.",
+              "priority": "P0",
+              "rule_name": "sector_deviation_cap",
+              "triggered": true
+            },
+            {
+              "action": "scale_down_gross",
+              "after": {
+                "cvar_99": -0.028703916726145168,
+                "gross_exposure": 1.0
+              },
+              "before": {
+                "cvar_99": -0.028703916726145168,
+                "floor": -0.05,
+                "gross_exposure": 1.0
+              },
+              "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+              "priority": "P0",
+              "rule_name": "cvar_haircut",
+              "triggered": false
+            },
+            {
+              "action": "tilt_toward_target_beta",
+              "after": {
+                "portfolio_beta": 1.1349999999999996,
+                "target_bounds": [
+                  0.8,
+                  1.2
+                ]
+              },
+              "before": {
+                "hard_bounds": [
+                  0.7,
+                  1.3
+                ],
+                "portfolio_beta": 1.1349999999999996
+              },
+              "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+              "priority": "P1",
+              "rule_name": "beta_alignment",
+              "triggered": false
+            },
+            {
+              "action": "remove_redundant_names",
+              "after": {
+                "high_corr_pairs": 0
+              },
+              "before": {
+                "high_corr_pairs": 2
+              },
+              "message": "Trim highly correlated duplicate positions.",
+              "priority": "P1",
+              "rule_name": "correlation_dedup",
+              "triggered": true
+            },
+            {
+              "action": "blend_with_current_weights",
+              "after": {
+                "turnover": 0.40000000000000013
+              },
+              "before": {
+                "limit": 0.4,
+                "turnover": 0.4630996309963097
+              },
+              "message": "Cap one-period turnover at the configured limit.",
+              "priority": "P1",
+              "rule_name": "turnover_cap",
+              "triggered": true
+            },
+            {
+              "action": "add_small_satellite_positions",
+              "after": {
+                "holding_count": 28
+              },
+              "before": {
+                "holding_count": 28,
+                "minimum": 20
+              },
+              "message": "Maintain a diversified minimum number of holdings.",
+              "priority": "P2",
+              "rule_name": "minimum_holdings",
+              "triggered": false
+            },
+            {
+              "action": "warning_only",
+              "after": {
+                "stressed_return": -0.1070649814534963
+              },
+              "before": {
+                "shock": -0.1,
+                "warning_threshold": -0.12
+              },
+              "message": "Run a simple market shock stress test without modifying weights.",
+              "priority": "P2",
+              "rule_name": "stress_test",
+              "triggered": false
+            }
+          ],
+          "cash_weight": 3.3306690738754696e-16,
+          "cvar_99": -0.027416563020184213,
+          "gross_exposure": 0.9999999999999997,
+          "holding_count": 28,
+          "portfolio_beta": 1.0706498145349634,
+          "sector_weights": {
+            "Financial Services": 0.09999999999999984,
+            "Healthcare": 0.36972111553784875,
+            "Technology": 0.5302788844621513
+          },
+          "turnover": 0.40000000000000013,
+          "warnings": [],
+          "weights": {
+            "T00": 0.038685258964143515,
+            "T01": 0.006812749003984035,
+            "T02": 0.006812749003984035,
+            "T03": 0.006812749003984035,
+            "T04": 0.006812749003984035,
+            "T05": 0.006812749003984035,
+            "T06": 0.006812749003984035,
+            "T07": 0.006812749003984035,
+            "T08": 0.006812749003984035,
+            "T09": 0.006812749003984035,
+            "T10": 0.05302788844621513,
+            "T11": 0.05302788844621513,
+            "T12": 0.05302788844621513,
+            "T13": 0.05302788844621513,
+            "T14": 0.05302788844621513,
+            "T15": 0.05302788844621513,
+            "T16": 0.05302788844621513,
+            "T17": 0.05302788844621513,
+            "T18": 0.05302788844621513,
+            "T19": 0.05302788844621513,
+            "T20": 0.046215139442231094,
+            "T21": 0.046215139442231094,
+            "T22": 0.046215139442231094,
+            "T23": 0.046215139442231094,
+            "T24": 0.046215139442231094,
+            "T25": 0.046215139442231094,
+            "T26": 0.046215139442231094,
+            "T29": 0.046215139442231094
+          }
+        },
+        "passed": true,
+        "test_id": "3.5"
+      },
+      {
+        "expected": {
+          "gross_exposure_after": 0.8
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "CVaR breach triggers a 20% gross haircut",
+        "observed": {
+          "after": {
+            "audit_trail": [
+              {
+                "action": "cap_weights",
+                "after": {
+                  "max_weight": 0.04999999999999999
+                },
+                "before": {
+                  "limit": 0.1,
+                  "max_weight": 0.04999999999999999
+                },
+                "message": "Cap each name at the maximum single-stock weight.",
+                "priority": "P0",
+                "rule_name": "single_stock_cap",
+                "triggered": false
+              },
+              {
+                "action": "trim_overweight_sectors",
+                "after": {
+                  "max_abs_deviation": 0.2999999999999999,
+                  "sector_weights": {
+                    "Financial Services": 0.4833333333333333,
+                    "Healthcare": 0.03333333333333344,
+                    "Technology": 0.4833333333333333
+                  }
+                },
+                "before": {
+                  "max_abs_deviation": 0.3333333333333333,
+                  "sector_weights": {
+                    "Financial Services": 0.4999999999999999,
+                    "Technology": 0.4999999999999999
+                  }
+                },
+                "message": "Keep sector deviation versus benchmark within the configured band.",
+                "priority": "P0",
+                "rule_name": "sector_deviation_cap",
+                "triggered": true
+              },
+              {
+                "action": "scale_down_gross",
+                "after": {
+                  "cvar_99": -0.092993259823112,
+                  "gross_exposure": 0.7999999999999998
+                },
+                "before": {
+                  "cvar_99": -0.11624157477888997,
+                  "floor": -0.05,
+                  "gross_exposure": 1.0
+                },
+                "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+                "priority": "P0",
+                "rule_name": "cvar_haircut",
+                "triggered": true
+              },
+              {
+                "action": "tilt_toward_target_beta",
+                "after": {
+                  "portfolio_beta": 0.8014896551724138,
+                  "target_bounds": [
+                    0.8,
+                    1.2
+                  ]
+                },
+                "before": {
+                  "hard_bounds": [
+                    0.7,
+                    1.3
+                  ],
+                  "portfolio_beta": 0.684551724137931
+                },
+                "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+                "priority": "P1",
+                "rule_name": "beta_alignment",
+                "triggered": true
+              },
+              {
+                "action": "remove_redundant_names",
+                "after": {
+                  "high_corr_pairs": 0
+                },
+                "before": {
+                  "high_corr_pairs": 91
+                },
+                "message": "Trim highly correlated duplicate positions.",
+                "priority": "P1",
+                "rule_name": "correlation_dedup",
+                "triggered": true
+              },
+              {
+                "action": "blend_with_current_weights",
+                "after": {
+                  "turnover": 0.4
+                },
+                "before": {
+                  "limit": 0.4,
+                  "turnover": 0.5500000000000002
+                },
+                "message": "Cap one-period turnover at the configured limit.",
+                "priority": "P1",
+                "rule_name": "turnover_cap",
+                "triggered": true
+              },
+              {
+                "action": "add_small_satellite_positions",
+                "after": {
+                  "holding_count": 21
+                },
+                "before": {
+                  "holding_count": 21,
+                  "minimum": 20
+                },
+                "message": "Maintain a diversified minimum number of holdings.",
+                "priority": "P2",
+                "rule_name": "minimum_holdings",
+                "triggered": false
+              },
+              {
+                "action": "warning_only",
+                "after": {
+                  "stressed_return": -0.015434710743801672
+                },
+                "before": {
+                  "shock": -0.1,
+                  "warning_threshold": -0.12
+                },
+                "message": "Run a simple market shock stress test without modifying weights.",
+                "priority": "P2",
+                "rule_name": "stress_test",
+                "triggered": false
+              }
+            ],
+            "cash_weight": 0.5818181818181816,
+            "cvar_99": -0.04198161769939634,
+            "gross_exposure": 0.4181818181818185,
+            "holding_count": 21,
+            "portfolio_beta": 0.36909090909090925,
+            "sector_weights": {
+              "Financial Services": 0.2090909090909092,
+              "Healthcare": 0.07272727272727271,
+              "Technology": 0.13636363636363646
+            },
+            "turnover": 0.4,
+            "warnings": [
+              "CVaR -0.1162 breached the floor -0.0500; applied a 20% gross haircut."
+            ],
+            "weights": {
+              "T00": 0.013636363636363648,
+              "T01": 0.013636363636363648,
+              "T02": 0.013636363636363648,
+              "T03": 0.013636363636363648,
+              "T04": 0.013636363636363648,
+              "T05": 0.013636363636363648,
+              "T06": 0.08636363636363636,
+              "T07": 0.013636363636363648,
+              "T08": 0.013636363636363648,
+              "T09": 0.013636363636363648,
+              "T10": 0.013636363636363648,
+              "T11": 0.013636363636363648,
+              "T12": 0.013636363636363648,
+              "T13": 0.013636363636363648,
+              "T14": 0.013636363636363648,
+              "T15": 0.013636363636363648,
+              "T16": 0.013636363636363648,
+              "T17": 0.013636363636363648,
+              "T18": 0.013636363636363648,
+              "T19": 0.013636363636363648,
+              "T20": 0.07272727272727271
+            }
+          },
+          "before_cvar": -0.12000000000000004
+        },
+        "passed": true,
+        "test_id": "3.6"
+      },
+      {
+        "expected": {
+          "minimum_holdings": 20
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "Portfolio with 10 names is expanded to at least 20 holdings",
+        "observed": {
+          "audit_trail": [
+            {
+              "action": "cap_weights",
+              "after": {
+                "max_weight": 0.1
+              },
+              "before": {
+                "limit": 0.1,
+                "max_weight": 0.1
+              },
+              "message": "Cap each name at the maximum single-stock weight.",
+              "priority": "P0",
+              "rule_name": "single_stock_cap",
+              "triggered": false
+            },
+            {
+              "action": "trim_overweight_sectors",
+              "after": {
+                "max_abs_deviation": 0.4666666666666665,
+                "sector_weights": {
+                  "Financial Services": 0.7999999999999998,
+                  "Healthcare": 0.1,
+                  "Technology": 0.1
+                }
+              },
+              "before": {
+                "max_abs_deviation": 0.6666666666666667,
+                "sector_weights": {
+                  "Financial Services": 1.0
+                }
+              },
+              "message": "Keep sector deviation versus benchmark within the configured band.",
+              "priority": "P0",
+              "rule_name": "sector_deviation_cap",
+              "triggered": true
+            },
+            {
+              "action": "scale_down_gross",
+              "after": {
+                "cvar_99": -0.020491485264146552,
+                "gross_exposure": 0.9999999999999998
+              },
+              "before": {
+                "cvar_99": -0.020491485264146552,
+                "floor": -0.05,
+                "gross_exposure": 0.9999999999999998
+              },
+              "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+              "priority": "P0",
+              "rule_name": "cvar_haircut",
+              "triggered": false
+            },
+            {
+              "action": "tilt_toward_target_beta",
+              "after": {
+                "portfolio_beta": 0.7548275862068964,
+                "target_bounds": [
+                  0.8,
+                  1.2
+                ]
+              },
+              "before": {
+                "hard_bounds": [
+                  0.7,
+                  1.3
+                ],
+                "portfolio_beta": 0.7548275862068964
+              },
+              "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+              "priority": "P1",
+              "rule_name": "beta_alignment",
+              "triggered": false
+            },
+            {
+              "action": "remove_redundant_names",
+              "after": {
+                "high_corr_pairs": 0
+              },
+              "before": {
+                "high_corr_pairs": 1
+              },
+              "message": "Trim highly correlated duplicate positions.",
+              "priority": "P1",
+              "rule_name": "correlation_dedup",
+              "triggered": true
+            },
+            {
+              "action": "blend_with_current_weights",
+              "after": {
+                "turnover": 0.20000000000000007
+              },
+              "before": {
+                "limit": 0.4,
+                "turnover": 0.20000000000000007
+              },
+              "message": "Cap one-period turnover at the configured limit.",
+              "priority": "P1",
+              "rule_name": "turnover_cap",
+              "triggered": false
+            },
+            {
+              "action": "add_small_satellite_positions",
+              "after": {
+                "holding_count": 20
+              },
+              "before": {
+                "holding_count": 11,
+                "minimum": 20
+              },
+              "message": "Maintain a diversified minimum number of holdings.",
+              "priority": "P2",
+              "rule_name": "minimum_holdings",
+              "triggered": true
+            },
+            {
+              "action": "warning_only",
+              "after": {
+                "stressed_return": -0.08022758620689659
+              },
+              "before": {
+                "shock": -0.1,
+                "warning_threshold": -0.12
+              },
+              "message": "Run a simple market shock stress test without modifying weights.",
+              "priority": "P2",
+              "rule_name": "stress_test",
+              "triggered": false
+            }
+          ],
+          "cash_weight": 0.0,
+          "cvar_99": -0.021040809832808673,
+          "gross_exposure": 1.0000000000000002,
+          "holding_count": 20,
+          "portfolio_beta": 0.8022758620689656,
+          "sector_weights": {
+            "Financial Services": 0.6622222222222223,
+            "Healthcare": 0.08000000000000002,
+            "Technology": 0.25777777777777783
+          },
+          "turnover": 0.33777777777777784,
+          "warnings": [],
+          "weights": {
+            "T00": 0.07111111111111111,
+            "T01": 0.022222222222222227,
+            "T02": 0.07111111111111111,
+            "T03": 0.07111111111111111,
+            "T04": 0.07111111111111111,
+            "T05": 0.07111111111111111,
+            "T06": 0.07111111111111111,
+            "T07": 0.07111111111111111,
+            "T08": 0.07111111111111111,
+            "T09": 0.07111111111111111,
+            "T10": 0.08000000000000002,
+            "T11": 0.022222222222222227,
+            "T12": 0.022222222222222227,
+            "T13": 0.022222222222222227,
+            "T14": 0.022222222222222227,
+            "T15": 0.022222222222222227,
+            "T16": 0.022222222222222227,
+            "T17": 0.022222222222222227,
+            "T18": 0.022222222222222227,
+            "T20": 0.08000000000000002
+          }
+        },
+        "passed": true,
+        "test_id": "3.7"
+      },
+      {
+        "expected": {
+          "nan_weights": false,
+          "negative_weights": false,
+          "stress_warning": true
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "2020 crash scenario produces a stress warning without invalid weights",
+        "observed": {
+          "audit_trail": [
+            {
+              "action": "cap_weights",
+              "after": {
+                "max_weight": 0.04999999999999999
+              },
+              "before": {
+                "limit": 0.1,
+                "max_weight": 0.04999999999999999
+              },
+              "message": "Cap each name at the maximum single-stock weight.",
+              "priority": "P0",
+              "rule_name": "single_stock_cap",
+              "triggered": false
+            },
+            {
+              "action": "trim_overweight_sectors",
+              "after": {
+                "max_abs_deviation": 0.2999999999999999,
+                "sector_weights": {
+                  "Financial Services": 0.4833333333333333,
+                  "Healthcare": 0.03333333333333344,
+                  "Technology": 0.4833333333333333
+                }
+              },
+              "before": {
+                "max_abs_deviation": 0.3333333333333333,
+                "sector_weights": {
+                  "Financial Services": 0.4999999999999999,
+                  "Technology": 0.4999999999999999
+                }
+              },
+              "message": "Keep sector deviation versus benchmark within the configured band.",
+              "priority": "P0",
+              "rule_name": "sector_deviation_cap",
+              "triggered": true
+            },
+            {
+              "action": "scale_down_gross",
+              "after": {
+                "cvar_99": null,
+                "gross_exposure": 1.0
+              },
+              "before": {
+                "cvar_99": null,
+                "floor": -0.05,
+                "gross_exposure": 1.0
+              },
+              "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+              "priority": "P0",
+              "rule_name": "cvar_haircut",
+              "triggered": false
+            },
+            {
+              "action": "tilt_toward_target_beta",
+              "after": {
+                "portfolio_beta": 0.8556896551724138,
+                "target_bounds": [
+                  0.8,
+                  1.2
+                ]
+              },
+              "before": {
+                "hard_bounds": [
+                  0.7,
+                  1.3
+                ],
+                "portfolio_beta": 0.8556896551724138
+              },
+              "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+              "priority": "P1",
+              "rule_name": "beta_alignment",
+              "triggered": false
+            },
+            {
+              "action": "remove_redundant_names",
+              "after": {
+                "high_corr_pairs": 0
+              },
+              "before": {
+                "high_corr_pairs": 0
+              },
+              "message": "Trim highly correlated duplicate positions.",
+              "priority": "P1",
+              "rule_name": "correlation_dedup",
+              "triggered": false
+            },
+            {
+              "action": "blend_with_current_weights",
+              "after": {
+                "turnover": 0.03333333333333349
+              },
+              "before": {
+                "limit": 0.4,
+                "turnover": 0.03333333333333349
+              },
+              "message": "Cap one-period turnover at the configured limit.",
+              "priority": "P1",
+              "rule_name": "turnover_cap",
+              "triggered": false
+            },
+            {
+              "action": "add_small_satellite_positions",
+              "after": {
+                "holding_count": 21
+              },
+              "before": {
+                "holding_count": 21,
+                "minimum": 20
+              },
+              "message": "Maintain a diversified minimum number of holdings.",
+              "priority": "P2",
+              "rule_name": "minimum_holdings",
+              "triggered": false
+            },
+            {
+              "action": "warning_only",
+              "after": {
+                "stressed_return": -0.17113793103448277
+              },
+              "before": {
+                "shock": -0.2,
+                "warning_threshold": -0.12
+              },
+              "message": "Run a simple market shock stress test without modifying weights.",
+              "priority": "P2",
+              "rule_name": "stress_test",
+              "triggered": true
+            }
+          ],
+          "cash_weight": 0.0,
+          "cvar_99": null,
+          "gross_exposure": 1.0,
+          "holding_count": 21,
+          "portfolio_beta": 0.8556896551724138,
+          "sector_weights": {
+            "Financial Services": 0.4833333333333333,
+            "Healthcare": 0.03333333333333344,
+            "Technology": 0.4833333333333333
+          },
+          "turnover": 0.03333333333333349,
+          "warnings": [
+            "Stress scenario return -0.1711 breached the warning threshold -0.1200."
+          ],
+          "weights": {
+            "T00": 0.048333333333333325,
+            "T01": 0.048333333333333325,
+            "T02": 0.048333333333333325,
+            "T03": 0.048333333333333325,
+            "T04": 0.048333333333333325,
+            "T05": 0.048333333333333325,
+            "T06": 0.048333333333333325,
+            "T07": 0.048333333333333325,
+            "T08": 0.048333333333333325,
+            "T09": 0.048333333333333325,
+            "T10": 0.048333333333333325,
+            "T11": 0.048333333333333325,
+            "T12": 0.048333333333333325,
+            "T13": 0.048333333333333325,
+            "T14": 0.048333333333333325,
+            "T15": 0.048333333333333325,
+            "T16": 0.048333333333333325,
+            "T17": 0.048333333333333325,
+            "T18": 0.048333333333333325,
+            "T19": 0.048333333333333325,
+            "T20": 0.03333333333333344
+          }
+        },
+        "passed": true,
+        "test_id": "3.8"
+      },
+      {
+        "expected": {
+          "ordered_priorities": [
+            "P0",
+            "P1",
+            "P2"
+          ],
+          "triggered_rules_at_least": 4
+        },
+        "layer": "layer3_portfolio_risk",
+        "name": "Combined stress case preserves P0\u2192P1\u2192P2 rule ordering",
+        "observed": {
+          "audit_trail": [
+            {
+              "action": "cap_weights",
+              "after": {
+                "max_weight": 0.1
+              },
+              "before": {
+                "limit": 0.1,
+                "max_weight": 0.24154589371980684
+              },
+              "message": "Cap each name at the maximum single-stock weight.",
+              "priority": "P0",
+              "rule_name": "single_stock_cap",
+              "triggered": true
+            },
+            {
+              "action": "trim_overweight_sectors",
+              "after": {
+                "max_abs_deviation": 0.14999999999999997,
+                "sector_weights": {
+                  "Financial Services": 0.4833333333333333,
+                  "Healthcare": 0.25833333333333347,
+                  "Technology": 0.25833333333333347
+                }
+              },
+              "before": {
+                "max_abs_deviation": 0.2653927813163483,
+                "sector_weights": {
+                  "Financial Services": 0.5987261146496816,
+                  "Healthcare": 0.20063694267515933,
+                  "Technology": 0.20063694267515933
+                }
+              },
+              "message": "Keep sector deviation versus benchmark within the configured band.",
+              "priority": "P0",
+              "rule_name": "sector_deviation_cap",
+              "triggered": true
+            },
+            {
+              "action": "scale_down_gross",
+              "after": {
+                "cvar_99": -0.06065182938579025,
+                "gross_exposure": 0.8000000000000005
+              },
+              "before": {
+                "cvar_99": -0.07581478673223782,
+                "floor": -0.05,
+                "gross_exposure": 1.0000000000000004
+              },
+              "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+              "priority": "P0",
+              "rule_name": "cvar_haircut",
+              "triggered": true
+            },
+            {
+              "action": "tilt_toward_target_beta",
+              "after": {
+                "portfolio_beta": 0.7401166544387384,
+                "target_bounds": [
+                  0.8,
+                  1.2
+                ]
+              },
+              "before": {
+                "hard_bounds": [
+                  0.7,
+                  1.3
+                ],
+                "portfolio_beta": 0.7401166544387384
+              },
+              "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+              "priority": "P1",
+              "rule_name": "beta_alignment",
+              "triggered": false
+            },
+            {
+              "action": "remove_redundant_names",
+              "after": {
+                "high_corr_pairs": 0
+              },
+              "before": {
+                "high_corr_pairs": 190
+              },
+              "message": "Trim highly correlated duplicate positions.",
+              "priority": "P1",
+              "rule_name": "correlation_dedup",
+              "triggered": true
+            },
+            {
+              "action": "blend_with_current_weights",
+              "after": {
+                "turnover": 0.4000000000000001
+              },
+              "before": {
+                "limit": 0.4,
+                "turnover": 0.4000000000000001
+              },
+              "message": "Cap one-period turnover at the configured limit.",
+              "priority": "P1",
+              "rule_name": "turnover_cap",
+              "triggered": false
+            },
+            {
+              "action": "add_small_satellite_positions",
+              "after": {
+                "holding_count": 20
+              },
+              "before": {
+                "holding_count": 11,
+                "minimum": 20
+              },
+              "message": "Maintain a diversified minimum number of holdings.",
+              "priority": "P2",
+              "rule_name": "minimum_holdings",
+              "triggered": true
+            },
+            {
+              "action": "warning_only",
+              "after": {
+                "stressed_return": -0.14249931034482763
+              },
+              "before": {
+                "shock": -0.2,
+                "warning_threshold": -0.12
+              },
+              "message": "Run a simple market shock stress test without modifying weights.",
+              "priority": "P2",
+              "rule_name": "stress_test",
+              "triggered": true
+            }
+          ],
+          "triggered_rules": [
+            [
+              "P0",
+              "single_stock_cap"
+            ],
+            [
+              "P0",
+              "sector_deviation_cap"
+            ],
+            [
+              "P0",
+              "cvar_haircut"
+            ],
+            [
+              "P1",
+              "correlation_dedup"
+            ],
+            [
+              "P2",
+              "minimum_holdings"
+            ],
+            [
+              "P2",
+              "stress_test"
+            ]
+          ]
+        },
+        "passed": true,
+        "test_id": "3.9"
+      }
+    ],
+    "layer4_operational_risk": [
+      {
+        "expected": {
+          "halt_pipeline": true,
+          "severity": "red"
+        },
+        "layer": "layer4_operational_risk",
+        "name": "Pipeline runtime over one hour triggers timeout abort",
+        "observed": {
+          "check_name": "timeout",
+          "fail_safe_mode": true,
+          "halt_pipeline": true,
+          "message": "Pipeline runtime 7200.0s exceeded the timeout limit 3600.0s.",
+          "severity": "red"
+        },
+        "passed": true,
+        "test_id": "4.1"
+      },
+      {
+        "expected": {
+          "fail_safe_mode": true,
+          "severity": "red"
+        },
+        "layer": "layer4_operational_risk",
+        "name": "Fail-safe mode holds positions and stops trading on critical failure",
+        "observed": {
+          "check_name": "fail_safe_mode",
+          "fail_safe_mode": true,
+          "halt_pipeline": true,
+          "message": "Fail-safe mode engaged due to 1 critical alerts; hold_positions=True.",
+          "severity": "red"
+        },
+        "passed": true,
+        "test_id": "4.2"
+      },
+      {
+        "expected": {
+          "audit_entries": 3,
+          "timestamps_present": true
+        },
+        "layer": "layer4_operational_risk",
+        "name": "Audit log preserves all entries with timestamps",
+        "observed": {
+          "audit_log": [
+            {
+              "action": "load_signals",
+              "actor": "shadow_mode",
+              "details": {
+                "window": "W6"
+              },
+              "level": "INFO",
+              "timestamp_utc": "2026-04-02T09:26:48.403016+00:00"
+            },
+            {
+              "action": "portfolio_risk_check",
+              "actor": "shadow_mode",
+              "details": {
+                "triggered": 2
+              },
+              "level": "INFO",
+              "timestamp_utc": "2026-04-02T09:26:48.403037+00:00"
+            },
+            {
+              "action": "operational_risk_evaluated",
+              "actor": "risk_engine",
+              "details": {
+                "fail_safe": false,
+                "runtime_seconds": 42.0,
+                "timeout_severity": "green"
+              },
+              "level": "INFO",
+              "timestamp_utc": "2026-04-02T09:26:48.403052+00:00"
+            }
+          ],
+          "fail_safe_alert": {
+            "check_name": "fail_safe_mode",
+            "fail_safe_mode": false,
+            "halt_pipeline": false,
+            "message": "Fail-safe mode not required.",
+            "severity": "green"
+          },
+          "fail_safe_mode": false,
+          "halt_pipeline": false,
+          "overall_severity": "green",
+          "timeout_alert": {
+            "check_name": "timeout",
+            "fail_safe_mode": false,
+            "halt_pipeline": false,
+            "message": "Pipeline runtime 42.0s is within the allowed limit.",
+            "severity": "green"
+          }
+        },
+        "passed": true,
+        "test_id": "4.3"
+      }
+    ]
+  },
+  "script": "run_stress_test.py",
+  "summary": {
+    "all_passed": true,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "passed": 26,
+    "total_tests": 26
+  }
+}
