@@ -23,8 +23,8 @@ DEFAULT_DOMAIN_KEYWORDS = {
 
 
 @dataclass(frozen=True)
-class AlphaSelectionResult:
-    best_alpha: float
+class HyperparameterSelectionResult:
+    best_hyperparams: float
     best_ic: float
     scores_by_alpha: dict[float, float]
 
@@ -44,7 +44,7 @@ class RidgeBaselineModel(MLflowLoggingMixin, BaseModel):
         self.fit_intercept = fit_intercept
         self.estimator_: Ridge | None = None
         self.feature_names_: list[str] = []
-        self.alpha_selection_: AlphaSelectionResult | None = None
+        self.alpha_selection_: HyperparameterSelectionResult | None = None
 
     def train(self, X: pd.DataFrame, y: pd.Series) -> RidgeBaselineModel:
         features = self.validate_features(X)
@@ -83,14 +83,14 @@ class RidgeBaselineModel(MLflowLoggingMixin, BaseModel):
         y_train: pd.Series,
         X_val: pd.DataFrame,
         y_val: pd.Series,
-    ) -> AlphaSelectionResult:
+    ) -> HyperparameterSelectionResult:
         train_features = self.validate_features(X_train)
         train_target = self.validate_target(y_train, expected_index=train_features.index)
         val_features = self.validate_features(X_val)
         val_target = self.validate_target(y_val, expected_index=val_features.index)
 
         scores_by_alpha: dict[float, float] = {}
-        best_alpha = self.alpha
+        best_hyperparams = self.alpha
         best_score = float("-inf")
 
         for candidate in self.alpha_grid:
@@ -109,15 +109,15 @@ class RidgeBaselineModel(MLflowLoggingMixin, BaseModel):
             scores_by_alpha[float(candidate)] = safe_score
             if safe_score > best_score:
                 best_score = safe_score
-                best_alpha = float(candidate)
+                best_hyperparams = float(candidate)
 
-        self.alpha = best_alpha
-        self.alpha_selection_ = AlphaSelectionResult(
-            best_alpha=best_alpha,
+        self.alpha = best_hyperparams
+        self.alpha_selection_ = HyperparameterSelectionResult(
+            best_hyperparams=best_hyperparams,
             best_ic=best_score,
             scores_by_alpha=scores_by_alpha,
         )
-        logger.info("selected ridge alpha={} validation_ic={:.6f}", best_alpha, best_score)
+        logger.info("selected ridge alpha={} validation_ic={:.6f}", best_hyperparams, best_score)
         return self.alpha_selection_
 
     def get_params(self) -> dict[str, Any]:
@@ -127,7 +127,7 @@ class RidgeBaselineModel(MLflowLoggingMixin, BaseModel):
             "fit_intercept": self.fit_intercept,
         }
         if self.alpha_selection_ is not None:
-            params["selected_alpha"] = self.alpha_selection_.best_alpha
+            params["selected_hyperparams"] = self.alpha_selection_.best_hyperparams
         return params
 
 

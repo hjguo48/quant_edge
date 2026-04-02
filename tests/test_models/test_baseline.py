@@ -30,7 +30,7 @@ def test_ridge_baseline_selects_alpha_and_predicts_signal() -> None:
     predictions = model.predict(X.loc[validation_mask])
     metrics = model.evaluate(y.loc[validation_mask], predictions)
 
-    assert selection.best_alpha in DEFAULT_ALPHA_GRID
+    assert selection.best_hyperparams in DEFAULT_ALPHA_GRID
     assert selection.best_ic > 0.10
     assert predictions.index.equals(X.loc[validation_mask].index)
     assert metrics.ic > 0.10
@@ -98,7 +98,7 @@ def test_single_window_validation_passes_ic_threshold(tmp_path) -> None:
         timestamp="20260401_121500",
     )
 
-    assert result.best_alpha in DEFAULT_ALPHA_GRID
+    assert result.best_hyperparams in DEFAULT_ALPHA_GRID
     assert result.train_rows > 0
     assert result.validation_rows > 0
     assert result.test_rows > 0

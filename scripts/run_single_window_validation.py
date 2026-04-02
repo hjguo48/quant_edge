@@ -20,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.run_ic_screening import install_runtime_optimizations, write_json_atomic, write_parquet_atomic
 from src.data.db.pit import get_prices_pit
 from src.labels.forward_returns import compute_forward_returns
+from src.mlflow_config import get_mlflow_tracking_uri
 from src.models.baseline import DEFAULT_ALPHA_GRID, RidgeBaselineModel
 from src.models.evaluation import (
     EvaluationSummary,
@@ -507,7 +508,7 @@ def compute_split_metrics(
 
     return {
         "selection": {
-            "best_alpha": float(selection.best_alpha),
+            "best_hyperparams": float(selection.best_hyperparams),
             "best_ic": float(selection.best_ic),
             "scores_by_alpha": {str(alpha): float(score) for alpha, score in selection.scores_by_alpha.items()},
         },
@@ -534,7 +535,7 @@ def run_tracked_validation(
     config: ValidationWindowConfig,
     timestamp: str,
 ) -> Any:
-    fallback_tracking_uri = (REPO_ROOT / "mlruns").resolve().as_uri()
+    fallback_tracking_uri = get_mlflow_tracking_uri()
     tracker_attempts = (
         ExperimentTracker(),
         ExperimentTracker(tracking_uri=fallback_tracking_uri),

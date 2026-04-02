@@ -33,6 +33,7 @@ from src.backtest.engine import (
 )
 from src.data.db.pit import get_prices_pit
 from src.labels.forward_returns import compute_forward_returns
+from src.mlflow_config import get_mlflow_tracking_uri
 from src.models.baseline import DEFAULT_ALPHA_GRID
 
 AS_OF_DATE = date(2026, 3, 31)
@@ -49,7 +50,7 @@ DEFAULT_FULL_FEATURE_MATRIX_PATH = "data/features/walkforward_feature_matrix.par
 DEFAULT_PRICE_CACHE_PATH = "data/backtest/walkforward_prices.parquet"
 DEFAULT_MULTI_LABEL_CACHE_PATH = "data/labels/walkforward_forward_returns_multi.parquet"
 DEFAULT_REPORT_PATH = "data/reports/walkforward_backtest.json"
-LOCAL_MLFLOW_URI = (REPO_ROOT / "mlruns").resolve().as_uri()
+LOCAL_MLFLOW_URI = get_mlflow_tracking_uri()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -381,7 +382,7 @@ def run_horizon_experiment(
             {
                 "horizon": f"{horizon}D",
                 "model": "ridge",
-                "best_alpha": result.best_alpha,
+                "best_hyperparams": result.best_hyperparams,
                 "train_ic": float(result.train_metrics.ic),
                 "train_rank_ic": float(result.train_metrics.rank_ic),
                 "train_icir": float(result.train_metrics.icir),
@@ -455,7 +456,7 @@ def run_walkforward_windows(
                 "train_period": f"{window.train_start.isoformat()} -> {window.train_end.isoformat()}",
                 "validation_period": f"{window.validation_start.isoformat()} -> {window.validation_end.isoformat()}",
                 "test_period": f"{window.test_start.isoformat()} -> {window.test_end.isoformat()}",
-                "best_alpha": result.best_alpha,
+                "best_hyperparams": result.best_hyperparams,
                 "train_rows": result.train_rows,
                 "validation_rows": result.validation_rows,
                 "test_rows": result.test_rows,

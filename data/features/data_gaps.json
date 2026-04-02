@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-04-02",
+  "report_source": "data/features/ic_screening_report_v2.csv",
+  "feature_cache_window": {
+    "start_date": "2019-07-01",
+    "end_date": "2025-06-30"
+  },
+  "gaps": {
+    "dividend_yield": {
+      "status": "DATA_GAP",
+      "total_rows": 728594,
+      "non_null_rows": 0,
+      "coverage_ratio": 0.0,
+      "gap_window": "2019-07-01 -> 2025-06-30",
+      "model_impact": "The factor was retained as a documented gap only; it provides no usable signal in the cached training panel and should not affect current cross-sectional ranking.",
+      "recommended_fix": [
+        "Backfill PIT dividend-per-share history from Polygon/FMP corporate-actions or fundamentals endpoints.",
+        "Persist annual_dividend and dividend_per_share consistently in fundamentals_pit before feature generation.",
+        "Add a regression test covering non-null dividend_yield generation for a known dividend payer."
+      ]
+    },
+    "eps_surprise": {
+      "status": "DATA_GAP",
+      "total_rows": 728594,
+      "non_null_rows": 0,
+      "coverage_ratio": 0.0,
+      "gap_window": "2019-07-01 -> 2025-06-30",
+      "model_impact": "The factor was retained as a documented gap only; consensus-EPS coverage is absent in the cached panel, so the feature contributes nothing to model training.",
+      "recommended_fix": [
+        "Backfill PIT consensus EPS alongside reported EPS in fundamentals_pit.",
+        "Normalize consensus metric aliases before feature computation so eps_consensus and consensus_eps collapse into one path.",
+        "Add a regression test covering non-null eps_surprise generation for a ticker with known analyst-consensus data."
+      ]
+    }
+  }
+}

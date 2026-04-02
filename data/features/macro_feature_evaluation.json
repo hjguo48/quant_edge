@@ -1,0 +1,126 @@
+{
+  "generated_at": "2026-04-02",
+  "report_source": "data/features/ic_screening_report_v2.csv",
+  "summary": {
+    "reviewed_features": 16,
+    "macro_regime_features": 14,
+    "data_gap_features": 2,
+    "conclusion": "Macro and macro-dependent composites are market-state indicators. They are valid as regime/context inputs, but they should not be treated as standalone cross-sectional stock-selection features."
+  },
+  "macro_regime_features": [
+    {
+      "feature_name": "vix",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "vix_change_5d",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "vix_rank",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "yield_10y",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "yield_spread_10y2y",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "credit_spread",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "credit_spread_change",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "ffr",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "sp500_breadth",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "market_ret_20d",
+      "domain": "macro",
+      "status": "EXEMPT_MACRO",
+      "definition_location": "src/features/macro.py",
+      "evaluation": "Broadcast across every ticker on a date; useful for regime filtering, not stock ranking."
+    },
+    {
+      "feature_name": "risk_sentiment",
+      "domain": "composite",
+      "status": "EXEMPT_MACRO_DEPENDENT",
+      "definition_location": "src/features/pipeline.py",
+      "evaluation": "Derived from market_ret_20d and vix_change_5d, so it behaves as a macro-regime overlay rather than a stock-specific factor."
+    },
+    {
+      "feature_name": "spread_stress",
+      "domain": "composite",
+      "status": "EXEMPT_MACRO_DEPENDENT",
+      "definition_location": "src/features/pipeline.py",
+      "evaluation": "Derived from credit_spread and yield_spread_10y2y, so it behaves as a macro-regime overlay rather than a stock-specific factor."
+    },
+    {
+      "feature_name": "breadth_momentum",
+      "domain": "composite",
+      "status": "EXEMPT_MACRO_DEPENDENT",
+      "definition_location": "src/features/pipeline.py",
+      "evaluation": "Derived from sp500_breadth and market_ret_20d, so it behaves as a macro-regime overlay rather than a stock-specific factor."
+    },
+    {
+      "feature_name": "macro_risk_on",
+      "domain": "composite",
+      "status": "EXEMPT_MACRO_DEPENDENT",
+      "definition_location": "src/features/pipeline.py",
+      "evaluation": "Derived from yield_spread_10y2y and credit_spread, so it behaves as a macro-regime overlay rather than a stock-specific factor."
+    }
+  ],
+  "data_gap_features": [
+    {
+      "feature_name": "dividend_yield",
+      "domain": "fundamental",
+      "status": "DATA_GAP",
+      "definition_location": "src/features/fundamental.py",
+      "evaluation": "Not a macro-regime feature. It remained in the screening exception set because the cached feature matrix contains no usable non-null observations."
+    },
+    {
+      "feature_name": "eps_surprise",
+      "domain": "fundamental",
+      "status": "DATA_GAP",
+      "definition_location": "src/features/fundamental.py",
+      "evaluation": "Not a macro-regime feature. It remained in the screening exception set because the cached feature matrix contains no usable non-null observations."
+    }
+  ]
+}

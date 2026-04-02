@@ -1,0 +1,1143 @@
+{
+  "generated_at_utc": "2026-04-02T12:00:50.182181+00:00",
+  "git_branch": "feature/alpha-enhancement",
+  "holding_period": "4W",
+  "models": {
+    "10D": {
+      "aggregate": {
+        "annualization_factor": 12,
+        "annualized_benchmark_return": 0.09654843158323478,
+        "annualized_gross_excess": 0.11112885409389839,
+        "annualized_gross_return": 0.20767728567713317,
+        "annualized_net_excess": 0.10172236857821026,
+        "annualized_net_return": 0.19827080016144505,
+        "average_turnover": 0.13272957973256844,
+        "bootstrap": {
+          "annualized_excess_ci_lower": 0.011833140039799982,
+          "annualized_excess_ci_upper": 0.24804367698628463,
+          "annualized_excess_estimate": 0.12101441599933427,
+          "annualized_excess_p_value": 0.0149,
+          "block_size": 4,
+          "ci_level": 0.95,
+          "mean_excess_ci_lower": 0.0017934101120560208,
+          "mean_excess_ci_upper": 0.019405596688113605,
+          "mean_excess_estimate": 0.010368306252009293,
+          "mean_excess_p_value": 0.0085,
+          "n_bootstrap": 10000,
+          "n_observations": 40,
+          "sharpe_ci_lower": 0.15357676070429604,
+          "sharpe_ci_upper": 1.7729063423190143,
+          "sharpe_estimate": 0.8777335580922573,
+          "sharpe_p_value": 0.0085
+        },
+        "cost_breakdown": {
+          "commission": 1170.6169119015003,
+          "gap_penalty": 26858.947548193377,
+          "permanent_impact": 16.202842474343925,
+          "spread": 2153.5022455620183,
+          "temporary_impact": 762.8899961134475,
+          "total": 30962.15954424469
+        },
+        "max_drawdown": 0.0937103795355097,
+        "mean_hit_rate": 0.503262080901193,
+        "mean_ic": 0.033890336432306094,
+        "mean_icir": 0.16230025098713086,
+        "mean_rank_ic": 0.02199547479842047,
+        "period_net_excess_records": [
+          {
+            "trade_date": "2021-07-06",
+            "value": -0.034612249328161426
+          },
+          {
+            "trade_date": "2021-08-09",
+            "value": -0.015713589862911048
+          },
+          {
+            "trade_date": "2021-09-07",
+            "value": 0.07036880179504668
+          },
+          {
+            "trade_date": "2021-10-04",
+            "value": -0.007121551101862522
+          },
+          {
+            "trade_date": "2021-11-08",
+            "value": -0.03246991744566019
+          },
+          {
+            "trade_date": "2022-01-10",
+            "value": 0.006249675161368984
+          },
+          {
+            "trade_date": "2022-02-07",
+            "value": 0.0067790138522617616
+          },
+          {
+            "trade_date": "2022-03-07",
+            "value": 0.015235544266053891
+          },
+          {
+            "trade_date": "2022-04-04",
+            "value": 0.00317523436637146
+          },
+          {
+            "trade_date": "2022-05-09",
+            "value": 0.053428426564329
+          },
+          {
+            "trade_date": "2022-07-05",
+            "value": 0.054872032445816954
+          },
+          {
+            "trade_date": "2022-08-08",
+            "value": 0.007346318259027651
+          },
+          {
+            "trade_date": "2022-09-06",
+            "value": 0.03197785843907841
+          },
+          {
+            "trade_date": "2022-10-10",
+            "value": 0.049828618141451786
+          },
+          {
+            "trade_date": "2022-11-07",
+            "value": -0.0167702130021532
+          },
+          {
+            "trade_date": "2023-01-09",
+            "value": 0.0914194515615403
+          },
+          {
+            "trade_date": "2023-02-06",
+            "value": -0.012511800601200274
+          },
+          {
+            "trade_date": "2023-03-06",
+            "value": -0.05704391349922089
+          },
+          {
+            "trade_date": "2023-04-17",
+            "value": -0.02065905953063063
+          },
+          {
+            "trade_date": "2023-05-08",
+            "value": 0.10229876545137495
+          },
+          {
+            "trade_date": "2023-07-10",
+            "value": 0.047720063914822974
+          },
+          {
+            "trade_date": "2023-08-07",
+            "value": -0.016524067335892068
+          },
+          {
+            "trade_date": "2023-09-05",
+            "value": -0.03054137353227182
+          },
+          {
+            "trade_date": "2023-10-09",
+            "value": -0.002565798061733071
+          },
+          {
+            "trade_date": "2023-11-06",
+            "value": 0.028529797747345764
+          },
+          {
+            "trade_date": "2024-01-08",
+            "value": -0.06324575566556356
+          },
+          {
+            "trade_date": "2024-02-05",
+            "value": 0.05557401926840555
+          },
+          {
+            "trade_date": "2024-03-04",
+            "value": 0.0050389425110382025
+          },
+          {
+            "trade_date": "2024-04-08",
+            "value": 0.0006654186344303703
+          },
+          {
+            "trade_date": "2024-05-06",
+            "value": -0.03464106854372684
+          },
+          {
+            "trade_date": "2024-07-08",
+            "value": 0.005617015323243435
+          },
+          {
+            "trade_date": "2024-08-05",
+            "value": 0.013324816889735303
+          },
+          {
+            "trade_date": "2024-09-09",
+            "value": 0.057215274663778404
+          },
+          {
+            "trade_date": "2024-10-07",
+            "value": -0.008939477038757082
+          },
+          {
+            "trade_date": "2024-11-04",
+            "value": 0.04417053195260623
+          },
+          {
+            "trade_date": "2025-01-06",
+            "value": -0.004449722206342432
+          },
+          {
+            "trade_date": "2025-02-10",
+            "value": -0.06034576735910602
+          },
+          {
+            "trade_date": "2025-03-10",
+            "value": -0.031196422411317037
+          },
+          {
+            "trade_date": "2025-04-07",
+            "value": 0.06734126164023047
+          },
+          {
+            "trade_date": "2025-05-05",
+            "value": 0.04590711375752332
+          }
+        ],
+        "rebalance_count": 40,
+        "sharpe": 0.8777335580922573,
+        "signal_date_count": 48,
+        "total_cost_drag": 0.009406485515688123
+      },
+      "selected_feature_count": 6,
+      "selected_features": [
+        "atr_14",
+        "vol_60d",
+        "vol_20d",
+        "vol_rank",
+        "gk_vol",
+        "pb_ratio"
+      ],
+      "walkforward": [
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "34",
+            "experiment_name": "ridge_10D_20260402_115911",
+            "run_id": "a156ba2d90ab443abfb8499f5028e6e9",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.48730679907103386,
+            "ic": 0.006723830300389901,
+            "icir": 0.026638370500029224,
+            "long_short_return": 0.0012689501411306883,
+            "rank_ic": -0.014283450050406614,
+            "top_decile_return": 0.0026574214839975695,
+            "turnover": 0.10784013605442178
+          },
+          "test_period": "2021-07-01 -> 2021-12-31",
+          "test_rows": 12487,
+          "train_metrics": {
+            "hit_rate": 0.5035919540229885,
+            "ic": 0.012730643858260282,
+            "icir": 0.054578112890583515,
+            "long_short_return": 0.047283389252197876,
+            "rank_ic": 0.002695450529739952,
+            "top_decile_return": 0.04749654334218144,
+            "turnover": 0.13871002501113508
+          },
+          "train_period": "2018-01-01 -> 2020-12-31",
+          "train_rows": 69600,
+          "validation_metrics": {
+            "hit_rate": 0.5087275266189561,
+            "ic": 0.06998637212177872,
+            "icir": 0.37110748948385486,
+            "long_short_return": 0.07534970680106466,
+            "rank_ic": 0.026918039854712823,
+            "top_decile_return": 0.07223037088015372,
+            "turnover": 0.11503623188405795
+          },
+          "validation_period": "2021-01-01 -> 2021-06-30",
+          "validation_rows": 11458,
+          "window_id": "W1"
+        },
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "34",
+            "experiment_name": "ridge_10D_20260402_115911",
+            "run_id": "5b6ca7b6fa03457093f7ea477ba73cd2",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.47539565856611604,
+            "ic": -0.05400047122144235,
+            "icir": -0.23813512518469312,
+            "long_short_return": -0.006117040474392709,
+            "rank_ic": -0.06809055089393161,
+            "top_decile_return": 0.000962304851723861,
+            "turnover": 0.12522182786157937
+          },
+          "test_period": "2022-01-01 -> 2022-06-30",
+          "test_rows": 11563,
+          "train_metrics": {
+            "hit_rate": 0.5028935682566967,
+            "ic": 0.015729108638386016,
+            "icir": 0.0655871341750908,
+            "long_short_return": 0.0578675023922239,
+            "rank_ic": 0.002826925945450949,
+            "top_decile_return": 0.05770297333550907,
+            "turnover": 0.12234546995387073
+          },
+          "train_period": "2018-07-01 -> 2021-06-30",
+          "train_rows": 69810,
+          "validation_metrics": {
+            "hit_rate": 0.48730679907103386,
+            "ic": 0.006727453877872098,
+            "icir": 0.026660779166578368,
+            "long_short_return": 0.0008909110884755512,
+            "rank_ic": -0.014597607057963464,
+            "top_decile_return": 0.0023851509811365548,
+            "turnover": 0.1111904761904762
+          },
+          "validation_period": "2021-07-01 -> 2021-12-31",
+          "validation_rows": 12487,
+          "window_id": "W2"
+        },
+        {
+          "best_hyperparams": 0.001,
+          "mlflow": {
+            "experiment_id": "34",
+            "experiment_name": "ridge_10D_20260402_115911",
+            "run_id": "5dfd945823b74e938dbabc5a7d2c3677",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.5217291682578477,
+            "ic": 0.04958139689677976,
+            "icir": 0.20406759952947695,
+            "long_short_return": 0.014594414315731928,
+            "rank_ic": 0.04846873711551996,
+            "top_decile_return": 0.014200549886178006,
+            "turnover": 0.1271585557299843
+          },
+          "test_period": "2022-07-01 -> 2022-12-31",
+          "test_rows": 13093,
+          "train_metrics": {
+            "hit_rate": 0.5037508685848803,
+            "ic": 0.025096893755350833,
+            "icir": 0.10122023082132169,
+            "long_short_return": 0.05969090301079422,
+            "rank_ic": 0.007504441857005997,
+            "top_decile_return": 0.059158162075532546,
+            "turnover": 0.10890643034930356
+          },
+          "train_period": "2019-01-01 -> 2021-12-31",
+          "train_rows": 70517,
+          "validation_metrics": {
+            "hit_rate": 0.4755686240595001,
+            "ic": -0.05457328027658215,
+            "icir": -0.24067629994409895,
+            "long_short_return": -0.006136037026276791,
+            "rank_ic": -0.06844176070724156,
+            "top_decile_return": 0.0008226464868216129,
+            "turnover": 0.12167258207630877
+          },
+          "validation_period": "2022-01-01 -> 2022-06-30",
+          "validation_rows": 11563,
+          "window_id": "W3"
+        },
+        {
+          "best_hyperparams": 0.001,
+          "mlflow": {
+            "experiment_id": "34",
+            "experiment_name": "ridge_10D_20260402_115911",
+            "run_id": "f8d1a1636c5a4fdda5875948e64ffd56",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.5123912686689643,
+            "ic": 0.10877559709825148,
+            "icir": 0.4793334154681688,
+            "long_short_return": 0.022958572609256614,
+            "rank_ic": 0.09211996017541595,
+            "top_decile_return": 0.012375203381797841,
+            "turnover": 0.17772108843537415
+          },
+          "test_period": "2023-01-01 -> 2023-06-30",
+          "test_rows": 12186,
+          "train_metrics": {
+            "hit_rate": 0.5017191368942342,
+            "ic": 0.024977320611438723,
+            "icir": 0.09820681715427457,
+            "long_short_return": 0.018749243765652422,
+            "rank_ic": 0.005093319970649051,
+            "top_decile_return": 0.01851433978033638,
+            "turnover": 0.15520235552530384
+          },
+          "train_period": "2019-07-01 -> 2022-06-30",
+          "train_rows": 70675,
+          "validation_metrics": {
+            "hit_rate": 0.5243259757122126,
+            "ic": 0.04965511128968379,
+            "icir": 0.187372499708787,
+            "long_short_return": 0.013764546069268913,
+            "rank_ic": 0.047784075936886175,
+            "top_decile_return": 0.012015827141102107,
+            "turnover": 0.17817896389324964
+          },
+          "validation_period": "2022-07-01 -> 2022-12-31",
+          "validation_rows": 13093,
+          "window_id": "W4"
+        },
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "34",
+            "experiment_name": "ridge_10D_20260402_115911",
+            "run_id": "b05ffbe54dff4aa4be567fbd728d8eb2",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.5157523510971787,
+            "ic": 0.04805989495978039,
+            "icir": 0.20417230767421074,
+            "long_short_return": 0.00820108579993899,
+            "rank_ic": 0.04603879230591624,
+            "top_decile_return": 0.005088195577087568,
+            "turnover": 0.16375510204081636
+          },
+          "test_period": "2023-07-01 -> 2023-12-31",
+          "test_rows": 12760,
+          "train_metrics": {
+            "hit_rate": 0.5027115950312984,
+            "ic": 0.021672197064149343,
+            "icir": 0.08543386164172447,
+            "long_short_return": 0.020028435320533684,
+            "rank_ic": 0.0006089925319797914,
+            "top_decile_return": 0.02033977864644299,
+            "turnover": 0.13937521674384448
+          },
+          "train_period": "2020-01-01 -> 2022-12-31",
+          "train_rows": 71729,
+          "validation_metrics": {
+            "hit_rate": 0.506975217462662,
+            "ic": 0.10240122082479283,
+            "icir": 0.4566834002255493,
+            "long_short_return": 0.02207727824484448,
+            "rank_ic": 0.0864679759581603,
+            "top_decile_return": 0.011687335628801589,
+            "turnover": 0.16581632653061226
+          },
+          "validation_period": "2023-01-01 -> 2023-06-30",
+          "validation_rows": 12186,
+          "window_id": "W5"
+        },
+        {
+          "best_hyperparams": 0.001,
+          "mlflow": {
+            "experiment_id": "34",
+            "experiment_name": "ridge_10D_20260402_115911",
+            "run_id": "f2480abcd1154208949adc3877bafe66",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.48962554709029016,
+            "ic": 0.04283884772651543,
+            "icir": 0.35622545068243566,
+            "long_short_return": 0.006384568806546698,
+            "rank_ic": 0.007289758808120566,
+            "top_decile_return": -0.000657284104312606,
+            "turnover": 0.17500000000000002
+          },
+          "test_period": "2024-01-01 -> 2024-06-30",
+          "test_rows": 12338,
+          "train_metrics": {
+            "hit_rate": 0.5071993791488241,
+            "ic": 0.045987534829709964,
+            "icir": 0.19425263720727778,
+            "long_short_return": 0.02459576495583429,
+            "rank_ic": 0.02715544286593569,
+            "top_decile_return": 0.02275715527898397,
+            "turnover": 0.1556179518787381
+          },
+          "train_period": "2020-07-01 -> 2023-06-30",
+          "train_rows": 72159,
+          "validation_metrics": {
+            "hit_rate": 0.5128526645768025,
+            "ic": 0.04546160089259825,
+            "icir": 0.21160038835103664,
+            "long_short_return": 0.008836711545854449,
+            "rank_ic": 0.04513135805384272,
+            "top_decile_return": 0.005285601352720404,
+            "turnover": 0.167265306122449
+          },
+          "validation_period": "2023-07-01 -> 2023-12-31",
+          "validation_rows": 12760,
+          "window_id": "W6"
+        },
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "34",
+            "experiment_name": "ridge_10D_20260402_115911",
+            "run_id": "66550268eba54d518093f7b2cab1a2ac",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.509374031608305,
+            "ic": 0.038469971681947185,
+            "icir": 0.16497944394987393,
+            "long_short_return": 0.007910164899091302,
+            "rank_ic": 0.03161393391420375,
+            "top_decile_return": 0.007850498436733945,
+            "turnover": 0.19119999999999998
+          },
+          "test_period": "2024-07-01 -> 2024-12-31",
+          "test_rows": 12908,
+          "train_metrics": {
+            "hit_rate": 0.5053231267080914,
+            "ic": 0.03823113203885012,
+            "icir": 0.166364767773517,
+            "long_short_return": 0.022042485441094002,
+            "rank_ic": 0.023042446391758377,
+            "top_decile_return": 0.02060490655540296,
+            "turnover": 0.17011747082939135
+          },
+          "train_period": "2021-01-01 -> 2023-12-31",
+          "train_rows": 73547,
+          "validation_metrics": {
+            "hit_rate": 0.48727508510293405,
+            "ic": 0.03719561683584196,
+            "icir": 0.3147959646561328,
+            "long_short_return": 0.006291419663222739,
+            "rank_ic": 0.003269124037018129,
+            "top_decile_return": -0.00014798113299822543,
+            "turnover": 0.16833333333333333
+          },
+          "validation_period": "2024-01-01 -> 2024-06-30",
+          "validation_rows": 12338,
+          "window_id": "W7"
+        },
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "34",
+            "experiment_name": "ridge_10D_20260402_115911",
+            "run_id": "dc3defb72d164fd7aa412c0c1a9e58fd",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.5145218228498074,
+            "ic": 0.030673624016226975,
+            "icir": 0.10112054527754485,
+            "long_short_return": -8.527515219756144e-05,
+            "rank_ic": 0.03280661701252551,
+            "top_decile_return": 0.003446839223799654,
+            "turnover": 0.21083333333333334
+          },
+          "test_period": "2025-01-01 -> 2025-06-30",
+          "test_rows": 12464,
+          "train_metrics": {
+            "hit_rate": 0.508363900197509,
+            "ic": 0.039921330150181705,
+            "icir": 0.1700965297627547,
+            "long_short_return": 0.008662437868146125,
+            "rank_ic": 0.02443131549578343,
+            "top_decile_return": 0.006177920698821874,
+            "turnover": 0.23461712316505548
+          },
+          "train_period": "2021-07-01 -> 2024-06-30",
+          "train_rows": 74427,
+          "validation_metrics": {
+            "hit_rate": 0.5085993182522467,
+            "ic": 0.03992894530547792,
+            "icir": 0.1629236137910816,
+            "long_short_return": 0.00848940630943238,
+            "rank_ic": 0.03254282359169777,
+            "top_decile_return": 0.009064986229102425,
+            "turnover": 0.26159999999999994
+          },
+          "validation_period": "2024-07-01 -> 2024-12-31",
+          "validation_rows": 12908,
+          "window_id": "W8"
+        }
+      ]
+    },
+    "20D": {
+      "aggregate": {
+        "annualization_factor": 12,
+        "annualized_benchmark_return": 0.09654843158323478,
+        "annualized_gross_excess": 0.08512130034541854,
+        "annualized_gross_return": 0.18166973192865332,
+        "annualized_net_excess": 0.07711387005049009,
+        "annualized_net_return": 0.17366230163372487,
+        "average_turnover": 0.12162251521832868,
+        "bootstrap": {
+          "annualized_excess_ci_lower": -0.01082341747559839,
+          "annualized_excess_ci_upper": 0.2060696818841332,
+          "annualized_excess_estimate": 0.09122967588641617,
+          "annualized_excess_p_value": 0.0406,
+          "block_size": 4,
+          "ci_level": 0.95,
+          "mean_excess_ci_lower": -0.00024067601801976967,
+          "mean_excess_ci_upper": 0.016370333200745928,
+          "mean_excess_estimate": 0.007970242823025503,
+          "mean_excess_p_value": 0.0291,
+          "n_bootstrap": 10000,
+          "n_observations": 40,
+          "sharpe_ci_lower": -0.02417642500254771,
+          "sharpe_ci_upper": 1.6265778614654962,
+          "sharpe_estimate": 0.7418314138100344,
+          "sharpe_p_value": 0.0291
+        },
+        "cost_breakdown": {
+          "commission": 1125.7351901997808,
+          "gap_penalty": 22736.377752716588,
+          "permanent_impact": 27.165511219351735,
+          "spread": 1953.3540138581843,
+          "temporary_impact": 879.1118178865004,
+          "total": 26721.744285880406
+        },
+        "max_drawdown": 0.10904501811719539,
+        "mean_hit_rate": 0.505037159604852,
+        "mean_ic": 0.047485347280593754,
+        "mean_icir": 0.2500699144880128,
+        "mean_rank_ic": 0.03292457131090154,
+        "period_net_excess_records": [
+          {
+            "trade_date": "2021-07-06",
+            "value": -0.03350888765060012
+          },
+          {
+            "trade_date": "2021-08-09",
+            "value": -0.004686736439587058
+          },
+          {
+            "trade_date": "2021-09-07",
+            "value": 0.05725124805361925
+          },
+          {
+            "trade_date": "2021-10-04",
+            "value": 0.013925720928734453
+          },
+          {
+            "trade_date": "2021-11-08",
+            "value": -0.031939952778291536
+          },
+          {
+            "trade_date": "2022-01-10",
+            "value": 0.004776000100966349
+          },
+          {
+            "trade_date": "2022-02-07",
+            "value": 0.019442224683497877
+          },
+          {
+            "trade_date": "2022-03-07",
+            "value": 0.01160480246681228
+          },
+          {
+            "trade_date": "2022-04-04",
+            "value": 0.002694830865909381
+          },
+          {
+            "trade_date": "2022-05-09",
+            "value": 0.0411984957883651
+          },
+          {
+            "trade_date": "2022-07-05",
+            "value": 0.07167374700079732
+          },
+          {
+            "trade_date": "2022-08-08",
+            "value": -0.006055452847884446
+          },
+          {
+            "trade_date": "2022-09-06",
+            "value": 0.0198031128485886
+          },
+          {
+            "trade_date": "2022-10-10",
+            "value": 0.04040690922605128
+          },
+          {
+            "trade_date": "2022-11-07",
+            "value": -0.012138300277502179
+          },
+          {
+            "trade_date": "2023-01-09",
+            "value": 0.08212825561573389
+          },
+          {
+            "trade_date": "2023-02-06",
+            "value": -0.012360424938014813
+          },
+          {
+            "trade_date": "2023-03-06",
+            "value": -0.06440457060138827
+          },
+          {
+            "trade_date": "2023-04-17",
+            "value": -0.008370146518849597
+          },
+          {
+            "trade_date": "2023-05-08",
+            "value": 0.09271106200341794
+          },
+          {
+            "trade_date": "2023-07-10",
+            "value": 0.04320695088193638
+          },
+          {
+            "trade_date": "2023-08-07",
+            "value": -0.027837692361463384
+          },
+          {
+            "trade_date": "2023-09-05",
+            "value": -0.04124309236769608
+          },
+          {
+            "trade_date": "2023-10-09",
+            "value": -0.007455879605162474
+          },
+          {
+            "trade_date": "2023-11-06",
+            "value": 0.027047999363551067
+          },
+          {
+            "trade_date": "2024-01-08",
+            "value": -0.062291367983299484
+          },
+          {
+            "trade_date": "2024-02-05",
+            "value": 0.050492046188771234
+          },
+          {
+            "trade_date": "2024-03-04",
+            "value": 0.007743382327099146
+          },
+          {
+            "trade_date": "2024-04-08",
+            "value": 0.003151169338967197
+          },
+          {
+            "trade_date": "2024-05-06",
+            "value": -0.037528079979021856
+          },
+          {
+            "trade_date": "2024-07-08",
+            "value": 0.042008921880117955
+          },
+          {
+            "trade_date": "2024-08-05",
+            "value": 0.001447211028430928
+          },
+          {
+            "trade_date": "2024-09-09",
+            "value": 0.04520488043203641
+          },
+          {
+            "trade_date": "2024-10-07",
+            "value": -0.0005527548917623193
+          },
+          {
+            "trade_date": "2024-11-04",
+            "value": 0.014196337263984837
+          },
+          {
+            "trade_date": "2025-01-06",
+            "value": 0.005563493687468224
+          },
+          {
+            "trade_date": "2025-02-10",
+            "value": -0.04539391440077423
+          },
+          {
+            "trade_date": "2025-03-10",
+            "value": -0.03427969732637659
+          },
+          {
+            "trade_date": "2025-04-07",
+            "value": 0.02420361450314279
+          },
+          {
+            "trade_date": "2025-05-05",
+            "value": 0.02697424741069465
+          }
+        ],
+        "rebalance_count": 40,
+        "sharpe": 0.7418314138100344,
+        "signal_date_count": 48,
+        "total_cost_drag": 0.008007430294928453
+      },
+      "selected_feature_count": 7,
+      "selected_features": [
+        "vol_60d",
+        "atr_14",
+        "vol_20d",
+        "vol_rank",
+        "gk_vol",
+        "pb_ratio",
+        "amihud"
+      ],
+      "walkforward": [
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "35",
+            "experiment_name": "ridge_20D_20260402_120000",
+            "run_id": "8a9a19813bf34bcb8a57de0b7f637e5b",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.4898694642428125,
+            "ic": 0.04404438761385051,
+            "icir": 0.2301918436644908,
+            "long_short_return": 0.025870822548363467,
+            "rank_ic": 0.014876037054494553,
+            "top_decile_return": 0.02726583005895923,
+            "turnover": 0.13431972789115645
+          },
+          "test_period": "2021-07-01 -> 2021-12-31",
+          "test_rows": 12487,
+          "train_metrics": {
+            "hit_rate": 0.5075574712643678,
+            "ic": 0.03385361896308753,
+            "icir": 0.1577303867553452,
+            "long_short_return": 0.10787208551278574,
+            "rank_ic": 0.025445918493476535,
+            "top_decile_return": 0.10650808825121583,
+            "turnover": 0.14332232672080034
+          },
+          "train_period": "2018-01-01 -> 2020-12-31",
+          "train_rows": 69600,
+          "validation_metrics": {
+            "hit_rate": 0.5152731715831733,
+            "ic": 0.0972755511240712,
+            "icir": 0.48415996110418213,
+            "long_short_return": 0.15018104905251536,
+            "rank_ic": 0.044722107764373686,
+            "top_decile_return": 0.14814118438172946,
+            "turnover": 0.12318840579710144
+          },
+          "validation_period": "2021-01-01 -> 2021-06-30",
+          "validation_rows": 11458,
+          "window_id": "W1"
+        },
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "35",
+            "experiment_name": "ridge_20D_20260402_120000",
+            "run_id": "b49479804f24432a972c3ccacbe5dbeb",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.47435786560581167,
+            "ic": -0.052424881822426696,
+            "icir": -0.3358436815979656,
+            "long_short_return": 0.028747535721908773,
+            "rank_ic": -0.0707849111276818,
+            "top_decile_return": 0.04105829023077913,
+            "turnover": 0.15359730848861283
+          },
+          "test_period": "2022-01-01 -> 2022-06-30",
+          "test_rows": 11563,
+          "train_metrics": {
+            "hit_rate": 0.5076636585016473,
+            "ic": 0.03644779154101292,
+            "icir": 0.1627441476397158,
+            "long_short_return": 0.12831324287134224,
+            "rank_ic": 0.023783585056693486,
+            "top_decile_return": 0.12735382197087636,
+            "turnover": 0.1269066621551426
+          },
+          "train_period": "2018-07-01 -> 2021-06-30",
+          "train_rows": 69810,
+          "validation_metrics": {
+            "hit_rate": 0.49083046368222955,
+            "ic": 0.04450020825412427,
+            "icir": 0.2332024174338845,
+            "long_short_return": 0.02574721790080394,
+            "rank_ic": 0.0155870669354078,
+            "top_decile_return": 0.02718169263938179,
+            "turnover": 0.13598639455782313
+          },
+          "validation_period": "2021-07-01 -> 2021-12-31",
+          "validation_rows": 12487,
+          "window_id": "W2"
+        },
+        {
+          "best_hyperparams": 0.001,
+          "mlflow": {
+            "experiment_id": "35",
+            "experiment_name": "ridge_20D_20260402_120000",
+            "run_id": "fb60bec5d1014d12ac0c4ef7352ef6d1",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.537233636294203,
+            "ic": 0.07944807663760647,
+            "icir": 0.356007869725943,
+            "long_short_return": 0.026141824564895198,
+            "rank_ic": 0.0829167677994733,
+            "top_decile_return": 0.025851891355409898,
+            "turnover": 0.11773940345368916
+          },
+          "test_period": "2022-07-01 -> 2022-12-31",
+          "test_rows": 13093,
+          "train_metrics": {
+            "hit_rate": 0.507182665172937,
+            "ic": 0.053237644440252176,
+            "icir": 0.23603996404924618,
+            "long_short_return": 0.13512478694325405,
+            "rank_ic": 0.03319731287201539,
+            "top_decile_return": 0.13344518231342442,
+            "turnover": 0.12064687238658821
+          },
+          "train_period": "2019-01-01 -> 2021-12-31",
+          "train_rows": 70517,
+          "validation_metrics": {
+            "hit_rate": 0.4738389691256594,
+            "ic": -0.054373536360339536,
+            "icir": -0.3452333274844167,
+            "long_short_return": 0.028280107912048574,
+            "rank_ic": -0.07231635783488899,
+            "top_decile_return": 0.040430505110782756,
+            "turnover": 0.15093537414965985
+          },
+          "validation_period": "2022-01-01 -> 2022-06-30",
+          "validation_rows": 11563,
+          "window_id": "W3"
+        },
+        {
+          "best_hyperparams": 0.001,
+          "mlflow": {
+            "experiment_id": "35",
+            "experiment_name": "ridge_20D_20260402_120000",
+            "run_id": "c35e40d98041479a82f36f17033f53e8",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.5123912686689643,
+            "ic": 0.11830680051812806,
+            "icir": 0.516720494449098,
+            "long_short_return": 0.04377361774415144,
+            "rank_ic": 0.10536177061793954,
+            "top_decile_return": 0.025990604474243364,
+            "turnover": 0.15901360544217688
+          },
+          "test_period": "2023-01-01 -> 2023-06-30",
+          "test_rows": 12186,
+          "train_metrics": {
+            "hit_rate": 0.5038415281216838,
+            "ic": 0.04559120350938018,
+            "icir": 0.20150919674418394,
+            "long_short_return": 0.04331221548706111,
+            "rank_ic": 0.02422456197056304,
+            "top_decile_return": 0.042841922803464896,
+            "turnover": 0.14303531576517897
+          },
+          "train_period": "2019-07-01 -> 2022-06-30",
+          "train_rows": 70675,
+          "validation_metrics": {
+            "hit_rate": 0.5392958069197281,
+            "ic": 0.0802015033559165,
+            "icir": 0.3213435394655351,
+            "long_short_return": 0.03423300375936134,
+            "rank_ic": 0.0866572014936197,
+            "top_decile_return": 0.030757495125874296,
+            "turnover": 0.15463108320251176
+          },
+          "validation_period": "2022-07-01 -> 2022-12-31",
+          "validation_rows": 13093,
+          "window_id": "W4"
+        },
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "35",
+            "experiment_name": "ridge_20D_20260402_120000",
+            "run_id": "9529b95d3ddb432fac910eb8154656cd",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.5037617554858934,
+            "ic": 0.03154110300987843,
+            "icir": 0.13662588922202581,
+            "long_short_return": 0.009634843353316973,
+            "rank_ic": 0.020340959754505707,
+            "top_decile_return": 0.004446038485111982,
+            "turnover": 0.14284081632653062
+          },
+          "test_period": "2023-07-01 -> 2023-12-31",
+          "test_rows": 12760,
+          "train_metrics": {
+            "hit_rate": 0.5058623429854034,
+            "ic": 0.047075153530602924,
+            "icir": 0.20449543770225098,
+            "long_short_return": 0.04630526286237506,
+            "rank_ic": 0.025084086372495318,
+            "top_decile_return": 0.046439102496342255,
+            "turnover": 0.13715350126913536
+          },
+          "train_period": "2020-01-01 -> 2022-12-31",
+          "train_rows": 71729,
+          "validation_metrics": {
+            "hit_rate": 0.5058263581158706,
+            "ic": 0.10853575188344619,
+            "icir": 0.4800521846523413,
+            "long_short_return": 0.040661471185459555,
+            "rank_ic": 0.09535279246349132,
+            "top_decile_return": 0.023242124706565684,
+            "turnover": 0.1522108843537415
+          },
+          "validation_period": "2023-01-01 -> 2023-06-30",
+          "validation_rows": 12186,
+          "window_id": "W5"
+        },
+        {
+          "best_hyperparams": 0.001,
+          "mlflow": {
+            "experiment_id": "35",
+            "experiment_name": "ridge_20D_20260402_120000",
+            "run_id": "30291125f990492496ec30d02d61df06",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.494731723131788,
+            "ic": 0.05738056061096598,
+            "icir": 0.5283987482116153,
+            "long_short_return": 0.01807946851149223,
+            "rank_ic": 0.022542312770802733,
+            "top_decile_return": 0.005043847147258406,
+            "turnover": 0.17166666666666666
+          },
+          "test_period": "2024-01-01 -> 2024-06-30",
+          "test_rows": 12338,
+          "train_metrics": {
+            "hit_rate": 0.5146551365734005,
+            "ic": 0.07297445782904821,
+            "icir": 0.33319177920129994,
+            "long_short_return": 0.05417866674063734,
+            "rank_ic": 0.05312894868457031,
+            "top_decile_return": 0.05044205450064204,
+            "turnover": 0.15540394009952974
+          },
+          "train_period": "2020-07-01 -> 2023-06-30",
+          "train_rows": 72159,
+          "validation_metrics": {
+            "hit_rate": 0.4962382445141066,
+            "ic": 0.02425793929062339,
+            "icir": 0.10974029886742508,
+            "long_short_return": 0.007199401076906326,
+            "rank_ic": 0.012914545080472394,
+            "top_decile_return": 0.0025383168361177667,
+            "turnover": 0.15260408163265307
+          },
+          "validation_period": "2023-07-01 -> 2023-12-31",
+          "validation_rows": 12760,
+          "window_id": "W6"
+        },
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "35",
+            "experiment_name": "ridge_20D_20260402_120000",
+            "run_id": "dc8de8a62a1645fbbb08a3e37160d05b",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.5081344902386117,
+            "ic": 0.05638973070859868,
+            "icir": 0.42335294666857726,
+            "long_short_return": 0.013058654803695453,
+            "rank_ic": 0.04297615753213097,
+            "top_decile_return": 0.008433357450165702,
+            "turnover": 0.18880000000000002
+          },
+          "test_period": "2024-07-01 -> 2024-12-31",
+          "test_rows": 12908,
+          "train_metrics": {
+            "hit_rate": 0.5054047071940392,
+            "ic": 0.05090052211419008,
+            "icir": 0.23635535037978242,
+            "long_short_return": 0.04506927895287873,
+            "rank_ic": 0.03149393793422572,
+            "top_decile_return": 0.04275965430523781,
+            "turnover": 0.15630220300040545
+          },
+          "train_period": "2021-01-01 -> 2023-12-31",
+          "train_rows": 73547,
+          "validation_metrics": {
+            "hit_rate": 0.4923812611444318,
+            "ic": 0.05107400066203576,
+            "icir": 0.4500784783793402,
+            "long_short_return": 0.015699022245804783,
+            "rank_ic": 0.019269618623073078,
+            "top_decile_return": 0.0026194404675371286,
+            "turnover": 0.16666666666666666
+          },
+          "validation_period": "2024-01-01 -> 2024-06-30",
+          "validation_rows": 12338,
+          "window_id": "W7"
+        },
+        {
+          "best_hyperparams": 100.0,
+          "mlflow": {
+            "experiment_id": "35",
+            "experiment_name": "ridge_20D_20260402_120000",
+            "run_id": "8b241cba026c4637a9745efc5e328eff",
+            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlflow.db"
+          },
+          "test_metrics": {
+            "hit_rate": 0.5198170731707317,
+            "ic": 0.045197000968148604,
+            "icir": 0.145105205560318,
+            "long_short_return": 0.011194014213298123,
+            "rank_ic": 0.045167476085547324,
+            "top_decile_return": 0.00651030452662266,
+            "turnover": 0.17
+          },
+          "test_period": "2025-01-01 -> 2025-06-30",
+          "test_rows": 12464,
+          "train_metrics": {
+            "hit_rate": 0.5088072876778589,
+            "ic": 0.05140806636437126,
+            "icir": 0.2426747567344094,
+            "long_short_return": 0.02743431644359364,
+            "rank_ic": 0.032457103336589334,
+            "top_decile_return": 0.021936397553406525,
+            "turnover": 0.21571764232008594
+          },
+          "train_period": "2021-07-01 -> 2024-06-30",
+          "train_rows": 74427,
+          "validation_metrics": {
+            "hit_rate": 0.5123954136969321,
+            "ic": 0.06163479100728686,
+            "icir": 0.40726860930116526,
+            "long_short_return": 0.015488467594321672,
+            "rank_ic": 0.04511501616851407,
+            "top_decile_return": 0.010993278092979335,
+            "turnover": 0.2192
+          },
+          "validation_period": "2024-07-01 -> 2024-12-31",
+          "validation_rows": 12908,
+          "window_id": "W8"
+        }
+      ]
+    }
+  },
+  "scheme_config": {
+    "max_weight": 0.05,
+    "min_holdings": 20,
+    "min_trade_weight": 0.01,
+    "selection_pct": 0.2,
+    "sell_buffer_pct": 0.25,
+    "weighting_scheme": "equal_weight"
+  },
+  "script": "scripts/run_signal_fusion_experiment.py"
+}

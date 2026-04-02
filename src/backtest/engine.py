@@ -35,7 +35,7 @@ class WalkForwardWindowConfig:
 class WindowModelResult:
     window_id: str
     target_horizon: str
-    best_alpha: float
+    best_hyperparams: float
     train_metrics: EvaluationSummary
     validation_metrics: EvaluationSummary
     test_metrics: EvaluationSummary
@@ -98,7 +98,7 @@ class WalkForwardEngine:
         selection_model = RidgeBaselineModel(alpha_grid=self.alpha_grid)
         selection = selection_model.select_alpha(train_X, train_y, validation_X, validation_y)
 
-        train_model = RidgeBaselineModel(alpha=selection.best_alpha, alpha_grid=self.alpha_grid)
+        train_model = RidgeBaselineModel(alpha=selection.best_hyperparams, alpha_grid=self.alpha_grid)
         train_model.train(train_X, train_y)
         train_predictions = train_model.predict(train_X)
         validation_predictions = train_model.predict(validation_X)
@@ -107,7 +107,7 @@ class WalkForwardEngine:
 
         final_train_X = pd.concat([train_X, validation_X]).sort_index()
         final_train_y = pd.concat([train_y, validation_y]).sort_index()
-        final_model = RidgeBaselineModel(alpha=selection.best_alpha, alpha_grid=self.alpha_grid)
+        final_model = RidgeBaselineModel(alpha=selection.best_hyperparams, alpha_grid=self.alpha_grid)
         final_model.train(final_train_X, final_train_y)
         test_predictions = final_model.predict(test_X)
         test_metrics = final_model.evaluate(test_y, test_predictions)
@@ -124,7 +124,7 @@ class WalkForwardEngine:
             tracking_uri=self.tracking_uri,
             timestamp=timestamp,
             extra_params={
-                "best_alpha": selection.best_alpha,
+                "best_hyperparams": selection.best_hyperparams,
                 "train_start": window.train_start.isoformat(),
                 "train_end": window.train_end.isoformat(),
                 "validation_start": window.validation_start.isoformat(),
@@ -152,14 +152,14 @@ class WalkForwardEngine:
             "completed window {} horizon={} alpha={} validation_ic={:.6f} test_ic={:.6f}",
             effective_window_id,
             target_horizon,
-            selection.best_alpha,
+            selection.best_hyperparams,
             validation_metrics.ic,
             test_metrics.ic,
         )
         return WindowModelResult(
             window_id=effective_window_id,
             target_horizon=target_horizon,
-            best_alpha=float(selection.best_alpha),
+            best_hyperparams=float(selection.best_hyperparams),
             train_metrics=train_metrics,
             validation_metrics=validation_metrics,
             test_metrics=test_metrics,

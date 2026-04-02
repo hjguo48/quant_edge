@@ -98,7 +98,7 @@ def test_xgboost_search_logs_trials_and_best_run_to_mlflow(tmp_path) -> None:
     search_runs = [run for run in runs if run.data.tags.get("run_kind") == "search_trial"]
     training_runs = [run for run in runs if run.data.tags.get("run_kind") == "training"]
 
-    assert isinstance(result.best_alpha, dict)
+    assert isinstance(result.best_hyperparams, dict)
     assert len(search_runs) == 2
     assert len(training_runs) == 1
     assert result.logged_run is not None
