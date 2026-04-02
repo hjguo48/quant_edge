@@ -940,17 +940,19 @@ subject to:
 
 **目标：** 满足 Plan 15.3 "所有约束可正常求解" 和 Shadow Mode checklist "优化器各种条件下均可收敛"。
 
-#### Batch 3: Airflow DAG 真实化
+#### Batch 3: Airflow DAG 真实化 + Live 数据管道
 
 | 序号 | 任务 | 交付物 | 验收标准 |
 |------|------|--------|----------|
 | R3.1 | Airflow 部署验证 | Docker 启动 + Web UI 截图 | Web UI 可访问 (port 8080) |
-| R3.2 | `dag_daily_data` 真实化 | 调用 `src/data/` 模块 | 可执行数据拉取+质量检查 |
-| R3.3 | `dag_weekly_signal` 真实化 | 调用 `src/features/` + `src/models/` | 可执行特征计算+模型推理 |
+| R3.2 | `dag_daily_data` 真实化 | 调用 Polygon/FMP/FRED API | 真实拉取最新数据+质量检查+入库 |
+| R3.3 | `dag_weekly_signal` 真实化 | 调用 `src/features/` + `src/models/` | 真实计算特征+加载 champion 模型推理 |
 | R3.4 | `dag_weekly_rebalance` 真实化 | 调用 `src/portfolio/` + `src/risk/` | 风控检查+生成下单指令 |
 | R3.5 | DAG 端到端测试 | 至少一次完整执行记录 | 所有 task 成功完成 |
+| R3.6 | 数据同步至最新 | DB 数据更新到 2026-04 | Polygon/FMP/FRED 数据覆盖至今 |
 
 **目标：** 满足 Plan 13.1-13.4 "每日自动拉取+质量检查" / "周五收盘后自动推理" 等验收标准。
+**重要：** Polygon/FMP/FRED 付费 API 已订阅，所有 key 已配置在 .env 中。DAG 必须调用真实 API，不是 stub。
 
 #### Batch 4: Phase 1 Tech Debt 清扫
 
@@ -967,15 +969,17 @@ subject to:
 
 **目标：** 满足 Plan 17.4 "所有已知问题修复" 验收标准。
 
-#### Batch 5: 全量重新验证
+#### Batch 5: 全量重新验证 + Live Pipeline 验证
 
 | 序号 | 任务 | 交付物 | 验收标准 |
 |------|------|--------|----------|
 | R5.1 | 最佳配置 Walk-Forward 重跑 | 8窗口完整报告 | 使用 Batch 1 最佳配置 |
-| R5.2 | Shadow Mode 重跑 | 更新 shadow_mode_report.json | 6/6 checklist 全绿 |
-| R5.3 | 压力测试重跑 | 更新 stress_test_report.json | 全部 pass |
-| R5.4 | 最终 Go/No-Go | Phase 1 Alpha 报告 v3 | **目标 6/6 全部通过** |
-| R5.5 | Git 推送 | main 推送到 remote | 所有 commits 同步 |
+| R5.2 | Live Pipeline 端到端运行 | 实时数据→特征→推理→组合→风控 | 全链路一次成功执行 |
+| R5.3 | Shadow Mode 重跑 (含 Live) | 更新 shadow_mode_report.json | 6/6 checklist 全绿，含实时数据验证 |
+| R5.4 | 压力测试重跑 | 更新 stress_test_report.json | 全部 pass |
+| R5.5 | Live IC 一致性验证 | Live 推理 IC vs 回测 IC | 误差 < 20% |
+| R5.6 | 最终 Go/No-Go | Phase 1 Alpha 报告 v3 | **目标 6/6 全部通过** |
+| R5.7 | Git 推送 | main 推送到 remote | 所有 commits 同步 |
 
 **G3 Gate 目标 (6/6)：**
 
