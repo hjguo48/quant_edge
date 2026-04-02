@@ -1,13 +1,46 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from dataclasses import asdict, dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
-from src.portfolio.constraints import PortfolioConstraints, apply_weight_constraints
+from src.portfolio.constraints import (
+    CVXPYOptimizer,
+    OptimizationResult,
+    PortfolioConstraints,
+    apply_weight_constraints,
+)
 from src.portfolio.equal_weight import select_top_scores
+from src.portfolio.shrinkage import CovarianceEstimator, CovarianceResult
+
+
+@dataclass(frozen=True)
+class BlackLittermanPosterior:
+    tickers: list[str]
+    covariance_result: CovarianceResult
+    market_weights: np.ndarray
+    implied_returns: np.ndarray
+    posterior_returns: np.ndarray
+    posterior_covariance: np.ndarray
+    views_q: np.ndarray
+    omega_diag: np.ndarray
+    tau: float
+    risk_aversion: float
+    score_scale: float
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = asdict(self)
+        payload["market_weights"] = self.market_weights.tolist()
+        payload["implied_returns"] = self.implied_returns.tolist()
+        payload["posterior_returns"] = self.posterior_returns.tolist()
+        payload["posterior_covariance"] = self.posterior_covariance.tolist()
+        payload["views_q"] = self.views_q.tolist()
+        payload["omega_diag"] = self.omega_diag.tolist()
+        payload["covariance_result"] = self.covariance_result.to_dict()
+        return payload
 
 
 def black_litterman_portfolio(
@@ -22,61 +55,147 @@ def black_litterman_portfolio(
     tau: float = 0.05,
     risk_aversion: float = 2.5,
     score_scale: float = 0.05,
-    covariance_shrinkage: float = 0.25,
-    ridge: float = 1e-5,
+    covariance_method: str = "ledoit_wolf",
+    use_cvxpy: bool = False,
+    prev_weights: dict[str, float] | pd.Series | None = None,
+    sector_map: dict[str, str] | None = None,
+    benchmark_sector_weights: dict[str, float] | None = None,
+    stock_betas: np.ndarray | None = None,
+    adv: np.ndarray | None = None,
+    portfolio_size: float = 1e7,
+    lambda_risk: float = 1.0,
+    lambda_turnover: float = 0.005,
 ) -> dict[str, float]:
     active_constraints = constraints or PortfolioConstraints()
     selected = select_top_scores(scores, n_stocks=n_stocks, selection_pct=selection_pct)
     if selected.empty:
         return {}
 
-    tickers = selected.index.astype(str)
-    history = trailing_returns.reindex(columns=tickers).tail(lookback_days)
-    history = history.replace([np.inf, -np.inf], np.nan).dropna(axis=1, how="any")
-    if history.shape[1] < 2 or history.shape[0] < 20:
-        raw = pd.Series(1.0, index=tickers, dtype=float)
-        return apply_weight_constraints(raw, ranking=tickers, constraints=active_constraints)
+    try:
+        posterior = build_black_litterman_posterior(
+            scores=selected,
+            trailing_returns=trailing_returns,
+            dollar_liquidity=dollar_liquidity,
+            lookback_days=lookback_days,
+            tau=tau,
+            risk_aversion=risk_aversion,
+            score_scale=score_scale,
+            covariance_method=covariance_method,
+        )
+    except ValueError:
+        raw = pd.Series(1.0, index=selected.index.astype(str), dtype=float)
+        return apply_weight_constraints(raw, ranking=selected.index.astype(str), constraints=active_constraints)
 
-    tickers = history.columns.astype(str)
-    selected = selected.reindex(tickers)
+    if use_cvxpy:
+        optimizer = CVXPYOptimizer()
+        previous = _vectorize_previous_weights(prev_weights=prev_weights, tickers=posterior.tickers)
+        adv_vector = _resolve_adv_vector(
+            adv=adv,
+            dollar_liquidity=dollar_liquidity,
+            tickers=posterior.tickers,
+        )
+        result = optimizer.optimize(
+            expected_returns=posterior.posterior_returns,
+            covariance=posterior.covariance_result.matrix,
+            tickers=posterior.tickers,
+            prev_weights=previous,
+            sector_map=sector_map,
+            benchmark_sector_weights=benchmark_sector_weights,
+            stock_betas=stock_betas,
+            adv=adv_vector,
+            portfolio_size=portfolio_size,
+            max_weight=active_constraints.max_weight,
+            min_holdings=active_constraints.min_holdings,
+            lambda_risk=lambda_risk,
+            lambda_turnover=lambda_turnover,
+        )
+        if result.weights:
+            return result.weights
+
+    optimized = _solve_long_only_weights(
+        posterior_returns=posterior.posterior_returns,
+        covariance=posterior.covariance_result.matrix,
+        market_weights=posterior.market_weights,
+        max_weight=active_constraints.max_weight,
+        risk_aversion=risk_aversion,
+    )
+    raw = pd.Series(optimized, index=posterior.tickers, dtype=float)
+    return apply_weight_constraints(raw, ranking=posterior.tickers, constraints=active_constraints)
+
+
+def build_black_litterman_posterior(
+    *,
+    scores: pd.Series,
+    trailing_returns: pd.DataFrame,
+    dollar_liquidity: pd.Series,
+    lookback_days: int = 60,
+    tau: float = 0.05,
+    risk_aversion: float = 2.5,
+    score_scale: float = 0.05,
+    covariance_method: str = "ledoit_wolf",
+) -> BlackLittermanPosterior:
+    if scores.empty:
+        raise ValueError("scores cannot be empty.")
+
+    selected = pd.Series(scores, dtype=float).dropna().sort_values(ascending=False)
+    tickers = selected.index.astype(str)
+    history = trailing_returns.reindex(columns=tickers).tail(int(lookback_days)).copy()
+    history.columns = history.columns.astype(str)
+    history = history.replace([np.inf, -np.inf], np.nan)
+    history = history.dropna(axis=1, thresh=max(20, int(lookback_days * 0.6)))
+    history = history.dropna(axis=0, how="any")
+    if history.shape[0] < 20 or history.shape[1] < 2:
+        raise ValueError("Not enough clean history for Black-Litterman.")
+
+    selected = selected.reindex(history.columns).dropna()
     liquidity = (
         pd.Series(dollar_liquidity, dtype=float)
-        .reindex(tickers)
+        .reindex(history.columns.astype(str))
         .replace([np.inf, -np.inf], np.nan)
         .fillna(0.0)
         .clip(lower=0.0)
     )
+    if selected.empty or len(selected) != history.shape[1]:
+        raise ValueError("Selected scores do not align with the cleaned return history.")
 
-    cov = history.cov().to_numpy(dtype=float)
-    diag = np.diag(np.diag(cov))
-    cov = ((1.0 - covariance_shrinkage) * cov) + (covariance_shrinkage * diag)
-    cov = cov + (np.eye(len(tickers)) * ridge)
+    covariance_result = CovarianceEstimator(method=covariance_method).estimate(
+        history,
+        min_history=min(60, max(20, history.shape[0])),
+    )
+    covariance = covariance_result.matrix
+    n_assets = len(covariance_result.tickers)
 
     if float(liquidity.sum()) <= 0.0:
-        market_weights = np.full(len(tickers), 1.0 / len(tickers), dtype=float)
+        market_weights = np.full(n_assets, 1.0 / n_assets, dtype=float)
     else:
-        market_weights = (liquidity / float(liquidity.sum())).to_numpy(dtype=float)
+        market_weights = (liquidity.reindex(covariance_result.tickers).fillna(0.0) / float(liquidity.sum())).to_numpy(dtype=float)
 
-    implied = risk_aversion * cov.dot(market_weights)
-    z_scores = _zscore(selected.to_numpy(dtype=float))
-    views = z_scores * score_scale
-    omega = np.diag(np.maximum(np.diag(tau * cov), ridge))
+    implied_returns = float(risk_aversion) * covariance.dot(market_weights)
+    q = _zscore(selected.reindex(covariance_result.tickers).to_numpy(dtype=float)) * float(score_scale)
+    p = np.eye(n_assets, dtype=float)
+    tau_sigma = float(tau) * covariance
+    view_covariance = p @ tau_sigma @ p.T
+    omega_diag = np.maximum(np.diag(view_covariance), 1e-8)
+    omega = np.diag(omega_diag)
 
-    tau_cov = tau * cov
-    posterior = np.linalg.solve(
-        np.linalg.inv(tau_cov) + np.linalg.inv(omega),
-        np.linalg.inv(tau_cov).dot(implied) + np.linalg.inv(omega).dot(views),
+    inv_tau_sigma = np.linalg.inv(tau_sigma + np.eye(n_assets) * 1e-10)
+    inv_omega = np.linalg.inv(omega)
+    posterior_covariance = np.linalg.inv(inv_tau_sigma + p.T @ inv_omega @ p)
+    posterior_returns = posterior_covariance @ (inv_tau_sigma @ implied_returns + p.T @ inv_omega @ q)
+
+    return BlackLittermanPosterior(
+        tickers=list(covariance_result.tickers),
+        covariance_result=covariance_result,
+        market_weights=np.asarray(market_weights, dtype=float),
+        implied_returns=np.asarray(implied_returns, dtype=float),
+        posterior_returns=np.asarray(posterior_returns, dtype=float),
+        posterior_covariance=np.asarray(posterior_covariance, dtype=float),
+        views_q=np.asarray(q, dtype=float),
+        omega_diag=np.asarray(omega_diag, dtype=float),
+        tau=float(tau),
+        risk_aversion=float(risk_aversion),
+        score_scale=float(score_scale),
     )
-
-    optimized = _solve_long_only_weights(
-        posterior_returns=posterior,
-        covariance=cov,
-        market_weights=market_weights,
-        max_weight=active_constraints.max_weight,
-        risk_aversion=risk_aversion,
-    )
-    raw = pd.Series(optimized, index=tickers, dtype=float)
-    return apply_weight_constraints(raw, ranking=tickers, constraints=active_constraints)
 
 
 def _solve_long_only_weights(
@@ -97,7 +216,7 @@ def _solve_long_only_weights(
     constraints = [{"type": "eq", "fun": lambda weights: float(np.sum(weights) - 1.0)}]
 
     def objective(weights: np.ndarray) -> float:
-        risk_term = 0.5 * risk_aversion * float(weights.T @ covariance @ weights)
+        risk_term = 0.5 * float(risk_aversion) * float(weights.T @ covariance @ weights)
         return risk_term - float(posterior_returns @ weights)
 
     result = minimize(
@@ -117,6 +236,48 @@ def _solve_long_only_weights(
         return x0
     fallback = fallback / float(fallback.sum())
     return fallback
+
+
+def _vectorize_previous_weights(
+    *,
+    prev_weights: dict[str, float] | pd.Series | None,
+    tickers: list[str],
+) -> np.ndarray | None:
+    if prev_weights is None:
+        return None
+    series = pd.Series(prev_weights, dtype=float)
+    series.index = series.index.astype(str).str.upper()
+    return series.reindex(tickers).fillna(0.0).to_numpy(dtype=float)
+
+
+def _liquidity_to_adv_vector(
+    *,
+    dollar_liquidity: pd.Series,
+    tickers: list[str],
+) -> np.ndarray:
+    liquidity = (
+        pd.Series(dollar_liquidity, dtype=float)
+        .reindex(tickers)
+        .replace([np.inf, -np.inf], np.nan)
+        .fillna(0.0)
+        .clip(lower=0.0)
+    )
+    return liquidity.to_numpy(dtype=float)
+
+
+def _resolve_adv_vector(
+    *,
+    adv: np.ndarray | None,
+    dollar_liquidity: pd.Series,
+    tickers: list[str],
+) -> np.ndarray:
+    if adv is None:
+        return _liquidity_to_adv_vector(dollar_liquidity=dollar_liquidity, tickers=tickers)
+
+    adv_array = np.asarray(adv, dtype=float).reshape(-1)
+    if adv_array.shape[0] == len(tickers):
+        return adv_array
+    return _liquidity_to_adv_vector(dollar_liquidity=dollar_liquidity, tickers=tickers)
 
 
 def _zscore(values: np.ndarray) -> np.ndarray:
