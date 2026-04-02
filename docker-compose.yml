@@ -61,10 +61,45 @@ services:
     networks:
       - quantedge_net
 
+  airflow:
+    image: apache/airflow:2.9-python3.11
+    command: standalone
+    restart: on-failure
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "False"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - airflow_home:/opt/airflow
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2).read(1)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 5m
+    networks:
+      - quantedge_net
+
 volumes:
   pgdata:
   redisdata:
   mlflow_data:
+  airflow_home:
 
 networks:
   quantedge_net:
