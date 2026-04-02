@@ -913,9 +913,86 @@ subject to:
 
 ---
 
+### 4.5 Phase 2 修复计划：严格对齐准出标准
+
+> **背景：** Phase 1 Go/No-Go 结果为 CONDITIONAL_GO 4/6，Phase 2 (W11-18) 已完成但存在多项偏差。
+> 本修复计划在进入 Phase 3 之前，将所有缺口逐一修复，确保 G3 + G4 Gate 完全达标 (6/6)。
+
+#### Batch 1: Alpha 增强 (G3 Gate 修复)
+
+| 序号 | 任务 | 交付物 | 验收标准 |
+|------|------|--------|----------|
+| R1.1 | 持仓周期优化 | 1W/2W/4W/8W 对比报告 | 找到 net excess > 5% 的配置 |
+| R1.2 | 短期 Horizon IC 筛选 | 10D/20D 专门 IC 筛选报告 | 识别短期有效特征子集 |
+| R1.3 | 短期模型训练 | 10D/20D Ridge 8窗口 Walk-Forward | IC/ICIR/net excess 完整报告 |
+| R1.4 | 多 Horizon 信号融合 | 60D + 20D 加权融合 + SPA 检验 | 融合是否显著优于单一 60D |
+| R1.5 | 最佳配置确认 | 最终配置方案 | net excess > 5% + Bootstrap CI > 0 |
+
+**核心假设：** 60D 信号最强 (IC 0.071) 但 1W 调仓无法完整捕获。延长持仓周期可大幅降低换手成本，有望将 net excess 从 2.78% 提升至 5%+。
+
+#### Batch 2: CVXPY + 成本模型修复
+
+| 序号 | 任务 | 交付物 | 验收标准 |
+|------|------|--------|----------|
+| R2.1 | CVXPY 约束松弛策略 | 修改 `constraints.py` | Fallback rate < 15% (当前 45%) |
+| R2.2 | 成本模型默认参数更新 | 修改 `cost_model.py` | 默认 eta=0.426, gamma=0.942 |
+| R2.3 | SPA 对比重跑 | 更新 portfolio comparison | 确认修复后结果一致 |
+
+**目标：** 满足 Plan 15.3 "所有约束可正常求解" 和 Shadow Mode checklist "优化器各种条件下均可收敛"。
+
+#### Batch 3: Airflow DAG 真实化
+
+| 序号 | 任务 | 交付物 | 验收标准 |
+|------|------|--------|----------|
+| R3.1 | Airflow 部署验证 | Docker 启动 + Web UI 截图 | Web UI 可访问 (port 8080) |
+| R3.2 | `dag_daily_data` 真实化 | 调用 `src/data/` 模块 | 可执行数据拉取+质量检查 |
+| R3.3 | `dag_weekly_signal` 真实化 | 调用 `src/features/` + `src/models/` | 可执行特征计算+模型推理 |
+| R3.4 | `dag_weekly_rebalance` 真实化 | 调用 `src/portfolio/` + `src/risk/` | 风控检查+生成下单指令 |
+| R3.5 | DAG 端到端测试 | 至少一次完整执行记录 | 所有 task 成功完成 |
+
+**目标：** 满足 Plan 13.1-13.4 "每日自动拉取+质量检查" / "周五收盘后自动推理" 等验收标准。
+
+#### Batch 4: Phase 1 Tech Debt 清扫
+
+| 序号 | 任务 | 交付物 | 验收标准 |
+|------|------|--------|----------|
+| R4.1 | FRED Alembic 迁移 | `alembic/versions/` 新迁移文件 | `alembic upgrade head` 成功 |
+| R4.2 | Macro 特征评估 | 评估报告 | 16 个 macro 特征: drop 或转 regime indicator |
+| R4.3 | `best_alpha` → `best_hyperparams` | 代码重命名 | 全项目一致 |
+| R4.4 | MLflow 补充 logging | 修改训练流程 | top_decile_return, long_short_return, turnover |
+| R4.5 | PIT 回归测试加强 | `tests/` 新增测试 | shares 字段覆盖 |
+| R4.6 | FeaturePipeline E2E 测试 | `tests/` 新增测试 | 端到端管道可验证 |
+| R4.7 | dividend_yield/eps_surprise 文档 | 数据缺口标注 | DATA_GAP 明确记录 |
+| R4.8 | MLflow artifact 路径修复 | 配置更新 | 写入可控路径 |
+
+**目标：** 满足 Plan 17.4 "所有已知问题修复" 验收标准。
+
+#### Batch 5: 全量重新验证
+
+| 序号 | 任务 | 交付物 | 验收标准 |
+|------|------|--------|----------|
+| R5.1 | 最佳配置 Walk-Forward 重跑 | 8窗口完整报告 | 使用 Batch 1 最佳配置 |
+| R5.2 | Shadow Mode 重跑 | 更新 shadow_mode_report.json | 6/6 checklist 全绿 |
+| R5.3 | 压力测试重跑 | 更新 stress_test_report.json | 全部 pass |
+| R5.4 | 最终 Go/No-Go | Phase 1 Alpha 报告 v3 | **目标 6/6 全部通过** |
+| R5.5 | Git 推送 | main 推送到 remote | 所有 commits 同步 |
+
+**G3 Gate 目标 (6/6)：**
+
+| # | 标准 | 阈值 | 目标 |
+|---|------|------|------|
+| 1 | OOS IC | > 0.03 | ✅ 已达标 (0.072) |
+| 2 | DSR p-value | < 0.05 | ✅ 已达标 (0.033) |
+| 3 | 成本后年化超额 | > 5% | 🎯 Batch 1 修复 |
+| 4 | Bootstrap CI 下限 | > 0 | 🎯 Batch 1 修复 |
+| 5 | 最大回撤 | < 20% | ✅ 已达标 (10.9%) |
+| 6 | 周度换手率 | < 30% | ✅ 已达标 (4.8%) |
+
+---
+
 ## 5. Phase 3: 产品化与用户系统（第 19-28 周）
 
-> **前置条件：** Shadow Mode 运行 4 周无异常。
+> **前置条件：** Shadow Mode 运行 4 周无异常 + G3 Gate 6/6 通过。
 > **核心目标：** 将量化引擎封装为用户可用的 Web 产品。
 
 ### 5.1 第 19-21 周：后端 API + 前端 Dashboard
