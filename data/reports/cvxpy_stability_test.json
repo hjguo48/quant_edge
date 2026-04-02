@@ -1,0 +1,136 @@
+{
+  "after": {
+    "fallback_rate": 0.0,
+    "pass": true,
+    "relaxed_share": 0.0,
+    "solver_status_counts": {
+      "optimal": 196
+    },
+    "target_fallback_rate": 0.15,
+    "windows": [
+      {
+        "fallback_rate": 0.0,
+        "relaxed_share": 0.0,
+        "solver_status_counts": {
+          "optimal": 25
+        },
+        "test_period": "2021-07-01 -> 2021-12-31",
+        "window_id": "W1"
+      },
+      {
+        "fallback_rate": 0.0,
+        "relaxed_share": 0.0,
+        "solver_status_counts": {
+          "optimal": 23
+        },
+        "test_period": "2022-01-01 -> 2022-06-30",
+        "window_id": "W2"
+      },
+      {
+        "fallback_rate": 0.0,
+        "relaxed_share": 0.0,
+        "solver_status_counts": {
+          "optimal": 26
+        },
+        "test_period": "2022-07-01 -> 2022-12-31",
+        "window_id": "W3"
+      },
+      {
+        "fallback_rate": 0.0,
+        "relaxed_share": 0.0,
+        "solver_status_counts": {
+          "optimal": 24
+        },
+        "test_period": "2023-01-01 -> 2023-06-30",
+        "window_id": "W4"
+      },
+      {
+        "fallback_rate": 0.0,
+        "relaxed_share": 0.0,
+        "solver_status_counts": {
+          "optimal": 25
+        },
+        "test_period": "2023-07-01 -> 2023-12-31",
+        "window_id": "W5"
+      },
+      {
+        "fallback_rate": 0.0,
+        "relaxed_share": 0.0,
+        "solver_status_counts": {
+          "optimal": 24
+        },
+        "test_period": "2024-01-01 -> 2024-06-30",
+        "window_id": "W6"
+      },
+      {
+        "fallback_rate": 0.0,
+        "relaxed_share": 0.0,
+        "solver_status_counts": {
+          "optimal": 25
+        },
+        "test_period": "2024-07-01 -> 2024-12-31",
+        "window_id": "W7"
+      },
+      {
+        "fallback_rate": 0.0,
+        "relaxed_share": 0.0,
+        "solver_status_counts": {
+          "optimal": 24
+        },
+        "test_period": "2025-01-01 -> 2025-06-30",
+        "window_id": "W8"
+      }
+    ]
+  },
+  "before": {
+    "fallback_rate": 0.4489795918367347,
+    "solver_status_counts": {
+      "fallback": 88,
+      "optimal": 108
+    },
+    "source": "/home/jiahao/quant_edge/data/reports/portfolio_optimization_comparison.json"
+  },
+  "comparison": {
+    "fallback_count_improvement": 88,
+    "fallback_rate_improvement": 0.4489795918367347
+  },
+  "constraint_relaxation_strategy": {
+    "attempts": [
+      "standard constraints",
+      "relaxed beta to at least [0.7, 1.3] with adaptive sector lower bounds and max sector deviation >= 15%",
+      "relaxed beta to at least [0.6, 1.4] with adaptive sector lower bounds and max sector deviation >= 20%"
+    ],
+    "fallback_logic_changed": false,
+    "solver_sequence": [
+      "OSQP",
+      "CLARABEL",
+      "SCS"
+    ],
+    "status_values": [
+      "optimal",
+      "optimal_relaxed",
+      "fallback"
+    ]
+  },
+  "cost_model_defaults": {
+    "calibration_note": "Default Almgren-Chriss impact parameters were recalibrated in Week 15-16 from 5,675 historical execution samples. The original defaults (eta=0.142, gamma=0.314) materially understated realized impact; the calibrated defaults are eta=0.426 and gamma=0.942.",
+    "commission_per_share": 0.005,
+    "eta": 0.426,
+    "gamma": 0.942,
+    "gap_penalty_multiplier": 0.5,
+    "gap_penalty_threshold": 0.02,
+    "low_volume_temp_impact_multiplier": 2.0,
+    "low_volume_threshold": 0.3,
+    "min_spread_bps": 2.0
+  },
+  "generated_at_utc": "2026-04-02T10:05:11.529242+00:00",
+  "git_branch": "feature/batch2-cvxpy-cost-fix",
+  "inputs": {
+    "baseline_report_path": "/home/jiahao/quant_edge/data/reports/portfolio_optimization_comparison.json",
+    "benchmark_ticker": "SPY",
+    "extended_report_path": "/home/jiahao/quant_edge/data/reports/extended_walkforward.json",
+    "predictions_path": "/home/jiahao/quant_edge/data/backtest/extended_walkforward_predictions.parquet",
+    "prices_path": "/home/jiahao/quant_edge/data/backtest/extended_walkforward_prices.parquet"
+  },
+  "script": "scripts/run_cvxpy_stability_test.py"
+}

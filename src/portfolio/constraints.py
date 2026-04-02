@@ -107,48 +107,70 @@ class CVXPYOptimizer:
             adv_caps = np.minimum(float(max_weight), liquidity_caps)
             adv_caps = np.clip(adv_caps, 1e-4, float(max_weight))
 
-        weight = cp.Variable(n_assets, nonneg=True)
-        objective = (
-            mu @ weight
-            - float(lambda_risk) * cp.quad_form(weight, sigma)
-            - float(lambda_turnover) * cp.norm1(weight - prev)
-        )
-        constraints = [
-            cp.sum(weight) == 1.0,
-            weight <= adv_caps,
-        ]
-
-        if sector_map and benchmark_sector_weights:
-            for sector in sorted(set(benchmark_sector_weights)):
-                members = [index for index, ticker in enumerate(names) if sector_map.get(ticker) == sector]
-                if not members:
-                    continue
-                sector_weight = cp.sum(weight[members])
-                benchmark_weight = float(benchmark_sector_weights.get(sector, 0.0))
-                constraints.append(sector_weight <= benchmark_weight + float(max_sector_deviation))
-                constraints.append(sector_weight >= max(0.0, benchmark_weight - float(max_sector_deviation)))
-
+        betas = None
         if stock_betas is not None:
             betas = np.asarray(stock_betas, dtype=float).reshape(-1)
             if betas.shape[0] != n_assets:
                 raise ValueError("stock_betas length must match tickers length.")
-            constraints.append(betas @ weight >= float(beta_bounds[0]))
-            constraints.append(betas @ weight <= float(beta_bounds[1]))
-        else:
-            betas = None
 
-        problem = cp.Problem(cp.Maximize(objective), constraints)
-        status = "unknown"
-        for solver in [cp.CLARABEL, cp.OSQP, cp.SCS]:
-            try:
-                problem.solve(solver=solver, verbose=False)
-            except Exception:
+        attempt_profiles = [
+            {
+                "status": "optimal",
+                "max_sector_deviation": float(max_sector_deviation),
+                "beta_bounds": tuple(float(value) for value in beta_bounds),
+                "adaptive_sector_lower_bound": False,
+            },
+            {
+                "status": "optimal_relaxed",
+                "max_sector_deviation": max(float(max_sector_deviation), 0.15),
+                "beta_bounds": _relax_beta_bounds(beta_bounds, target=(0.7, 1.3)),
+                "adaptive_sector_lower_bound": True,
+            },
+            {
+                "status": "optimal_relaxed",
+                "max_sector_deviation": max(float(max_sector_deviation), 0.20),
+                "beta_bounds": _relax_beta_bounds(beta_bounds, target=(0.6, 1.4)),
+                "adaptive_sector_lower_bound": True,
+            },
+        ]
+
+        result_weights: pd.Series | None = None
+        final = np.zeros(n_assets, dtype=float)
+        status = "fallback"
+
+        for profile in attempt_profiles:
+            solution = _solve_cvxpy_attempt(
+                mu=mu,
+                sigma=sigma,
+                prev=prev,
+                adv_caps=adv_caps,
+                names=names,
+                sector_map=sector_map,
+                benchmark_sector_weights=benchmark_sector_weights,
+                betas=betas,
+                max_sector_deviation=float(profile["max_sector_deviation"]),
+                beta_bounds=tuple(profile["beta_bounds"]),
+                lambda_risk=float(lambda_risk),
+                lambda_turnover=float(lambda_turnover),
+                adaptive_sector_lower_bound=bool(profile["adaptive_sector_lower_bound"]),
+            )
+            if solution is None:
                 continue
-            status = str(problem.status)
-            if status in {"optimal", "optimal_inaccurate"}:
-                break
+            raw = pd.Series(solution, index=names, dtype=float).clip(lower=0.0)
+            raw = normalize_weights(raw)
+            raw = cap_weights(raw, max_weight=float(max_weight))
+            raw = _ensure_minimum_holdings_posthoc(
+                raw,
+                ranking=[names[index] for index in np.argsort(-mu)],
+                min_holdings=min_holdings,
+                max_weight=float(max_weight),
+            )
+            final = raw.reindex(names).fillna(0.0).to_numpy(dtype=float)
+            result_weights = raw
+            status = str(profile["status"])
+            break
 
-        if weight.value is None or status not in {"optimal", "optimal_inaccurate"}:
+        if result_weights is None:
             fallback = pd.Series(np.clip(mu, 0.0, None), index=names, dtype=float)
             if float(fallback.sum()) <= 0.0:
                 fallback = pd.Series(1.0, index=names, dtype=float)
@@ -163,18 +185,6 @@ class CVXPYOptimizer:
             result_weights = result_weights.reindex(names).fillna(0.0)
             final = result_weights.to_numpy(dtype=float)
             status = "fallback"
-        else:
-            raw = pd.Series(np.asarray(weight.value, dtype=float).reshape(-1), index=names, dtype=float).clip(lower=0.0)
-            raw = normalize_weights(raw)
-            raw = cap_weights(raw, max_weight=float(max_weight))
-            raw = _ensure_minimum_holdings_posthoc(
-                raw,
-                ranking=[names[index] for index in np.argsort(-mu)],
-                min_holdings=min_holdings,
-                max_weight=float(max_weight),
-            )
-            final = raw.reindex(names).fillna(0.0).to_numpy(dtype=float)
-            result_weights = raw
 
         expected_return_value = float(mu @ final)
         expected_risk_value = float(final.T @ sigma @ final)
@@ -196,6 +206,110 @@ class CVXPYOptimizer:
             solver_status=status,
             objective_value=objective_value,
         )
+
+
+def _solve_cvxpy_attempt(
+    *,
+    mu: np.ndarray,
+    sigma: np.ndarray,
+    prev: np.ndarray,
+    adv_caps: np.ndarray,
+    names: list[str],
+    sector_map: Mapping[str, str] | None,
+    benchmark_sector_weights: Mapping[str, float] | None,
+    betas: np.ndarray | None,
+    max_sector_deviation: float,
+    beta_bounds: tuple[float, float],
+    lambda_risk: float,
+    lambda_turnover: float,
+    adaptive_sector_lower_bound: bool,
+) -> np.ndarray | None:
+    if cp is None:
+        return None
+
+    weight = cp.Variable(len(names), nonneg=True)
+    objective = (
+        mu @ weight
+        - float(lambda_risk) * cp.quad_form(weight, cp.psd_wrap(sigma))
+        - float(lambda_turnover) * cp.norm1(weight - prev)
+    )
+    constraints = [
+        cp.sum(weight) == 1.0,
+        weight <= adv_caps,
+    ]
+    constraints.extend(
+        _build_sector_constraints(
+            weight=weight,
+            names=names,
+            adv_caps=adv_caps,
+            sector_map=sector_map,
+            benchmark_sector_weights=benchmark_sector_weights,
+            max_sector_deviation=max_sector_deviation,
+            adaptive_sector_lower_bound=adaptive_sector_lower_bound,
+        ),
+    )
+    if betas is not None:
+        constraints.append(betas @ weight >= float(beta_bounds[0]))
+        constraints.append(betas @ weight <= float(beta_bounds[1]))
+
+    problem = cp.Problem(cp.Maximize(objective), constraints)
+    for solver, kwargs in _solver_attempt_sequence():
+        try:
+            problem.solve(solver=solver, verbose=False, warm_start=True, **kwargs)
+        except Exception:
+            continue
+        if str(problem.status) in {"optimal", "optimal_inaccurate"} and weight.value is not None:
+            return np.asarray(weight.value, dtype=float).reshape(-1)
+    return None
+
+
+def _solver_attempt_sequence() -> list[tuple[str, dict[str, Any]]]:
+    if cp is None:
+        return []
+    return [
+        (cp.OSQP, {"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iter": 20_000, "polish": True}),
+        (cp.CLARABEL, {"max_iter": 2_000}),
+        (cp.SCS, {"eps": 1e-5, "max_iters": 20_000}),
+    ]
+
+
+def _build_sector_constraints(
+    *,
+    weight: Any,
+    names: list[str],
+    adv_caps: np.ndarray,
+    sector_map: Mapping[str, str] | None,
+    benchmark_sector_weights: Mapping[str, float] | None,
+    max_sector_deviation: float,
+    adaptive_sector_lower_bound: bool,
+) -> list[Any]:
+    if not sector_map or not benchmark_sector_weights:
+        return []
+
+    constraints: list[Any] = []
+    for sector in sorted(set(benchmark_sector_weights)):
+        members = [index for index, ticker in enumerate(names) if sector_map.get(ticker) == sector]
+        if not members:
+            continue
+        sector_weight = cp.sum(weight[members])
+        benchmark_weight = float(benchmark_sector_weights.get(sector, 0.0))
+        lower_bound = max(0.0, benchmark_weight - float(max_sector_deviation))
+        if adaptive_sector_lower_bound:
+            lower_bound = min(lower_bound, float(np.sum(adv_caps[members])))
+        upper_bound = min(1.0, benchmark_weight + float(max_sector_deviation))
+        constraints.append(sector_weight <= upper_bound)
+        if lower_bound > 1e-9:
+            constraints.append(sector_weight >= lower_bound)
+    return constraints
+
+
+def _relax_beta_bounds(
+    beta_bounds: tuple[float, float],
+    *,
+    target: tuple[float, float],
+) -> tuple[float, float]:
+    lower, upper = (float(beta_bounds[0]), float(beta_bounds[1]))
+    return (min(lower, float(target[0])), max(upper, float(target[1])))
 
 
 def apply_weight_constraints(
