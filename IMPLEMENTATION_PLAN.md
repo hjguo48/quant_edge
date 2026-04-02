@@ -977,15 +977,21 @@ subject to:
 
 #### Batch 5: 全量重新验证 + Live Pipeline 验证
 
-| 序号 | 任务 | 交付物 | 验收标准 |
-|------|------|--------|----------|
-| R5.1 | 最佳配置 Walk-Forward 重跑 | 8窗口完整报告 | 使用 Batch 1 最佳配置 |
-| R5.2 | Live Pipeline 端到端运行 | 实时数据→特征→推理→组合→风控 | 全链路一次成功执行 |
-| R5.3 | Shadow Mode 重跑 (含 Live) | 更新 shadow_mode_report.json | 6/6 checklist 全绿，含实时数据验证 |
-| R5.4 | 压力测试重跑 | 更新 stress_test_report.json | 全部 pass |
-| R5.5 | Live IC 一致性验证 | Live 推理 IC vs 回测 IC | 误差 < 20% |
-| R5.6 | 最终 Go/No-Go | Phase 1 Alpha 报告 v3 | **目标 6/6 全部通过** |
-| R5.7 | Git 推送 | main 推送到 remote | 所有 commits 同步 |
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R5.1 | 最佳配置 Walk-Forward 重跑 | 8窗口完整报告 | 使用 Batch 1 最佳配置 | ✅ signal_fusion_experiment.json |
+| R5.2 | Live Pipeline 端到端运行 | 实时数据→特征→推理→组合→风控 | 全链路一次成功执行 | ⬜ → Day 0 冷启动 |
+| R5.3 | Shadow Mode 重跑 (含 Live) | 更新 shadow_mode_report.json | 6/6 checklist 全绿，含实时数据验证 | ✅ 6/6 |
+| R5.4 | 压力测试重跑 | 更新 stress_test_report.json | 全部 pass | ✅ 26/26 |
+| R5.5 | Live IC 一致性验证 | Live 推理 IC vs 回测 IC | 误差 < 20% | ⬜ → Day 0 冷启动 |
+| R5.6 | 最终 Go/No-Go | Phase 1 Alpha 报告 v3 | **目标 6/6 全部通过** | ✅ 5/6 CONDITIONAL_GO |
+| R5.7 | Git 分支合并 | 3 feature branches → main | 无冲突合并 | ✅ |
+| R5.8 | Git 推送 | main 推送到 remote | 所有 commits 同步 | ⬜ |
+
+**结果 (2026-04-02):**
+- R5.1/R5.3/R5.4/R5.6: 已完成，报告已生成
+- R5.7: 合并 alpha-enhancement + batch3-airflow-real + batch4-tech-debt → main
+- R5.2/R5.5: 需要 Airflow 真实运行，移至 Day 0 冷启动执行
 
 **G3 Gate 最终状态 (5/6)：**
 
