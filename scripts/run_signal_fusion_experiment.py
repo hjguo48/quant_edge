@@ -122,17 +122,28 @@ def main(argv: list[str] | None = None) -> int:
     )
     scheme_config = extract_base_scheme(holding_period_report)
 
-    short_model_payload, model_prediction_bundles = run_short_horizon_models(
-        feature_matrix=feature_matrix,
-        label_series_by_horizon=label_series_by_horizon,
-        selected_features_by_horizon=selected_features_by_horizon,
-        prices=prices,
-        cost_model=cost_model,
-        scheme_config=scheme_config,
-        benchmark_ticker=args.benchmark_ticker,
-    )
-    write_json_atomic(REPO_ROOT / args.models_report_path, json_safe(make_report_safe_payload(short_model_payload)))
-    logger.info("saved short-horizon model report to {}", REPO_ROOT / args.models_report_path)
+    models_report_path = REPO_ROOT / args.models_report_path
+    if args.reuse_models and models_report_path.exists():
+        short_model_payload = json.loads(models_report_path.read_text())
+        model_prediction_bundles = build_short_horizon_prediction_bundles(
+            feature_matrix=feature_matrix,
+            label_series_by_horizon=label_series_by_horizon,
+            selected_features_by_horizon=selected_features_by_horizon,
+            benchmark_ticker=args.benchmark_ticker,
+        )
+        logger.info("reused short-horizon model report from {}", models_report_path)
+    else:
+        short_model_payload, model_prediction_bundles = run_short_horizon_models(
+            feature_matrix=feature_matrix,
+            label_series_by_horizon=label_series_by_horizon,
+            selected_features_by_horizon=selected_features_by_horizon,
+            prices=prices,
+            cost_model=cost_model,
+            scheme_config=scheme_config,
+            benchmark_ticker=args.benchmark_ticker,
+        )
+        write_json_atomic(models_report_path, json_safe(make_report_safe_payload(short_model_payload)))
+        logger.info("saved short-horizon model report to {}", models_report_path)
 
     baseline_60d_bundle = load_predictions_by_window(baseline_predictions_frame)
     baseline_60d_series = series_from_records(
@@ -186,6 +197,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--benchmark-ticker", default=BENCHMARK_TICKER)
     parser.add_argument("--ic-threshold", type=float, default=IC_THRESHOLD)
     parser.add_argument("--reuse-screening", action="store_true")
+    parser.add_argument("--reuse-models", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -288,6 +300,50 @@ def extract_base_scheme(holding_period_report: dict[str, Any]) -> dict[str, Any]
         "max_weight": float(base["max_weight"]),
         "min_holdings": int(base["min_holdings"]),
     }
+
+
+def build_short_horizon_prediction_bundles(
+    *,
+    feature_matrix: pd.DataFrame,
+    label_series_by_horizon: dict[int, pd.Series],
+    selected_features_by_horizon: dict[int, list[str]],
+    benchmark_ticker: str,
+) -> dict[int, dict[str, pd.Series]]:
+    windows = extended_walkforward_windows()
+    engine = WalkForwardEngine(
+        alpha_grid=DEFAULT_ALPHA_GRID,
+        benchmark_ticker=benchmark_ticker,
+        tracking_uri=DEFAULT_MLFLOW_TRACKING_URI,
+    )
+    prediction_bundles: dict[int, dict[str, pd.Series]] = {}
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+    for horizon in MODEL_HORIZONS:
+        selected_features = selected_features_by_horizon[horizon]
+        if not selected_features:
+            raise RuntimeError(f"No selected features available for {horizon}D.")
+
+        X = feature_matrix.loc[:, selected_features]
+        y = label_series_by_horizon[horizon]
+        aligned_X, aligned_y = align_panel(X, y)
+        prediction_bundle: dict[str, pd.Series] = {}
+
+        for window in windows:
+            result = engine.run_window(
+                X=aligned_X,
+                y=aligned_y,
+                prices=None,
+                window=window,
+                target_horizon=f"{horizon}D",
+                window_id=f"{window.window_id}_{horizon}D_alpha_enhancement",
+                timestamp=timestamp,
+                simulate_portfolio=False,
+            )
+            prediction_bundle[window.window_id] = result.test_predictions
+
+        prediction_bundles[horizon] = prediction_bundle
+
+    return prediction_bundles
 
 
 def run_short_horizon_models(
