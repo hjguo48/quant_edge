@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from urllib.parse import quote_plus
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_MLFLOW_DB_PATH = REPO_ROOT / "mlflow.db"
+DEFAULT_MLFLOW_TRACKING_URI = f"sqlite:///{DEFAULT_MLFLOW_DB_PATH.as_posix()}"
 
 
 class Settings(BaseSettings):
@@ -16,7 +21,7 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
 
-    MLFLOW_TRACKING_URI: str = "http://127.0.0.1:5001"
+    MLFLOW_TRACKING_URI: str = DEFAULT_MLFLOW_TRACKING_URI
 
     POLYGON_API_KEY: str = ""
     FRED_API_KEY: str = ""
