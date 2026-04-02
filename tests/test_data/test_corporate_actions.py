@@ -5,7 +5,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from src.data.corporate_actions import adjust_for_dividends, adjust_for_splits
+from src.data.corporate_actions import adjust_for_dividends, adjust_for_splits, fetch_corporate_actions
 
 
 def test_adjust_for_splits_multi_ticker() -> None:
@@ -72,3 +72,44 @@ def test_adjust_for_dividends_multi_ticker() -> None:
     assert aaa_pre_dividend["close"] == pytest.approx(100.0 * adjustment_factor)
     assert aaa_ex_date["close"] == pytest.approx(98.0)
     assert bbb_row["close"] == pytest.approx(51.0)
+
+
+def test_fetch_corporate_actions_uses_polygon_ticker_mapping(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested_tickers: list[str] = []
+    persisted: dict[str, object] = {}
+
+    def fake_iterate_polygon_results(
+        session: object,
+        url: str,
+        params: dict[str, object],
+        *,
+        throttle: object,
+    ) -> list[dict[str, object]]:
+        requested_tickers.append(str(params["ticker"]))
+        if "splits" in url:
+            return [{"ticker": "BRK.B", "execution_date": "2024-01-03", "split_from": 1, "split_to": 2}]
+        return [{"ticker": "BRK.B", "ex_dividend_date": "2024-01-04", "cash_amount": 1.25}]
+
+    monkeypatch.setattr("src.data.corporate_actions._get_http_session", lambda: object())
+    monkeypatch.setattr("src.data.corporate_actions._iterate_polygon_results", fake_iterate_polygon_results)
+    monkeypatch.setattr(
+        "src.data.corporate_actions._persist_corporate_actions",
+        lambda frame, tickers, start, end: persisted.update(
+            {
+                "frame": frame.copy(),
+                "tickers": tickers,
+                "start": start,
+                "end": end,
+            },
+        ),
+    )
+
+    frame = fetch_corporate_actions(["BRK-B"], date(2024, 1, 1), date(2024, 1, 31))
+
+    assert requested_tickers == ["BRK.B", "BRK.B"]
+    assert frame["ticker"].tolist() == ["BRK-B", "BRK-B"]
+    assert frame["details_json"].tolist()[0]["ticker"] == "BRK-B"
+    assert frame["details_json"].tolist()[1]["ticker"] == "BRK-B"
+    assert persisted["tickers"] == ("BRK-B",)

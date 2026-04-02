@@ -16,6 +16,7 @@ from src.config import settings
 from src.data.db.models import CorporateAction, Stock
 from src.data.db.session import get_session_factory
 from src.data.sources.base import DataSourceAuthError, DataSourceError, DataSourceTransientError, RetryConfig
+from src.data.sources.polygon import normalize_polygon_ticker, to_polygon_request_ticker
 
 
 class _PolygonRequestThrottle:
@@ -176,7 +177,7 @@ def fetch_corporate_actions(
     *,
     min_request_interval: float = 0.0,
 ) -> pd.DataFrame:
-    normalized_tickers = tuple(dict.fromkeys(ticker.strip().upper() for ticker in tickers if ticker))
+    normalized_tickers = tuple(dict.fromkeys(normalize_polygon_ticker(ticker) for ticker in tickers if ticker))
     if not normalized_tickers:
         raise ValueError("At least one ticker is required.")
 
@@ -240,10 +241,11 @@ def _fetch_splits(
     throttle: _PolygonRequestThrottle,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    provider_ticker = to_polygon_request_ticker(ticker)
     for item in _iterate_polygon_results(
         session,
         "https://api.polygon.io/v3/reference/splits",
-        {"ticker": ticker, "limit": 1_000, "sort": "execution_date"},
+        {"ticker": provider_ticker, "limit": 1_000, "sort": "execution_date"},
         throttle=throttle,
     ):
         ex_date = pd.to_datetime(item.get("execution_date"), errors="coerce")
@@ -267,7 +269,7 @@ def _fetch_splits(
                 "ratio": ratio,
                 "old_ticker": None,
                 "new_ticker": None,
-                "details_json": item,
+                "details_json": _normalize_polygon_payload_tickers(item),
             },
         )
     return rows
@@ -281,10 +283,11 @@ def _fetch_dividends(
     throttle: _PolygonRequestThrottle,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    provider_ticker = to_polygon_request_ticker(ticker)
     for item in _iterate_polygon_results(
         session,
         "https://api.polygon.io/v3/reference/dividends",
-        {"ticker": ticker, "limit": 1_000, "sort": "ex_dividend_date"},
+        {"ticker": provider_ticker, "limit": 1_000, "sort": "ex_dividend_date"},
         throttle=throttle,
     ):
         ex_date = pd.to_datetime(item.get("ex_dividend_date"), errors="coerce")
@@ -303,10 +306,19 @@ def _fetch_dividends(
                 "ratio": Decimal(str(cash_amount)) if cash_amount is not None else None,
                 "old_ticker": None,
                 "new_ticker": None,
-                "details_json": item,
+                "details_json": _normalize_polygon_payload_tickers(item),
             },
         )
     return rows
+
+
+def _normalize_polygon_payload_tickers(payload: dict[str, Any]) -> dict[str, Any]:
+    normalized = payload.copy()
+    for field_name in ("ticker", "underlying_ticker", "old_ticker", "new_ticker"):
+        field_value = normalized.get(field_name)
+        if isinstance(field_value, str):
+            normalized[field_name] = normalize_polygon_ticker(field_value)
+    return normalized
 
 
 def _iterate_polygon_results(
