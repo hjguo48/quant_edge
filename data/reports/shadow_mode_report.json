@@ -1,0 +1,443 @@
+{
+  "champion_challenger_summary": {
+    "accumulated": {
+      "challenger_mean_ic": 0.06622143856570245,
+      "champion_mean_ic": 0.0718846301185171,
+      "consecutive_challenger_wins": 1,
+      "total_periods": 8
+    },
+    "promotion_decision": {
+      "consecutive_wins": 1,
+      "reason": "Challenger has not cleared the four-period consecutive win requirement.",
+      "recommend_promotion": false,
+      "required_wins": 4
+    }
+  },
+  "generated_at_utc": "2026-04-02T09:31:30.906292+00:00",
+  "git_branch": "feature/week17-shadow-mode",
+  "known_issues": {
+    "cost_calibration": {
+      "calibrated": {
+        "eta": 0.42599999999999993,
+        "gamma": 0.942
+      },
+      "calibration_ratio": 3.0,
+      "original": {
+        "eta": 0.142,
+        "gamma": 0.314
+      },
+      "sample_count": 5675
+    },
+    "cvxpy_fallback": {
+      "historical_solver_status_counts": {
+        "fallback": 88,
+        "optimal": 108
+      },
+      "note": "Champion production remains equal_weight_buffered. CVXPY fallback remains documented rather than enabled in shadow mode."
+    }
+  },
+  "pipeline_summary": {
+    "average_pipeline_duration_seconds": 31.682062216499617,
+    "pipeline_success_rate": 1.0,
+    "total_rebalance_periods": 196,
+    "windows_simulated": 8
+  },
+  "registry_champion": {
+    "model_name": "ridge_60d",
+    "registered_challengers": 0,
+    "run_id": "81ca402814bd4069a4e09e4d37ffe1b0",
+    "stage": "Production",
+    "version": 1
+  },
+  "script": "run_shadow_mode.py",
+  "shadow_mode_checklist": {
+    "audit_trail_complete": true,
+    "failsafe_tested": true,
+    "ic_within_expected_range": true,
+    "optimizer_converged": true,
+    "risk_rules_correctly_triggered": true,
+    "signals_generated_no_missing": true
+  },
+  "weekly_reports": [
+    {
+      "challenger": {
+        "ic": 0.0639438425580444,
+        "net_excess": -0.059301942408336084,
+        "rank_ic": 0.019766277362598058
+      },
+      "champion": {
+        "ic": 0.07101281303069777,
+        "net_excess": -0.047505182499657295,
+        "portfolio_holdings": 102,
+        "rank_ic": 0.02061947256354366,
+        "turnover": 0.040235691613917976
+      },
+      "champion_vs_challenger": "champion_wins",
+      "period": {
+        "end": "2022-01-03",
+        "start": "2021-07-06"
+      },
+      "risk_checks": {
+        "layer1_data": {
+          "feature_drift_alerts": 0,
+          "missing_rate": 0.04771371769383698,
+          "status": "GREEN"
+        },
+        "layer2_signal": {
+          "calibration_spearman": 0.8545454545454544,
+          "recommend_switch": false,
+          "rolling_ic": 0.030825149733873198,
+          "status": "YELLOW"
+        },
+        "layer3_portfolio": {
+          "adjustments_applied": 50,
+          "audit_entries": 200,
+          "violations": [
+            "correlation_dedup",
+            "cvar_haircut"
+          ]
+        },
+        "layer4_operational": {
+          "audit_entries": 4,
+          "fail_safe": false,
+          "status": "GREEN",
+          "timeout": false
+        }
+      },
+      "window_id": "W1"
+    },
+    {
+      "challenger": {
+        "ic": -0.023375885706605714,
+        "net_excess": -0.010375882779694146,
+        "rank_ic": -0.05266204424159673
+      },
+      "champion": {
+        "ic": -0.02777487984359946,
+        "net_excess": -0.06651133641939344,
+        "portfolio_holdings": 100,
+        "rank_ic": -0.06621270454834706,
+        "turnover": 0.04730838784840638
+      },
+      "champion_vs_challenger": "challenger_wins",
+      "period": {
+        "end": "2022-06-27",
+        "start": "2022-01-10"
+      },
+      "risk_checks": {
+        "layer1_data": {
+          "feature_drift_alerts": 0,
+          "missing_rate": 0.04572564612326044,
+          "status": "GREEN"
+        },
+        "layer2_signal": {
+          "calibration_spearman": -0.19999999999999998,
+          "recommend_switch": false,
+          "rolling_ic": -0.042739320750887586,
+          "status": "RED"
+        },
+        "layer3_portfolio": {
+          "adjustments_applied": 64,
+          "audit_entries": 184,
+          "violations": [
+            "correlation_dedup",
+            "cvar_haircut",
+            "sector_deviation_cap"
+          ]
+        },
+        "layer4_operational": {
+          "audit_entries": 4,
+          "fail_safe": false,
+          "status": "GREEN",
+          "timeout": false
+        }
+      },
+      "window_id": "W2"
+    },
+    {
+      "challenger": {
+        "ic": 0.11104302261553005,
+        "net_excess": 0.23590186886628284,
+        "rank_ic": 0.11663791380994845
+      },
+      "champion": {
+        "ic": 0.1168974371143914,
+        "net_excess": 0.3475451699151646,
+        "portfolio_holdings": 99,
+        "rank_ic": 0.1219835186397196,
+        "turnover": 0.04080645062061748
+      },
+      "champion_vs_challenger": "champion_wins",
+      "period": {
+        "end": "2023-01-03",
+        "start": "2022-07-05"
+      },
+      "risk_checks": {
+        "layer1_data": {
+          "feature_drift_alerts": 0,
+          "missing_rate": 0.03777335984095427,
+          "status": "GREEN"
+        },
+        "layer2_signal": {
+          "calibration_spearman": 0.9878787878787878,
+          "recommend_switch": false,
+          "rolling_ic": 0.13498368949693867,
+          "status": "YELLOW"
+        },
+        "layer3_portfolio": {
+          "adjustments_applied": 52,
+          "audit_entries": 208,
+          "violations": [
+            "correlation_dedup",
+            "cvar_haircut"
+          ]
+        },
+        "layer4_operational": {
+          "audit_entries": 4,
+          "fail_safe": false,
+          "status": "GREEN",
+          "timeout": false
+        }
+      },
+      "window_id": "W3"
+    },
+    {
+      "challenger": {
+        "ic": 0.11253581456145652,
+        "net_excess": 0.065807064304096,
+        "rank_ic": 0.08997449875226633
+      },
+      "champion": {
+        "ic": 0.12370392871473275,
+        "net_excess": 0.04366240981617775,
+        "portfolio_holdings": 89,
+        "rank_ic": 0.10104902362848397,
+        "turnover": 0.10622150843584947
+      },
+      "champion_vs_challenger": "champion_wins",
+      "period": {
+        "end": "2023-07-03",
+        "start": "2023-01-09"
+      },
+      "risk_checks": {
+        "layer1_data": {
+          "feature_drift_alerts": 0,
+          "missing_rate": 0.03180914512922465,
+          "status": "GREEN"
+        },
+        "layer2_signal": {
+          "calibration_spearman": 0.9757575757575757,
+          "recommend_switch": false,
+          "rolling_ic": 0.16431935661846758,
+          "status": "YELLOW"
+        },
+        "layer3_portfolio": {
+          "adjustments_applied": 52,
+          "audit_entries": 192,
+          "violations": [
+            "correlation_dedup",
+            "cvar_haircut",
+            "sector_deviation_cap",
+            "turnover_cap"
+          ]
+        },
+        "layer4_operational": {
+          "audit_entries": 4,
+          "fail_safe": false,
+          "status": "GREEN",
+          "timeout": false
+        }
+      },
+      "window_id": "W4"
+    },
+    {
+      "challenger": {
+        "ic": 0.0327831147898015,
+        "net_excess": 0.11123817702173056,
+        "rank_ic": 0.019400131786855283
+      },
+      "champion": {
+        "ic": 0.04080420476044297,
+        "net_excess": 0.1198419750559423,
+        "portfolio_holdings": 98,
+        "rank_ic": 0.027322311694173443,
+        "turnover": 0.023671842186819517
+      },
+      "champion_vs_challenger": "champion_wins",
+      "period": {
+        "end": "2024-01-02",
+        "start": "2023-07-10"
+      },
+      "risk_checks": {
+        "layer1_data": {
+          "feature_drift_alerts": 0,
+          "missing_rate": 0.02982107355864811,
+          "status": "GREEN"
+        },
+        "layer2_signal": {
+          "calibration_spearman": 0.9030303030303028,
+          "recommend_switch": false,
+          "rolling_ic": 0.07353240371695377,
+          "status": "YELLOW"
+        },
+        "layer3_portfolio": {
+          "adjustments_applied": 50,
+          "audit_entries": 200,
+          "violations": [
+            "correlation_dedup",
+            "cvar_haircut"
+          ]
+        },
+        "layer4_operational": {
+          "audit_entries": 4,
+          "fail_safe": false,
+          "status": "GREEN",
+          "timeout": false
+        }
+      },
+      "window_id": "W5"
+    },
+    {
+      "challenger": {
+        "ic": 0.0603310830924548,
+        "net_excess": -0.13950916951598114,
+        "rank_ic": 0.039316259879127395
+      },
+      "champion": {
+        "ic": 0.06496376677863216,
+        "net_excess": -0.1314170127826999,
+        "portfolio_holdings": 98,
+        "rank_ic": 0.04371803568788144,
+        "turnover": 0.026030775651111938
+      },
+      "champion_vs_challenger": "champion_wins",
+      "period": {
+        "end": "2024-07-01",
+        "start": "2024-01-08"
+      },
+      "risk_checks": {
+        "layer1_data": {
+          "feature_drift_alerts": 0,
+          "missing_rate": 0.02186878727634195,
+          "status": "GREEN"
+        },
+        "layer2_signal": {
+          "calibration_spearman": 0.8060606060606059,
+          "recommend_switch": false,
+          "rolling_ic": 0.06029847341134427,
+          "status": "YELLOW"
+        },
+        "layer3_portfolio": {
+          "adjustments_applied": 48,
+          "audit_entries": 192,
+          "violations": [
+            "correlation_dedup",
+            "cvar_haircut"
+          ]
+        },
+        "layer4_operational": {
+          "audit_entries": 4,
+          "fail_safe": false,
+          "status": "GREEN",
+          "timeout": false
+        }
+      },
+      "window_id": "W6"
+    },
+    {
+      "challenger": {
+        "ic": 0.054553040370466925,
+        "net_excess": 0.15763568614338652,
+        "rank_ic": 0.037903740755093354
+      },
+      "champion": {
+        "ic": 0.05385803227006929,
+        "net_excess": 0.09528822005176374,
+        "portfolio_holdings": 86,
+        "rank_ic": 0.03515810952562444,
+        "turnover": 0.0776396679905425
+      },
+      "champion_vs_challenger": "challenger_wins",
+      "period": {
+        "end": "2024-12-30",
+        "start": "2024-07-08"
+      },
+      "risk_checks": {
+        "layer1_data": {
+          "feature_drift_alerts": 0,
+          "missing_rate": 0.015904572564612324,
+          "status": "GREEN"
+        },
+        "layer2_signal": {
+          "calibration_spearman": 0.9515151515151514,
+          "recommend_switch": true,
+          "rolling_ic": 0.031650249202635726,
+          "status": "RED"
+        },
+        "layer3_portfolio": {
+          "adjustments_applied": 51,
+          "audit_entries": 200,
+          "violations": [
+            "correlation_dedup",
+            "cvar_haircut",
+            "sector_deviation_cap"
+          ]
+        },
+        "layer4_operational": {
+          "audit_entries": 4,
+          "fail_safe": true,
+          "status": "RED",
+          "timeout": false
+        }
+      },
+      "window_id": "W7"
+    },
+    {
+      "challenger": {
+        "ic": 0.11795747624447118,
+        "net_excess": -0.02197649914706301,
+        "rank_ic": 0.1211023841246833
+      },
+      "champion": {
+        "ic": 0.1316117381227699,
+        "net_excess": -0.0695003474065281,
+        "portfolio_holdings": 100,
+        "rank_ic": 0.13328639075584817,
+        "turnover": 0.02558346518052303
+      },
+      "champion_vs_challenger": "champion_wins",
+      "period": {
+        "end": "2025-06-30",
+        "start": "2025-01-06"
+      },
+      "risk_checks": {
+        "layer1_data": {
+          "feature_drift_alerts": 0,
+          "missing_rate": 0.011928429423459244,
+          "status": "GREEN"
+        },
+        "layer2_signal": {
+          "calibration_spearman": 0.9999999999999999,
+          "recommend_switch": false,
+          "rolling_ic": 0.22479863444814724,
+          "status": "GREEN"
+        },
+        "layer3_portfolio": {
+          "adjustments_applied": 48,
+          "audit_entries": 192,
+          "violations": [
+            "correlation_dedup",
+            "cvar_haircut"
+          ]
+        },
+        "layer4_operational": {
+          "audit_entries": 4,
+          "fail_safe": false,
+          "status": "GREEN",
+          "timeout": false
+        }
+      },
+      "window_id": "W8"
+    }
+  ]
+}
