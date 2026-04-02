@@ -25,7 +25,6 @@ from src.stats.dsr import compute_deflated_sharpe
 from src.stats.ic_test import run_ic_ttest, run_windowed_ic_tests
 from src.stats.spa import run_spa_fallback, series_from_records
 
-EXPECTED_BRANCH = "feature/week10-statistical-tests"
 DEFAULT_MLFLOW_TRACKING_URI = "file:///home/jiahao/quant_edge/mlruns"
 BEST_SCHEME_NAME = "equal_weight_buffered"
 OPTIMAL_HORIZON = 60
@@ -37,8 +36,8 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging()
 
     branch = current_git_branch()
-    if branch != EXPECTED_BRANCH:
-        raise RuntimeError(f"Expected git branch {EXPECTED_BRANCH!r}, found {branch!r}.")
+    if args.expected_branch and branch != args.expected_branch:
+        raise RuntimeError(f"Expected git branch {args.expected_branch!r}, found {branch!r}.")
 
     single_window_report = load_json(REPO_ROOT / args.single_window_report)
     tree_report = load_json(REPO_ROOT / args.tree_report)
@@ -160,6 +159,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--prediction-cache", default="data/backtest/portfolio_comparison_predictions.parquet")
     parser.add_argument("--label-cache", default="data/labels/walkforward_forward_returns_multi.parquet")
     parser.add_argument("--report-path", default="data/reports/phase1_alpha_report.json")
+    parser.add_argument("--expected-branch", default=None)
     parser.add_argument("--mlflow-tracking-uri", default=DEFAULT_MLFLOW_TRACKING_URI)
     parser.add_argument("--mlflow-max-results", type=int, default=MAX_RESULTS)
     parser.add_argument("--optimal-horizon", type=int, default=OPTIMAL_HORIZON)

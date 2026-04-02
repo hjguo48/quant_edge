@@ -1,0 +1,295 @@
+{
+  "W6": {
+    "beta_analysis": {
+      "gross_excess_total_return": -0.050282648002550445,
+      "implied_beta_mean": 0.5956721795728778,
+      "implied_beta_median": 0.8496614681398442,
+      "net_excess_total_return": -0.05499057711726829,
+      "portfolio_gross_return": 0.10985618916963902,
+      "portfolio_net_return": 0.10514826005492117,
+      "regression_beta": 0.9681907565452866,
+      "selected_median_dollar_volume": 144202130.6,
+      "selected_top_50_dollar_volume_share": 0.02628324056895485,
+      "selected_vs_universe_dollar_volume_ratio": 0.6577635784054326,
+      "spy_return": 0.16013883717218946,
+      "universe_median_dollar_volume": 219230944.5737
+    },
+    "cost_analysis": {
+      "commission": 131.86626553813164,
+      "gap_penalty": 4158.607679525861,
+      "gap_penalty_pct": 0.9092510151524027,
+      "permanent_impact": 0.6565501609352926,
+      "spread": 253.9975418902683,
+      "temporary_impact": 28.534912085716353,
+      "total_cost": 4573.662949200912,
+      "worst_period": {
+        "avg_gap": 0.009138396372953547,
+        "execution_date": "2024-03-04",
+        "gap_penalty": 3427.399028841309,
+        "gap_penalty_pct": 0.9964080296112396,
+        "gross_excess_return": 0.004761917245009233,
+        "net_excess_return": 0.0016036285045665233,
+        "selected_count": 98,
+        "signal_date": "2024-03-01",
+        "total_cost": 3439.7545252405775
+      }
+    },
+    "gross_excess_annualized": -0.12043729834236139,
+    "ic": 0.06496376677863216,
+    "net_excess_annualized": -0.1314170127826999,
+    "rank_ic": 0.04371803568788144,
+    "sector_analysis": {
+      "max_overweight_sector": "Financial Services",
+      "max_underweight_sector": "Industrials",
+      "overweight_sectors": [
+        {
+          "sector": "Financial Services",
+          "weight_diff": 0.0737333914340148
+        },
+        {
+          "sector": "Real Estate",
+          "weight_diff": 0.0728357388400623
+        },
+        {
+          "sector": "Basic Materials",
+          "weight_diff": 0.030657398106854153
+        }
+      ],
+      "selected_sector_weights": {
+        "Basic Materials": 0.07118807118807118,
+        "Communication Services": 0.04067889782175496,
+        "Consumer Cyclical": 0.11186696900982616,
+        "Consumer Defensive": 0.030509173366316224,
+        "Energy": 0.02033944891087748,
+        "Financial Services": 0.21356421356421354,
+        "Healthcare": 0.08135779564350992,
+        "Industrials": 0.07118807118807118,
+        "Real Estate": 0.135573421287707,
+        "Technology": 0.16271559128701985,
+        "Utilities": 0.06101834673263245
+      },
+      "underweight_sectors": [
+        {
+          "sector": "Industrials",
+          "weight_diff": -0.08282848652055348
+        },
+        {
+          "sector": "Consumer Defensive",
+          "weight_diff": -0.040419504525813554
+        },
+        {
+          "sector": "Healthcare",
+          "weight_diff": -0.03719125730212043
+        },
+        {
+          "sector": "Energy",
+          "weight_diff": -0.024244291478461237
+        }
+      ],
+      "universe_sector_weights": {
+        "Basic Materials": 0.04053067308121702,
+        "Communication Services": 0.038504139427156164,
+        "Consumer Cyclical": 0.10335321635710339,
+        "Consumer Defensive": 0.07092867789212978,
+        "Energy": 0.04458374038933872,
+        "Financial Services": 0.13983082213019873,
+        "Healthcare": 0.11854905294563035,
+        "Industrials": 0.15401655770862466,
+        "Real Estate": 0.0627376824476447,
+        "Technology": 0.16313279333496908,
+        "Utilities": 0.0638326442859874
+      }
+    },
+    "signal_disconnect": {
+      "avg_bottom_decile_return": 0.024644704984493847,
+      "avg_realized_weekly_gross_excess_return": -0.0017623234287180835,
+      "avg_realized_weekly_gross_return": 0.004512640347665651,
+      "avg_selected_rank_pct": 0.22019013892446035,
+      "avg_selected_score": 0.05217201663999484,
+      "avg_top_decile_excess_return": -0.0006936609818135597,
+      "avg_top_decile_return": 0.05089109861458121,
+      "avg_universe_median_forward_return": 0.03817680327507212,
+      "periods_where_selected_underperformed_bottom_decile": 6,
+      "periods_where_top_decile_underperformed": 7,
+      "periods_with_positive_60d_signal_but_negative_realized_week": 7,
+      "total_periods": 24
+    },
+    "test_period": "2024-01-01 -> 2024-06-30",
+    "turnover": 0.026030775651111934
+  },
+  "W8": {
+    "beta_analysis": {
+      "gross_excess_total_return": -0.030055003951309,
+      "implied_beta_mean": 1.0819704060196893,
+      "implied_beta_median": 1.1845645838958379,
+      "net_excess_total_return": -0.032620544623880754,
+      "portfolio_gross_return": 0.005374691164634182,
+      "portfolio_net_return": 0.002809150492062429,
+      "regression_beta": 1.1367076592747307,
+      "selected_median_dollar_volume": 212712947.1575,
+      "selected_top_50_dollar_volume_share": 0.03625,
+      "selected_vs_universe_dollar_volume_ratio": 0.7237676090989341,
+      "spy_return": 0.03542969511594318,
+      "universe_median_dollar_volume": 293896748.74
+    },
+    "cost_analysis": {
+      "commission": 72.77700314730296,
+      "gap_penalty": 2171.7562513924013,
+      "gap_penalty_pct": 0.8664661960456483,
+      "permanent_impact": 0.33168840880299216,
+      "spread": 242.81705618595743,
+      "temporary_impact": 18.77037177601728,
+      "total_cost": 2506.4523709104815,
+      "worst_period": {
+        "avg_gap": 0.009380107065022257,
+        "execution_date": "2025-01-06",
+        "gap_penalty": 1611.1625028749554,
+        "gap_penalty_pct": 0.8522679268491401,
+        "gross_excess_return": 0.0026296125306354556,
+        "net_excess_return": 0.000794705969407894,
+        "selected_count": 100,
+        "signal_date": "2025-01-03",
+        "total_cost": 1890.4413179450166
+      }
+    },
+    "gross_excess_annualized": -0.06412187296339211,
+    "ic": 0.1316117381227699,
+    "net_excess_annualized": -0.0695003474065281,
+    "rank_ic": 0.13328639075584817,
+    "sector_analysis": {
+      "max_overweight_sector": "Financial Services",
+      "max_underweight_sector": "Consumer Defensive",
+      "overweight_sectors": [
+        {
+          "sector": "Financial Services",
+          "weight_diff": 0.09159604466664456
+        },
+        {
+          "sector": "Industrials",
+          "weight_diff": 0.057555063690796854
+        },
+        {
+          "sector": "Basic Materials",
+          "weight_diff": 0.019882911497578128
+        },
+        {
+          "sector": "Technology",
+          "weight_diff": 0.014435440850374931
+        }
+      ],
+      "selected_sector_weights": {
+        "Basic Materials": 0.06,
+        "Communication Services": 0.04,
+        "Consumer Cyclical": 0.08,
+        "Consumer Defensive": 0.0,
+        "Energy": 0.02,
+        "Financial Services": 0.23,
+        "Healthcare": 0.08,
+        "Industrials": 0.21,
+        "Real Estate": 0.06,
+        "Technology": 0.18000000000000002,
+        "Utilities": 0.04
+      },
+      "underweight_sectors": [
+        {
+          "sector": "Consumer Defensive",
+          "weight_diff": -0.07020490487923828
+        },
+        {
+          "sector": "Healthcare",
+          "weight_diff": -0.03834541108214451
+        },
+        {
+          "sector": "Energy",
+          "weight_diff": -0.026134651777785147
+        },
+        {
+          "sector": "Consumer Cyclical",
+          "weight_diff": -0.024304430106296862
+        },
+        {
+          "sector": "Utilities",
+          "weight_diff": -0.024187341603874986
+        }
+      ],
+      "universe_sector_weights": {
+        "Basic Materials": 0.04011708850242187,
+        "Communication Services": 0.038111234077300785,
+        "Consumer Cyclical": 0.10430443010629686,
+        "Consumer Defensive": 0.07020490487923828,
+        "Energy": 0.04613465177778515,
+        "Financial Services": 0.13840395533335545,
+        "Healthcare": 0.11834541108214451,
+        "Industrials": 0.15244493630920314,
+        "Real Estate": 0.0621814871787539,
+        "Technology": 0.1655645591496251,
+        "Utilities": 0.06418734160387499
+      }
+    },
+    "signal_disconnect": {
+      "avg_bottom_decile_return": -0.01357626233882566,
+      "avg_realized_weekly_gross_excess_return": -0.0009576139176999395,
+      "avg_realized_weekly_gross_return": 0.00114789723252306,
+      "avg_selected_rank_pct": 0.25139192092337204,
+      "avg_selected_score": 0.02068148922901993,
+      "avg_top_decile_excess_return": 0.005313757725410164,
+      "avg_top_decile_return": 0.04641570657225966,
+      "avg_universe_median_forward_return": 0.012774911190367819,
+      "periods_where_selected_underperformed_bottom_decile": 9,
+      "periods_where_top_decile_underperformed": 9,
+      "periods_with_positive_60d_signal_but_negative_realized_week": 6,
+      "total_periods": 24
+    },
+    "test_period": "2025-01-01 -> 2025-06-30",
+    "turnover": 0.02558346518052303
+  },
+  "comparison_with_good_windows": {
+    "W3": {
+      "avg_bottom_decile_return": 0.0030425637888552596,
+      "avg_selected_rank_pct": 0.25078752965394385,
+      "avg_top_decile_return": 0.05948070041374495,
+      "gap_penalty_pct": 0.9194357372536559,
+      "gross_excess_total_return": 0.17016312770511743,
+      "ic": 0.1168974371143914,
+      "net_excess_annualized": 0.3475451699151646,
+      "test_period": "2022-07-01 -> 2022-12-31"
+    },
+    "W7": {
+      "avg_bottom_decile_return": 0.01882047828654588,
+      "avg_selected_rank_pct": 0.2586033300487185,
+      "avg_top_decile_return": 0.03428652684375985,
+      "gap_penalty_pct": 0.539457729930029,
+      "gross_excess_total_return": 0.04482480871394445,
+      "ic": 0.05385803227006929,
+      "net_excess_annualized": 0.09528822005176374,
+      "test_period": "2024-07-01 -> 2024-12-31"
+    }
+  },
+  "diagnosis_summary": {
+    "phase2_recommendations": [
+      "Align research and execution horizons. Test 20D-60D holding periods or explicitly train a shorter-horizon model for weekly turnover.",
+      "Add benchmark-aware portfolio construction so the long book does not systematically underweight large-cap/liquid names when the market is mega-cap led.",
+      "Revisit the 20%/25% buffered book. Monitor average selected rank percentile and cap the fraction of holdings that drift near the sell threshold.",
+      "Separate signal quality from monetization quality in reporting: keep IC on the model horizon, but also track realized holding-period spread by window.",
+      "Treat gap control as a secondary execution optimization, not the main explanation for W6/W8."
+    ],
+    "primary_cause": "The main failure was monetization, not ranking. Both W6 and W8 kept positive 60D top-vs-bottom spreads, but the buffered long-only weekly book failed to convert that long-horizon signal into benchmark-relative returns.",
+    "secondary_causes": [
+      "Benchmark-relative exposure drift: both windows ran below-universe liquidity/size exposure (dollar-volume ratios 0.66 and 0.72), so the book was tilted away from the largest benchmark-heavy names.",
+      "Sector tilts were material. W6 leaned into Financials and Real Estate while underweighting Industrials and Healthcare; W8 leaned into Financials and Industrials while underweighting Healthcare and Consumer sectors.",
+      "Gap costs stayed high in the bad windows, but they were not the unique root cause: W6 gap penalty was 90.9% of cost and W8 was 86.6%, yet good W3 was even higher at 91.9%. That makes cost a drag, not the primary differentiator.",
+      "The weekly execution horizon is shorter than the trained 60D target horizon. W8 averaged 4.64% on the model's 60D forward label, but only 0.11% in realized weekly gross return."
+    ]
+  },
+  "generated_at_utc": "2026-04-02T06:58:34.388392+00:00",
+  "git_branch": "feature/week10-bootstrap-fix",
+  "inputs": {
+    "extended_portfolio_report_path": "/home/jiahao/quant_edge/data/reports/extended_portfolio_buffered.json",
+    "extended_report_path": "/home/jiahao/quant_edge/data/reports/extended_walkforward.json",
+    "horizon": 60,
+    "labels_path": "/home/jiahao/quant_edge/data/labels/extended_walkforward_forward_returns_multi.parquet",
+    "predictions_path": "/home/jiahao/quant_edge/data/backtest/extended_walkforward_predictions.parquet",
+    "prices_path": "/home/jiahao/quant_edge/data/backtest/extended_walkforward_prices.parquet"
+  },
+  "script": "diagnose_w6_w8.py"
+}
