@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
+
+try:
+    import cvxpy as cp
+except ImportError:  # pragma: no cover - exercised only when cvxpy is unavailable
+    cp = None
 
 
 @dataclass(frozen=True)
@@ -13,6 +19,183 @@ class PortfolioConstraints:
     min_weight: float = 0.0
     min_holdings: int = 20
     turnover_buffer: float = 0.0
+
+
+@dataclass(frozen=True)
+class OptimizationResult:
+    weights: dict[str, float]
+    expected_return: float
+    expected_risk: float
+    portfolio_beta: float | None
+    turnover: float
+    sector_weights: dict[str, float]
+    solver_status: str
+    objective_value: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+class CVXPYOptimizer:
+    """CVXPY-based portfolio optimizer with long-only portfolio constraints."""
+
+    def optimize(
+        self,
+        expected_returns: np.ndarray,
+        covariance: np.ndarray,
+        tickers: list[str],
+        *,
+        prev_weights: np.ndarray | None = None,
+        sector_map: dict[str, str] | None = None,
+        benchmark_sector_weights: dict[str, float] | None = None,
+        stock_betas: np.ndarray | None = None,
+        adv: np.ndarray | None = None,
+        portfolio_size: float = 1e7,
+        max_weight: float = 0.10,
+        max_sector_deviation: float = 0.10,
+        beta_bounds: tuple[float, float] = (0.8, 1.2),
+        min_holdings: int = 20,
+        lambda_risk: float = 1.0,
+        lambda_turnover: float = 0.005,
+    ) -> OptimizationResult:
+        if cp is None:
+            raise RuntimeError("cvxpy is not installed. Install it before using CVXPYOptimizer.")
+
+        mu = np.asarray(expected_returns, dtype=float).reshape(-1)
+        sigma = np.asarray(covariance, dtype=float)
+        names = [str(ticker).upper() for ticker in tickers]
+        n_assets = len(names)
+
+        if mu.shape[0] != n_assets:
+            raise ValueError("expected_returns length must match tickers length.")
+        if sigma.shape != (n_assets, n_assets):
+            raise ValueError("covariance must be a square matrix matching tickers length.")
+        if n_assets == 0:
+            return OptimizationResult(
+                weights={},
+                expected_return=0.0,
+                expected_risk=0.0,
+                portfolio_beta=None,
+                turnover=0.0,
+                sector_weights={},
+                solver_status="empty",
+                objective_value=0.0,
+            )
+
+        sigma = 0.5 * (sigma + sigma.T)
+        sigma += np.eye(n_assets) * 1e-8
+
+        prev = (
+            np.asarray(prev_weights, dtype=float).reshape(-1)
+            if prev_weights is not None
+            else np.zeros(n_assets, dtype=float)
+        )
+        if prev.shape[0] != n_assets:
+            prev = np.zeros(n_assets, dtype=float)
+
+        if adv is None:
+            adv_caps = np.full(n_assets, float(max_weight), dtype=float)
+        else:
+            adv_array = np.asarray(adv, dtype=float).reshape(-1)
+            if adv_array.shape[0] != n_assets:
+                raise ValueError("adv length must match tickers length.")
+            liquidity_caps = np.where(
+                adv_array > 0.0,
+                5.0 * adv_array / max(float(portfolio_size), 1.0),
+                float(max_weight),
+            )
+            adv_caps = np.minimum(float(max_weight), liquidity_caps)
+            adv_caps = np.clip(adv_caps, 1e-4, float(max_weight))
+
+        weight = cp.Variable(n_assets, nonneg=True)
+        objective = (
+            mu @ weight
+            - float(lambda_risk) * cp.quad_form(weight, sigma)
+            - float(lambda_turnover) * cp.norm1(weight - prev)
+        )
+        constraints = [
+            cp.sum(weight) == 1.0,
+            weight <= adv_caps,
+        ]
+
+        if sector_map and benchmark_sector_weights:
+            for sector in sorted(set(benchmark_sector_weights)):
+                members = [index for index, ticker in enumerate(names) if sector_map.get(ticker) == sector]
+                if not members:
+                    continue
+                sector_weight = cp.sum(weight[members])
+                benchmark_weight = float(benchmark_sector_weights.get(sector, 0.0))
+                constraints.append(sector_weight <= benchmark_weight + float(max_sector_deviation))
+                constraints.append(sector_weight >= max(0.0, benchmark_weight - float(max_sector_deviation)))
+
+        if stock_betas is not None:
+            betas = np.asarray(stock_betas, dtype=float).reshape(-1)
+            if betas.shape[0] != n_assets:
+                raise ValueError("stock_betas length must match tickers length.")
+            constraints.append(betas @ weight >= float(beta_bounds[0]))
+            constraints.append(betas @ weight <= float(beta_bounds[1]))
+        else:
+            betas = None
+
+        problem = cp.Problem(cp.Maximize(objective), constraints)
+        status = "unknown"
+        for solver in [cp.CLARABEL, cp.OSQP, cp.SCS]:
+            try:
+                problem.solve(solver=solver, verbose=False)
+            except Exception:
+                continue
+            status = str(problem.status)
+            if status in {"optimal", "optimal_inaccurate"}:
+                break
+
+        if weight.value is None or status not in {"optimal", "optimal_inaccurate"}:
+            fallback = pd.Series(np.clip(mu, 0.0, None), index=names, dtype=float)
+            if float(fallback.sum()) <= 0.0:
+                fallback = pd.Series(1.0, index=names, dtype=float)
+            fallback = normalize_weights(fallback)
+            fallback = cap_weights(fallback, max_weight=float(max_weight))
+            result_weights = _ensure_minimum_holdings_posthoc(
+                fallback,
+                ranking=names,
+                min_holdings=min_holdings,
+                max_weight=float(max_weight),
+            )
+            result_weights = result_weights.reindex(names).fillna(0.0)
+            final = result_weights.to_numpy(dtype=float)
+            status = "fallback"
+        else:
+            raw = pd.Series(np.asarray(weight.value, dtype=float).reshape(-1), index=names, dtype=float).clip(lower=0.0)
+            raw = normalize_weights(raw)
+            raw = cap_weights(raw, max_weight=float(max_weight))
+            raw = _ensure_minimum_holdings_posthoc(
+                raw,
+                ranking=[names[index] for index in np.argsort(-mu)],
+                min_holdings=min_holdings,
+                max_weight=float(max_weight),
+            )
+            final = raw.reindex(names).fillna(0.0).to_numpy(dtype=float)
+            result_weights = raw
+
+        expected_return_value = float(mu @ final)
+        expected_risk_value = float(final.T @ sigma @ final)
+        turnover = float(0.5 * np.abs(final - prev).sum())
+        sector_weights = _compute_sector_weights(result_weights, sector_map or {})
+        portfolio_beta = float(np.dot(final, betas)) if betas is not None else None
+        objective_value = float(
+            expected_return_value
+            - float(lambda_risk) * expected_risk_value
+            - float(lambda_turnover) * np.abs(final - prev).sum()
+        )
+        return OptimizationResult(
+            weights={str(ticker): float(weight) for ticker, weight in result_weights.items() if weight > 0.0},
+            expected_return=expected_return_value,
+            expected_risk=expected_risk_value,
+            portfolio_beta=portfolio_beta,
+            turnover=turnover,
+            sector_weights=sector_weights,
+            solver_status=status,
+            objective_value=objective_value,
+        )
 
 
 def apply_weight_constraints(
@@ -164,3 +347,35 @@ def ensure_min_holdings(
         broadened.loc[missing] = seed_weight
 
     return normalize_weights(broadened)
+
+
+def _ensure_minimum_holdings_posthoc(
+    weights: pd.Series,
+    *,
+    ranking: Sequence[str],
+    min_holdings: int,
+    max_weight: float,
+) -> pd.Series:
+    return ensure_min_holdings(
+        weights,
+        ranking=ranking,
+        min_holdings=min_holdings,
+        max_weight=max_weight,
+    )
+
+
+def _compute_sector_weights(
+    weights: Mapping[str, float] | pd.Series,
+    sector_map: Mapping[str, str],
+) -> dict[str, float]:
+    series = normalize_weights(weights)
+    if series.empty:
+        return {}
+
+    sectors = pd.Series(
+        [sector_map.get(str(ticker).upper(), "Unknown") for ticker in series.index],
+        index=series.index,
+        dtype=object,
+    )
+    grouped = series.groupby(sectors).sum().sort_values(ascending=False)
+    return {str(sector): float(weight) for sector, weight in grouped.items()}
