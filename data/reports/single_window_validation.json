@@ -1,0 +1,3447 @@
+{
+  "alpha_selection": {
+    "best_alpha": 100.0,
+    "best_ic": 0.003134160723855122,
+    "scores_by_alpha": {
+      "0.001": -0.0004450208089484033,
+      "0.01": -0.00044510549753449744,
+      "0.1": -0.0004458794073205046,
+      "1.0": -0.0004472077235945146,
+      "10.0": -0.0001972111969008409,
+      "100.0": 0.003134160723855122
+    }
+  },
+  "config": {
+    "as_of": "2026-03-31",
+    "benchmark_ticker": "SPY",
+    "pass_ic_threshold": 0.01,
+    "rebalance_weekday": 4,
+    "target_horizon": "5D",
+    "test_end": "2021-12-31",
+    "test_start": "2021-07-01",
+    "train_end": "2020-12-31",
+    "train_start": "2018-01-01",
+    "validation_end": "2021-06-30",
+    "validation_start": "2021-01-01"
+  },
+  "data_summary": {
+    "aligned_dates": 1008,
+    "aligned_max_date": "2021-12-31",
+    "aligned_min_date": "2018-01-02",
+    "aligned_rows": 469282,
+    "aligned_tickers": 483,
+    "feature_matrix": {
+      "dates": 1008,
+      "feature_count": 58,
+      "max_date": "2021-12-31",
+      "min_date": "2018-01-02",
+      "missing_cells_before_fill": 0,
+      "rows": 469292,
+      "rows_with_any_missing_before_fill": 0,
+      "source": "cache",
+      "tickers": 483,
+      "top_missing_features_before_fill": {
+        "atr_14": 0,
+        "bb_width": 0,
+        "current_ratio": 0,
+        "gk_vol": 0,
+        "high_52w_ratio": 0,
+        "low_52w_ratio": 0,
+        "macd_histogram": 0,
+        "mean_reversion_combo": 0,
+        "momentum_rank_60d": 0,
+        "ret_vol_interaction_60d": 0,
+        "revenue_growth_yoy": 0,
+        "trend_confirmation": 0,
+        "vol_20d": 0,
+        "vol_60d": 0,
+        "vol_rank": 0
+      }
+    },
+    "label_rows": 469282,
+    "labels": {
+      "benchmark_ticker": "SPY",
+      "dates": 1008,
+      "horizon_days": 5,
+      "max_date": "2021-12-31",
+      "min_date": "2018-01-02",
+      "rows": 469282,
+      "tickers": 483
+    }
+  },
+  "gate": {
+    "framework_passed": true,
+    "note": "framework_passed follows src.models.experiment.run_single_window_validation and is based on test IC; validation_passed is reported separately for the task gate.",
+    "test_ic": 0.014729257734392166,
+    "test_passed": true,
+    "validation_ic": 0.003134160723855122,
+    "validation_passed": false
+  },
+  "generated_at_utc": "2026-04-02T02:04:49.493583+00:00",
+  "git_branch": "feature/week5-single-window-validation",
+  "inputs": {
+    "feature_fill_strategy": "cross-sectional median by trade_date, then 0.5 fallback",
+    "feature_matrix_cache_path": "/home/jiahao/quant_edge/data/features/window1_feature_matrix.parquet",
+    "feature_source_path": "/home/jiahao/quant_edge/data/features/all_features.parquet",
+    "ic_report_path": "/home/jiahao/quant_edge/data/features/ic_screening_report_v2.csv",
+    "label_cache_path": "/home/jiahao/quant_edge/data/labels/window1_forward_returns_5d.parquet",
+    "report_path": "/home/jiahao/quant_edge/data/reports/single_window_validation.json",
+    "retained_feature_count": 58,
+    "retained_features": [
+      "atr_14",
+      "vol_60d",
+      "gk_vol",
+      "vol_20d",
+      "vol_rank",
+      "bb_width",
+      "low_52w_ratio",
+      "revenue_growth_yoy",
+      "trend_confirmation",
+      "high_52w_ratio",
+      "macd_histogram",
+      "mean_reversion_combo",
+      "current_ratio",
+      "ret_vol_interaction_60d",
+      "momentum_rank_60d",
+      "ret_60d",
+      "ret_5d",
+      "amihud",
+      "earnings_growth_yoy",
+      "value_mom_pb",
+      "cci_20",
+      "bb_position",
+      "macd_signal",
+      "stoch_d",
+      "pb_ratio",
+      "stoch_k",
+      "quality_value_roe_pb",
+      "turnover_rate",
+      "operating_margin",
+      "mom_vol_adj_60d",
+      "ev_ebitda",
+      "fcf_mom_20d",
+      "vwap_deviation",
+      "liquidity_momentum",
+      "ret_vol_interaction_20d",
+      "mom_vol_adj_20d",
+      "rsi_14",
+      "ret_10d",
+      "obv_slope",
+      "momentum_rank_20d",
+      "ret_20d",
+      "rsi_28",
+      "breadth_momentum",
+      "credit_spread",
+      "credit_spread_change",
+      "dividend_yield",
+      "eps_surprise",
+      "ffr",
+      "macro_risk_on",
+      "market_ret_20d",
+      "risk_sentiment",
+      "sp500_breadth",
+      "spread_stress",
+      "vix",
+      "vix_change_5d",
+      "vix_rank",
+      "yield_10y",
+      "yield_spread_10y2y"
+    ]
+  },
+  "metrics": {
+    "test": {
+      "hit_rate": 0.49907904220389204,
+      "ic": 0.014729257734392166,
+      "icir": 0.09079445253410803,
+      "long_short_return": 0.0020947116554175175,
+      "rank_ic": 0.011469344680188473,
+      "top_decile_return": 0.0020763849085539197,
+      "turnover": 0.6413605442176871
+    },
+    "train": {
+      "hit_rate": 0.5037068965517242,
+      "ic": 0.01818137912719276,
+      "icir": 0.14577090481586433,
+      "long_short_return": 0.022140282809460902,
+      "rank_ic": 0.01632874685835653,
+      "top_decile_return": 0.022613938572895387,
+      "turnover": 0.6481815962586082
+    },
+    "validation": {
+      "hit_rate": 0.48756218905472637,
+      "ic": 0.003134160723855122,
+      "icir": 0.026860526271508464,
+      "long_short_return": -0.0010287576954547003,
+      "rank_ic": -0.014172787845830738,
+      "top_decile_return": 0.002411493664783149,
+      "turnover": 0.6956521739130433
+    }
+  },
+  "mlflow": {
+    "experiment_id": "464888410329815449",
+    "experiment_name": "ridge_5D_20260402_020440",
+    "logged": true,
+    "run_id": "04c5e7914eed40789a6d9bdd7fa12f83",
+    "tracking_uri": "file:///home/jiahao/quant_edge/mlruns"
+  },
+  "script": "scripts/run_single_window_validation.py",
+  "series": {
+    "test": {
+      "ic_series": [
+        {
+          "trade_date": "2021-07-02",
+          "value": -0.2095511359797544
+        },
+        {
+          "trade_date": "2021-07-09",
+          "value": -0.23416360714268097
+        },
+        {
+          "trade_date": "2021-07-16",
+          "value": 0.16107704006919166
+        },
+        {
+          "trade_date": "2021-07-23",
+          "value": 0.1172995237896749
+        },
+        {
+          "trade_date": "2021-07-30",
+          "value": 0.0879237363349252
+        },
+        {
+          "trade_date": "2021-08-06",
+          "value": 0.13098809546306583
+        },
+        {
+          "trade_date": "2021-08-13",
+          "value": -0.367998983497021
+        },
+        {
+          "trade_date": "2021-08-20",
+          "value": 0.3273032557454906
+        },
+        {
+          "trade_date": "2021-08-27",
+          "value": -0.17780412259598705
+        },
+        {
+          "trade_date": "2021-09-03",
+          "value": 0.16285139907051663
+        },
+        {
+          "trade_date": "2021-09-10",
+          "value": 0.059554957096458076
+        },
+        {
+          "trade_date": "2021-09-17",
+          "value": 0.16806065803863057
+        },
+        {
+          "trade_date": "2021-09-24",
+          "value": 0.29400211902566487
+        },
+        {
+          "trade_date": "2021-10-01",
+          "value": -0.05209440465352625
+        },
+        {
+          "trade_date": "2021-10-08",
+          "value": -0.037221494547192605
+        },
+        {
+          "trade_date": "2021-10-15",
+          "value": -0.007087256326107093
+        },
+        {
+          "trade_date": "2021-10-22",
+          "value": 0.04205129887864637
+        },
+        {
+          "trade_date": "2021-10-29",
+          "value": 0.19086650473216082
+        },
+        {
+          "trade_date": "2021-11-05",
+          "value": -0.053234014127760604
+        },
+        {
+          "trade_date": "2021-11-12",
+          "value": -0.11741255071168347
+        },
+        {
+          "trade_date": "2021-11-19",
+          "value": 0.0009988480739612068
+        },
+        {
+          "trade_date": "2021-11-26",
+          "value": -0.00414841501090763
+        },
+        {
+          "trade_date": "2021-12-03",
+          "value": -0.0026743616080796995
+        },
+        {
+          "trade_date": "2021-12-10",
+          "value": -0.20579980837111297
+        },
+        {
+          "trade_date": "2021-12-17",
+          "value": 0.06754547798827393
+        },
+        {
+          "trade_date": "2021-12-31",
+          "value": 0.041627941359349205
+        }
+      ],
+      "rank_ic_series": [
+        {
+          "trade_date": "2021-07-02",
+          "value": -0.1917396773263686
+        },
+        {
+          "trade_date": "2021-07-09",
+          "value": -0.26275157012954115
+        },
+        {
+          "trade_date": "2021-07-16",
+          "value": 0.1601937221023576
+        },
+        {
+          "trade_date": "2021-07-23",
+          "value": 0.10529170779430648
+        },
+        {
+          "trade_date": "2021-07-30",
+          "value": 0.0986266216433231
+        },
+        {
+          "trade_date": "2021-08-06",
+          "value": 0.12811405431447184
+        },
+        {
+          "trade_date": "2021-08-13",
+          "value": -0.4098013663253746
+        },
+        {
+          "trade_date": "2021-08-20",
+          "value": 0.3808001553826188
+        },
+        {
+          "trade_date": "2021-08-27",
+          "value": -0.22735905971814113
+        },
+        {
+          "trade_date": "2021-09-03",
+          "value": 0.2021681951744582
+        },
+        {
+          "trade_date": "2021-09-10",
+          "value": 0.07149575301976137
+        },
+        {
+          "trade_date": "2021-09-17",
+          "value": 0.15739738453725924
+        },
+        {
+          "trade_date": "2021-09-24",
+          "value": 0.29085939747078443
+        },
+        {
+          "trade_date": "2021-10-01",
+          "value": -0.057082604525193245
+        },
+        {
+          "trade_date": "2021-10-08",
+          "value": -0.014739887509597054
+        },
+        {
+          "trade_date": "2021-10-15",
+          "value": -0.029074218648907444
+        },
+        {
+          "trade_date": "2021-10-22",
+          "value": 0.010184630049775278
+        },
+        {
+          "trade_date": "2021-10-29",
+          "value": 0.19818745093641357
+        },
+        {
+          "trade_date": "2021-11-05",
+          "value": -0.0551216992607034
+        },
+        {
+          "trade_date": "2021-11-12",
+          "value": -0.09695298953597707
+        },
+        {
+          "trade_date": "2021-11-19",
+          "value": -0.06607108139067608
+        },
+        {
+          "trade_date": "2021-11-26",
+          "value": -0.008824436469664685
+        },
+        {
+          "trade_date": "2021-12-03",
+          "value": 0.016913242639383718
+        },
+        {
+          "trade_date": "2021-12-10",
+          "value": -0.23423667842754978
+        },
+        {
+          "trade_date": "2021-12-17",
+          "value": 0.12134837518654945
+        },
+        {
+          "trade_date": "2021-12-31",
+          "value": 0.010377540701131513
+        }
+      ],
+      "return_series": [
+        {
+          "cross_section_size": 479,
+          "long_short_cum_return": -0.015801229312904175,
+          "long_short_return": -0.015801229312904213,
+          "top_decile_cum_return": -0.016799558754898802,
+          "top_decile_return": -0.016799558754898834,
+          "trade_date": "2021-07-02"
+        },
+        {
+          "cross_section_size": 479,
+          "long_short_cum_return": -0.04633547497740842,
+          "long_short_return": -0.031024470436177776,
+          "top_decile_cum_return": -0.04024659788833207,
+          "top_decile_return": -0.02384766945765457,
+          "trade_date": "2021-07-09"
+        },
+        {
+          "cross_section_size": 479,
+          "long_short_cum_return": -0.029027286677723363,
+          "long_short_return": 0.01814913719190213,
+          "top_decile_cum_return": -0.028799374868874628,
+          "top_decile_return": 0.011927254432514722,
+          "trade_date": "2021-07-16"
+        },
+        {
+          "cross_section_size": 479,
+          "long_short_cum_return": -0.013703687262490383,
+          "long_short_return": 0.015781699325825314,
+          "top_decile_cum_return": -0.013595922718280917,
+          "top_decile_return": 0.01565428579552356,
+          "trade_date": "2021-07-23"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": 0.0005104374736786266,
+          "long_short_return": 0.01441161702887947,
+          "top_decile_cum_return": -0.004586092674216502,
+          "top_decile_return": 0.009134015411709712,
+          "trade_date": "2021-07-30"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": 0.013877816645841978,
+          "long_short_return": 0.013360559441954724,
+          "top_decile_cum_return": 0.008745983114178069,
+          "top_decile_return": 0.013393499618879015,
+          "trade_date": "2021-08-06"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": -0.031738624246433145,
+          "long_short_return": -0.044992049479083765,
+          "top_decile_cum_return": -0.023424148159409408,
+          "top_decile_return": -0.03189121127825708,
+          "trade_date": "2021-08-13"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": 0.0036126438622963164,
+          "long_short_return": 0.03651004676419804,
+          "top_decile_cum_return": 0.0028693744437393587,
+          "top_decile_return": 0.026924199030308182,
+          "trade_date": "2021-08-20"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": -0.013692050226023933,
+          "long_short_return": -0.017242403425414145,
+          "top_decile_cum_return": -0.012869905981236829,
+          "top_decile_return": -0.01569424775156413,
+          "trade_date": "2021-08-27"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": -0.0029010477304013405,
+          "long_short_return": 0.01094080454090993,
+          "top_decile_cum_return": -0.007158598837406438,
+          "top_decile_return": 0.0057857694527159885,
+          "trade_date": "2021-09-03"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": 0.004963845480691953,
+          "long_short_return": 0.00788777602583094,
+          "top_decile_cum_return": 0.0008297780334218796,
+          "top_decile_return": 0.008045974776509176,
+          "trade_date": "2021-09-10"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": 0.018712281126801233,
+          "long_short_return": 0.013680527620904947,
+          "top_decile_cum_return": 0.013673376547415517,
+          "top_decile_return": 0.012832950013968046,
+          "trade_date": "2021-09-17"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": 0.056715431007551054,
+          "long_short_return": 0.037305086612595226,
+          "top_decile_cum_return": 0.04185698317618547,
+          "top_decile_return": 0.02780343972805477,
+          "trade_date": "2021-09-24"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": 0.050222376775012734,
+          "long_short_return": -0.006144562710083075,
+          "top_decile_cum_return": 0.03549815596694872,
+          "top_decile_return": -0.006103359013682849,
+          "trade_date": "2021-10-01"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.04254237076748879,
+          "long_short_return": -0.00731274268894127,
+          "top_decile_cum_return": 0.033990912407988016,
+          "top_decile_return": -0.001455573387818548,
+          "trade_date": "2021-10-08"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.03998506305386851,
+          "long_short_return": -0.0024529532662904696,
+          "top_decile_cum_return": 0.03583025212470736,
+          "top_decile_return": 0.0017788741609302825,
+          "trade_date": "2021-10-15"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.044672156661956564,
+          "long_short_return": 0.004506885506917361,
+          "top_decile_cum_return": 0.023910222143828985,
+          "top_decile_return": -0.011507705974437326,
+          "trade_date": "2021-10-22"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.08753422294657098,
+          "long_short_return": 0.04102920328763397,
+          "top_decile_cum_return": 0.0529387721077732,
+          "top_decile_return": 0.02835067893273423,
+          "trade_date": "2021-10-29"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.07557428941444178,
+          "long_short_return": -0.010997293951563982,
+          "top_decile_cum_return": 0.045184004289452684,
+          "top_decile_return": -0.007364880108647657,
+          "trade_date": "2021-11-05"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.05437551532642515,
+          "long_short_return": -0.019709260714624886,
+          "top_decile_cum_return": 0.026443827319251767,
+          "top_decile_return": -0.017930026572633102,
+          "trade_date": "2021-11-12"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.05019887072111229,
+          "long_short_return": -0.003961249616100743,
+          "top_decile_cum_return": 0.026341712628807912,
+          "top_decile_return": -9.948395394474588e-05,
+          "trade_date": "2021-11-19"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.053497105204836526,
+          "long_short_return": 0.0031405808706113213,
+          "top_decile_cum_return": 0.027993371397084355,
+          "top_decile_return": 0.0016092678958219062,
+          "trade_date": "2021-11-26"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.050729566216804356,
+          "long_short_return": -0.00262700198639277,
+          "top_decile_cum_return": 0.02601759183419783,
+          "top_decile_return": -0.0019219769483546638,
+          "trade_date": "2021-12-03"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.020534251484534582,
+          "long_short_return": -0.02873747508694301,
+          "top_decile_cum_return": 0.01815300037880596,
+          "top_decile_return": -0.00766516238901176,
+          "trade_date": "2021-12-10"
+        },
+        {
+          "cross_section_size": 481,
+          "long_short_cum_return": 0.03565488126578331,
+          "long_short_return": 0.014816386377285513,
+          "top_decile_cum_return": 0.024678356252368472,
+          "top_decile_return": 0.006409013057109139,
+          "trade_date": "2021-12-17"
+        },
+        {
+          "cross_section_size": 480,
+          "long_short_cum_return": 0.050096969608925956,
+          "long_short_return": 0.013944885119926653,
+          "top_decile_cum_return": 0.051952876783785795,
+          "top_decile_return": 0.026617640906528444,
+          "trade_date": "2021-12-31"
+        }
+      ]
+    },
+    "train": {
+      "ic_series": [
+        {
+          "trade_date": "2018-01-05",
+          "value": 0.13640555504956647
+        },
+        {
+          "trade_date": "2018-01-12",
+          "value": 0.0011957139233156216
+        },
+        {
+          "trade_date": "2018-01-19",
+          "value": -0.06619863319094421
+        },
+        {
+          "trade_date": "2018-01-26",
+          "value": 0.0038487180662821296
+        },
+        {
+          "trade_date": "2018-02-02",
+          "value": 0.2165892993789356
+        },
+        {
+          "trade_date": "2018-02-09",
+          "value": -0.13216368512265106
+        },
+        {
+          "trade_date": "2018-02-16",
+          "value": -0.09260603635983453
+        },
+        {
+          "trade_date": "2018-02-23",
+          "value": -0.026392777583939424
+        },
+        {
+          "trade_date": "2018-03-02",
+          "value": -0.029093447322207134
+        },
+        {
+          "trade_date": "2018-03-09",
+          "value": 0.06577256313413442
+        },
+        {
+          "trade_date": "2018-03-16",
+          "value": 0.1517595435891587
+        },
+        {
+          "trade_date": "2018-03-23",
+          "value": 0.11916403775655789
+        },
+        {
+          "trade_date": "2018-04-06",
+          "value": -0.2232196797447235
+        },
+        {
+          "trade_date": "2018-04-13",
+          "value": -0.06782416558494499
+        },
+        {
+          "trade_date": "2018-04-20",
+          "value": -0.058621114296744464
+        },
+        {
+          "trade_date": "2018-04-27",
+          "value": 0.003754446238301392
+        },
+        {
+          "trade_date": "2018-05-04",
+          "value": 0.06563274734060734
+        },
+        {
+          "trade_date": "2018-05-11",
+          "value": 0.2787314491675962
+        },
+        {
+          "trade_date": "2018-05-18",
+          "value": -0.027424966790488642
+        },
+        {
+          "trade_date": "2018-05-25",
+          "value": 0.010290868877912182
+        },
+        {
+          "trade_date": "2018-06-01",
+          "value": 0.18067969499344239
+        },
+        {
+          "trade_date": "2018-06-08",
+          "value": -0.048540301526767186
+        },
+        {
+          "trade_date": "2018-06-15",
+          "value": -0.10037496777177934
+        },
+        {
+          "trade_date": "2018-06-22",
+          "value": 0.00013747657356292037
+        },
+        {
+          "trade_date": "2018-06-29",
+          "value": -0.04048004276211716
+        },
+        {
+          "trade_date": "2018-07-06",
+          "value": 0.1306545145678678
+        },
+        {
+          "trade_date": "2018-07-13",
+          "value": -0.06508884891420921
+        },
+        {
+          "trade_date": "2018-07-20",
+          "value": 0.12411760956805687
+        },
+        {
+          "trade_date": "2018-07-27",
+          "value": -0.0745754305545078
+        },
+        {
+          "trade_date": "2018-08-03",
+          "value": -0.039316926785168516
+        },
+        {
+          "trade_date": "2018-08-10",
+          "value": -0.19782720493121247
+        },
+        {
+          "trade_date": "2018-08-17",
+          "value": 0.19812854158571078
+        },
+        {
+          "trade_date": "2018-08-24",
+          "value": 0.07699512143040681
+        },
+        {
+          "trade_date": "2018-08-31",
+          "value": -0.24297099616461365
+        },
+        {
+          "trade_date": "2018-09-07",
+          "value": 0.10744630988834489
+        },
+        {
+          "trade_date": "2018-09-14",
+          "value": 0.023872861139925577
+        },
+        {
+          "trade_date": "2018-09-21",
+          "value": 0.028802294977033925
+        },
+        {
+          "trade_date": "2018-09-28",
+          "value": 0.044350411506631444
+        },
+        {
+          "trade_date": "2018-10-05",
+          "value": -0.0163182915264996
+        },
+        {
+          "trade_date": "2018-10-12",
+          "value": -0.020835744633571254
+        },
+        {
+          "trade_date": "2018-10-19",
+          "value": 0.04644247637208385
+        },
+        {
+          "trade_date": "2018-10-26",
+          "value": 0.12284366900224736
+        },
+        {
+          "trade_date": "2018-11-02",
+          "value": -0.1877426575776361
+        },
+        {
+          "trade_date": "2018-11-09",
+          "value": -0.09970071386592691
+        },
+        {
+          "trade_date": "2018-11-16",
+          "value": 0.073171669012746
+        },
+        {
+          "trade_date": "2018-11-23",
+          "value": 0.00542708584889066
+        },
+        {
+          "trade_date": "2018-11-30",
+          "value": -0.1124286258282019
+        },
+        {
+          "trade_date": "2018-12-07",
+          "value": 0.06075844730219981
+        },
+        {
+          "trade_date": "2018-12-14",
+          "value": -0.03647436509418648
+        },
+        {
+          "trade_date": "2018-12-21",
+          "value": 0.04862992083289667
+        },
+        {
+          "trade_date": "2018-12-28",
+          "value": 0.014015915638472307
+        },
+        {
+          "trade_date": "2019-01-04",
+          "value": 0.03748107222288188
+        },
+        {
+          "trade_date": "2019-01-11",
+          "value": -0.021015530505002426
+        },
+        {
+          "trade_date": "2019-01-18",
+          "value": 0.05028085079660773
+        },
+        {
+          "trade_date": "2019-01-25",
+          "value": -0.05135688586593175
+        },
+        {
+          "trade_date": "2019-02-01",
+          "value": -0.04944842033587244
+        },
+        {
+          "trade_date": "2019-02-08",
+          "value": 0.3775347759207328
+        },
+        {
+          "trade_date": "2019-02-15",
+          "value": 0.07903791071387423
+        },
+        {
+          "trade_date": "2019-02-22",
+          "value": -0.005890456949542384
+        },
+        {
+          "trade_date": "2019-03-01",
+          "value": -0.1500178723591535
+        },
+        {
+          "trade_date": "2019-03-08",
+          "value": -0.047402921973971286
+        },
+        {
+          "trade_date": "2019-03-15",
+          "value": 0.057736519146356614
+        },
+        {
+          "trade_date": "2019-03-22",
+          "value": 0.01712461905466051
+        },
+        {
+          "trade_date": "2019-03-29",
+          "value": -0.009975698176088526
+        },
+        {
+          "trade_date": "2019-04-05",
+          "value": -0.04550056734276981
+        },
+        {
+          "trade_date": "2019-04-12",
+          "value": -0.028417781710794714
+        },
+        {
+          "trade_date": "2019-04-26",
+          "value": 0.054526125503650526
+        },
+        {
+          "trade_date": "2019-05-03",
+          "value": -0.1474251336767993
+        },
+        {
+          "trade_date": "2019-05-10",
+          "value": -0.09708385752654143
+        },
+        {
+          "trade_date": "2019-05-17",
+          "value": 0.018990812248606076
+        },
+        {
+          "trade_date": "2019-05-24",
+          "value": 0.011145959946886634
+        },
+        {
+          "trade_date": "2019-05-31",
+          "value": 0.057032870472545294
+        },
+        {
+          "trade_date": "2019-06-07",
+          "value": -0.02933480952205817
+        },
+        {
+          "trade_date": "2019-06-14",
+          "value": 0.1716260415642335
+        },
+        {
+          "trade_date": "2019-06-21",
+          "value": 0.22397291199908975
+        },
+        {
+          "trade_date": "2019-06-28",
+          "value": -0.138835572734883
+        },
+        {
+          "trade_date": "2019-07-05",
+          "value": 0.16292114025639634
+        },
+        {
+          "trade_date": "2019-07-12",
+          "value": 0.008427512369314705
+        },
+        {
+          "trade_date": "2019-07-19",
+          "value": -0.00030542290342010925
+        },
+        {
+          "trade_date": "2019-07-26",
+          "value": -0.06047340353660513
+        },
+        {
+          "trade_date": "2019-08-02",
+          "value": -0.041139409964853484
+        },
+        {
+          "trade_date": "2019-08-09",
+          "value": 0.017915927644169015
+        },
+        {
+          "trade_date": "2019-08-16",
+          "value": -0.03779707184384927
+        },
+        {
+          "trade_date": "2019-08-23",
+          "value": 0.020733015093451004
+        },
+        {
+          "trade_date": "2019-08-30",
+          "value": 0.1506624857565634
+        },
+        {
+          "trade_date": "2019-09-06",
+          "value": 0.21436238814370387
+        },
+        {
+          "trade_date": "2019-09-13",
+          "value": -0.008610641697809032
+        },
+        {
+          "trade_date": "2019-09-20",
+          "value": -0.10657873967759035
+        },
+        {
+          "trade_date": "2019-09-27",
+          "value": -0.10203475631642553
+        },
+        {
+          "trade_date": "2019-10-04",
+          "value": 0.06391163338913493
+        },
+        {
+          "trade_date": "2019-10-11",
+          "value": -0.08390668682513784
+        },
+        {
+          "trade_date": "2019-10-18",
+          "value": 0.027993197164149986
+        },
+        {
+          "trade_date": "2019-10-25",
+          "value": 0.06900685037903025
+        },
+        {
+          "trade_date": "2019-11-01",
+          "value": 0.015527551250714056
+        },
+        {
+          "trade_date": "2019-11-08",
+          "value": 0.12358498313909233
+        },
+        {
+          "trade_date": "2019-11-15",
+          "value": 0.0023225190466488106
+        },
+        {
+          "trade_date": "2019-11-22",
+          "value": 0.06690456650786239
+        },
+        {
+          "trade_date": "2019-11-29",
+          "value": 0.0394053219939422
+        },
+        {
+          "trade_date": "2019-12-06",
+          "value": 0.14436694770659453
+        },
+        {
+          "trade_date": "2019-12-13",
+          "value": 0.13150498574585198
+        },
+        {
+          "trade_date": "2019-12-20",
+          "value": 4.64997966994961e-05
+        },
+        {
+          "trade_date": "2019-12-27",
+          "value": 0.1191203072890193
+        },
+        {
+          "trade_date": "2020-01-03",
+          "value": 0.009195921010310618
+        },
+        {
+          "trade_date": "2020-01-10",
+          "value": 0.0343178263998338
+        },
+        {
+          "trade_date": "2020-01-17",
+          "value": -0.0018019177287337085
+        },
+        {
+          "trade_date": "2020-01-24",
+          "value": 0.025370333605223287
+        },
+        {
+          "trade_date": "2020-01-31",
+          "value": 0.09072939286959258
+        },
+        {
+          "trade_date": "2020-02-07",
+          "value": -0.13167860473000287
+        },
+        {
+          "trade_date": "2020-02-14",
+          "value": -0.05951728078518201
+        },
+        {
+          "trade_date": "2020-02-21",
+          "value": 0.12422802602678942
+        },
+        {
+          "trade_date": "2020-02-28",
+          "value": 0.09110508035403385
+        },
+        {
+          "trade_date": "2020-03-06",
+          "value": -0.024834633174255386
+        },
+        {
+          "trade_date": "2020-03-13",
+          "value": -0.03854561877413925
+        },
+        {
+          "trade_date": "2020-03-20",
+          "value": 0.11474051879253751
+        },
+        {
+          "trade_date": "2020-03-27",
+          "value": -0.2529835711950677
+        },
+        {
+          "trade_date": "2020-04-03",
+          "value": 0.23079559890227835
+        },
+        {
+          "trade_date": "2020-04-17",
+          "value": 0.11079242689340645
+        },
+        {
+          "trade_date": "2020-04-24",
+          "value": 0.18783511721260962
+        },
+        {
+          "trade_date": "2020-05-01",
+          "value": 0.13198339208018076
+        },
+        {
+          "trade_date": "2020-05-08",
+          "value": -0.3640535825441188
+        },
+        {
+          "trade_date": "2020-05-15",
+          "value": 0.16367982380675078
+        },
+        {
+          "trade_date": "2020-05-22",
+          "value": -0.004612168005563483
+        },
+        {
+          "trade_date": "2020-05-29",
+          "value": 0.6181350969739506
+        },
+        {
+          "trade_date": "2020-06-05",
+          "value": -0.2630632051220435
+        },
+        {
+          "trade_date": "2020-06-12",
+          "value": -0.13899743416929322
+        },
+        {
+          "trade_date": "2020-06-19",
+          "value": 0.05638416255693208
+        },
+        {
+          "trade_date": "2020-06-26",
+          "value": -0.06563897814322818
+        },
+        {
+          "trade_date": "2020-07-10",
+          "value": 0.15021901790258776
+        },
+        {
+          "trade_date": "2020-07-17",
+          "value": 0.09466792940035472
+        },
+        {
+          "trade_date": "2020-07-24",
+          "value": -0.10208521856824176
+        },
+        {
+          "trade_date": "2020-07-31",
+          "value": -0.0040513435409123355
+        },
+        {
+          "trade_date": "2020-08-07",
+          "value": 0.028030666561444692
+        },
+        {
+          "trade_date": "2020-08-14",
+          "value": -0.26772160050348903
+        },
+        {
+          "trade_date": "2020-08-21",
+          "value": 0.027883528468726396
+        },
+        {
+          "trade_date": "2020-08-28",
+          "value": 0.05289659117030134
+        },
+        {
+          "trade_date": "2020-09-04",
+          "value": -0.05406936781352801
+        },
+        {
+          "trade_date": "2020-09-11",
+          "value": 0.11749328200357921
+        },
+        {
+          "trade_date": "2020-09-18",
+          "value": 0.031949552470867795
+        },
+        {
+          "trade_date": "2020-09-25",
+          "value": -0.03860795364079598
+        },
+        {
+          "trade_date": "2020-10-02",
+          "value": 0.03259725232558782
+        },
+        {
+          "trade_date": "2020-10-09",
+          "value": -0.13285855590798312
+        },
+        {
+          "trade_date": "2020-10-16",
+          "value": 0.08598784788799725
+        },
+        {
+          "trade_date": "2020-10-23",
+          "value": -0.0517072141185802
+        },
+        {
+          "trade_date": "2020-10-30",
+          "value": 0.022197928170239998
+        },
+        {
+          "trade_date": "2020-11-06",
+          "value": -0.07172977511916204
+        },
+        {
+          "trade_date": "2020-11-13",
+          "value": 0.37386946815938266
+        },
+        {
+          "trade_date": "2020-11-20",
+          "value": 0.03532904096962673
+        },
+        {
+          "trade_date": "2020-11-27",
+          "value": 0.13809200716472075
+        },
+        {
+          "trade_date": "2020-12-04",
+          "value": -0.06931629463546517
+        },
+        {
+          "trade_date": "2020-12-11",
+          "value": 0.11247001018581905
+        },
+        {
+          "trade_date": "2020-12-18",
+          "value": -0.0157702735471499
+        }
+      ],
+      "rank_ic_series": [
+        {
+          "trade_date": "2018-01-05",
+          "value": 0.149511919769436
+        },
+        {
+          "trade_date": "2018-01-12",
+          "value": -0.007634446493057029
+        },
+        {
+          "trade_date": "2018-01-19",
+          "value": -0.021860987281380313
+        },
+        {
+          "trade_date": "2018-01-26",
+          "value": -0.005632655671592378
+        },
+        {
+          "trade_date": "2018-02-02",
+          "value": 0.19670122910825588
+        },
+        {
+          "trade_date": "2018-02-09",
+          "value": -0.250814369633595
+        },
+        {
+          "trade_date": "2018-02-16",
+          "value": -0.1186830967719893
+        },
+        {
+          "trade_date": "2018-02-23",
+          "value": -0.07660786620742374
+        },
+        {
+          "trade_date": "2018-03-02",
+          "value": 0.0011798576783095226
+        },
+        {
+          "trade_date": "2018-03-09",
+          "value": 0.0915659501199183
+        },
+        {
+          "trade_date": "2018-03-16",
+          "value": 0.15062691667613173
+        },
+        {
+          "trade_date": "2018-03-23",
+          "value": 0.0812219322515027
+        },
+        {
+          "trade_date": "2018-04-06",
+          "value": -0.12774064844429617
+        },
+        {
+          "trade_date": "2018-04-13",
+          "value": -0.0816305947452073
+        },
+        {
+          "trade_date": "2018-04-20",
+          "value": -0.1049015952750034
+        },
+        {
+          "trade_date": "2018-04-27",
+          "value": 0.028881214475861568
+        },
+        {
+          "trade_date": "2018-05-04",
+          "value": 0.09787754514713287
+        },
+        {
+          "trade_date": "2018-05-11",
+          "value": 0.23666084544996688
+        },
+        {
+          "trade_date": "2018-05-18",
+          "value": -0.03839399826017568
+        },
+        {
+          "trade_date": "2018-05-25",
+          "value": -0.17620849112755002
+        },
+        {
+          "trade_date": "2018-06-01",
+          "value": 0.08777950016024695
+        },
+        {
+          "trade_date": "2018-06-08",
+          "value": -0.012876501884954063
+        },
+        {
+          "trade_date": "2018-06-15",
+          "value": -0.0722487539005379
+        },
+        {
+          "trade_date": "2018-06-22",
+          "value": 0.033858611617076304
+        },
+        {
+          "trade_date": "2018-06-29",
+          "value": -0.04418632242350086
+        },
+        {
+          "trade_date": "2018-07-06",
+          "value": 0.14075893532406183
+        },
+        {
+          "trade_date": "2018-07-13",
+          "value": -0.004499585899068585
+        },
+        {
+          "trade_date": "2018-07-20",
+          "value": 0.14156788168437867
+        },
+        {
+          "trade_date": "2018-07-27",
+          "value": -0.05201454779786028
+        },
+        {
+          "trade_date": "2018-08-03",
+          "value": -0.03884438622250117
+        },
+        {
+          "trade_date": "2018-08-10",
+          "value": -0.20199560407245679
+        },
+        {
+          "trade_date": "2018-08-17",
+          "value": 0.19906211781630193
+        },
+        {
+          "trade_date": "2018-08-24",
+          "value": 0.023259246230814597
+        },
+        {
+          "trade_date": "2018-08-31",
+          "value": -0.16221430098080195
+        },
+        {
+          "trade_date": "2018-09-07",
+          "value": 0.18318626953485145
+        },
+        {
+          "trade_date": "2018-09-14",
+          "value": 0.029873384297033345
+        },
+        {
+          "trade_date": "2018-09-21",
+          "value": 0.01954852845454818
+        },
+        {
+          "trade_date": "2018-09-28",
+          "value": 0.04972299732321059
+        },
+        {
+          "trade_date": "2018-10-05",
+          "value": -0.011905793750121013
+        },
+        {
+          "trade_date": "2018-10-12",
+          "value": -0.015132261257452977
+        },
+        {
+          "trade_date": "2018-10-19",
+          "value": 0.031220156734927677
+        },
+        {
+          "trade_date": "2018-10-26",
+          "value": 0.16062152869508106
+        },
+        {
+          "trade_date": "2018-11-02",
+          "value": -0.19985010199957545
+        },
+        {
+          "trade_date": "2018-11-09",
+          "value": -0.11687412858460497
+        },
+        {
+          "trade_date": "2018-11-16",
+          "value": 0.09053358754324414
+        },
+        {
+          "trade_date": "2018-11-23",
+          "value": -0.04316308600230763
+        },
+        {
+          "trade_date": "2018-11-30",
+          "value": -0.11648569652478977
+        },
+        {
+          "trade_date": "2018-12-07",
+          "value": 0.05608459474677884
+        },
+        {
+          "trade_date": "2018-12-14",
+          "value": -0.06356581049370291
+        },
+        {
+          "trade_date": "2018-12-21",
+          "value": 0.07395479549432714
+        },
+        {
+          "trade_date": "2018-12-28",
+          "value": 0.11474689079203648
+        },
+        {
+          "trade_date": "2019-01-04",
+          "value": 0.1460520937084337
+        },
+        {
+          "trade_date": "2019-01-11",
+          "value": 0.04179026087352703
+        },
+        {
+          "trade_date": "2019-01-18",
+          "value": 0.031180416957222207
+        },
+        {
+          "trade_date": "2019-01-25",
+          "value": -0.06940301435291647
+        },
+        {
+          "trade_date": "2019-02-01",
+          "value": -0.020776356628917338
+        },
+        {
+          "trade_date": "2019-02-08",
+          "value": 0.2403045992358442
+        },
+        {
+          "trade_date": "2019-02-15",
+          "value": 0.07639642990906613
+        },
+        {
+          "trade_date": "2019-02-22",
+          "value": -0.043820496683932814
+        },
+        {
+          "trade_date": "2019-03-01",
+          "value": -0.23504495736121056
+        },
+        {
+          "trade_date": "2019-03-08",
+          "value": -0.0018581696532079096
+        },
+        {
+          "trade_date": "2019-03-15",
+          "value": 0.05150567030928729
+        },
+        {
+          "trade_date": "2019-03-22",
+          "value": 0.014836948351903141
+        },
+        {
+          "trade_date": "2019-03-29",
+          "value": 0.06143323405090157
+        },
+        {
+          "trade_date": "2019-04-05",
+          "value": -0.015858321109962246
+        },
+        {
+          "trade_date": "2019-04-12",
+          "value": -0.00525695656410847
+        },
+        {
+          "trade_date": "2019-04-26",
+          "value": 0.0337106968235152
+        },
+        {
+          "trade_date": "2019-05-03",
+          "value": -0.11125653849975668
+        },
+        {
+          "trade_date": "2019-05-10",
+          "value": -0.10010314774806744
+        },
+        {
+          "trade_date": "2019-05-17",
+          "value": -0.027945727850989883
+        },
+        {
+          "trade_date": "2019-05-24",
+          "value": 0.03713774420903294
+        },
+        {
+          "trade_date": "2019-05-31",
+          "value": 0.11491888279864787
+        },
+        {
+          "trade_date": "2019-06-07",
+          "value": -0.023442114241343737
+        },
+        {
+          "trade_date": "2019-06-14",
+          "value": 0.12223480104702156
+        },
+        {
+          "trade_date": "2019-06-21",
+          "value": 0.21329153400571482
+        },
+        {
+          "trade_date": "2019-06-28",
+          "value": -0.13284808406056003
+        },
+        {
+          "trade_date": "2019-07-05",
+          "value": 0.09427043112860833
+        },
+        {
+          "trade_date": "2019-07-12",
+          "value": 0.009742158247298302
+        },
+        {
+          "trade_date": "2019-07-19",
+          "value": 0.052316852250833205
+        },
+        {
+          "trade_date": "2019-07-26",
+          "value": -0.0770846525915846
+        },
+        {
+          "trade_date": "2019-08-02",
+          "value": -0.07921722717535225
+        },
+        {
+          "trade_date": "2019-08-09",
+          "value": -0.053711167512041746
+        },
+        {
+          "trade_date": "2019-08-16",
+          "value": -0.056054078369169515
+        },
+        {
+          "trade_date": "2019-08-23",
+          "value": -0.028847812466858302
+        },
+        {
+          "trade_date": "2019-08-30",
+          "value": 0.15384483865061815
+        },
+        {
+          "trade_date": "2019-09-06",
+          "value": 0.20234363498803376
+        },
+        {
+          "trade_date": "2019-09-13",
+          "value": 0.008167818276371848
+        },
+        {
+          "trade_date": "2019-09-20",
+          "value": -0.0722592438361756
+        },
+        {
+          "trade_date": "2019-09-27",
+          "value": -0.09126128396069558
+        },
+        {
+          "trade_date": "2019-10-04",
+          "value": 0.16426666241087692
+        },
+        {
+          "trade_date": "2019-10-11",
+          "value": -0.09102588407347471
+        },
+        {
+          "trade_date": "2019-10-18",
+          "value": 0.0641089091070712
+        },
+        {
+          "trade_date": "2019-10-25",
+          "value": 0.09633574141654874
+        },
+        {
+          "trade_date": "2019-11-01",
+          "value": -0.04825616175400072
+        },
+        {
+          "trade_date": "2019-11-08",
+          "value": 0.22739124585272333
+        },
+        {
+          "trade_date": "2019-11-15",
+          "value": 0.00782943371204386
+        },
+        {
+          "trade_date": "2019-11-22",
+          "value": 0.09456992050202168
+        },
+        {
+          "trade_date": "2019-11-29",
+          "value": -0.11033449693323755
+        },
+        {
+          "trade_date": "2019-12-06",
+          "value": 0.10061923855880182
+        },
+        {
+          "trade_date": "2019-12-13",
+          "value": 0.09343559530249115
+        },
+        {
+          "trade_date": "2019-12-20",
+          "value": -0.05100736091463285
+        },
+        {
+          "trade_date": "2019-12-27",
+          "value": 0.17175653196827526
+        },
+        {
+          "trade_date": "2020-01-03",
+          "value": 0.05892507902871536
+        },
+        {
+          "trade_date": "2020-01-10",
+          "value": 0.11741821643388164
+        },
+        {
+          "trade_date": "2020-01-17",
+          "value": -0.019684920618649748
+        },
+        {
+          "trade_date": "2020-01-24",
+          "value": 0.028652598990156777
+        },
+        {
+          "trade_date": "2020-01-31",
+          "value": 0.07481721422867078
+        },
+        {
+          "trade_date": "2020-02-07",
+          "value": -0.08264288898260459
+        },
+        {
+          "trade_date": "2020-02-14",
+          "value": -0.1325464355283141
+        },
+        {
+          "trade_date": "2020-02-21",
+          "value": 0.14762856541117272
+        },
+        {
+          "trade_date": "2020-02-28",
+          "value": 0.09006980533715168
+        },
+        {
+          "trade_date": "2020-03-06",
+          "value": -0.11507950078924996
+        },
+        {
+          "trade_date": "2020-03-13",
+          "value": -0.039401891640697614
+        },
+        {
+          "trade_date": "2020-03-20",
+          "value": 0.09719871533145591
+        },
+        {
+          "trade_date": "2020-03-27",
+          "value": -0.2880914078221068
+        },
+        {
+          "trade_date": "2020-04-03",
+          "value": 0.22514336723284797
+        },
+        {
+          "trade_date": "2020-04-17",
+          "value": 0.06852801778783328
+        },
+        {
+          "trade_date": "2020-04-24",
+          "value": 0.1603421264026584
+        },
+        {
+          "trade_date": "2020-05-01",
+          "value": 0.15459485007391188
+        },
+        {
+          "trade_date": "2020-05-08",
+          "value": -0.41783559589649716
+        },
+        {
+          "trade_date": "2020-05-15",
+          "value": 0.2227339177639293
+        },
+        {
+          "trade_date": "2020-05-22",
+          "value": -0.03620796560728605
+        },
+        {
+          "trade_date": "2020-05-29",
+          "value": 0.6408696742752715
+        },
+        {
+          "trade_date": "2020-06-05",
+          "value": -0.2927678414698368
+        },
+        {
+          "trade_date": "2020-06-12",
+          "value": -0.17448443628329602
+        },
+        {
+          "trade_date": "2020-06-19",
+          "value": 0.0553346717147778
+        },
+        {
+          "trade_date": "2020-06-26",
+          "value": -0.009220952231484957
+        },
+        {
+          "trade_date": "2020-07-10",
+          "value": 0.15849863901484726
+        },
+        {
+          "trade_date": "2020-07-17",
+          "value": 0.019303833676301303
+        },
+        {
+          "trade_date": "2020-07-24",
+          "value": -0.13947898318576055
+        },
+        {
+          "trade_date": "2020-07-31",
+          "value": -0.03972439200182524
+        },
+        {
+          "trade_date": "2020-08-07",
+          "value": 0.05149619917510829
+        },
+        {
+          "trade_date": "2020-08-14",
+          "value": -0.28468006076239666
+        },
+        {
+          "trade_date": "2020-08-21",
+          "value": 0.024754122304054202
+        },
+        {
+          "trade_date": "2020-08-28",
+          "value": 0.05341305411781356
+        },
+        {
+          "trade_date": "2020-09-04",
+          "value": -0.011539004097243422
+        },
+        {
+          "trade_date": "2020-09-11",
+          "value": 0.11902938920546684
+        },
+        {
+          "trade_date": "2020-09-18",
+          "value": 0.03146028058214494
+        },
+        {
+          "trade_date": "2020-09-25",
+          "value": -0.061875610356822604
+        },
+        {
+          "trade_date": "2020-10-02",
+          "value": 0.021269484895904495
+        },
+        {
+          "trade_date": "2020-10-09",
+          "value": -0.11937597626952014
+        },
+        {
+          "trade_date": "2020-10-16",
+          "value": 0.1041542260513267
+        },
+        {
+          "trade_date": "2020-10-23",
+          "value": -0.035638482026781305
+        },
+        {
+          "trade_date": "2020-10-30",
+          "value": 0.08719514685769741
+        },
+        {
+          "trade_date": "2020-11-06",
+          "value": -0.07030845670497807
+        },
+        {
+          "trade_date": "2020-11-13",
+          "value": 0.3085986086794851
+        },
+        {
+          "trade_date": "2020-11-20",
+          "value": 0.015438559167837691
+        },
+        {
+          "trade_date": "2020-11-27",
+          "value": 0.1463642725577906
+        },
+        {
+          "trade_date": "2020-12-04",
+          "value": -0.03365856935712326
+        },
+        {
+          "trade_date": "2020-12-11",
+          "value": 0.12359228052158731
+        },
+        {
+          "trade_date": "2020-12-18",
+          "value": -0.020100645305955723
+        }
+      ],
+      "return_series": [
+        {
+          "cross_section_size": 447,
+          "long_short_cum_return": 0.02073185609649797,
+          "long_short_return": 0.020731856096497966,
+          "top_decile_cum_return": 0.014727801953412722,
+          "top_decile_return": 0.014727801953412698,
+          "trade_date": "2018-01-05"
+        },
+        {
+          "cross_section_size": 447,
+          "long_short_cum_return": 0.023330393966203955,
+          "long_short_return": 0.0025457595490782437,
+          "top_decile_cum_return": 0.015717804639973965,
+          "top_decile_return": 0.0009756337459713239,
+          "trade_date": "2018-01-12"
+        },
+        {
+          "cross_section_size": 447,
+          "long_short_cum_return": 0.01932066352137074,
+          "long_short_return": -0.003918314621040876,
+          "top_decile_cum_return": 0.01209594458406893,
+          "top_decile_return": -0.003565813299087328,
+          "trade_date": "2018-01-19"
+        },
+        {
+          "cross_section_size": 447,
+          "long_short_cum_return": 0.030707819061587704,
+          "long_short_return": 0.011171318259043914,
+          "top_decile_cum_return": 0.012963738481036158,
+          "top_decile_return": 0.0008574225611819863,
+          "trade_date": "2018-01-26"
+        },
+        {
+          "cross_section_size": 448,
+          "long_short_cum_return": 0.05412615830022327,
+          "long_short_return": 0.02272063799802823,
+          "top_decile_cum_return": 0.03523634676445675,
+          "top_decile_return": 0.02198756721224683,
+          "trade_date": "2018-02-02"
+        },
+        {
+          "cross_section_size": 448,
+          "long_short_cum_return": 0.04342045498867697,
+          "long_short_return": -0.010155998148086164,
+          "top_decile_cum_return": 0.026931873833923703,
+          "top_decile_return": -0.00802181352740165,
+          "trade_date": "2018-02-09"
+        },
+        {
+          "cross_section_size": 448,
+          "long_short_cum_return": 0.03523367904699648,
+          "long_short_return": -0.007846094929938157,
+          "top_decile_cum_return": 0.01752180580387419,
+          "top_decile_return": -0.009163283631384512,
+          "trade_date": "2018-02-16"
+        },
+        {
+          "cross_section_size": 448,
+          "long_short_cum_return": 0.03564374177319518,
+          "long_short_return": 0.00039610643905642166,
+          "top_decile_cum_return": 0.025250952576718833,
+          "top_decile_return": 0.007596050255393152,
+          "trade_date": "2018-02-23"
+        },
+        {
+          "cross_section_size": 450,
+          "long_short_cum_return": 0.033286386367780585,
+          "long_short_return": -0.0022762223246561466,
+          "top_decile_cum_return": 0.022308256747402444,
+          "top_decile_return": -0.0028702200392211755,
+          "trade_date": "2018-03-02"
+        },
+        {
+          "cross_section_size": 450,
+          "long_short_cum_return": 0.03539751887714382,
+          "long_short_return": 0.002043124285014842,
+          "top_decile_cum_return": 0.0348478189678918,
+          "top_decile_return": 0.012265930689424002,
+          "trade_date": "2018-03-09"
+        },
+        {
+          "cross_section_size": 450,
+          "long_short_cum_return": 0.050676576968907705,
+          "long_short_return": 0.014756707267691307,
+          "top_decile_cum_return": 0.051277589631946396,
+          "top_decile_return": 0.015876508954177297,
+          "trade_date": "2018-03-16"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.06619659102485875,
+          "long_short_return": 0.014771447652068764,
+          "top_decile_cum_return": 0.05463683565122235,
+          "top_decile_return": 0.0031953939210784903,
+          "trade_date": "2018-03-23"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.03519442663711003,
+          "long_short_return": -0.02907734337993753,
+          "top_decile_cum_return": 0.03905605980918869,
+          "top_decile_return": -0.014773593445001043,
+          "trade_date": "2018-04-06"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.02701153263409939,
+          "long_short_return": -0.007904692869718503,
+          "top_decile_cum_return": 0.0417564355698361,
+          "top_decile_return": 0.002598873982933412,
+          "trade_date": "2018-04-13"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.017408894933099273,
+          "long_short_return": -0.00935007777017961,
+          "top_decile_cum_return": 0.02870084109839177,
+          "top_decile_return": -0.012532290682997186,
+          "trade_date": "2018-04-20"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.012330051493385064,
+          "long_short_return": -0.004991939293049168,
+          "top_decile_cum_return": 0.017843554388198513,
+          "top_decile_return": -0.010554367486081349,
+          "trade_date": "2018-04-27"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.015011291220107692,
+          "long_short_return": 0.0026485825672833982,
+          "top_decile_cum_return": 0.017604763472318652,
+          "top_decile_return": -0.0002346047335569947,
+          "trade_date": "2018-05-04"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.04439929782557828,
+          "long_short_return": 0.028953379001473423,
+          "top_decile_cum_return": 0.038393731963665134,
+          "top_decile_return": 0.020429315228841286,
+          "trade_date": "2018-05-11"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.045318618801769794,
+          "long_short_return": 0.0008802389834095471,
+          "top_decile_cum_return": 0.04174873511877908,
+          "top_decile_return": 0.0032309547446606295,
+          "trade_date": "2018-05-18"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.033169931529094976,
+          "long_short_return": -0.011621994532729708,
+          "top_decile_cum_return": 0.03979643522667531,
+          "top_decile_return": -0.0018740602472448811,
+          "trade_date": "2018-05-25"
+        },
+        {
+          "cross_section_size": 451,
+          "long_short_cum_return": 0.07650943631533891,
+          "long_short_return": 0.04194808952879743,
+          "top_decile_cum_return": 0.0829929718909026,
+          "top_decile_return": 0.041543262893385766,
+          "trade_date": "2018-06-01"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.06289583852879521,
+          "long_short_return": -0.01264605522933457,
+          "top_decile_cum_return": 0.08242372264532016,
+          "top_decile_return": -0.0005256259831386276,
+          "trade_date": "2018-06-08"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.0473385169185816,
+          "long_short_return": -0.014636732073151516,
+          "top_decile_cum_return": 0.07600635863984606,
+          "top_decile_return": -0.005928698596692514,
+          "trade_date": "2018-06-15"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.04594478524812118,
+          "long_short_return": -0.0013307365746090842,
+          "top_decile_cum_return": 0.07013256169161641,
+          "top_decile_return": -0.005458886837485395,
+          "trade_date": "2018-06-22"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.046317490940882555,
+          "long_short_return": 0.0003563340034942091,
+          "top_decile_cum_return": 0.07023355460550995,
+          "top_decile_return": 9.437420886800852e-05,
+          "trade_date": "2018-06-29"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.06075342167845177,
+          "long_short_return": 0.013796893259031849,
+          "top_decile_cum_return": 0.06636358585050917,
+          "top_decile_return": -0.003616003944510307,
+          "trade_date": "2018-07-06"
+        },
+        {
+          "cross_section_size": 453,
+          "long_short_cum_return": 0.048320928683897924,
+          "long_short_return": -0.011720436380852368,
+          "top_decile_cum_return": 0.058737245710318575,
+          "top_decile_return": -0.007151725960435853,
+          "trade_date": "2018-07-13"
+        },
+        {
+          "cross_section_size": 453,
+          "long_short_cum_return": 0.06326841277526407,
+          "long_short_return": 0.014258500123747258,
+          "top_decile_cum_return": 0.0627198366360866,
+          "top_decile_return": 0.003761642411187725,
+          "trade_date": "2018-07-20"
+        },
+        {
+          "cross_section_size": 453,
+          "long_short_cum_return": 0.05262372898634382,
+          "long_short_return": -0.010011285636837711,
+          "top_decile_cum_return": 0.055329706970767445,
+          "top_decile_return": -0.00695397734243087,
+          "trade_date": "2018-07-27"
+        },
+        {
+          "cross_section_size": 453,
+          "long_short_cum_return": 0.04837915388398528,
+          "long_short_return": -0.004032376418538479,
+          "top_decile_cum_return": 0.05907506655107064,
+          "top_decile_return": 0.0035489947412302558,
+          "trade_date": "2018-08-03"
+        },
+        {
+          "cross_section_size": 453,
+          "long_short_cum_return": 0.023959590021723987,
+          "long_short_return": -0.023292683540866756,
+          "top_decile_cum_return": 0.04572781290641137,
+          "top_decile_return": -0.012602745609076841,
+          "trade_date": "2018-08-10"
+        },
+        {
+          "cross_section_size": 453,
+          "long_short_cum_return": 0.046676191069781936,
+          "long_short_return": 0.022185056196969713,
+          "top_decile_cum_return": 0.06575460654309251,
+          "top_decile_return": 0.019151057655261264,
+          "trade_date": "2018-08-17"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.05592570628806315,
+          "long_short_return": 0.00883703603578424,
+          "top_decile_cum_return": 0.07138062342917362,
+          "top_decile_return": 0.005278904591676789,
+          "trade_date": "2018-08-24"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.02342398996003081,
+          "long_short_return": -0.030780305976532113,
+          "top_decile_cum_return": 0.052887991571572535,
+          "top_decile_return": -0.01726056216922387,
+          "trade_date": "2018-08-31"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.02006872868090892,
+          "long_short_return": -0.003278466512449999,
+          "top_decile_cum_return": 0.054406469186907946,
+          "top_decile_return": 0.0014422024256054843,
+          "trade_date": "2018-09-07"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.024122988042141857,
+          "long_short_return": 0.003974496273869557,
+          "top_decile_cum_return": 0.06293003379365403,
+          "top_decile_return": 0.008083755985790668,
+          "trade_date": "2018-09-14"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.02729232620494737,
+          "long_short_return": 0.0030946851108814444,
+          "top_decile_cum_return": 0.06426221156018097,
+          "top_decile_return": 0.0012533071078746911,
+          "trade_date": "2018-09-21"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.03858581031461816,
+          "long_short_return": 0.010993447358252549,
+          "top_decile_cum_return": 0.05775743595820826,
+          "top_decile_return": -0.006112004665125567,
+          "trade_date": "2018-09-28"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.036275665070806484,
+          "long_short_return": -0.0022243181265031494,
+          "top_decile_cum_return": 0.04722732402097485,
+          "top_decile_return": -0.00995512920000834,
+          "trade_date": "2018-10-05"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.04054326630318794,
+          "long_short_return": 0.004118210410827321,
+          "top_decile_cum_return": 0.04368265435148744,
+          "top_decile_return": -0.003384813963674177,
+          "trade_date": "2018-10-12"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.04808347471993568,
+          "long_short_return": 0.007246415080399655,
+          "top_decile_cum_return": 0.04873144675805885,
+          "top_decile_return": 0.004837478505100495,
+          "trade_date": "2018-10-19"
+        },
+        {
+          "cross_section_size": 452,
+          "long_short_cum_return": 0.0708517889694682,
+          "long_short_return": 0.021723760367099203,
+          "top_decile_cum_return": 0.0784832408951579,
+          "top_decile_return": 0.028369316309786282,
+          "trade_date": "2018-10-26"
+        },
+        {
+          "cross_section_size": 453,
+          "long_short_cum_return": 0.04473216885243425,
+          "long_short_return": -0.024391442761813004,
+          "top_decile_cum_return": 0.05944785804473329,
+          "top_decile_return": -0.01765014246732753,
+          "trade_date": "2018-11-02"
+        },
+        {
+          "cross_section_size": 454,
+          "long_short_cum_return": 0.03967381253229929,
+          "long_short_return": -0.004841773299362595,
+          "top_decile_cum_return": 0.06369453217057663,
+          "top_decile_return": 0.004008384266952633,
+          "trade_date": "2018-11-09"
+        },
+        {
+          "cross_section_size": 454,
+          "long_short_cum_return": 0.041826561329781686,
+          "long_short_return": 0.002070600193573314,
+          "top_decile_cum_return": 0.07512109104737186,
+          "top_decile_return": 0.010742331121584316,
+          "trade_date": "2018-11-16"
+        },
+        {
+          "cross_section_size": 454,
+          "long_short_cum_return": 0.046586221337239886,
+          "long_short_return": 0.004568572336438481,
+          "top_decile_cum_return": 0.07213609697333268,
+          "top_decile_return": -0.0027764259290377164,
+          "trade_date": "2018-11-23"
+        },
+        {
+          "cross_section_size": 454,
+          "long_short_cum_return": 0.02603269223644311,
+          "long_short_return": -0.019638639112346905,
+          "top_decile_cum_return": 0.058186243689949846,
+          "top_decile_return": -0.013011270978342865,
+          "trade_date": "2018-11-30"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 0.03458981808713424,
+          "long_short_return": 0.00834001286259117,
+          "top_decile_cum_return": 0.06144781267555843,
+          "top_decile_return": 0.003082225841677452,
+          "trade_date": "2018-12-07"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 0.03927194578329307,
+          "long_short_return": 0.004525588416108452,
+          "top_decile_cum_return": 0.07010408045711403,
+          "top_decile_return": 0.008155151556378425,
+          "trade_date": "2018-12-14"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 0.03744163310406412,
+          "long_short_return": -0.0017611489337849423,
+          "top_decile_cum_return": 0.0749120918833146,
+          "top_decile_return": 0.004493031578897064,
+          "trade_date": "2018-12-21"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 0.02989741535735635,
+          "long_short_return": -0.007271944277130187,
+          "top_decile_cum_return": 0.08244391043297061,
+          "top_decile_return": 0.007006915827376931,
+          "trade_date": "2018-12-28"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 0.03561080053843124,
+          "long_short_return": 0.005547528419704088,
+          "top_decile_cum_return": 0.08853073386883925,
+          "top_decile_return": 0.005623222946890766,
+          "trade_date": "2019-01-04"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 0.030180429810997556,
+          "long_short_return": -0.0052436404917854335,
+          "top_decile_cum_return": 0.08248906727960703,
+          "top_decile_return": -0.005550294907851648,
+          "trade_date": "2019-01-11"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 0.024146183465701965,
+          "long_short_return": -0.00585746551834866,
+          "top_decile_cum_return": 0.08957416931974627,
+          "top_decile_return": 0.00654519500870776,
+          "trade_date": "2019-01-18"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 0.022921507452517087,
+          "long_short_return": -0.0011958019596778379,
+          "top_decile_cum_return": 0.09414012954152162,
+          "top_decile_return": 0.004190591471736269,
+          "trade_date": "2019-01-25"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 0.009171837068912225,
+          "long_short_return": -0.01344156935154009,
+          "top_decile_cum_return": 0.08484239955787154,
+          "top_decile_return": -0.008497750637796406,
+          "trade_date": "2019-02-01"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 3.0022231954318856,
+          "long_short_return": 2.965849073886304,
+          "top_decile_cum_return": 3.291162999945505,
+          "top_decile_return": 2.955563500923611,
+          "trade_date": "2019-02-08"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 3.007051226975464,
+          "long_short_return": 0.001206337404942447,
+          "top_decile_cum_return": 3.3017959524493685,
+          "top_decile_return": 0.00247787196710962,
+          "trade_date": "2019-02-15"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 2.994071232013928,
+          "long_short_return": -0.0032392885007695264,
+          "top_decile_cum_return": 3.2578508424273487,
+          "top_decile_return": -0.010215526377302529,
+          "trade_date": "2019-02-22"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 2.926513838581825,
+          "long_short_return": -0.016914418774158634,
+          "top_decile_cum_return": 3.21086051478079,
+          "top_decile_return": -0.011036161055320192,
+          "trade_date": "2019-03-01"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 2.8904243445175766,
+          "long_short_return": -0.00919123057956238,
+          "top_decile_cum_return": 3.2042811526057724,
+          "top_decile_return": -0.0015624744994337748,
+          "trade_date": "2019-03-08"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 2.9313156283877944,
+          "long_short_return": 0.010510751591363651,
+          "top_decile_cum_return": 3.20222081940691,
+          "top_decile_return": -0.0004900559986539334,
+          "trade_date": "2019-03-15"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 2.942828162191993,
+          "long_short_return": 0.002928417581398856,
+          "top_decile_cum_return": 3.238734953188234,
+          "top_decile_return": 0.008689246793669957,
+          "trade_date": "2019-03-22"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 2.927951339365211,
+          "long_short_return": -0.003773134971855286,
+          "top_decile_cum_return": 3.238874589729222,
+          "top_decile_return": 3.294297532874103e-05,
+          "trade_date": "2019-03-29"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 2.9136542164699817,
+          "long_short_return": -0.0036398421619803895,
+          "top_decile_cum_return": 3.225745551015276,
+          "top_decile_return": -0.003097293499967524,
+          "trade_date": "2019-04-05"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 2.9068381746192227,
+          "long_short_return": -0.0017416055363488768,
+          "top_decile_cum_return": 3.2201714556206493,
+          "top_decile_return": -0.0013190797522788726,
+          "trade_date": "2019-04-12"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 2.9079332408500207,
+          "long_short_return": 0.00028029475034622954,
+          "top_decile_cum_return": 3.2309835026370024,
+          "top_decile_return": 0.002561992357432054,
+          "trade_date": "2019-04-26"
+        },
+        {
+          "cross_section_size": 455,
+          "long_short_cum_return": 2.845281895903876,
+          "long_short_return": -0.016031836033237157,
+          "top_decile_cum_return": 3.1766156492811684,
+          "top_decile_return": -0.012849932721777011,
+          "trade_date": "2019-05-03"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 2.8497592833097833,
+          "long_short_return": 0.001164384699773671,
+          "top_decile_cum_return": 3.1659283506303746,
+          "top_decile_return": -0.0025588417868024718,
+          "trade_date": "2019-05-10"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 2.8598346402951407,
+          "long_short_return": 0.0026171394738984197,
+          "top_decile_cum_return": 3.1611638403356324,
+          "top_decile_return": -0.0011436851269948426,
+          "trade_date": "2019-05-17"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 2.8536469669069557,
+          "long_short_return": -0.0016030928692094418,
+          "top_decile_cum_return": 3.185367761314108,
+          "top_decile_return": 0.0058166229226203625,
+          "trade_date": "2019-05-24"
+        },
+        {
+          "cross_section_size": 456,
+          "long_short_cum_return": 2.8722503604276057,
+          "long_short_return": 0.004827477368945839,
+          "top_decile_cum_return": 3.2434296261873232,
+          "top_decile_return": 0.013872583769074673,
+          "trade_date": "2019-05-31"
+        },
+        {
+          "cross_section_size": 458,
+          "long_short_cum_return": 2.885632696744766,
+          "long_short_return": 0.003455958440580348,
+          "top_decile_cum_return": 3.238537830867303,
+          "top_decile_return": -0.0011527928470479614,
+          "trade_date": "2019-06-07"
+        },
+        {
+          "cross_section_size": 460,
+          "long_short_cum_return": 2.9724015374569,
+          "long_short_return": 0.022330685240739733,
+          "top_decile_cum_return": 3.3248654791802625,
+          "top_decile_return": 0.020367318107738747,
+          "trade_date": "2019-06-14"
+        },
+        {
+          "cross_section_size": 460,
+          "long_short_cum_return": 3.075623727401762,
+          "long_short_return": 0.025984832845207362,
+          "top_decile_cum_return": 3.4337022786574005,
+          "top_decile_return": 0.02516536063400667,
+          "trade_date": "2019-06-21"
+        },
+        {
+          "cross_section_size": 460,
+          "long_short_cum_return": 3.011443413223918,
+          "long_short_return": -0.01574736002892971,
+          "top_decile_cum_return": 3.371192772294636,
+          "top_decile_return": -0.014098715347592878,
+          "trade_date": "2019-06-28"
+        },
+        {
+          "cross_section_size": 461,
+          "long_short_cum_return": 3.0824059553678946,
+          "long_short_return": 0.01769002696387175,
+          "top_decile_cum_return": 3.4159779750268955,
+          "top_decile_return": 0.010245533671293541,
+          "trade_date": "2019-07-05"
+        },
+        {
+          "cross_section_size": 461,
+          "long_short_cum_return": 3.1072630405100057,
+          "long_short_return": 0.006088832275346621,
+          "top_decile_cum_return": 3.4363581394807436,
+          "top_decile_return": 0.004615096490313618,
+          "trade_date": "2019-07-12"
+        },
+        {
+          "cross_section_size": 461,
+          "long_short_cum_return": 3.0875628102747728,
+          "long_short_return": -0.004796437442873545,
+          "top_decile_cum_return": 3.4329993501542706,
+          "top_decile_return": -0.0007571050895511842,
+          "trade_date": "2019-07-19"
+        },
+        {
+          "cross_section_size": 461,
+          "long_short_cum_return": 3.0421775361890067,
+          "long_short_return": -0.011103260351543085,
+          "top_decile_cum_return": 3.3790766192313413,
+          "top_decile_return": -0.012163938377534985,
+          "trade_date": "2019-07-26"
+        },
+        {
+          "cross_section_size": 461,
+          "long_short_cum_return": 3.0300479181763826,
+          "long_short_return": -0.003000763302459925,
+          "top_decile_cum_return": 3.3994582315850392,
+          "top_decile_return": 0.004654317365489546,
+          "trade_date": "2019-08-02"
+        },
+        {
+          "cross_section_size": 462,
+          "long_short_cum_return": 3.0382933246145196,
+          "long_short_return": 0.002045982232853659,
+          "top_decile_cum_return": 3.3820806600513365,
+          "top_decile_return": -0.003949934428049366,
+          "trade_date": "2019-08-09"
+        },
+        {
+          "cross_section_size": 462,
+          "long_short_cum_return": 3.0087323197798206,
+          "long_short_return": -0.007320172770639637,
+          "top_decile_cum_return": 3.357279890490892,
+          "top_decile_return": -0.005659587644412377,
+          "trade_date": "2019-08-16"
+        },
+        {
+          "cross_section_size": 462,
+          "long_short_cum_return": 3.017073676835758,
+          "long_short_return": 0.002080796718398982,
+          "top_decile_cum_return": 3.3746633133073134,
+          "top_decile_return": 0.0039895125521677705,
+          "trade_date": "2019-08-23"
+        },
+        {
+          "cross_section_size": 462,
+          "long_short_cum_return": 3.120576659805848,
+          "long_short_return": 0.02576576664922403,
+          "top_decile_cum_return": 3.4466054082789057,
+          "top_decile_return": 0.016445172992570912,
+          "trade_date": "2019-08-30"
+        },
+        {
+          "cross_section_size": 462,
+          "long_short_cum_return": 3.279971977101968,
+          "long_short_return": 0.03868276953828847,
+          "top_decile_cum_return": 3.612772546786104,
+          "top_decile_return": 0.037369436513934984,
+          "trade_date": "2019-09-06"
+        },
+        {
+          "cross_section_size": 462,
+          "long_short_cum_return": 3.288369208182184,
+          "long_short_return": 0.001961982724452819,
+          "top_decile_cum_return": 3.6041711374027017,
+          "top_decile_return": -0.001864694019954596,
+          "trade_date": "2019-09-13"
+        },
+        {
+          "cross_section_size": 463,
+          "long_short_cum_return": 3.2664080567440834,
+          "long_short_return": -0.005121096242412767,
+          "top_decile_cum_return": 3.5615870703430446,
+          "top_decile_return": -0.009249019158675256,
+          "trade_date": "2019-09-20"
+        },
+        {
+          "cross_section_size": 463,
+          "long_short_cum_return": 3.2139010113059365,
+          "long_short_return": -0.012307084727900446,
+          "top_decile_cum_return": 3.4968256336154413,
+          "top_decile_return": -0.01419712826455654,
+          "trade_date": "2019-09-27"
+        },
+        {
+          "cross_section_size": 463,
+          "long_short_cum_return": 3.2446143618631025,
+          "long_short_return": 0.007288579032768394,
+          "top_decile_cum_return": 3.4904315599066695,
+          "top_decile_return": -0.0014219083037095757,
+          "trade_date": "2019-10-04"
+        },
+        {
+          "cross_section_size": 463,
+          "long_short_cum_return": 3.217614562788442,
+          "long_short_return": -0.00636095455861619,
+          "top_decile_cum_return": 3.4752178212072566,
+          "top_decile_return": -0.0033880348684634967,
+          "trade_date": "2019-10-11"
+        },
+        {
+          "cross_section_size": 464,
+          "long_short_cum_return": 3.2430006144880608,
+          "long_short_return": 0.006019054449308178,
+          "top_decile_cum_return": 3.4870352505827027,
+          "top_decile_return": 0.002640637807493046,
+          "trade_date": "2019-10-18"
+        },
+        {
+          "cross_section_size": 464,
+          "long_short_cum_return": 3.3044162433487108,
+          "long_short_return": 0.014474574585481313,
+          "top_decile_cum_return": 3.496966704970867,
+          "top_decile_return": 0.002213366696166389,
+          "trade_date": "2019-10-25"
+        },
+        {
+          "cross_section_size": 464,
+          "long_short_cum_return": 3.3215876660691617,
+          "long_short_return": 0.003989257021084835,
+          "top_decile_cum_return": 3.5577201537506893,
+          "top_decile_return": 0.013509872935609365,
+          "trade_date": "2019-11-01"
+        },
+        {
+          "cross_section_size": 464,
+          "long_short_cum_return": 3.3679542716500057,
+          "long_short_return": 0.010729067454743533,
+          "top_decile_cum_return": 3.5881873949706105,
+          "top_decile_return": 0.006684754700186897,
+          "trade_date": "2019-11-08"
+        },
+        {
+          "cross_section_size": 464,
+          "long_short_cum_return": 3.370627272586069,
+          "long_short_return": 0.0006119571702965915,
+          "top_decile_cum_return": 3.586133402522038,
+          "top_decile_return": -0.000447669694316338,
+          "trade_date": "2019-11-15"
+        },
+        {
+          "cross_section_size": 464,
+          "long_short_cum_return": 3.3796306058879413,
+          "long_short_return": 0.002059963648317494,
+          "top_decile_cum_return": 3.572757037103546,
+          "top_decile_return": -0.0029166978464115834,
+          "trade_date": "2019-11-22"
+        },
+        {
+          "cross_section_size": 464,
+          "long_short_cum_return": 3.3830339879015723,
+          "long_short_return": 0.0007770933943734553,
+          "top_decile_cum_return": 3.5629306411143746,
+          "top_decile_return": -0.0021488996483826892,
+          "trade_date": "2019-11-29"
+        },
+        {
+          "cross_section_size": 464,
+          "long_short_cum_return": 3.4379790990644876,
+          "long_short_return": 0.012535862444731087,
+          "top_decile_cum_return": 3.6139711194756003,
+          "top_decile_return": 0.011185898356929702,
+          "trade_date": "2019-12-06"
+        },
+        {
+          "cross_section_size": 466,
+          "long_short_cum_return": 3.511663480856707,
+          "long_short_return": 0.016603138533877262,
+          "top_decile_cum_return": 3.721833657841544,
+          "top_decile_return": 0.023377376141487962,
+          "trade_date": "2019-12-13"
+        },
+        {
+          "cross_section_size": 466,
+          "long_short_cum_return": 3.511862385878853,
+          "long_short_return": 4.408684800851891e-05,
+          "top_decile_cum_return": 3.71233099607489,
+          "top_decile_return": -0.002012493970615213,
+          "trade_date": "2019-12-20"
+        },
+        {
+          "cross_section_size": 466,
+          "long_short_cum_return": 3.5421610325022206,
+          "long_short_return": 0.006715330396200865,
+          "top_decile_cum_return": 3.708930241509134,
+          "top_decile_return": -0.000721671412425819,
+          "trade_date": "2019-12-27"
+        },
+        {
+          "cross_section_size": 466,
+          "long_short_cum_return": 3.533023095076657,
+          "long_short_return": -0.002011803932131808,
+          "top_decile_cum_return": 3.7094807833367245,
+          "top_decile_return": 0.00011691441566426485,
+          "trade_date": "2020-01-03"
+        },
+        {
+          "cross_section_size": 466,
+          "long_short_cum_return": 3.5614571254080127,
+          "long_short_return": 0.0062726418407702735,
+          "top_decile_cum_return": 3.7310139736544965,
+          "top_decile_return": 0.004572306652988558,
+          "trade_date": "2020-01-10"
+        },
+        {
+          "cross_section_size": 467,
+          "long_short_cum_return": 3.5215812403652142,
+          "long_short_return": -0.00874191819554419,
+          "top_decile_cum_return": 3.74265686441204,
+          "top_decile_return": 0.0024609715427556886,
+          "trade_date": "2020-01-17"
+        },
+        {
+          "cross_section_size": 467,
+          "long_short_cum_return": 3.481988812097984,
+          "long_short_return": -0.008756323543140022,
+          "top_decile_cum_return": 3.6964584677460985,
+          "top_decile_return": -0.009741037141566164,
+          "trade_date": "2020-01-24"
+        },
+        {
+          "cross_section_size": 467,
+          "long_short_cum_return": 3.5710212015231333,
+          "long_short_return": 0.019864482745880433,
+          "top_decile_cum_return": 3.7488658030743265,
+          "top_decile_return": 0.011158905308786668,
+          "trade_date": "2020-01-31"
+        },
+        {
+          "cross_section_size": 467,
+          "long_short_cum_return": 3.4534632768207176,
+          "long_short_return": -0.02571808782318564,
+          "top_decile_cum_return": 3.6739344797724804,
+          "top_decile_return": -0.015778783062965707,
+          "trade_date": "2020-02-07"
+        },
+        {
+          "cross_section_size": 468,
+          "long_short_cum_return": 3.4282790924497535,
+          "long_short_return": -0.005654966215179593,
+          "top_decile_cum_return": 3.707708009205998,
+          "top_decile_return": 0.007225931296144679,
+          "trade_date": "2020-02-14"
+        },
+        {
+          "cross_section_size": 468,
+          "long_short_cum_return": 3.4826398555304,
+          "long_short_return": 0.012275821362147565,
+          "top_decile_cum_return": 3.7375488736059,
+          "top_decile_return": 0.006338724564384221,
+          "trade_date": "2020-02-21"
+        },
+        {
+          "cross_section_size": 468,
+          "long_short_cum_return": 3.619808446889099,
+          "long_short_return": 0.030599958011230523,
+          "top_decile_cum_return": 3.7344029786522768,
+          "top_decile_return": -0.0006640343007646757,
+          "trade_date": "2020-02-28"
+        },
+        {
+          "cross_section_size": 469,
+          "long_short_cum_return": 3.7090963963054024,
+          "long_short_return": 0.019327197316249795,
+          "top_decile_cum_return": 3.580289390072899,
+          "top_decile_return": -0.03255185274136685,
+          "trade_date": "2020-03-06"
+        },
+        {
+          "cross_section_size": 469,
+          "long_short_cum_return": 3.6017176914558737,
+          "long_short_return": -0.022802401100511505,
+          "top_decile_cum_return": 3.416700134024911,
+          "top_decile_return": -0.03571592144429643,
+          "trade_date": "2020-03-13"
+        },
+        {
+          "cross_section_size": 469,
+          "long_short_cum_return": 3.8302598778054335,
+          "long_short_return": 0.04966453869473565,
+          "top_decile_cum_return": 3.713850605327508,
+          "top_decile_return": 0.06727884218659995,
+          "trade_date": "2020-03-20"
+        },
+        {
+          "cross_section_size": 469,
+          "long_short_cum_return": 3.384016082228616,
+          "long_short_return": -0.09238504901718937,
+          "top_decile_cum_return": 3.3450018918725357,
+          "top_decile_return": -0.07824785813918368,
+          "trade_date": "2020-03-27"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 3.666244686552819,
+          "long_short_return": 0.06437672650615194,
+          "top_decile_cum_return": 3.638930359442228,
+          "top_decile_return": 0.0676474889733638,
+          "trade_date": "2020-04-03"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 3.681670748086315,
+          "long_short_return": 0.0033058835465596755,
+          "top_decile_cum_return": 3.6556110785118303,
+          "top_decile_return": 0.0035958114860788794,
+          "trade_date": "2020-04-17"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 3.862321982290622,
+          "long_short_return": 0.038586915638642534,
+          "top_decile_cum_return": 3.8452591613368483,
+          "top_decile_return": 0.04073537922880757,
+          "trade_date": "2020-04-24"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 3.9396302704394417,
+          "long_short_return": 0.015899458824485305,
+          "top_decile_cum_return": 3.9059900585217635,
+          "top_decile_return": 0.012534086446711154,
+          "trade_date": "2020-05-01"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 3.61706206573914,
+          "long_short_return": -0.06530209490185292,
+          "top_decile_cum_return": 3.640472266081395,
+          "top_decile_return": -0.054121143596522585,
+          "trade_date": "2020-05-08"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 3.724068125019369,
+          "long_short_return": 0.02317622283535389,
+          "top_decile_cum_return": 3.870036831024019,
+          "top_decile_return": 0.04947008661609318,
+          "trade_date": "2020-05-15"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 3.765265883946549,
+          "long_short_return": 0.0087208223583801,
+          "top_decile_cum_return": 3.9981314534919647,
+          "top_decile_return": 0.026302598299038176,
+          "trade_date": "2020-05-22"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.674654865951819,
+          "long_short_return": 0.1908369866766223,
+          "top_decile_cum_return": 4.803324391997216,
+          "top_decile_return": 0.16109879181803033,
+          "trade_date": "2020-05-29"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.463782984633164,
+          "long_short_return": -0.03716030072311464,
+          "top_decile_cum_return": 4.527351888042921,
+          "top_decile_return": -0.04755420950358404,
+          "trade_date": "2020-06-05"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.362329281686519,
+          "long_short_return": -0.01856839908026756,
+          "top_decile_cum_return": 4.467503740714119,
+          "top_decile_return": -0.010827634741017597,
+          "trade_date": "2020-06-12"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.4032574842492425,
+          "long_short_return": 0.007632541832613922,
+          "top_decile_cum_return": 4.376032043339268,
+          "top_decile_return": -0.016730065805662196,
+          "trade_date": "2020-06-19"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.320747261034891,
+          "long_short_return": -0.015270459247013929,
+          "top_decile_cum_return": 4.3176598610368835,
+          "top_decile_return": -0.010857856097547912,
+          "trade_date": "2020-06-26"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.4712927738186234,
+          "long_short_return": 0.028294054462276973,
+          "top_decile_cum_return": 4.532043556425966,
+          "top_decile_return": 0.04031542087900293,
+          "trade_date": "2020-07-10"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.5762913948165265,
+          "long_short_return": 0.01919082479013818,
+          "top_decile_cum_return": 4.632499523875389,
+          "top_decile_return": 0.01815892561668925,
+          "trade_date": "2020-07-17"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.496624003084075,
+          "long_short_return": -0.014286805708630442,
+          "top_decile_cum_return": 4.551634808655144,
+          "top_decile_return": -0.0143568081768089,
+          "trade_date": "2020-07-24"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.428843041673281,
+          "long_short_return": -0.01233138038417085,
+          "top_decile_cum_return": 4.52282449086072,
+          "top_decile_return": -0.005189519625733881,
+          "trade_date": "2020-07-31"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.449268247417087,
+          "long_short_return": 0.003762349654800503,
+          "top_decile_cum_return": 4.5699911930995345,
+          "top_decile_return": 0.008540322495648222,
+          "trade_date": "2020-08-07"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.174964399187952,
+          "long_short_return": -0.05033774000007296,
+          "top_decile_cum_return": 4.2925611894145534,
+          "top_decile_return": -0.04980797887592339,
+          "trade_date": "2020-08-14"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.245277944200354,
+          "long_short_return": 0.013587251928425866,
+          "top_decile_cum_return": 4.2971219103438685,
+          "top_decile_return": 0.0008617228532825394,
+          "trade_date": "2020-08-21"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.293237791631259,
+          "long_short_return": 0.009143432996516992,
+          "top_decile_cum_return": 4.377339730963013,
+          "top_decile_return": 0.015143661402713763,
+          "trade_date": "2020-08-28"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.228665117969232,
+          "long_short_return": -0.012199088006988323,
+          "top_decile_cum_return": 4.3709760207569,
+          "top_decile_return": -0.0011834309388098142,
+          "trade_date": "2020-09-04"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.286617049812818,
+          "long_short_return": 0.011083504209214688,
+          "top_decile_cum_return": 4.517073997714151,
+          "top_decile_return": 0.027201383210916353,
+          "trade_date": "2020-09-11"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.317867608671988,
+          "long_short_return": 0.005911258289509832,
+          "top_decile_cum_return": 4.496123541649285,
+          "top_decile_return": -0.0037973853665087417,
+          "trade_date": "2020-09-18"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.284266594305063,
+          "long_short_return": -0.006318512764802909,
+          "top_decile_cum_return": 4.559682058799642,
+          "top_decile_return": 0.011564244629640315,
+          "trade_date": "2020-09-25"
+        },
+        {
+          "cross_section_size": 474,
+          "long_short_cum_return": 4.312466328232453,
+          "long_short_return": 0.005336546410769959,
+          "top_decile_cum_return": 4.5903912877175745,
+          "top_decile_return": 0.005523558468478713,
+          "trade_date": "2020-10-02"
+        },
+        {
+          "cross_section_size": 474,
+          "long_short_cum_return": 4.2611802058023365,
+          "long_short_return": -0.009653919528404857,
+          "top_decile_cum_return": 4.556387860149169,
+          "top_decile_return": -0.006082477203896881,
+          "trade_date": "2020-10-09"
+        },
+        {
+          "cross_section_size": 474,
+          "long_short_cum_return": 4.342929954492616,
+          "long_short_return": 0.0155382909333008,
+          "top_decile_cum_return": 4.631146591268166,
+          "top_decile_return": 0.01345455590945562,
+          "trade_date": "2020-10-16"
+        },
+        {
+          "cross_section_size": 474,
+          "long_short_cum_return": 4.327660342212927,
+          "long_short_return": -0.0028579098752454504,
+          "top_decile_cum_return": 4.63621142129879,
+          "top_decile_return": 0.0008994313943943849,
+          "trade_date": "2020-10-23"
+        },
+        {
+          "cross_section_size": 474,
+          "long_short_cum_return": 4.338487821836025,
+          "long_short_return": 0.002032314173129034,
+          "top_decile_cum_return": 4.57350636252462,
+          "top_decile_return": -0.011125391524031953,
+          "trade_date": "2020-10-30"
+        },
+        {
+          "cross_section_size": 473,
+          "long_short_cum_return": 4.162172956268316,
+          "long_short_return": -0.033027117687995385,
+          "top_decile_cum_return": 4.650884135798688,
+          "top_decile_return": 0.013883140744997547,
+          "trade_date": "2020-11-06"
+        },
+        {
+          "cross_section_size": 474,
+          "long_short_cum_return": 4.419380672393317,
+          "long_short_return": 0.04982547433105258,
+          "top_decile_cum_return": 4.8873753459798195,
+          "top_decile_return": 0.04185030244788516,
+          "trade_date": "2020-11-13"
+        },
+        {
+          "cross_section_size": 475,
+          "long_short_cum_return": 4.441948885682921,
+          "long_short_return": 0.004164352839166058,
+          "top_decile_cum_return": 4.947645310678506,
+          "top_decile_return": 0.010237153426924049,
+          "trade_date": "2020-11-20"
+        },
+        {
+          "cross_section_size": 475,
+          "long_short_cum_return": 4.521696807324583,
+          "long_short_return": 0.014654294503108827,
+          "top_decile_cum_return": 4.9959402147489085,
+          "top_decile_return": 0.008120004060042553,
+          "trade_date": "2020-11-27"
+        },
+        {
+          "cross_section_size": 475,
+          "long_short_cum_return": 4.415602800263909,
+          "long_short_return": -0.01921402256638554,
+          "top_decile_cum_return": 4.990529995522129,
+          "top_decile_return": -0.0009023137377972551,
+          "trade_date": "2020-12-04"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": 4.544547305877811,
+          "long_short_return": 0.023809815891153947,
+          "top_decile_cum_return": 5.078068129272473,
+          "top_decile_return": 0.014612752764075606,
+          "trade_date": "2020-12-11"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": 4.539081825945562,
+          "long_short_return": -0.0009857396160106646,
+          "top_decile_cum_return": 5.035857398994427,
+          "top_decile_return": -0.006944760963562665,
+          "trade_date": "2020-12-18"
+        }
+      ]
+    },
+    "validation": {
+      "ic_series": [
+        {
+          "trade_date": "2021-01-08",
+          "value": 0.07240991018107171
+        },
+        {
+          "trade_date": "2021-01-15",
+          "value": 0.16832735557229359
+        },
+        {
+          "trade_date": "2021-01-22",
+          "value": 0.025807313646877578
+        },
+        {
+          "trade_date": "2021-01-29",
+          "value": -0.22433684310565893
+        },
+        {
+          "trade_date": "2021-02-05",
+          "value": 0.036019209833809
+        },
+        {
+          "trade_date": "2021-02-12",
+          "value": 0.09509909143325551
+        },
+        {
+          "trade_date": "2021-02-19",
+          "value": 0.13046429112934332
+        },
+        {
+          "trade_date": "2021-02-26",
+          "value": -0.02520613231049818
+        },
+        {
+          "trade_date": "2021-03-05",
+          "value": 0.12467906540259473
+        },
+        {
+          "trade_date": "2021-03-12",
+          "value": 0.02580647065690894
+        },
+        {
+          "trade_date": "2021-03-19",
+          "value": -0.2097919576572602
+        },
+        {
+          "trade_date": "2021-03-26",
+          "value": 0.16186599762899861
+        },
+        {
+          "trade_date": "2021-04-09",
+          "value": -0.10129525861032919
+        },
+        {
+          "trade_date": "2021-04-16",
+          "value": 0.04175933185043784
+        },
+        {
+          "trade_date": "2021-04-23",
+          "value": -0.09634936691777284
+        },
+        {
+          "trade_date": "2021-04-30",
+          "value": -0.09859357469784882
+        },
+        {
+          "trade_date": "2021-05-07",
+          "value": -0.12227853282321861
+        },
+        {
+          "trade_date": "2021-05-14",
+          "value": 0.1416340900530739
+        },
+        {
+          "trade_date": "2021-05-21",
+          "value": 0.07830077907701496
+        },
+        {
+          "trade_date": "2021-05-28",
+          "value": 0.05104212508421627
+        },
+        {
+          "trade_date": "2021-06-04",
+          "value": -0.05489397163787218
+        },
+        {
+          "trade_date": "2021-06-11",
+          "value": -0.13101101465205794
+        },
+        {
+          "trade_date": "2021-06-18",
+          "value": 0.12126503171668532
+        },
+        {
+          "trade_date": "2021-06-25",
+          "value": -0.1355035534815415
+        }
+      ],
+      "rank_ic_series": [
+        {
+          "trade_date": "2021-01-08",
+          "value": 0.02213254449960295
+        },
+        {
+          "trade_date": "2021-01-15",
+          "value": 0.11417423999678025
+        },
+        {
+          "trade_date": "2021-01-22",
+          "value": 0.04117793008100848
+        },
+        {
+          "trade_date": "2021-01-29",
+          "value": -0.22694738447438945
+        },
+        {
+          "trade_date": "2021-02-05",
+          "value": -0.006696971784352882
+        },
+        {
+          "trade_date": "2021-02-12",
+          "value": 0.08491638543788872
+        },
+        {
+          "trade_date": "2021-02-19",
+          "value": 0.11036629067036934
+        },
+        {
+          "trade_date": "2021-02-26",
+          "value": -0.0919766817281898
+        },
+        {
+          "trade_date": "2021-03-05",
+          "value": 0.08332166844791124
+        },
+        {
+          "trade_date": "2021-03-12",
+          "value": 0.022098600235862874
+        },
+        {
+          "trade_date": "2021-03-19",
+          "value": -0.20995418901143484
+        },
+        {
+          "trade_date": "2021-03-26",
+          "value": 0.2079574073919538
+        },
+        {
+          "trade_date": "2021-04-09",
+          "value": -0.12463967910898223
+        },
+        {
+          "trade_date": "2021-04-16",
+          "value": 0.04646174842448657
+        },
+        {
+          "trade_date": "2021-04-23",
+          "value": -0.04418271940274508
+        },
+        {
+          "trade_date": "2021-04-30",
+          "value": -0.09220859422499539
+        },
+        {
+          "trade_date": "2021-05-07",
+          "value": -0.12233559292488659
+        },
+        {
+          "trade_date": "2021-05-14",
+          "value": 0.07319612894485415
+        },
+        {
+          "trade_date": "2021-05-21",
+          "value": 0.05713710753353979
+        },
+        {
+          "trade_date": "2021-05-28",
+          "value": 0.006820334746712247
+        },
+        {
+          "trade_date": "2021-06-04",
+          "value": -0.11420999304545275
+        },
+        {
+          "trade_date": "2021-06-11",
+          "value": -0.1458626047583958
+        },
+        {
+          "trade_date": "2021-06-18",
+          "value": 0.12262104518840537
+        },
+        {
+          "trade_date": "2021-06-25",
+          "value": -0.15351392943548872
+        }
+      ],
+      "return_series": [
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": 0.012339375206980252,
+          "long_short_return": 0.012339375206980256,
+          "top_decile_cum_return": 0.030185531572270108,
+          "top_decile_return": 0.030185531572270108,
+          "trade_date": "2021-01-08"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": 0.040089122047860526,
+          "long_short_return": 0.027411505983560788,
+          "top_decile_cum_return": 0.02889371509517491,
+          "top_decile_return": -0.0012539648806013312,
+          "trade_date": "2021-01-15"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": 0.03295271251275711,
+          "long_short_return": -0.006861344267356939,
+          "top_decile_cum_return": 0.010439739860033104,
+          "top_decile_return": -0.017935744931083266,
+          "trade_date": "2021-01-22"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": -0.03575747358231829,
+          "long_short_return": -0.06651822998550559,
+          "top_decile_cum_return": 0.0007764266101184525,
+          "top_decile_return": -0.009563473078813405,
+          "trade_date": "2021-01-29"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": -0.025394964011301258,
+          "long_short_return": 0.010746787542668819,
+          "top_decile_cum_return": 0.015678979231920298,
+          "top_decile_return": 0.014890990860246874,
+          "trade_date": "2021-02-05"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": -0.015040471587716042,
+          "long_short_return": 0.010624296039144648,
+          "top_decile_cum_return": 0.032617721408139566,
+          "top_decile_return": 0.01667725976669202,
+          "trade_date": "2021-02-12"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": 0.008869257594977142,
+          "long_short_return": 0.024274834135809484,
+          "top_decile_cum_return": 0.06388179292587881,
+          "top_decile_return": 0.030276520409804275,
+          "trade_date": "2021-02-19"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": 0.001531057420497195,
+          "long_short_return": -0.007273687962277169,
+          "top_decile_cum_return": 0.06433474792127325,
+          "top_decile_return": 0.0004257568823963405,
+          "trade_date": "2021-02-26"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": 0.024299536927559373,
+          "long_short_return": 0.02273367294839935,
+          "top_decile_cum_return": 0.09058227405436359,
+          "top_decile_return": 0.024660968914482734,
+          "trade_date": "2021-03-05"
+        },
+        {
+          "cross_section_size": 477,
+          "long_short_cum_return": 0.028850572971546473,
+          "long_short_return": 0.004443071464855186,
+          "top_decile_cum_return": 0.10145103971222813,
+          "top_decile_return": 0.009966020827991815,
+          "trade_date": "2021-03-12"
+        },
+        {
+          "cross_section_size": 476,
+          "long_short_cum_return": 0.001584801276930392,
+          "long_short_return": -0.02650119697738664,
+          "top_decile_cum_return": 0.08157224264150664,
+          "top_decile_return": -0.018047826325458118,
+          "trade_date": "2021-03-19"
+        },
+        {
+          "cross_section_size": 476,
+          "long_short_cum_return": 0.015026203291873097,
+          "long_short_return": 0.01342013376980773,
+          "top_decile_cum_return": 0.0797700455871988,
+          "top_decile_return": -0.0016662752456612464,
+          "trade_date": "2021-03-26"
+        },
+        {
+          "cross_section_size": 476,
+          "long_short_cum_return": 0.0013556223053201588,
+          "long_short_return": -0.013468205000242695,
+          "top_decile_cum_return": 0.07414426011966402,
+          "top_decile_return": -0.005210169971399089,
+          "trade_date": "2021-04-09"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": 0.005558281394667741,
+          "long_short_return": 0.004196969583765128,
+          "top_decile_cum_return": 0.08220766671213897,
+          "top_decile_return": 0.007506819048287331,
+          "trade_date": "2021-04-16"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": -0.004085702583151107,
+          "long_short_return": -0.009590676300177283,
+          "top_decile_cum_return": 0.07325758779608971,
+          "top_decile_return": -0.008270204685613083,
+          "trade_date": "2021-04-23"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": -0.011752238549192717,
+          "long_short_return": -0.007697987654084946,
+          "top_decile_cum_return": 0.06728178143539743,
+          "top_decile_return": -0.005567914383874423,
+          "trade_date": "2021-04-30"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": -0.02129829274194983,
+          "long_short_return": -0.009659575832221403,
+          "top_decile_cum_return": 0.06202584010379342,
+          "top_decile_return": -0.004924605125869549,
+          "trade_date": "2021-05-07"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": -1.8462380943828904e-05,
+          "long_short_return": 0.021742917380438598,
+          "top_decile_cum_return": 0.08301362742166907,
+          "top_decile_return": 0.01976203075795654,
+          "trade_date": "2021-05-14"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": 0.00547693798597737,
+          "long_short_return": 0.005495501826969338,
+          "top_decile_cum_return": 0.09220477988918074,
+          "top_decile_return": 0.008486645259850706,
+          "trade_date": "2021-05-21"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": 0.012306042616039736,
+          "long_short_return": 0.006791905783280712,
+          "top_decile_cum_return": 0.09690548479707495,
+          "top_decile_return": 0.004303867731078129,
+          "trade_date": "2021-05-28"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": 0.0036303976240248392,
+          "long_short_return": -0.008570179991808608,
+          "top_decile_cum_return": 0.09175240713518451,
+          "top_decile_return": -0.004697831976693858,
+          "trade_date": "2021-06-04"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": -0.017878954186982265,
+          "long_short_return": -0.021431546774517758,
+          "top_decile_cum_return": 0.06788368365984443,
+          "top_decile_return": -0.02186276239864024,
+          "trade_date": "2021-06-11"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": -0.011463105383069827,
+          "long_short_return": 0.0065326456766857475,
+          "top_decile_cum_return": 0.07888664334068696,
+          "top_decile_return": 0.010303518865587889,
+          "trade_date": "2021-06-18"
+        },
+        {
+          "cross_section_size": 478,
+          "long_short_cum_return": -0.02912941755097953,
+          "long_short_return": -0.017871171287699557,
+          "top_decile_cum_return": 0.05669468958569124,
+          "top_decile_return": -0.020569309938141576,
+          "trade_date": "2021-06-25"
+        }
+      ]
+    }
+  },
+  "window_rows": {
+    "test": {
+      "dates": 26,
+      "rows": 12487,
+      "tickers": 481
+    },
+    "train": {
+      "dates": 151,
+      "rows": 69600,
+      "tickers": 479
+    },
+    "validation": {
+      "dates": 24,
+      "rows": 11457,
+      "tickers": 480
+    }
+  }
+}
