@@ -1,0 +1,2771 @@
+{
+  "baseline": {
+    "metrics": {
+      "test": {
+        "hit_rate": 0.49907904220389204,
+        "ic": 0.014729257734392166,
+        "icir": 0.09079445253410803,
+        "long_short_return": 0.0020947116554175175,
+        "rank_ic": 0.011469344680188473,
+        "top_decile_return": 0.0020763849085539197,
+        "turnover": 0.6413605442176871
+      },
+      "train": {
+        "hit_rate": 0.5037068965517242,
+        "ic": 0.01818137912719276,
+        "icir": 0.14577090481586433,
+        "long_short_return": 0.022140282809460902,
+        "rank_ic": 0.01632874685835653,
+        "top_decile_return": 0.022613938572895387,
+        "turnover": 0.6481815962586082
+      },
+      "validation": {
+        "hit_rate": 0.48756218905472637,
+        "ic": 0.003134160723855122,
+        "icir": 0.026860526271508464,
+        "long_short_return": -0.0010287576954547003,
+        "rank_ic": -0.014172787845830738,
+        "top_decile_return": 0.002411493664783149,
+        "turnover": 0.6956521739130433
+      }
+    },
+    "mlflow": {
+      "experiment_id": "464888410329815449",
+      "experiment_name": "ridge_5D_20260402_020440",
+      "logged": true,
+      "run_id": "04c5e7914eed40789a6d9bdd7fa12f83",
+      "tracking_uri": "file:///home/jiahao/quant_edge/mlruns"
+    },
+    "window_rows": {
+      "test": {
+        "dates": 26,
+        "rows": 12487,
+        "tickers": 481
+      },
+      "train": {
+        "dates": 151,
+        "rows": 69600,
+        "tickers": 479
+      },
+      "validation": {
+        "dates": 24,
+        "rows": 11457,
+        "tickers": 480
+      }
+    }
+  },
+  "comparison": {
+    "delta_vs_ridge": {
+      "test": {
+        "lightgbm": [
+          {
+            "delta": -0.012693198791145452,
+            "lightgbm": 0.002036058943246714,
+            "metric": "ic",
+            "pct_change": -0.861767715660742,
+            "ridge": 0.014729257734392166
+          },
+          {
+            "delta": -0.006430212068354223,
+            "lightgbm": 0.00503913261183425,
+            "metric": "rank_ic",
+            "pct_change": -0.56064337132194,
+            "ridge": 0.011469344680188473
+          },
+          {
+            "delta": -0.046693983531975916,
+            "lightgbm": 0.04410046900213212,
+            "metric": "icir",
+            "pct_change": -0.5142823402612043,
+            "ridge": 0.09079445253410803
+          },
+          {
+            "delta": -0.009690077680788,
+            "lightgbm": 0.48938896452310404,
+            "metric": "hit_rate",
+            "pct_change": -0.019415917843388922,
+            "ridge": 0.49907904220389204
+          },
+          {
+            "delta": -0.0017076089756208092,
+            "lightgbm": 0.0003687759329331106,
+            "metric": "top_decile_return",
+            "pct_change": -0.8223951968568577,
+            "ridge": 0.0020763849085539197
+          }
+        ],
+        "xgboost": [
+          {
+            "delta": -0.005126180439512979,
+            "metric": "ic",
+            "pct_change": -0.3480270718288522,
+            "ridge": 0.014729257734392166,
+            "xgboost": 0.009603077294879187
+          },
+          {
+            "delta": 0.00012187194921016616,
+            "metric": "rank_ic",
+            "pct_change": 0.010625886012535763,
+            "ridge": 0.011469344680188473,
+            "xgboost": 0.011591216629398639
+          },
+          {
+            "delta": 0.09768524310096377,
+            "metric": "icir",
+            "pct_change": 1.075894400753913,
+            "ridge": 0.09079445253410803,
+            "xgboost": 0.1884796956350718
+          },
+          {
+            "delta": 0.0013614158725074321,
+            "metric": "hit_rate",
+            "pct_change": 0.0027278562259307293,
+            "ridge": 0.49907904220389204,
+            "xgboost": 0.5004404580763995
+          },
+          {
+            "delta": -0.0024146973940175794,
+            "metric": "top_decile_return",
+            "pct_change": -1.162933415702426,
+            "ridge": 0.0020763849085539197,
+            "xgboost": -0.00033831248546365957
+          }
+        ]
+      },
+      "validation": {
+        "lightgbm": [
+          {
+            "delta": 0.03084394916323142,
+            "lightgbm": 0.03397810988708654,
+            "metric": "ic",
+            "pct_change": 9.841214883610798,
+            "ridge": 0.003134160723855122
+          },
+          {
+            "delta": 0.010694620200532455,
+            "lightgbm": -0.003478167645298282,
+            "metric": "rank_ic",
+            "pct_change": 0.7545883221330044,
+            "ridge": -0.014172787845830738
+          },
+          {
+            "delta": 0.35541328393719407,
+            "lightgbm": 0.38227381020870255,
+            "metric": "icir",
+            "pct_change": 13.23180641900485,
+            "ridge": 0.026860526271508464
+          },
+          {
+            "delta": 0.00445142707515056,
+            "lightgbm": 0.49201361612987693,
+            "metric": "hit_rate",
+            "pct_change": 0.009129967776584312,
+            "ridge": 0.48756218905472637
+          },
+          {
+            "delta": -0.0007477493341571484,
+            "lightgbm": 0.0016637443306260005,
+            "metric": "top_decile_return",
+            "pct_change": -0.3100772542250858,
+            "ridge": 0.002411493664783149
+          }
+        ],
+        "xgboost": [
+          {
+            "delta": 0.02265154326704412,
+            "metric": "ic",
+            "pct_change": 7.227307487658758,
+            "ridge": 0.003134160723855122,
+            "xgboost": 0.02578570399089924
+          },
+          {
+            "delta": 0.02116167973221131,
+            "metric": "rank_ic",
+            "pct_change": 1.4931204758304855,
+            "ridge": -0.014172787845830738,
+            "xgboost": 0.0069888918863805745
+          },
+          {
+            "delta": 0.350661842957554,
+            "metric": "icir",
+            "pct_change": 13.054913348049643,
+            "ridge": 0.026860526271508464,
+            "xgboost": 0.37752236922906246
+          },
+          {
+            "delta": 0.016583747927031545,
+            "metric": "hit_rate",
+            "pct_change": 0.03401360544217694,
+            "ridge": 0.48756218905472637,
+            "xgboost": 0.5041459369817579
+          },
+          {
+            "delta": 0.0026714405213045397,
+            "metric": "top_decile_return",
+            "pct_change": 1.1077949572572343,
+            "ridge": 0.002411493664783149,
+            "xgboost": 0.0050829341860876886
+          }
+        ]
+      }
+    },
+    "test_metrics": [
+      {
+        "lightgbm": 0.002036058943246714,
+        "metric": "ic",
+        "ridge": 0.014729257734392166,
+        "xgboost": 0.009603077294879187
+      },
+      {
+        "lightgbm": 0.00503913261183425,
+        "metric": "rank_ic",
+        "ridge": 0.011469344680188473,
+        "xgboost": 0.011591216629398639
+      },
+      {
+        "lightgbm": 0.04410046900213212,
+        "metric": "icir",
+        "ridge": 0.09079445253410803,
+        "xgboost": 0.1884796956350718
+      },
+      {
+        "lightgbm": 0.48938896452310404,
+        "metric": "hit_rate",
+        "ridge": 0.49907904220389204,
+        "xgboost": 0.5004404580763995
+      },
+      {
+        "lightgbm": 0.0003687759329331106,
+        "metric": "top_decile_return",
+        "ridge": 0.0020763849085539197,
+        "xgboost": -0.00033831248546365957
+      },
+      {
+        "lightgbm": 0.00040870751349564516,
+        "metric": "long_short_return",
+        "ridge": 0.0020947116554175175,
+        "xgboost": 0.0013945645692034886
+      },
+      {
+        "lightgbm": 0.5274319727891157,
+        "metric": "turnover",
+        "ridge": 0.6413605442176871,
+        "xgboost": 0.5438945578231293
+      }
+    ],
+    "validation_metrics": [
+      {
+        "lightgbm": 0.03397810988708654,
+        "metric": "ic",
+        "ridge": 0.003134160723855122,
+        "xgboost": 0.02578570399089924
+      },
+      {
+        "lightgbm": -0.003478167645298282,
+        "metric": "rank_ic",
+        "ridge": -0.014172787845830738,
+        "xgboost": 0.0069888918863805745
+      },
+      {
+        "lightgbm": 0.38227381020870255,
+        "metric": "icir",
+        "ridge": 0.026860526271508464,
+        "xgboost": 0.37752236922906246
+      },
+      {
+        "lightgbm": 0.49201361612987693,
+        "metric": "hit_rate",
+        "ridge": 0.48756218905472637,
+        "xgboost": 0.5041459369817579
+      },
+      {
+        "lightgbm": 0.0016637443306260005,
+        "metric": "top_decile_return",
+        "ridge": 0.002411493664783149,
+        "xgboost": 0.0050829341860876886
+      },
+      {
+        "lightgbm": -0.0021904264457518843,
+        "metric": "long_short_return",
+        "ridge": -0.0010287576954547003,
+        "xgboost": 0.0014514424767730835
+      },
+      {
+        "lightgbm": 0.5045289855072465,
+        "metric": "turnover",
+        "ridge": 0.6956521739130433,
+        "xgboost": 0.5769927536231885
+      }
+    ]
+  },
+  "config": {
+    "as_of": "2026-03-31",
+    "benchmark_ticker": "SPY",
+    "pass_ic_threshold": 0.01,
+    "rebalance_weekday": 4,
+    "target_horizon": "5D",
+    "test_end": "2021-12-31",
+    "test_start": "2021-07-01",
+    "train_end": "2020-12-31",
+    "train_start": "2018-01-01",
+    "validation_end": "2021-06-30",
+    "validation_start": "2021-01-01"
+  },
+  "data_summary": {
+    "aligned_dates": 1008,
+    "aligned_max_date": "2021-12-31",
+    "aligned_min_date": "2018-01-02",
+    "aligned_rows": 469282,
+    "aligned_tickers": 483,
+    "labels": {
+      "benchmark_ticker": "SPY",
+      "dates": 1008,
+      "horizon_days": 5,
+      "max_date": "2021-12-31",
+      "min_date": "2018-01-02",
+      "rows": 469282,
+      "tickers": 483
+    }
+  },
+  "generated_at_utc": "2026-04-02T02:18:31.829913+00:00",
+  "git_branch": "feature/week6-tree-vs-baseline-comparison",
+  "inputs": {
+    "baseline_report_path": "/home/jiahao/quant_edge/data/reports/single_window_validation.json",
+    "feature_matrix_path": "/home/jiahao/quant_edge/data/features/window1_feature_matrix.parquet",
+    "ic_report_path": "/home/jiahao/quant_edge/data/features/ic_screening_report_v2.csv",
+    "label_cache_path": "/home/jiahao/quant_edge/data/labels/window1_forward_returns_5d.parquet",
+    "report_path": "/home/jiahao/quant_edge/data/reports/tree_vs_baseline_comparison.json",
+    "retained_feature_count": 58,
+    "retained_features": [
+      "atr_14",
+      "vol_60d",
+      "gk_vol",
+      "vol_20d",
+      "vol_rank",
+      "bb_width",
+      "low_52w_ratio",
+      "revenue_growth_yoy",
+      "trend_confirmation",
+      "high_52w_ratio",
+      "macd_histogram",
+      "mean_reversion_combo",
+      "current_ratio",
+      "ret_vol_interaction_60d",
+      "momentum_rank_60d",
+      "ret_60d",
+      "ret_5d",
+      "amihud",
+      "earnings_growth_yoy",
+      "value_mom_pb",
+      "cci_20",
+      "bb_position",
+      "macd_signal",
+      "stoch_d",
+      "pb_ratio",
+      "stoch_k",
+      "quality_value_roe_pb",
+      "turnover_rate",
+      "operating_margin",
+      "mom_vol_adj_60d",
+      "ev_ebitda",
+      "fcf_mom_20d",
+      "vwap_deviation",
+      "liquidity_momentum",
+      "ret_vol_interaction_20d",
+      "mom_vol_adj_20d",
+      "rsi_14",
+      "ret_10d",
+      "obv_slope",
+      "momentum_rank_20d",
+      "ret_20d",
+      "rsi_28",
+      "breadth_momentum",
+      "credit_spread",
+      "credit_spread_change",
+      "dividend_yield",
+      "eps_surprise",
+      "ffr",
+      "macro_risk_on",
+      "market_ret_20d",
+      "risk_sentiment",
+      "sp500_breadth",
+      "spread_stress",
+      "vix",
+      "vix_change_5d",
+      "vix_rank",
+      "yield_10y",
+      "yield_spread_10y2y"
+    ]
+  },
+  "lightgbm": {
+    "feature_importance_top20": [
+      {
+        "feature": "mean_reversion_combo",
+        "importance": 189.0,
+        "rank": 1
+      },
+      {
+        "feature": "amihud",
+        "importance": 167.0,
+        "rank": 2
+      },
+      {
+        "feature": "value_mom_pb",
+        "importance": 139.0,
+        "rank": 3
+      },
+      {
+        "feature": "ret_10d",
+        "importance": 115.0,
+        "rank": 4
+      },
+      {
+        "feature": "turnover_rate",
+        "importance": 109.0,
+        "rank": 5
+      },
+      {
+        "feature": "high_52w_ratio",
+        "importance": 90.0,
+        "rank": 6
+      },
+      {
+        "feature": "rsi_14",
+        "importance": 85.0,
+        "rank": 7
+      },
+      {
+        "feature": "atr_14",
+        "importance": 81.0,
+        "rank": 8
+      },
+      {
+        "feature": "vwap_deviation",
+        "importance": 77.0,
+        "rank": 9
+      },
+      {
+        "feature": "quality_value_roe_pb",
+        "importance": 73.0,
+        "rank": 10
+      },
+      {
+        "feature": "macd_histogram",
+        "importance": 72.0,
+        "rank": 11
+      },
+      {
+        "feature": "obv_slope",
+        "importance": 70.0,
+        "rank": 12
+      },
+      {
+        "feature": "vol_60d",
+        "importance": 69.0,
+        "rank": 13
+      },
+      {
+        "feature": "bb_position",
+        "importance": 68.0,
+        "rank": 14
+      },
+      {
+        "feature": "cci_20",
+        "importance": 66.0,
+        "rank": 15
+      },
+      {
+        "feature": "momentum_rank_60d",
+        "importance": 64.0,
+        "rank": 16
+      },
+      {
+        "feature": "stoch_k",
+        "importance": 61.0,
+        "rank": 17
+      },
+      {
+        "feature": "fcf_mom_20d",
+        "importance": 60.0,
+        "rank": 18
+      },
+      {
+        "feature": "pb_ratio",
+        "importance": 58.0,
+        "rank": 19
+      },
+      {
+        "feature": "gk_vol",
+        "importance": 57.0,
+        "rank": 20
+      }
+    ],
+    "metrics": {
+      "test": {
+        "hit_rate": 0.48938896452310404,
+        "ic": 0.002036058943246714,
+        "icir": 0.04410046900213212,
+        "long_short_return": 0.00040870751349564516,
+        "rank_ic": 0.00503913261183425,
+        "top_decile_return": 0.0003687759329331106,
+        "turnover": 0.5274319727891157
+      },
+      "validation": {
+        "hit_rate": 0.49201361612987693,
+        "ic": 0.03397810988708654,
+        "icir": 0.38227381020870255,
+        "long_short_return": -0.0021904264457518843,
+        "rank_ic": -0.003478167645298282,
+        "top_decile_return": 0.0016637443306260005,
+        "turnover": 0.5045289855072465
+      }
+    },
+    "mlflow": {
+      "experiment_id": "250404330455343353",
+      "experiment_name": "lightgbm_5D_20260402_021736",
+      "logged": true,
+      "run_id": "de047dec0570496196aa7ca5a392b52b",
+      "tracking_uri": "file:///home/jiahao/quant_edge/mlruns"
+    },
+    "model_type": "lightgbm",
+    "selection": {
+      "best_ic": 0.03397810988708654,
+      "best_params": {
+        "colsample_bytree": 0.8,
+        "learning_rate": 0.01,
+        "max_depth": 5,
+        "min_child_samples": 20,
+        "n_estimators": 100,
+        "reg_alpha": 0.0,
+        "reg_lambda": 1.0,
+        "subsample": 0.8
+      },
+      "n_iter": 18,
+      "top_trials": [
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 5,
+          "mean_fit_time": 0.6118671894073486,
+          "min_child_samples": 20,
+          "n_estimators": 100,
+          "rank_test_score": 1,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.03397810988708654,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 7,
+          "mean_fit_time": 0.619147777557373,
+          "min_child_samples": 20,
+          "n_estimators": 100,
+          "rank_test_score": 2,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.031103284277554752,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 3,
+          "mean_fit_time": 0.6852235794067383,
+          "min_child_samples": 20,
+          "n_estimators": 100,
+          "rank_test_score": 3,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.028601561569955632,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 5,
+          "mean_fit_time": 1.3742084503173828,
+          "min_child_samples": 20,
+          "n_estimators": 300,
+          "rank_test_score": 4,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.014213781181439409,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 3,
+          "mean_fit_time": 0.8659331798553467,
+          "min_child_samples": 20,
+          "n_estimators": 300,
+          "rank_test_score": 5,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.013747968712382241,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 7,
+          "mean_fit_time": 1.2539069652557373,
+          "min_child_samples": 20,
+          "n_estimators": 300,
+          "rank_test_score": 6,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.01298954473046478,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.05,
+          "max_depth": 7,
+          "mean_fit_time": 0.6920790672302246,
+          "min_child_samples": 20,
+          "n_estimators": 100,
+          "rank_test_score": 7,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.012695234504115098,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "mean_fit_time": 0.46755504608154297,
+          "min_child_samples": 20,
+          "n_estimators": 100,
+          "rank_test_score": 8,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.012493768798214547,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.1,
+          "max_depth": 7,
+          "mean_fit_time": 0.6136884689331055,
+          "min_child_samples": 20,
+          "n_estimators": 100,
+          "rank_test_score": 9,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.011066652294972551,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.1,
+          "max_depth": 5,
+          "mean_fit_time": 0.593026876449585,
+          "min_child_samples": 20,
+          "n_estimators": 100,
+          "rank_test_score": 10,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.010078364537946296,
+          "validation_ic_std": 0.0
+        }
+      ]
+    },
+    "series": {
+      "test": {
+        "ic_series": [
+          {
+            "trade_date": "2021-07-02",
+            "value": -0.04262014493183524
+          },
+          {
+            "trade_date": "2021-07-09",
+            "value": -0.01841051510845735
+          },
+          {
+            "trade_date": "2021-07-16",
+            "value": 0.04537106888510393
+          },
+          {
+            "trade_date": "2021-07-23",
+            "value": -0.03147322433916681
+          },
+          {
+            "trade_date": "2021-07-30",
+            "value": -0.036717733547110554
+          },
+          {
+            "trade_date": "2021-08-06",
+            "value": -0.026316643810333815
+          },
+          {
+            "trade_date": "2021-08-13",
+            "value": -0.029151790239069896
+          },
+          {
+            "trade_date": "2021-08-20",
+            "value": 0.04386120011777278
+          },
+          {
+            "trade_date": "2021-08-27",
+            "value": 0.00587261605101537
+          },
+          {
+            "trade_date": "2021-09-03",
+            "value": 0.037497635297447506
+          },
+          {
+            "trade_date": "2021-09-10",
+            "value": 0.04294874270460874
+          },
+          {
+            "trade_date": "2021-09-17",
+            "value": 0.037340754677915214
+          },
+          {
+            "trade_date": "2021-09-24",
+            "value": -0.010642547891163237
+          },
+          {
+            "trade_date": "2021-10-01",
+            "value": -0.04290964826083913
+          },
+          {
+            "trade_date": "2021-10-08",
+            "value": 0.01570539797727659
+          },
+          {
+            "trade_date": "2021-10-15",
+            "value": 0.03932885912535492
+          },
+          {
+            "trade_date": "2021-10-22",
+            "value": -0.06344239548057479
+          },
+          {
+            "trade_date": "2021-10-29",
+            "value": 0.10420953084578556
+          },
+          {
+            "trade_date": "2021-11-05",
+            "value": -0.018092936985390388
+          },
+          {
+            "trade_date": "2021-11-12",
+            "value": -0.082580458689836
+          },
+          {
+            "trade_date": "2021-11-19",
+            "value": -0.0010335247538701567
+          },
+          {
+            "trade_date": "2021-11-26",
+            "value": -0.005553081150757148
+          },
+          {
+            "trade_date": "2021-12-03",
+            "value": -0.0053871293692692125
+          },
+          {
+            "trade_date": "2021-12-10",
+            "value": -0.034515910295927994
+          },
+          {
+            "trade_date": "2021-12-17",
+            "value": 0.11675445205220646
+          },
+          {
+            "trade_date": "2021-12-31",
+            "value": 0.012894959643529212
+          }
+        ],
+        "rank_ic_series": [
+          {
+            "trade_date": "2021-07-02",
+            "value": -0.17967039068386903
+          },
+          {
+            "trade_date": "2021-07-09",
+            "value": -0.41082558577685474
+          },
+          {
+            "trade_date": "2021-07-16",
+            "value": 0.09858816252964042
+          },
+          {
+            "trade_date": "2021-07-23",
+            "value": 0.1202308659213722
+          },
+          {
+            "trade_date": "2021-07-30",
+            "value": 0.09851744901676102
+          },
+          {
+            "trade_date": "2021-08-06",
+            "value": -0.052829566501603885
+          },
+          {
+            "trade_date": "2021-08-13",
+            "value": -0.2782159205641487
+          },
+          {
+            "trade_date": "2021-08-20",
+            "value": 0.3823921251360501
+          },
+          {
+            "trade_date": "2021-08-27",
+            "value": -0.08413184642322798
+          },
+          {
+            "trade_date": "2021-09-03",
+            "value": 0.17769161443412892
+          },
+          {
+            "trade_date": "2021-09-10",
+            "value": 0.10340141841486607
+          },
+          {
+            "trade_date": "2021-09-17",
+            "value": 0.01899249055300388
+          },
+          {
+            "trade_date": "2021-09-24",
+            "value": -0.013367735614051053
+          },
+          {
+            "trade_date": "2021-10-01",
+            "value": -0.2105089117692485
+          },
+          {
+            "trade_date": "2021-10-08",
+            "value": 0.11544611077968142
+          },
+          {
+            "trade_date": "2021-10-15",
+            "value": 0.038938160356855364
+          },
+          {
+            "trade_date": "2021-10-22",
+            "value": 0.15146837363404592
+          },
+          {
+            "trade_date": "2021-10-29",
+            "value": 0.3189405001985262
+          },
+          {
+            "trade_date": "2021-11-05",
+            "value": 0.09366950336867348
+          },
+          {
+            "trade_date": "2021-11-12",
+            "value": -0.1319145938667887
+          },
+          {
+            "trade_date": "2021-11-19",
+            "value": -0.16877819421632398
+          },
+          {
+            "trade_date": "2021-11-26",
+            "value": -0.17473329624629116
+          },
+          {
+            "trade_date": "2021-12-03",
+            "value": 0.06337447261692189
+          },
+          {
+            "trade_date": "2021-12-10",
+            "value": -0.1934122421482431
+          },
+          {
+            "trade_date": "2021-12-17",
+            "value": 0.3431233263282955
+          },
+          {
+            "trade_date": "2021-12-31",
+            "value": -0.09536884157048119
+          }
+        ],
+        "return_series": [
+          {
+            "cross_section_size": 479,
+            "long_short_cum_return": -0.011494764979145478,
+            "long_short_return": -0.011494764979145476,
+            "top_decile_cum_return": -0.01477951571714542,
+            "top_decile_return": -0.014779515717145404,
+            "trade_date": "2021-07-02"
+          },
+          {
+            "cross_section_size": 479,
+            "long_short_cum_return": -0.05481694844516205,
+            "long_short_return": -0.04382595248987482,
+            "top_decile_cum_return": -0.05538835448554047,
+            "top_decile_return": -0.041218021159958367,
+            "trade_date": "2021-07-09"
+          },
+          {
+            "cross_section_size": 479,
+            "long_short_cum_return": -0.05619081390358516,
+            "long_short_return": -0.0014535443226189422,
+            "top_decile_cum_return": -0.0596496565617749,
+            "top_decile_return": -0.004511168263137068,
+            "trade_date": "2021-07-16"
+          },
+          {
+            "cross_section_size": 479,
+            "long_short_cum_return": -0.05485586015810506,
+            "long_short_return": 0.0014144318206960318,
+            "top_decile_cum_return": -0.051169141574937016,
+            "top_decile_return": 0.009018463220665568,
+            "trade_date": "2021-07-23"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.03997006803317593,
+            "long_short_return": 0.015749758684870375,
+            "top_decile_cum_return": -0.038084335933269986,
+            "top_decile_return": 0.013790451191043772,
+            "trade_date": "2021-07-30"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.03860243824710452,
+            "long_short_return": 0.0014245699436366902,
+            "top_decile_cum_return": -0.033079897281894866,
+            "top_decile_return": 0.005202575275900605,
+            "trade_date": "2021-08-06"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.06614331200586443,
+            "long_short_return": -0.028646706476502064,
+            "top_decile_cum_return": -0.06007679761384166,
+            "top_decile_return": -0.02792050786415125,
+            "trade_date": "2021-08-13"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.02051154555291823,
+            "long_short_return": 0.04886377860714404,
+            "top_decile_cum_return": -0.018344496556326972,
+            "top_decile_return": 0.04439969239143155,
+            "trade_date": "2021-08-20"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.01984490541492301,
+            "long_short_return": 0.0006806003020950182,
+            "top_decile_cum_return": -0.02245498712800531,
+            "top_decile_return": -0.004187304565867106,
+            "trade_date": "2021-08-27"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.0033627742879414058,
+            "long_short_return": 0.016815839878849798,
+            "top_decile_cum_return": -0.012101288377694419,
+            "top_decile_return": 0.010591531452748356,
+            "trade_date": "2021-09-03"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.00024027800254322607,
+            "long_short_return": 0.003133031964732528,
+            "top_decile_cum_return": -0.0001822220711944489,
+            "top_decile_return": 0.012065069188041398,
+            "trade_date": "2021-09-10"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.0067116711049189925,
+            "long_short_return": -0.0064729484094902395,
+            "top_decile_cum_return": 0.00329969279827802,
+            "top_decile_return": 0.003482549466849269,
+            "trade_date": "2021-09-17"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.02859208608651609,
+            "long_short_return": -0.02202826142731043,
+            "top_decile_cum_return": 0.007134961241060056,
+            "top_decile_return": 0.003822654856083147,
+            "trade_date": "2021-09-24"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.048775006735839344,
+            "long_short_return": -0.02077697778682177,
+            "top_decile_cum_return": -0.0007419223807660913,
+            "top_decile_return": -0.0078210805154849,
+            "trade_date": "2021-10-01"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": -0.031464560431122224,
+            "long_short_return": 0.018198056639907874,
+            "top_decile_cum_return": 0.010515851637954654,
+            "top_decile_return": 0.011266132614652228,
+            "trade_date": "2021-10-08"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": -0.02685202904517725,
+            "long_short_return": 0.004762377500608633,
+            "top_decile_cum_return": 0.019178506345684854,
+            "top_decile_return": 0.008572507490791817,
+            "trade_date": "2021-10-15"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.0011332224571134475,
+            "long_short_return": 0.028757447312799236,
+            "top_decile_cum_return": 0.02049158277906926,
+            "top_decile_return": 0.0012883674696912467,
+            "trade_date": "2021-10-22"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.043846993584030436,
+            "long_short_return": 0.0426654217128896,
+            "top_decile_cum_return": 0.05952019321307023,
+            "top_decile_return": 0.03824491166082492,
+            "trade_date": "2021-10-29"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.060484720668668945,
+            "long_short_return": 0.015938856160818183,
+            "top_decile_cum_return": 0.06997508255412743,
+            "top_decile_return": 0.009867569686757937,
+            "trade_date": "2021-11-05"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.04018850343393221,
+            "long_short_return": -0.019138622970389714,
+            "top_decile_cum_return": 0.04126836050350535,
+            "top_decile_return": -0.026829336980536474,
+            "trade_date": "2021-11-12"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.019749466739787502,
+            "long_short_return": -0.019649358387128984,
+            "top_decile_cum_return": 0.031187271798392313,
+            "top_decile_return": -0.009681547128002978,
+            "trade_date": "2021-11-19"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": -0.0022770607475833815,
+            "long_short_return": -0.02159994018706501,
+            "top_decile_cum_return": 0.014292236109622047,
+            "top_decile_return": -0.016384061509317677,
+            "trade_date": "2021-11-26"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.007959307751065348,
+            "long_short_return": 0.010259730528315723,
+            "top_decile_cum_return": 0.009754503432037653,
+            "top_decile_return": -0.0044737921833940325,
+            "trade_date": "2021-12-03"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": -0.009082463589134004,
+            "long_short_return": -0.016907201718512326,
+            "top_decile_cum_return": 0.011477734614947277,
+            "top_decile_return": 0.0017065843004933682,
+            "trade_date": "2021-12-10"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.032780401735622355,
+            "long_short_return": 0.04224656824258554,
+            "top_decile_cum_return": 0.028498606475927613,
+            "top_decile_return": 0.01682772766862736,
+            "trade_date": "2021-12-17"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.0035632561030474186,
+            "long_short_return": -0.02828979479420271,
+            "top_decile_cum_return": 0.005097920473374762,
+            "top_decile_return": -0.022752277791346403,
+            "trade_date": "2021-12-31"
+          }
+        ]
+      },
+      "validation": {
+        "ic_series": [
+          {
+            "trade_date": "2021-01-08",
+            "value": 0.02290210570519112
+          },
+          {
+            "trade_date": "2021-01-15",
+            "value": 0.09686313563075614
+          },
+          {
+            "trade_date": "2021-01-22",
+            "value": 0.2569017193869063
+          },
+          {
+            "trade_date": "2021-01-29",
+            "value": 0.012391972044673592
+          },
+          {
+            "trade_date": "2021-02-05",
+            "value": 0.19114331154248748
+          },
+          {
+            "trade_date": "2021-02-12",
+            "value": -0.07160047094671589
+          },
+          {
+            "trade_date": "2021-02-19",
+            "value": -0.06161299992124072
+          },
+          {
+            "trade_date": "2021-02-26",
+            "value": -0.08723288904651344
+          },
+          {
+            "trade_date": "2021-03-05",
+            "value": 0.0608986644006001
+          },
+          {
+            "trade_date": "2021-03-12",
+            "value": 0.059257320845571025
+          },
+          {
+            "trade_date": "2021-03-19",
+            "value": -0.07170726869562205
+          },
+          {
+            "trade_date": "2021-03-26",
+            "value": 0.03440502293345372
+          },
+          {
+            "trade_date": "2021-04-09",
+            "value": 0.10193404388207358
+          },
+          {
+            "trade_date": "2021-04-16",
+            "value": 0.01325098801546534
+          },
+          {
+            "trade_date": "2021-04-23",
+            "value": -0.051017971294550865
+          },
+          {
+            "trade_date": "2021-04-30",
+            "value": -0.007268195695683969
+          },
+          {
+            "trade_date": "2021-05-07",
+            "value": -0.06146389685618948
+          },
+          {
+            "trade_date": "2021-05-14",
+            "value": 0.04327351066918175
+          },
+          {
+            "trade_date": "2021-05-21",
+            "value": 0.10062563945631246
+          },
+          {
+            "trade_date": "2021-05-28",
+            "value": 0.06684910663260475
+          },
+          {
+            "trade_date": "2021-06-04",
+            "value": 0.05814663877496636
+          },
+          {
+            "trade_date": "2021-06-11",
+            "value": 0.14710977695260066
+          },
+          {
+            "trade_date": "2021-06-18",
+            "value": 0.06849730806950705
+          },
+          {
+            "trade_date": "2021-06-25",
+            "value": -0.10707193519575792
+          }
+        ],
+        "rank_ic_series": [
+          {
+            "trade_date": "2021-01-08",
+            "value": -0.03185536999170731
+          },
+          {
+            "trade_date": "2021-01-15",
+            "value": 0.18814470277781523
+          },
+          {
+            "trade_date": "2021-01-22",
+            "value": -0.025409660720698224
+          },
+          {
+            "trade_date": "2021-01-29",
+            "value": 0.2569589630335232
+          },
+          {
+            "trade_date": "2021-02-05",
+            "value": 0.07892131082596093
+          },
+          {
+            "trade_date": "2021-02-12",
+            "value": -0.16385615249886598
+          },
+          {
+            "trade_date": "2021-02-19",
+            "value": -0.2721087246960089
+          },
+          {
+            "trade_date": "2021-02-26",
+            "value": -0.3500997016166089
+          },
+          {
+            "trade_date": "2021-03-05",
+            "value": 0.0929196127876796
+          },
+          {
+            "trade_date": "2021-03-12",
+            "value": 0.021161209001864478
+          },
+          {
+            "trade_date": "2021-03-19",
+            "value": 0.01749980368506895
+          },
+          {
+            "trade_date": "2021-03-26",
+            "value": 0.26394056149868894
+          },
+          {
+            "trade_date": "2021-04-09",
+            "value": -0.053867806846167945
+          },
+          {
+            "trade_date": "2021-04-16",
+            "value": -0.16558146643550423
+          },
+          {
+            "trade_date": "2021-04-23",
+            "value": -0.05597732506467871
+          },
+          {
+            "trade_date": "2021-04-30",
+            "value": -0.10831398592230175
+          },
+          {
+            "trade_date": "2021-05-07",
+            "value": -0.27291427527929
+          },
+          {
+            "trade_date": "2021-05-14",
+            "value": 0.1263367548088784
+          },
+          {
+            "trade_date": "2021-05-21",
+            "value": 0.24257243741401313
+          },
+          {
+            "trade_date": "2021-05-28",
+            "value": -0.10029464671209369
+          },
+          {
+            "trade_date": "2021-06-04",
+            "value": 0.13502189468439166
+          },
+          {
+            "trade_date": "2021-06-11",
+            "value": -0.1138299992404884
+          },
+          {
+            "trade_date": "2021-06-18",
+            "value": 0.24167378337287132
+          },
+          {
+            "trade_date": "2021-06-25",
+            "value": -0.03451794235350054
+          }
+        ],
+        "return_series": [
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": -0.0031124448638255586,
+            "long_short_return": -0.0031124448638255656,
+            "top_decile_cum_return": 0.026447189769908785,
+            "top_decile_return": 0.02644718976990874,
+            "trade_date": "2021-01-08"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.03706885223342504,
+            "long_short_return": 0.040306749633123834,
+            "top_decile_cum_return": 0.02209131179056545,
+            "top_decile_return": -0.004243645481965495,
+            "trade_date": "2021-01-15"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.04553582654841826,
+            "long_short_return": 0.008164331902128556,
+            "top_decile_cum_return": 0.026418818476841244,
+            "top_decile_return": 0.004233972675782359,
+            "trade_date": "2021-01-22"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.1029541545599637,
+            "long_short_return": 0.05491760928087762,
+            "top_decile_cum_return": 0.0732818939708666,
+            "top_decile_return": 0.04565687480629808,
+            "trade_date": "2021-01-29"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.10807393280030575,
+            "long_short_return": 0.004641877651192776,
+            "top_decile_cum_return": 0.09839798179480175,
+            "top_decile_return": 0.023401203323212647,
+            "trade_date": "2021-02-05"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.05989360096313856,
+            "long_short_return": -0.043481152665875634,
+            "top_decile_cum_return": 0.09418466072374443,
+            "top_decile_return": -0.0038358783800501797,
+            "trade_date": "2021-02-12"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.0031013914150830324,
+            "long_short_return": -0.05358293464216393,
+            "top_decile_cum_return": 0.07561593597030769,
+            "top_decile_return": -0.01697037567786278,
+            "trade_date": "2021-02-19"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": -0.06539819142832948,
+            "long_short_return": -0.06828779566019702,
+            "top_decile_cum_return": 0.026295322930933285,
+            "top_decile_return": -0.045853367721706784,
+            "trade_date": "2021-02-26"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": -0.05566072648181164,
+            "long_short_return": 0.010418838116094977,
+            "top_decile_cum_return": 0.04238933103970299,
+            "top_decile_return": 0.01568165395395933,
+            "trade_date": "2021-03-05"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": -0.047882228533810856,
+            "long_short_return": 0.008236973899244392,
+            "top_decile_cum_return": 0.05837894827043999,
+            "top_decile_return": 0.015339390719577552,
+            "trade_date": "2021-03-12"
+          },
+          {
+            "cross_section_size": 476,
+            "long_short_cum_return": -0.0498063266207861,
+            "long_short_return": -0.002020861436093476,
+            "top_decile_cum_return": 0.04476377703617973,
+            "top_decile_return": -0.012864174270009554,
+            "trade_date": "2021-03-19"
+          },
+          {
+            "cross_section_size": 476,
+            "long_short_cum_return": -0.03063376580971844,
+            "long_short_return": 0.020177529432377113,
+            "top_decile_cum_return": 0.048164513749726634,
+            "top_decile_return": 0.0032550293073849382,
+            "trade_date": "2021-03-26"
+          },
+          {
+            "cross_section_size": 476,
+            "long_short_cum_return": -0.029644346951027578,
+            "long_short_return": 0.0010206863245213673,
+            "top_decile_cum_return": 0.049370838493144165,
+            "top_decile_return": 0.0011508925627543957,
+            "trade_date": "2021-04-09"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.046251601408718646,
+            "long_short_return": -0.017114605769038456,
+            "top_decile_cum_return": 0.039867690786049126,
+            "top_decile_return": -0.009056043258016537,
+            "trade_date": "2021-04-16"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.061479158111323096,
+            "long_short_return": -0.015966010244521555,
+            "top_decile_cum_return": 0.02693874546669006,
+            "top_decile_return": -0.012433259955971799,
+            "trade_date": "2021-04-23"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.09357663871564204,
+            "long_short_return": -0.034200072253830885,
+            "top_decile_cum_return": 0.004206366663643157,
+            "top_decile_return": -0.02213606108776839,
+            "trade_date": "2021-04-30"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.11442475443861111,
+            "long_short_return": -0.02300041747978378,
+            "top_decile_cum_return": -0.00914691639799503,
+            "top_decile_return": -0.013297349533844214,
+            "trade_date": "2021-05-07"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.10347103943080627,
+            "long_short_return": 0.012369039291360294,
+            "top_decile_cum_return": 0.0038453672411380424,
+            "top_decile_return": 0.01311222001944321,
+            "trade_date": "2021-05-14"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.07840302828083923,
+            "long_short_return": 0.027961183913179637,
+            "top_decile_cum_return": 0.024821283707579633,
+            "top_decile_return": 0.020895565343982847,
+            "trade_date": "2021-05-21"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.07633278111423591,
+            "long_short_return": 0.00224636932426279,
+            "top_decile_cum_return": 0.03609930326182065,
+            "top_decile_return": 0.011004864685713517,
+            "trade_date": "2021-05-28"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.055402951138879275,
+            "long_short_return": 0.022659492019869137,
+            "top_decile_cum_return": 0.05119078743823979,
+            "top_decile_return": 0.014565673511128271,
+            "trade_date": "2021-06-04"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.06851916789049628,
+            "long_short_return": -0.013885515275990901,
+            "top_decile_cum_return": 0.0315015526628597,
+            "top_decile_return": -0.01873041032195766,
+            "trade_date": "2021-06-11"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.05278965454741236,
+            "long_short_return": 0.016886566852333015,
+            "top_decile_cum_return": 0.054340819232794324,
+            "top_decile_return": 0.022141766545066555,
+            "trade_date": "2021-06-18"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": -0.0602969331052694,
+            "long_short_return": -0.007925672047289532,
+            "top_decile_cum_return": 0.03585203822141558,
+            "top_decile_return": -0.017535867600035015,
+            "trade_date": "2021-06-25"
+          }
+        ]
+      }
+    },
+    "window_rows": {
+      "test": {
+        "dates": 26,
+        "rows": 12487,
+        "tickers": 481
+      },
+      "train": {
+        "dates": 151,
+        "rows": 69600,
+        "tickers": 479
+      },
+      "validation": {
+        "dates": 24,
+        "rows": 11457,
+        "tickers": 480
+      }
+    },
+    "zero_contribution_features": [
+      "breadth_momentum",
+      "credit_spread",
+      "credit_spread_change",
+      "dividend_yield",
+      "eps_surprise",
+      "ffr",
+      "macro_risk_on",
+      "market_ret_20d",
+      "risk_sentiment",
+      "sp500_breadth",
+      "spread_stress",
+      "vix",
+      "vix_change_5d",
+      "vix_rank",
+      "yield_10y",
+      "yield_spread_10y2y"
+    ]
+  },
+  "mlflow": {
+    "baseline": {
+      "experiment_id": "464888410329815449",
+      "experiment_name": "ridge_5D_20260402_020440",
+      "logged": true,
+      "run_id": "04c5e7914eed40789a6d9bdd7fa12f83",
+      "tracking_uri": "file:///home/jiahao/quant_edge/mlruns"
+    },
+    "lightgbm": {
+      "experiment_id": "250404330455343353",
+      "experiment_name": "lightgbm_5D_20260402_021736",
+      "logged": true,
+      "run_id": "de047dec0570496196aa7ca5a392b52b",
+      "tracking_uri": "file:///home/jiahao/quant_edge/mlruns"
+    },
+    "tracking_uri": "file:///home/jiahao/quant_edge/mlruns",
+    "xgboost": {
+      "experiment_id": "227860447356422263",
+      "experiment_name": "xgboost_5D_20260402_021736",
+      "logged": true,
+      "run_id": "18a626326d7b4e649ce155f0f245665f",
+      "tracking_uri": "file:///home/jiahao/quant_edge/mlruns"
+    }
+  },
+  "script": "scripts/run_tree_comparison.py",
+  "search_spaces": {
+    "lightgbm": {
+      "colsample_bytree": [
+        0.8
+      ],
+      "learning_rate": [
+        0.01,
+        0.05,
+        0.1
+      ],
+      "max_depth": [
+        3,
+        5,
+        7
+      ],
+      "min_child_samples": [
+        20
+      ],
+      "n_estimators": [
+        100,
+        300
+      ],
+      "reg_alpha": [
+        0.0
+      ],
+      "reg_lambda": [
+        1.0
+      ],
+      "subsample": [
+        0.8
+      ]
+    },
+    "xgboost": {
+      "colsample_bytree": [
+        0.8
+      ],
+      "learning_rate": [
+        0.01,
+        0.05,
+        0.1
+      ],
+      "max_depth": [
+        3,
+        5,
+        7
+      ],
+      "min_child_weight": [
+        5
+      ],
+      "n_estimators": [
+        100,
+        300
+      ],
+      "reg_alpha": [
+        0.0
+      ],
+      "reg_lambda": [
+        1.0
+      ],
+      "subsample": [
+        0.8
+      ]
+    }
+  },
+  "xgboost": {
+    "feature_importance_top20": [
+      {
+        "feature": "obv_slope",
+        "importance": 0.12150686979293823,
+        "rank": 1
+      },
+      {
+        "feature": "mom_vol_adj_20d",
+        "importance": 0.11402995139360428,
+        "rank": 2
+      },
+      {
+        "feature": "macd_histogram",
+        "importance": 0.10250716656446457,
+        "rank": 3
+      },
+      {
+        "feature": "current_ratio",
+        "importance": 0.06164099648594856,
+        "rank": 4
+      },
+      {
+        "feature": "momentum_rank_20d",
+        "importance": 0.051861751824617386,
+        "rank": 5
+      },
+      {
+        "feature": "stoch_d",
+        "importance": 0.0482187420129776,
+        "rank": 6
+      },
+      {
+        "feature": "cci_20",
+        "importance": 0.04594756290316582,
+        "rank": 7
+      },
+      {
+        "feature": "ret_10d",
+        "importance": 0.044153790920972824,
+        "rank": 8
+      },
+      {
+        "feature": "trend_confirmation",
+        "importance": 0.03852972388267517,
+        "rank": 9
+      },
+      {
+        "feature": "stoch_k",
+        "importance": 0.03685179725289345,
+        "rank": 10
+      },
+      {
+        "feature": "quality_value_roe_pb",
+        "importance": 0.031075021252036095,
+        "rank": 11
+      },
+      {
+        "feature": "bb_width",
+        "importance": 0.028370724990963936,
+        "rank": 12
+      },
+      {
+        "feature": "mean_reversion_combo",
+        "importance": 0.02576400712132454,
+        "rank": 13
+      },
+      {
+        "feature": "rsi_14",
+        "importance": 0.02563653141260147,
+        "rank": 14
+      },
+      {
+        "feature": "macd_signal",
+        "importance": 0.023351363837718964,
+        "rank": 15
+      },
+      {
+        "feature": "mom_vol_adj_60d",
+        "importance": 0.020836075767874718,
+        "rank": 16
+      },
+      {
+        "feature": "vol_60d",
+        "importance": 0.020065443590283394,
+        "rank": 17
+      },
+      {
+        "feature": "ret_5d",
+        "importance": 0.019538579508662224,
+        "rank": 18
+      },
+      {
+        "feature": "high_52w_ratio",
+        "importance": 0.019386325031518936,
+        "rank": 19
+      },
+      {
+        "feature": "bb_position",
+        "importance": 0.017297012731432915,
+        "rank": 20
+      }
+    ],
+    "metrics": {
+      "test": {
+        "hit_rate": 0.5004404580763995,
+        "ic": 0.009603077294879187,
+        "icir": 0.1884796956350718,
+        "long_short_return": 0.0013945645692034886,
+        "rank_ic": 0.011591216629398639,
+        "top_decile_return": -0.00033831248546365957,
+        "turnover": 0.5438945578231293
+      },
+      "validation": {
+        "hit_rate": 0.5041459369817579,
+        "ic": 0.02578570399089924,
+        "icir": 0.37752236922906246,
+        "long_short_return": 0.0014514424767730835,
+        "rank_ic": 0.0069888918863805745,
+        "top_decile_return": 0.0050829341860876886,
+        "turnover": 0.5769927536231885
+      }
+    },
+    "mlflow": {
+      "experiment_id": "227860447356422263",
+      "experiment_name": "xgboost_5D_20260402_021736",
+      "logged": true,
+      "run_id": "18a626326d7b4e649ce155f0f245665f",
+      "tracking_uri": "file:///home/jiahao/quant_edge/mlruns"
+    },
+    "model_type": "xgboost",
+    "selection": {
+      "best_ic": 0.02578570399089924,
+      "best_params": {
+        "colsample_bytree": 0.8,
+        "learning_rate": 0.1,
+        "max_depth": 5,
+        "min_child_weight": 5,
+        "n_estimators": 100,
+        "reg_alpha": 0.0,
+        "reg_lambda": 1.0,
+        "subsample": 0.8
+      },
+      "n_iter": 18,
+      "top_trials": [
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.1,
+          "max_depth": 5,
+          "mean_fit_time": 0.9995622634887695,
+          "min_child_weight": 5,
+          "n_estimators": 100,
+          "rank_test_score": 1,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.02578570399089924,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.1,
+          "max_depth": 5,
+          "mean_fit_time": 2.2525177001953125,
+          "min_child_weight": 5,
+          "n_estimators": 300,
+          "rank_test_score": 2,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.017990638122907646,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.1,
+          "max_depth": 7,
+          "mean_fit_time": 1.0647485256195068,
+          "min_child_weight": 5,
+          "n_estimators": 100,
+          "rank_test_score": 3,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.008631477239081019,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 5,
+          "mean_fit_time": 1.0558726787567139,
+          "min_child_weight": 5,
+          "n_estimators": 100,
+          "rank_test_score": 4,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.007690384163372324,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 7,
+          "mean_fit_time": 3.1221225261688232,
+          "min_child_weight": 5,
+          "n_estimators": 300,
+          "rank_test_score": 5,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.007453525378908946,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 7,
+          "mean_fit_time": 1.5276756286621094,
+          "min_child_weight": 5,
+          "n_estimators": 100,
+          "rank_test_score": 6,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.007417819202208816,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.1,
+          "max_depth": 7,
+          "mean_fit_time": 3.3362715244293213,
+          "min_child_weight": 5,
+          "n_estimators": 300,
+          "rank_test_score": 7,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.00702758397607043,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.05,
+          "max_depth": 7,
+          "mean_fit_time": 1.085561752319336,
+          "min_child_weight": 5,
+          "n_estimators": 100,
+          "rank_test_score": 8,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.004489714941093621,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.01,
+          "max_depth": 5,
+          "mean_fit_time": 2.701211452484131,
+          "min_child_weight": 5,
+          "n_estimators": 300,
+          "rank_test_score": 9,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.0035774272913440103,
+          "validation_ic_std": 0.0
+        },
+        {
+          "colsample_bytree": 0.8,
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "mean_fit_time": 0.5876212120056152,
+          "min_child_weight": 5,
+          "n_estimators": 100,
+          "rank_test_score": 10,
+          "reg_alpha": 0.0,
+          "reg_lambda": 1.0,
+          "subsample": 0.8,
+          "validation_ic": 0.00109110566797672,
+          "validation_ic_std": 0.0
+        }
+      ]
+    },
+    "series": {
+      "test": {
+        "ic_series": [
+          {
+            "trade_date": "2021-07-02",
+            "value": 0.06087926143835415
+          },
+          {
+            "trade_date": "2021-07-09",
+            "value": 0.10469383125509789
+          },
+          {
+            "trade_date": "2021-07-16",
+            "value": 0.028401335577407896
+          },
+          {
+            "trade_date": "2021-07-23",
+            "value": -0.04330209158593641
+          },
+          {
+            "trade_date": "2021-07-30",
+            "value": -0.08500565043577794
+          },
+          {
+            "trade_date": "2021-08-06",
+            "value": -0.014797022912311792
+          },
+          {
+            "trade_date": "2021-08-13",
+            "value": 0.00514982418979147
+          },
+          {
+            "trade_date": "2021-08-20",
+            "value": 0.011227999316199408
+          },
+          {
+            "trade_date": "2021-08-27",
+            "value": -0.023150164741277582
+          },
+          {
+            "trade_date": "2021-09-03",
+            "value": 0.024401464365929944
+          },
+          {
+            "trade_date": "2021-09-10",
+            "value": 0.06031184221895395
+          },
+          {
+            "trade_date": "2021-09-17",
+            "value": 0.08505136021556978
+          },
+          {
+            "trade_date": "2021-09-24",
+            "value": 0.031910950838589684
+          },
+          {
+            "trade_date": "2021-10-01",
+            "value": 0.018887246992338735
+          },
+          {
+            "trade_date": "2021-10-08",
+            "value": -0.06512128894549433
+          },
+          {
+            "trade_date": "2021-10-15",
+            "value": 0.034040214328927954
+          },
+          {
+            "trade_date": "2021-10-22",
+            "value": -0.07549044365788231
+          },
+          {
+            "trade_date": "2021-10-29",
+            "value": 0.008148813195141312
+          },
+          {
+            "trade_date": "2021-11-05",
+            "value": 0.09713187215173232
+          },
+          {
+            "trade_date": "2021-11-12",
+            "value": -0.03858123471232092
+          },
+          {
+            "trade_date": "2021-11-19",
+            "value": 0.014344812292580143
+          },
+          {
+            "trade_date": "2021-11-26",
+            "value": 0.03980421480491094
+          },
+          {
+            "trade_date": "2021-12-03",
+            "value": -0.05623868502174259
+          },
+          {
+            "trade_date": "2021-12-10",
+            "value": 0.017447362468616327
+          },
+          {
+            "trade_date": "2021-12-17",
+            "value": 0.05046773055436048
+          },
+          {
+            "trade_date": "2021-12-31",
+            "value": -0.04093354452489963
+          }
+        ],
+        "rank_ic_series": [
+          {
+            "trade_date": "2021-07-02",
+            "value": -0.10373238790716365
+          },
+          {
+            "trade_date": "2021-07-09",
+            "value": -0.20821500947755525
+          },
+          {
+            "trade_date": "2021-07-16",
+            "value": 0.03256965574113527
+          },
+          {
+            "trade_date": "2021-07-23",
+            "value": 0.057839462207644216
+          },
+          {
+            "trade_date": "2021-07-30",
+            "value": 0.04699912401954073
+          },
+          {
+            "trade_date": "2021-08-06",
+            "value": -0.08874376254941277
+          },
+          {
+            "trade_date": "2021-08-13",
+            "value": -0.20305611686292363
+          },
+          {
+            "trade_date": "2021-08-20",
+            "value": 0.22160608687637068
+          },
+          {
+            "trade_date": "2021-08-27",
+            "value": -0.028945493170149758
+          },
+          {
+            "trade_date": "2021-09-03",
+            "value": 0.07985604319246838
+          },
+          {
+            "trade_date": "2021-09-10",
+            "value": 0.1522778372338406
+          },
+          {
+            "trade_date": "2021-09-17",
+            "value": 0.0808285843254528
+          },
+          {
+            "trade_date": "2021-09-24",
+            "value": 0.006939374925112931
+          },
+          {
+            "trade_date": "2021-10-01",
+            "value": -0.20228587695383551
+          },
+          {
+            "trade_date": "2021-10-08",
+            "value": 0.060288959191199164
+          },
+          {
+            "trade_date": "2021-10-15",
+            "value": 0.07220025039143714
+          },
+          {
+            "trade_date": "2021-10-22",
+            "value": 0.12467036075943858
+          },
+          {
+            "trade_date": "2021-10-29",
+            "value": 0.18821514220891813
+          },
+          {
+            "trade_date": "2021-11-05",
+            "value": 0.07084982321605718
+          },
+          {
+            "trade_date": "2021-11-12",
+            "value": -0.05459985190343584
+          },
+          {
+            "trade_date": "2021-11-19",
+            "value": -0.13070816152651438
+          },
+          {
+            "trade_date": "2021-11-26",
+            "value": -0.03170564436124602
+          },
+          {
+            "trade_date": "2021-12-03",
+            "value": 0.11088133297676867
+          },
+          {
+            "trade_date": "2021-12-10",
+            "value": -0.11181556314052755
+          },
+          {
+            "trade_date": "2021-12-17",
+            "value": 0.23174274483653595
+          },
+          {
+            "trade_date": "2021-12-31",
+            "value": -0.07258528188479155
+          }
+        ],
+        "return_series": [
+          {
+            "cross_section_size": 479,
+            "long_short_cum_return": 0.0031182922618131492,
+            "long_short_return": 0.0031182922618132134,
+            "top_decile_cum_return": -0.010300375314740262,
+            "top_decile_return": -0.010300375314740234,
+            "trade_date": "2021-07-02"
+          },
+          {
+            "cross_section_size": 479,
+            "long_short_cum_return": -0.01377963378290048,
+            "long_short_return": -0.016845397173061646,
+            "top_decile_cum_return": -0.04538040011563249,
+            "top_decile_return": -0.03544512286952545,
+            "trade_date": "2021-07-09"
+          },
+          {
+            "cross_section_size": 479,
+            "long_short_cum_return": -0.012799752883080662,
+            "long_short_return": 0.0009935719575316024,
+            "top_decile_cum_return": -0.04686523184950031,
+            "top_decile_return": -0.0015554171882158172,
+            "trade_date": "2021-07-16"
+          },
+          {
+            "cross_section_size": 479,
+            "long_short_cum_return": -0.0020926559573835046,
+            "long_short_return": 0.01084592204769685,
+            "top_decile_cum_return": -0.031372778821302294,
+            "top_decile_return": 0.016254210365508077,
+            "trade_date": "2021-07-23"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.008445340891575004,
+            "long_short_return": 0.010560095495708105,
+            "top_decile_cum_return": -0.024699260355583008,
+            "top_decile_return": 0.006889666447323607,
+            "trade_date": "2021-07-30"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.009191093249670379,
+            "long_short_return": 0.00073950696964508,
+            "top_decile_cum_return": -0.02652257731950247,
+            "top_decile_return": -0.0018694920344100282,
+            "trade_date": "2021-08-06"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": -0.013657522637378627,
+            "long_short_return": -0.022640524713188632,
+            "top_decile_cum_return": -0.052816789953803234,
+            "top_decile_return": -0.027010603452824637,
+            "trade_date": "2021-08-13"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.0069492727699851375,
+            "long_short_return": 0.020892130147800433,
+            "top_decile_cum_return": -0.019629722958811713,
+            "top_decile_return": 0.03503764281608512,
+            "trade_date": "2021-08-20"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.010201703324271172,
+            "long_short_return": 0.0032299845108772606,
+            "top_decile_cum_return": -0.02578998272578026,
+            "top_decile_return": -0.006283605196151572,
+            "trade_date": "2021-08-27"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.02220330902032419,
+            "long_short_return": 0.011880405325549601,
+            "top_decile_cum_return": -0.019604914184734645,
+            "top_decile_return": 0.006348804088825871,
+            "trade_date": "2021-09-03"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.0385976959341261,
+            "long_short_return": 0.016038283939340967,
+            "top_decile_cum_return": -0.0017284693512997773,
+            "top_decile_return": 0.018233919255694238,
+            "trade_date": "2021-09-10"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.04671295798249542,
+            "long_short_return": 0.007813672300775072,
+            "top_decile_cum_return": 0.011524241458041873,
+            "top_decile_return": 0.013275657376235038,
+            "trade_date": "2021-09-17"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.0433243996179824,
+            "long_short_return": -0.0032373329657104308,
+            "top_decile_cum_return": 0.02333415094802027,
+            "top_decile_return": 0.011675359824254272,
+            "trade_date": "2021-09-24"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.0171828638882221,
+            "long_short_return": -0.02505599959066624,
+            "top_decile_cum_return": 0.015583966877694033,
+            "top_decile_return": -0.007573463724577602,
+            "trade_date": "2021-10-01"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.025075158206258052,
+            "long_short_return": 0.007758972942060145,
+            "top_decile_cum_return": 0.02014920874615389,
+            "top_decile_return": 0.004495188992098072,
+            "trade_date": "2021-10-08"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.016062584551701065,
+            "long_short_return": -0.008792110102763356,
+            "top_decile_cum_return": 0.018031900822852442,
+            "top_decile_return": -0.0020754884728124224,
+            "trade_date": "2021-10-15"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.040986377314986555,
+            "long_short_return": 0.024529781080642927,
+            "top_decile_cum_return": 0.010554793255108885,
+            "top_decile_return": -0.00734466922077794,
+            "trade_date": "2021-10-22"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.04155972942301944,
+            "long_short_return": 0.0005507777244037615,
+            "top_decile_cum_return": 0.024093465780355316,
+            "top_decile_return": 0.013397267140396057,
+            "trade_date": "2021-10-29"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.060812471252928324,
+            "long_short_return": 0.01848452977399025,
+            "top_decile_cum_return": 0.03958656502803537,
+            "top_decile_return": 0.015128598868536347,
+            "trade_date": "2021-11-05"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.05456996609669762,
+            "long_short_return": -0.0058846453311938406,
+            "top_decile_cum_return": 0.017201513217146802,
+            "top_decile_return": -0.021532648231448508,
+            "trade_date": "2021-11-12"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.03152473091374386,
+            "long_short_return": -0.02185273232107252,
+            "top_decile_cum_return": -0.0047782802445398564,
+            "top_decile_return": -0.0216081014195213,
+            "trade_date": "2021-11-19"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.034897486966320335,
+            "long_short_return": 0.0032696802621386065,
+            "top_decile_cum_return": -0.014294565217850108,
+            "top_decile_return": -0.009561974768445102,
+            "trade_date": "2021-11-26"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.036962456724115134,
+            "long_short_return": 0.001995337493617818,
+            "top_decile_cum_return": -0.014655968546309572,
+            "top_decile_return": -0.00036664435003280066,
+            "trade_date": "2021-12-03"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.03092296495881408,
+            "long_short_return": -0.0058242144892887504,
+            "top_decile_cum_return": -0.008119577859784233,
+            "top_decile_return": 0.006633612705688292,
+            "trade_date": "2021-12-10"
+          },
+          {
+            "cross_section_size": 481,
+            "long_short_cum_return": 0.05160272757476059,
+            "long_short_return": 0.020059464498176825,
+            "top_decile_cum_return": 0.00376236644881911,
+            "top_decile_return": 0.011979210440473452,
+            "trade_date": "2021-12-17"
+          },
+          {
+            "cross_section_size": 480,
+            "long_short_cum_return": 0.034389280982705994,
+            "long_short_return": -0.016368773245532393,
+            "top_decile_cum_return": -0.011914049598447107,
+            "top_decile_return": -0.015617656699690176,
+            "trade_date": "2021-12-31"
+          }
+        ]
+      },
+      "validation": {
+        "ic_series": [
+          {
+            "trade_date": "2021-01-08",
+            "value": 0.058726011302523785
+          },
+          {
+            "trade_date": "2021-01-15",
+            "value": 0.04187726007437351
+          },
+          {
+            "trade_date": "2021-01-22",
+            "value": -0.018750329422328012
+          },
+          {
+            "trade_date": "2021-01-29",
+            "value": 0.03365172524628343
+          },
+          {
+            "trade_date": "2021-02-05",
+            "value": 0.14933276932308812
+          },
+          {
+            "trade_date": "2021-02-12",
+            "value": -0.13660962158600518
+          },
+          {
+            "trade_date": "2021-02-19",
+            "value": 0.014419193910419582
+          },
+          {
+            "trade_date": "2021-02-26",
+            "value": 0.10404760112346363
+          },
+          {
+            "trade_date": "2021-03-05",
+            "value": -0.06195085837315824
+          },
+          {
+            "trade_date": "2021-03-12",
+            "value": 0.011841502334702703
+          },
+          {
+            "trade_date": "2021-03-19",
+            "value": 0.06718573730640802
+          },
+          {
+            "trade_date": "2021-03-26",
+            "value": -0.0024332419116983948
+          },
+          {
+            "trade_date": "2021-04-09",
+            "value": -0.08011010140490611
+          },
+          {
+            "trade_date": "2021-04-16",
+            "value": 0.05325500129873358
+          },
+          {
+            "trade_date": "2021-04-23",
+            "value": -0.037217304454707986
+          },
+          {
+            "trade_date": "2021-04-30",
+            "value": 0.07973980211644718
+          },
+          {
+            "trade_date": "2021-05-07",
+            "value": 0.009415994765896014
+          },
+          {
+            "trade_date": "2021-05-14",
+            "value": 0.09876223277577661
+          },
+          {
+            "trade_date": "2021-05-21",
+            "value": 0.1270459103657006
+          },
+          {
+            "trade_date": "2021-05-28",
+            "value": 0.05467589721576141
+          },
+          {
+            "trade_date": "2021-06-04",
+            "value": -0.06504235684089095
+          },
+          {
+            "trade_date": "2021-06-11",
+            "value": 0.08113013058937847
+          },
+          {
+            "trade_date": "2021-06-18",
+            "value": 0.05865410455249523
+          },
+          {
+            "trade_date": "2021-06-25",
+            "value": -0.022790164526175157
+          }
+        ],
+        "rank_ic_series": [
+          {
+            "trade_date": "2021-01-08",
+            "value": -0.06293758871325536
+          },
+          {
+            "trade_date": "2021-01-15",
+            "value": 0.14960132628088732
+          },
+          {
+            "trade_date": "2021-01-22",
+            "value": -0.00811428248886978
+          },
+          {
+            "trade_date": "2021-01-29",
+            "value": 0.12142049776353261
+          },
+          {
+            "trade_date": "2021-02-05",
+            "value": 0.08969922447295592
+          },
+          {
+            "trade_date": "2021-02-12",
+            "value": -0.05081920665953284
+          },
+          {
+            "trade_date": "2021-02-19",
+            "value": -0.16691616714741941
+          },
+          {
+            "trade_date": "2021-02-26",
+            "value": -0.24894696761335638
+          },
+          {
+            "trade_date": "2021-03-05",
+            "value": 0.06420646118021389
+          },
+          {
+            "trade_date": "2021-03-12",
+            "value": 0.03430117701184935
+          },
+          {
+            "trade_date": "2021-03-19",
+            "value": 0.07418142721334949
+          },
+          {
+            "trade_date": "2021-03-26",
+            "value": 0.1840682727907449
+          },
+          {
+            "trade_date": "2021-04-09",
+            "value": -0.05273016058459133
+          },
+          {
+            "trade_date": "2021-04-16",
+            "value": -0.0329909459035772
+          },
+          {
+            "trade_date": "2021-04-23",
+            "value": -0.12983363776531864
+          },
+          {
+            "trade_date": "2021-04-30",
+            "value": 0.023467847428913387
+          },
+          {
+            "trade_date": "2021-05-07",
+            "value": -0.1591596441111028
+          },
+          {
+            "trade_date": "2021-05-14",
+            "value": 0.091844138372581
+          },
+          {
+            "trade_date": "2021-05-21",
+            "value": 0.157128437207054
+          },
+          {
+            "trade_date": "2021-05-28",
+            "value": -0.10062129725905186
+          },
+          {
+            "trade_date": "2021-06-04",
+            "value": 0.05550952702651106
+          },
+          {
+            "trade_date": "2021-06-11",
+            "value": 0.026249226822346556
+          },
+          {
+            "trade_date": "2021-06-18",
+            "value": 0.17392076579021923
+          },
+          {
+            "trade_date": "2021-06-25",
+            "value": -0.06479502584194928
+          }
+        ],
+        "return_series": [
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": -0.002824658116470369,
+            "long_short_return": -0.0028246581164703202,
+            "top_decile_cum_return": 0.03191939059947435,
+            "top_decile_return": 0.03191939059947429,
+            "trade_date": "2021-01-08"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.01675368423029311,
+            "long_short_return": 0.01963380112246132,
+            "top_decile_cum_return": 0.020415284479179174,
+            "top_decile_return": -0.011148260440781231,
+            "trade_date": "2021-01-15"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.0066496832929028304,
+            "long_short_return": -0.009937511015796523,
+            "top_decile_cum_return": 0.008059403147783195,
+            "top_decile_return": -0.012108679200843561,
+            "trade_date": "2021-01-22"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.04619575042986357,
+            "long_short_return": 0.039284835423182674,
+            "top_decile_cum_return": 0.04675529241781695,
+            "top_decile_return": 0.03838651685525787,
+            "trade_date": "2021-01-29"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.05605494913380338,
+            "long_short_return": 0.0094238565774032,
+            "top_decile_cum_return": 0.0834542571925232,
+            "top_decile_return": 0.03505973654065609,
+            "trade_date": "2021-02-05"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.050900784799218,
+            "long_short_return": -0.004880583476089887,
+            "top_decile_cum_return": 0.10013899763033751,
+            "top_decile_return": 0.015399579933395913,
+            "trade_date": "2021-02-12"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.034956428377910465,
+            "long_short_return": -0.015172085368985424,
+            "top_decile_cum_return": 0.10787775272208178,
+            "top_decile_return": 0.007034343031574478,
+            "trade_date": "2021-02-19"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.001942180568458074,
+            "long_short_return": -0.031899166867532594,
+            "top_decile_cum_return": 0.07450182103620095,
+            "top_decile_return": -0.0301260058737306,
+            "trade_date": "2021-02-26"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.005690656114188508,
+            "long_short_return": 0.003741209441450552,
+            "top_decile_cum_return": 0.08949774644010722,
+            "top_decile_return": 0.013956165648416398,
+            "trade_date": "2021-03-05"
+          },
+          {
+            "cross_section_size": 477,
+            "long_short_cum_return": 0.006216031824706203,
+            "long_short_return": 0.0005224028952875901,
+            "top_decile_cum_return": 0.09291517006649785,
+            "top_decile_return": 0.00313669637000802,
+            "trade_date": "2021-03-12"
+          },
+          {
+            "cross_section_size": 476,
+            "long_short_cum_return": 0.013057399599958774,
+            "long_short_return": 0.006799104326380183,
+            "top_decile_cum_return": 0.08654757548543834,
+            "top_decile_return": -0.005826247777924082,
+            "trade_date": "2021-03-19"
+          },
+          {
+            "cross_section_size": 476,
+            "long_short_cum_return": 0.02647929071613153,
+            "long_short_return": 0.013248894999901156,
+            "top_decile_cum_return": 0.09268204703212035,
+            "top_decile_return": 0.005645837959687379,
+            "trade_date": "2021-03-26"
+          },
+          {
+            "cross_section_size": 476,
+            "long_short_cum_return": 0.02380262099468089,
+            "long_short_return": -0.0026076217471305676,
+            "top_decile_cum_return": 0.08882631410547503,
+            "top_decile_return": -0.0035286869928154757,
+            "trade_date": "2021-04-09"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.01973072970300227,
+            "long_short_return": -0.003977222960928317,
+            "top_decile_cum_return": 0.0858062058893132,
+            "top_decile_return": -0.002773728166776452,
+            "trade_date": "2021-04-16"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.00557958706405004,
+            "long_short_return": -0.013877332737705927,
+            "top_decile_cum_return": 0.08373219954041367,
+            "top_decile_return": -0.0019101072895423513,
+            "trade_date": "2021-04-23"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.02488477090185448,
+            "long_short_return": 0.019198066554005095,
+            "top_decile_cum_return": 0.09434741093942778,
+            "top_decile_return": 0.009795050293343485,
+            "trade_date": "2021-04-30"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.02168929156700483,
+            "long_short_return": -0.0031178913235657786,
+            "top_decile_cum_return": 0.08888352557451418,
+            "top_decile_return": -0.004992825231087444,
+            "trade_date": "2021-05-07"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.032868440754280304,
+            "long_short_return": 0.01094182867486987,
+            "top_decile_cum_return": 0.10304288663898786,
+            "top_decile_return": 0.013003558904064497,
+            "trade_date": "2021-05-14"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.0324570890004674,
+            "long_short_return": -0.00039826151868153394,
+            "top_decile_cum_return": 0.11866679141945968,
+            "top_decile_return": 0.014164367469045841,
+            "trade_date": "2021-05-21"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.026101373297847452,
+            "long_short_return": -0.006155912696355291,
+            "top_decile_cum_return": 0.1272645986005443,
+            "top_decile_return": 0.007685762415611717,
+            "trade_date": "2021-05-28"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.03931643799987494,
+            "long_short_return": 0.012878907528946016,
+            "top_decile_cum_return": 0.14357071111172393,
+            "top_decile_return": 0.014465204115717735,
+            "trade_date": "2021-06-04"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.0342583422359124,
+            "long_short_return": -0.0048667523951575215,
+            "top_decile_cum_return": 0.13026394406512565,
+            "top_decile_return": -0.011636155873266543,
+            "trade_date": "2021-06-11"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.04425519479918827,
+            "long_short_return": 0.009665720985787897,
+            "top_decile_cum_return": 0.15072183318068588,
+            "top_decile_return": 0.01810009885123029,
+            "trade_date": "2021-06-18"
+          },
+          {
+            "cross_section_size": 478,
+            "long_short_cum_return": 0.032988716247556615,
+            "long_short_return": -0.010789008862721857,
+            "top_decile_cum_return": 0.12573829089633937,
+            "top_decile_return": -0.02171119167461173,
+            "trade_date": "2021-06-25"
+          }
+        ]
+      }
+    },
+    "window_rows": {
+      "test": {
+        "dates": 26,
+        "rows": 12487,
+        "tickers": 481
+      },
+      "train": {
+        "dates": 151,
+        "rows": 69600,
+        "tickers": 479
+      },
+      "validation": {
+        "dates": 24,
+        "rows": 11457,
+        "tickers": 480
+      }
+    },
+    "zero_contribution_features": [
+      "breadth_momentum",
+      "credit_spread",
+      "credit_spread_change",
+      "dividend_yield",
+      "eps_surprise",
+      "ffr",
+      "macro_risk_on",
+      "market_ret_20d",
+      "risk_sentiment",
+      "sp500_breadth",
+      "spread_stress",
+      "vix",
+      "vix_change_5d",
+      "vix_rank",
+      "yield_10y",
+      "yield_spread_10y2y"
+    ]
+  }
+}
