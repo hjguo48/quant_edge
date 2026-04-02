@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import date
 import math
@@ -10,6 +10,20 @@ import numpy as np
 import pandas as pd
 
 from src.backtest.cost_model import AlmgrenChrissCostModel
+from src.portfolio.black_litterman import black_litterman_portfolio
+from src.portfolio.constraints import (
+    PortfolioConstraints,
+    apply_turnover_buffer,
+    apply_weight_constraints,
+)
+from src.portfolio.equal_weight import equal_weight_portfolio
+from src.portfolio.vol_weighted import vol_inverse_portfolio
+
+SUPPORTED_WEIGHTING_SCHEMES = {
+    "equal_weight",
+    "vol_inverse",
+    "black_litterman",
+}
 
 
 @dataclass(frozen=True)
@@ -127,6 +141,7 @@ def prepare_execution_price_frame(prices_df: pd.DataFrame) -> pd.DataFrame:
             "sigma_20d",
             "open_gap",
             "volume_ratio",
+            "daily_return",
         ]
     ].copy()
     prepared.set_index(["trade_date", "ticker"], inplace=True)
@@ -160,27 +175,54 @@ def simulate_top_decile_portfolio(
     initial_capital: float = 1_000_000.0,
     min_external_universe_overlap: int = 100,
 ) -> PortfolioBacktestResult:
+    return simulate_portfolio(
+        predictions=predictions,
+        prices=prices,
+        cost_model=cost_model,
+        weighting_scheme="equal_weight",
+        benchmark_ticker=benchmark_ticker,
+        universe_by_date=universe_by_date,
+        initial_capital=initial_capital,
+        selection_pct=0.10,
+        sell_buffer_pct=None,
+        min_trade_weight=0.0,
+        min_external_universe_overlap=min_external_universe_overlap,
+    )
+
+
+def simulate_portfolio(
+    *,
+    predictions: pd.Series,
+    prices: pd.DataFrame,
+    cost_model: AlmgrenChrissCostModel,
+    weighting_scheme: str,
+    benchmark_ticker: str = "SPY",
+    universe_by_date: Mapping[pd.Timestamp, set[str]] | None = None,
+    initial_capital: float = 1_000_000.0,
+    selection_pct: float = 0.10,
+    sell_buffer_pct: float | None = None,
+    min_trade_weight: float = 0.0,
+    max_weight: float = 0.05,
+    min_holdings: int = 20,
+    min_external_universe_overlap: int = 100,
+    bl_lookback_days: int = 60,
+) -> PortfolioBacktestResult:
+    if weighting_scheme not in SUPPORTED_WEIGHTING_SCHEMES:
+        raise ValueError(f"Unsupported weighting scheme: {weighting_scheme}")
+
     if predictions.empty:
-        return PortfolioBacktestResult(
-            periods=[],
-            gross_return=0.0,
-            net_return=0.0,
-            benchmark_return=0.0,
-            gross_excess_return=0.0,
-            net_excess_return=0.0,
-            annualized_gross_return=0.0,
-            annualized_net_return=0.0,
-            annualized_benchmark_return=0.0,
-            annualized_excess_gross=0.0,
-            annualized_excess_net=0.0,
-            total_cost_drag=0.0,
-            average_turnover=0.0,
-            cost_breakdown=_empty_cost_breakdown(),
-        )
+        return _empty_backtest_result()
 
     execution = prepare_execution_price_frame(prices)
     if execution.empty:
         raise RuntimeError("Execution price frame is empty.")
+
+    returns_history = (
+        execution["daily_return"]
+        .unstack("ticker")
+        .sort_index()
+        .replace([np.inf, -np.inf], np.nan)
+    )
 
     benchmark = benchmark_ticker.upper()
     signal_dates = pd.DatetimeIndex(
@@ -188,6 +230,12 @@ def simulate_top_decile_portfolio(
     ).sort_values().unique()
     trade_dates = execution.index.get_level_values("trade_date").unique().sort_values()
     schedule = build_execution_schedule(signal_dates, trade_dates)
+
+    constraints = PortfolioConstraints(
+        max_weight=max_weight,
+        min_holdings=min_holdings,
+        turnover_buffer=min_trade_weight,
+    )
 
     current_weights: dict[str, float] = {}
     portfolio_value = float(initial_capital)
@@ -204,7 +252,7 @@ def simulate_top_decile_portfolio(
         if execution_date is None or exit_date is None or exit_date <= execution_date:
             continue
 
-        score_frame = predictions.xs(signal_date, level="trade_date").dropna().sort_values(ascending=False)
+        score_frame = predictions.xs(signal_date, level="trade_date").dropna().astype(float).sort_values(ascending=False)
         eligible = set(score_frame.index.astype(str))
         if universe_by_date is not None:
             external_universe = set(universe_by_date.get(pd.Timestamp(signal_date), set()))
@@ -223,20 +271,63 @@ def simulate_top_decile_portfolio(
         if (execution_date, benchmark) not in execution.index or (exit_date, benchmark) not in execution.index:
             continue
 
-        entry_names = set(execution.xs(execution_date, level="trade_date").index.astype(str))
-        exit_names = set(execution.xs(exit_date, level="trade_date").index.astype(str))
-        eligible &= entry_names & exit_names
+        entry_slice = execution.xs(execution_date, level="trade_date")
+        exit_slice = execution.xs(exit_date, level="trade_date")
+        eligible &= set(entry_slice.index.astype(str)) & set(exit_slice.index.astype(str))
         eligible.discard(benchmark)
-        if len(eligible) < 10:
+        if len(eligible) < max(min_holdings, 2):
             continue
 
-        score_frame = score_frame.loc[score_frame.index.astype(str).isin(eligible)]
-        score_frame = score_frame.sort_values(ascending=False)
-        decile_size = max(1, int(math.ceil(len(score_frame) * 0.10)))
-        selected = score_frame.head(decile_size)
-        selected_tickers = [str(ticker) for ticker in selected.index]
-        target_weights = {ticker: 1.0 / len(selected_tickers) for ticker in selected_tickers}
+        filtered_scores = score_frame.loc[score_frame.index.astype(str).isin(eligible)].sort_values(ascending=False)
+        if filtered_scores.empty:
+            continue
+
+        ranking = filtered_scores.index.astype(str).tolist()
+        candidate_tickers = select_candidate_tickers(
+            ranking=ranking,
+            current_weights=current_weights,
+            selection_pct=selection_pct,
+            sell_buffer_pct=sell_buffer_pct,
+            min_holdings=min_holdings,
+            max_weight=max_weight,
+        )
+        candidate_scores = filtered_scores.reindex(candidate_tickers).dropna()
+        if candidate_scores.empty:
+            continue
+
+        target_weights = build_target_weights(
+            weighting_scheme=weighting_scheme,
+            scores=candidate_scores,
+            entry_slice=entry_slice,
+            returns_history=returns_history.loc[:execution_date].iloc[:-1],
+            constraints=constraints,
+            bl_lookback_days=bl_lookback_days,
+        )
+        if min_trade_weight > 0.0:
+            buffer_reference_weights = {
+                ticker: weight
+                for ticker, weight in current_weights.items()
+                if ticker in ranking
+            }
+            target_weights = apply_turnover_buffer(
+                target_weights,
+                current_weights=buffer_reference_weights,
+                min_trade_weight=min_trade_weight,
+                ranking=ranking,
+                constraints=constraints,
+            )
+        else:
+            target_weights = apply_weight_constraints(
+                target_weights,
+                ranking=ranking,
+                constraints=constraints,
+            )
+
+        if not target_weights:
+            continue
+
         previous_weights = current_weights.copy()
+        selected_tickers = list(target_weights)
 
         period_costs = _empty_cost_breakdown()
         all_trade_tickers = set(previous_weights) | set(target_weights)
@@ -244,7 +335,7 @@ def simulate_top_decile_portfolio(
             delta_weight = target_weights.get(ticker, 0.0) - previous_weights.get(ticker, 0.0)
             if math.isclose(delta_weight, 0.0, abs_tol=1e-12):
                 continue
-            bar = execution.loc[(execution_date, ticker)]
+            bar = entry_slice.loc[ticker]
             order_notional = abs(delta_weight) * portfolio_value
             order_shares = order_notional / max(float(bar["execution_price"]), 1e-12)
             estimate = cost_model.estimate_trade(
@@ -268,8 +359,8 @@ def simulate_top_decile_portfolio(
         gross_return = 0.0
         gaps: list[float] = []
         for ticker, weight in target_weights.items():
-            entry_bar = execution.loc[(execution_date, ticker)]
-            exit_bar = execution.loc[(exit_date, ticker)]
+            entry_bar = entry_slice.loc[ticker]
+            exit_bar = exit_slice.loc[ticker]
             entry_price = max(float(entry_bar["execution_price"]), 1e-12)
             exit_price = float(exit_bar["execution_price"])
             realized = (exit_price / entry_price) - 1.0
@@ -277,8 +368,8 @@ def simulate_top_decile_portfolio(
             gross_return += weight * realized
             gaps.append(abs(float(entry_bar["open_gap"])))
 
-        bench_entry = execution.loc[(execution_date, benchmark)]
-        bench_exit = execution.loc[(exit_date, benchmark)]
+        bench_entry = entry_slice.loc[benchmark]
+        bench_exit = exit_slice.loc[benchmark]
         benchmark_return = (
             float(bench_exit["execution_price"]) / max(float(bench_entry["execution_price"]), 1e-12)
         ) - 1.0
@@ -294,8 +385,9 @@ def simulate_top_decile_portfolio(
             current_weights = {}
         else:
             current_weights = {
-                ticker: (weight * (1.0 + asset_returns[ticker])) / drift_denominator
+                ticker: float((weight * (1.0 + asset_returns[ticker])) / drift_denominator)
                 for ticker, weight in target_weights.items()
+                if (weight * (1.0 + asset_returns[ticker])) > 1e-8
             }
 
         turnover = 0.5 * sum(
@@ -306,7 +398,7 @@ def simulate_top_decile_portfolio(
             signal_date=pd.Timestamp(signal_date).date().isoformat(),
             execution_date=pd.Timestamp(execution_date).date().isoformat(),
             exit_date=pd.Timestamp(exit_date).date().isoformat(),
-            universe_size=int(len(score_frame)),
+            universe_size=int(len(filtered_scores)),
             selected_count=int(len(selected_tickers)),
             turnover=float(turnover),
             cost_rate=float(cost_rate),
@@ -371,6 +463,82 @@ def simulate_top_decile_portfolio(
     )
 
 
+def select_candidate_tickers(
+    *,
+    ranking: Sequence[str],
+    current_weights: Mapping[str, float],
+    selection_pct: float,
+    sell_buffer_pct: float | None,
+    min_holdings: int,
+    max_weight: float,
+) -> list[str]:
+    if not ranking:
+        return []
+
+    min_by_cap = int(np.ceil(1.0 / max_weight)) if max_weight > 0.0 else 1
+    entry_count = max(min_holdings, min_by_cap, int(math.ceil(len(ranking) * selection_pct)))
+    entry_count = min(len(ranking), entry_count)
+    selected = list(ranking[:entry_count])
+
+    if sell_buffer_pct is not None and current_weights:
+        sell_count = max(entry_count, int(math.ceil(len(ranking) * sell_buffer_pct)))
+        sell_count = min(len(ranking), sell_count)
+        sell_zone = set(ranking[:sell_count])
+        retained = [ticker for ticker in current_weights if ticker in sell_zone]
+        for ticker in retained:
+            if ticker not in selected:
+                selected.append(ticker)
+
+    return selected
+
+
+def build_target_weights(
+    *,
+    weighting_scheme: str,
+    scores: pd.Series,
+    entry_slice: pd.DataFrame,
+    returns_history: pd.DataFrame,
+    constraints: PortfolioConstraints,
+    bl_lookback_days: int,
+) -> dict[str, float]:
+    tickers = scores.index.astype(str)
+    if weighting_scheme == "equal_weight":
+        return equal_weight_portfolio(
+            scores,
+            n_stocks=len(scores),
+            selection_pct=1.0,
+            constraints=constraints,
+        )
+
+    if weighting_scheme == "vol_inverse":
+        sigma = entry_slice.loc[tickers, "sigma_20d"]
+        return vol_inverse_portfolio(
+            scores,
+            volatilities=sigma,
+            n_stocks=len(scores),
+            selection_pct=1.0,
+            constraints=constraints,
+        )
+
+    if weighting_scheme == "black_litterman":
+        trailing_returns = returns_history.reindex(columns=tickers).tail(bl_lookback_days)
+        dollar_liquidity = (
+            entry_slice.loc[tickers, "adv_20d_shares"]
+            * entry_slice.loc[tickers, "execution_price"]
+        )
+        return black_litterman_portfolio(
+            scores,
+            trailing_returns=trailing_returns,
+            dollar_liquidity=dollar_liquidity,
+            n_stocks=len(scores),
+            selection_pct=1.0,
+            constraints=constraints,
+            lookback_days=bl_lookback_days,
+        )
+
+    raise ValueError(f"Unsupported weighting scheme: {weighting_scheme}")
+
+
 def _annualize(*, total_return: float, total_days: int) -> float:
     base = 1.0 + float(total_return)
     if base <= 0.0:
@@ -387,3 +555,22 @@ def _empty_cost_breakdown() -> dict[str, float]:
         "gap_penalty": 0.0,
         "total": 0.0,
     }
+
+
+def _empty_backtest_result() -> PortfolioBacktestResult:
+    return PortfolioBacktestResult(
+        periods=[],
+        gross_return=0.0,
+        net_return=0.0,
+        benchmark_return=0.0,
+        gross_excess_return=0.0,
+        net_excess_return=0.0,
+        annualized_gross_return=0.0,
+        annualized_net_return=0.0,
+        annualized_benchmark_return=0.0,
+        annualized_excess_gross=0.0,
+        annualized_excess_net=0.0,
+        total_cost_drag=0.0,
+        average_turnover=0.0,
+        cost_breakdown=_empty_cost_breakdown(),
+    )
