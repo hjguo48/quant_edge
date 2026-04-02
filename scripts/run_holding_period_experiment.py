@@ -379,7 +379,7 @@ def build_window_payload(
         "validation_period": metadata["validation_period"],
         "test_period": metadata["test_period"],
         "test_metrics": metadata["test_metrics"],
-        "best_alpha": float(metadata["best_alpha"]),
+        "best_hyperparams": float(metadata["best_hyperparams"]),
         "signal_date_count": int(len(selected_signal_dates)),
         "signal_dates_selected": selected_signal_dates,
         "rebalance_count": int(len(portfolio.periods)),

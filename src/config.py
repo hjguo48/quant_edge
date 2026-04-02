@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MLFLOW_DB_PATH = REPO_ROOT / "mlflow.db"
 DEFAULT_MLFLOW_TRACKING_URI = f"sqlite:///{DEFAULT_MLFLOW_DB_PATH.as_posix()}"
+DEFAULT_MLFLOW_ARTIFACT_ROOT = REPO_ROOT / "mlartifacts"
 
 
 class Settings(BaseSettings):
@@ -22,6 +23,7 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
 
     MLFLOW_TRACKING_URI: str = DEFAULT_MLFLOW_TRACKING_URI
+    MLFLOW_ARTIFACT_ROOT: str = str(DEFAULT_MLFLOW_ARTIFACT_ROOT)
 
     POLYGON_API_KEY: str = ""
     FRED_API_KEY: str = ""

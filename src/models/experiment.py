@@ -13,7 +13,7 @@ from mlflow.entities import Run
 from mlflow.tracking import MlflowClient
 import pandas as pd
 
-from src.mlflow_config import setup_mlflow
+from src.mlflow_config import ensure_experiment as ensure_mlflow_experiment, setup_mlflow
 from src.models.base import BaseModel
 from src.models.evaluation import EvaluationSummary
 
@@ -42,7 +42,7 @@ class ValidationWindowConfig:
 
 @dataclass(frozen=True)
 class ValidationWindowResult:
-    best_alpha: Any | None
+    best_hyperparams: Any | None
     validation_metrics: EvaluationSummary
     test_metrics: EvaluationSummary
     passed: bool
@@ -73,7 +73,7 @@ class ExperimentTracker:
             target_horizon=target_horizon,
             timestamp=timestamp,
         )
-        experiment_id = self._ensure_experiment(experiment_name)
+        experiment_id = self._ensure_experiment(experiment_name, tracking_uri=tracking_uri)
 
         with mlflow.start_run(experiment_id=experiment_id) as run:
             mlflow.set_tags(
@@ -86,7 +86,27 @@ class ExperimentTracker:
             )
             if params:
                 mlflow.log_params({key: str(value) for key, value in params.items()})
-            mlflow.log_metrics({key: float(value) for key, value in metrics.items()})
+            metric_payload = {key: float(value) for key, value in metrics.items()}
+            mlflow.log_metrics(metric_payload)
+
+            if "top_decile_return" not in metric_payload:
+                top_decile = metric_payload.get(
+                    "test_top_decile_return",
+                    metric_payload.get("validation_top_decile_return", 0.0),
+                )
+                mlflow.log_metric("top_decile_return", float(top_decile))
+            if "long_short_return" not in metric_payload:
+                long_short = metric_payload.get(
+                    "test_long_short_return",
+                    metric_payload.get("validation_long_short_return", 0.0),
+                )
+                mlflow.log_metric("long_short_return", float(long_short))
+            if "turnover" not in metric_payload:
+                turnover = metric_payload.get(
+                    "test_turnover",
+                    metric_payload.get("validation_turnover", 0.0),
+                )
+                mlflow.log_metric("turnover", float(turnover))
 
             with TemporaryDirectory(prefix="quantedge-model-") as temp_dir:
                 artifact_path = f"{temp_dir}/model.pkl"
@@ -133,7 +153,7 @@ class ExperimentTracker:
             target_horizon=target_horizon,
             timestamp=timestamp,
         )
-        experiment_id = self._ensure_experiment(experiment_name)
+        experiment_id = self._ensure_experiment(experiment_name, tracking_uri=tracking_uri)
         logged_runs: list[LoggedModelRun] = []
 
         for trial_number, row in enumerate(trials.itertuples(index=False), start=0):
@@ -234,11 +254,8 @@ class ExperimentTracker:
         return setup_mlflow()
 
     @staticmethod
-    def _ensure_experiment(experiment_name: str) -> str:
-        experiment = mlflow.get_experiment_by_name(experiment_name)
-        if experiment is not None:
-            return experiment.experiment_id
-        return mlflow.create_experiment(experiment_name)
+    def _ensure_experiment(experiment_name: str, *, tracking_uri: str | None = None) -> str:
+        return ensure_mlflow_experiment(experiment_name, tracking_uri=tracking_uri)
 
 
 def build_experiment_name(
@@ -294,14 +311,16 @@ def run_single_window_validation(
             window_id="search",
             timestamp=timestamp,
         )
-        best_alpha = getattr(selection, "best_params", None)
+        best_hyperparams = getattr(selection, "best_params", None)
     elif hasattr(model, "select_alpha"):
         selection = getattr(model, "select_alpha")(train_X, train_y, validation_X, validation_y)
-        best_alpha = getattr(selection, "best_alpha", None)
+        best_hyperparams = getattr(selection, "best_hyperparams", None)
     else:
-        best_alpha = None
+        best_hyperparams = None
 
     model.train(train_X, train_y)
+    train_predictions = model.predict(train_X)
+    train_metrics = model.evaluate(train_y, train_predictions)
     validation_predictions = model.predict(validation_X)
     validation_metrics = model.evaluate(validation_y, validation_predictions)
 
@@ -321,9 +340,10 @@ def run_single_window_validation(
     )
     logged_run = None
     if tracker is not None:
-        metrics = _prefixed_metrics(validation_metrics, prefix="validation") | _prefixed_metrics(
-            test_metrics,
-            prefix="test",
+        metrics = (
+            _prefixed_metrics(train_metrics, prefix="train")
+            | _prefixed_metrics(validation_metrics, prefix="validation")
+            | _prefixed_metrics(test_metrics, prefix="test")
         )
         params = model.get_params() | {
             "train_start": active_config.train_start.isoformat(),
@@ -345,7 +365,7 @@ def run_single_window_validation(
 
     passed = pd.notna(test_metrics.ic) and float(test_metrics.ic) > active_config.pass_ic_threshold
     return ValidationWindowResult(
-        best_alpha=best_alpha,
+        best_hyperparams=best_hyperparams,
         validation_metrics=validation_metrics,
         test_metrics=test_metrics,
         passed=bool(passed),

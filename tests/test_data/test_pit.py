@@ -3,10 +3,14 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
+import pandas as pd
+import pytest
 import sqlalchemy as sa
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+import src.data.db.pit as pit_module
 from src.data.db.models import Base, FundamentalsPIT, StockPrice, UniverseMembership
 from src.data.db.pit import get_fundamentals_pit, get_prices_pit, get_universe_pit
 
@@ -25,6 +29,17 @@ def _ensure_tables(db_engine: Engine) -> None:
         ],
         checkfirst=True,
     )
+
+
+def _sqlite_session_factory(*tables) -> sessionmaker:
+    engine = sa.create_engine(
+        "sqlite+pysqlite:///:memory:",
+        future=True,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine, tables=list(tables), checkfirst=True)
+    return sessionmaker(bind=engine, expire_on_commit=False)
 
 
 def test_fundamentals_pit_respects_knowledge_time(db_engine: Engine) -> None:
@@ -174,3 +189,78 @@ def test_universe_pit_returns_correct_members(db_engine: Engine) -> None:
                 sa.delete(UniverseMembership).where(UniverseMembership.ticker.in_(["PITU1", "PITU2"])),
             )
             session.commit()
+
+
+def test_fundamentals_pit_returns_shares_outstanding_snapshot_without_external_db(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_factory = _sqlite_session_factory(FundamentalsPIT.__table__)
+    monkeypatch.setattr(pit_module, "get_session_factory", lambda: session_factory)
+
+    with session_factory() as session:
+        session.add_all(
+            [
+                FundamentalsPIT(
+                    ticker="UNIT",
+                    fiscal_period="2024Q1",
+                    metric_name="weighted_average_shares_outstanding",
+                    metric_value=Decimal("1000000"),
+                    event_time=date(2024, 3, 31),
+                    knowledge_time=datetime(2024, 5, 10, 21, tzinfo=timezone.utc),
+                    source="test",
+                ),
+                FundamentalsPIT(
+                    ticker="UNIT",
+                    fiscal_period="2024Q2",
+                    metric_name="weighted_average_shares_outstanding",
+                    metric_value=Decimal("1100000"),
+                    event_time=date(2024, 6, 30),
+                    knowledge_time=datetime(2024, 8, 9, 21, tzinfo=timezone.utc),
+                    source="test",
+                ),
+            ],
+        )
+        session.commit()
+
+    result = pit_module.get_fundamentals_pit(
+        ticker="UNIT",
+        as_of=datetime(2024, 8, 15, 12, tzinfo=timezone.utc),
+        metric_names=["weighted_average_shares_outstanding"],
+    )
+
+    assert len(result) == 2
+    assert float(result.iloc[-1]["metric_value"]) == 1_100_000.0
+
+
+def test_fundamentals_pit_excludes_rows_until_knowledge_time_arrives(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_factory = _sqlite_session_factory(FundamentalsPIT.__table__)
+    monkeypatch.setattr(pit_module, "get_session_factory", lambda: session_factory)
+
+    with session_factory() as session:
+        session.add(
+            FundamentalsPIT(
+                ticker="TIME",
+                fiscal_period="2024Q1",
+                metric_name="shares_outstanding",
+                metric_value=Decimal("2500000"),
+                event_time=date(2024, 3, 31),
+                knowledge_time=datetime(2024, 5, 15, 21, tzinfo=timezone.utc),
+                source="test",
+            ),
+        )
+        session.commit()
+
+    before_release = pit_module.get_fundamentals_pit(
+        ticker="TIME",
+        as_of=datetime(2024, 4, 15, 12, tzinfo=timezone.utc),
+    )
+    after_release = pit_module.get_fundamentals_pit(
+        ticker="TIME",
+        as_of=datetime(2024, 5, 16, 12, tzinfo=timezone.utc),
+    )
+
+    assert before_release.empty
+    assert len(after_release) == 1
+    assert pd.Timestamp(after_release.iloc[0]["knowledge_time"], tz="UTC").date() > after_release.iloc[0]["event_time"]
