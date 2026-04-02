@@ -30,6 +30,7 @@ from scripts.run_single_window_validation import (
     restore_feature_matrix_index,
     slice_window,
 )
+from src.mlflow_config import get_mlflow_tracking_uri
 from src.models.experiment import ExperimentTracker, ValidationWindowConfig
 from src.models.tree import (
     LightGBMModel,
@@ -210,7 +211,7 @@ def resolve_tracking_uri(baseline_report: dict[str, Any]) -> str:
     tracking_uri = str(baseline_report.get("mlflow", {}).get("tracking_uri") or "")
     if tracking_uri:
         return tracking_uri
-    return (REPO_ROOT / "mlruns").resolve().as_uri()
+    return get_mlflow_tracking_uri()
 
 
 def run_tree_model(

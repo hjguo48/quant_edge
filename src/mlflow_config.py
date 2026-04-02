@@ -11,12 +11,13 @@ import mlflow
 from mlflow.entities import Metric, Param, RunTag
 from mlflow.tracking import MlflowClient
 
-from src.config import DEFAULT_MLFLOW_TRACKING_URI, get_settings
+from src.config import DEFAULT_MLFLOW_ARTIFACT_ROOT, DEFAULT_MLFLOW_TRACKING_URI, get_settings
 
 # MLflow is Phase 1's only non-negotiable MLOps component.
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FILE_STORE_URI = (REPO_ROOT / "mlruns").resolve().as_uri()
+DEFAULT_ARTIFACT_LOCATION = DEFAULT_MLFLOW_ARTIFACT_ROOT.resolve().as_uri()
 MIGRATION_SOURCE_RUN_TAG = "migration.source_run_id"
 MIGRATION_SOURCE_EXPERIMENT_TAG = "migration.source_experiment_id"
 MIGRATION_SOURCE_TRACKING_URI_TAG = "migration.source_tracking_uri"
@@ -63,6 +64,12 @@ def get_mlflow_tracking_uri() -> str:
     return normalize_tracking_uri(settings.MLFLOW_TRACKING_URI or DEFAULT_MLFLOW_TRACKING_URI)
 
 
+def get_mlflow_artifact_root() -> str:
+    settings = get_settings()
+    configured_root = settings.MLFLOW_ARTIFACT_ROOT or str(DEFAULT_MLFLOW_ARTIFACT_ROOT)
+    return Path(configured_root).expanduser().resolve().as_uri()
+
+
 def normalize_tracking_uri(tracking_uri: str) -> str:
     if not tracking_uri:
         return DEFAULT_MLFLOW_TRACKING_URI
@@ -99,11 +106,37 @@ def setup_mlflow(*, tracking_uri: str | None = None) -> str:
     return resolved
 
 
-def ensure_experiment(experiment_name: str) -> str:
-    setup_mlflow()
+def default_artifact_location_for_tracking_uri(tracking_uri: str) -> str | None:
+    resolved_tracking_uri = normalize_tracking_uri(tracking_uri)
+    if resolved_tracking_uri.startswith("sqlite:"):
+        return get_mlflow_artifact_root()
+    if resolved_tracking_uri == DEFAULT_FILE_STORE_URI:
+        return get_mlflow_artifact_root()
+    if resolved_tracking_uri.startswith("file://"):
+        parsed = urlparse(resolved_tracking_uri)
+        if parsed.path:
+            return (Path(parsed.path) / "artifacts").resolve().as_uri()
+    return None
+
+
+def ensure_experiment(
+    experiment_name: str,
+    *,
+    tracking_uri: str | None = None,
+    artifact_location: str | None = None,
+) -> str:
+    resolved_tracking_uri = setup_mlflow(tracking_uri=tracking_uri)
     experiment = mlflow.get_experiment_by_name(experiment_name)
     if experiment is not None:
         return experiment.experiment_id
+    resolved_artifact_location = artifact_location or default_artifact_location_for_tracking_uri(
+        resolved_tracking_uri,
+    )
+    if resolved_artifact_location:
+        return mlflow.create_experiment(
+            experiment_name,
+            artifact_location=resolved_artifact_location,
+        )
     return mlflow.create_experiment(experiment_name)
 
 
@@ -113,7 +146,7 @@ def log_experiment(
     metrics: Mapping[str, float] | None = None,
 ) -> LoggedRun:
     tracking_uri = setup_mlflow()
-    experiment_id = ensure_experiment(experiment_name)
+    experiment_id = ensure_experiment(experiment_name, tracking_uri=tracking_uri)
 
     with mlflow.start_run(experiment_id=experiment_id) as run:
         if params:

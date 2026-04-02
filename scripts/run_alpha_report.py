@@ -19,13 +19,14 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.run_ic_screening import write_json_atomic
 from scripts.run_single_window_validation import configure_logging, current_git_branch, json_safe
 from src.data.db.session import get_engine
+from src.mlflow_config import get_mlflow_tracking_uri
 from src.models.evaluation import information_coefficient_series
 from src.stats.bootstrap import bootstrap_return_statistics
 from src.stats.dsr import compute_deflated_sharpe
 from src.stats.ic_test import run_ic_ttest, run_windowed_ic_tests
 from src.stats.spa import run_spa_fallback, series_from_records
 
-DEFAULT_MLFLOW_TRACKING_URI = "file:///home/jiahao/quant_edge/mlruns"
+DEFAULT_MLFLOW_TRACKING_URI = get_mlflow_tracking_uri()
 BEST_SCHEME_NAME = "equal_weight_buffered"
 OPTIMAL_HORIZON = 60
 MAX_RESULTS = 5_000

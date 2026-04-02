@@ -39,6 +39,7 @@ from scripts.run_walkforward_backtest import (
 from src.backtest.cost_model import AlmgrenChrissCostModel
 from src.backtest.engine import WalkForwardEngine, build_universe_by_date
 from src.backtest.execution import simulate_portfolio
+from src.mlflow_config import ensure_experiment as ensure_mlflow_experiment, setup_mlflow
 from src.models.baseline import DEFAULT_ALPHA_GRID
 
 AS_OF_DATE = pd.Timestamp("2026-03-31").date()
@@ -298,7 +299,7 @@ def build_or_load_predictions(
                     "train_period": f"{window.train_start.isoformat()} -> {window.train_end.isoformat()}",
                     "validation_period": f"{window.validation_start.isoformat()} -> {window.validation_end.isoformat()}",
                     "test_period": f"{window.test_start.isoformat()} -> {window.test_end.isoformat()}",
-                    "best_alpha": float(result.best_alpha),
+                    "best_hyperparams": float(result.best_hyperparams),
                     "train_metrics": result.train_metrics.to_dict(),
                     "validation_metrics": result.validation_metrics.to_dict(),
                     "test_metrics": result.test_metrics.to_dict(),
@@ -365,7 +366,7 @@ def run_scheme(
                 "train_period": metadata["train_period"],
                 "validation_period": metadata["validation_period"],
                 "test_period": metadata["test_period"],
-                "best_alpha": metadata["best_alpha"],
+                "best_hyperparams": metadata.get("best_hyperparams", metadata.get("best_alpha")),
                 "test_ic": float(metadata["test_metrics"]["ic"]),
                 "test_rank_ic": float(metadata["test_metrics"]["rank_ic"]),
                 "test_icir": float(metadata["test_metrics"]["icir"]),
@@ -501,12 +502,8 @@ def log_scheme_run(
 
 
 def ensure_experiment(experiment_name: str) -> dict[str, str]:
-    mlflow.set_tracking_uri(LOCAL_MLFLOW_URI)
-    experiment = mlflow.get_experiment_by_name(experiment_name)
-    if experiment is None:
-        experiment_id = mlflow.create_experiment(experiment_name)
-    else:
-        experiment_id = experiment.experiment_id
+    tracking_uri = setup_mlflow(tracking_uri=LOCAL_MLFLOW_URI)
+    experiment_id = ensure_mlflow_experiment(experiment_name, tracking_uri=tracking_uri)
     return {"experiment_name": experiment_name, "experiment_id": experiment_id}
 
 

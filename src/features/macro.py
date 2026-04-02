@@ -11,6 +11,8 @@ from src.data.db.pit import get_prices_pit, get_universe_pit
 from src.data.db.session import get_session_factory
 from src.data.sources.fred import MACRO_SERIES_TABLE
 
+# MACRO_REGIME: these features are broadcast to every ticker on a given date and
+# therefore act as market-state context rather than standalone stock selectors.
 MACRO_FEATURE_NAMES = (
     "vix",
     "vix_change_5d",

@@ -113,16 +113,16 @@ _FUNDAMENTAL_FEATURE_METADATA = {
 }
 
 _MACRO_FEATURE_METADATA = {
-    "vix": "Latest VIX level as of the PIT date.",
-    "vix_change_5d": "Five-day percentage change in VIX.",
-    "vix_rank": "Percentile rank of VIX over the trailing 252-day history.",
-    "yield_10y": "Latest 10-year Treasury yield.",
-    "yield_spread_10y2y": "10-year yield minus 2-year yield or fallback short-rate proxy.",
-    "credit_spread": "Latest BAA10Y minus AAA10Y credit spread level.",
-    "credit_spread_change": "20-day change in credit spread.",
-    "ffr": "Latest federal funds rate.",
-    "sp500_breadth": "Share of S&P 500 members with positive trailing 20-day returns.",
-    "market_ret_20d": "Trailing 20-day return of SPY.",
+    "vix": "MACRO_REGIME: latest VIX level as of the PIT date.",
+    "vix_change_5d": "MACRO_REGIME: five-day percentage change in VIX.",
+    "vix_rank": "MACRO_REGIME: percentile rank of VIX over the trailing 252-day history.",
+    "yield_10y": "MACRO_REGIME: latest 10-year Treasury yield.",
+    "yield_spread_10y2y": "MACRO_REGIME: 10-year yield minus 2-year yield or fallback short-rate proxy.",
+    "credit_spread": "MACRO_REGIME: latest BAA10Y minus AAA10Y credit spread level.",
+    "credit_spread_change": "MACRO_REGIME: 20-day change in credit spread.",
+    "ffr": "MACRO_REGIME: latest federal funds rate.",
+    "sp500_breadth": "MACRO_REGIME: share of S&P 500 members with positive trailing 20-day returns.",
+    "market_ret_20d": "MACRO_REGIME: trailing 20-day return of SPY.",
 }
 
 _COMPOSITE_FEATURE_METADATA = {
@@ -142,10 +142,10 @@ _COMPOSITE_FEATURE_METADATA = {
     "liquidity_momentum": "Liquidity ratio interacted with 20-day momentum.",
     "mean_reversion_combo": "Bollinger positioning minus RSI-based overbought signal.",
     "trend_confirmation": "MACD histogram combined with stochastic confirmation.",
-    "risk_sentiment": "Market return adjusted by VIX change.",
-    "spread_stress": "Credit spread relative to curve slope stress.",
-    "breadth_momentum": "Breadth and market momentum composite.",
-    "macro_risk_on": "Curve slope minus credit spread risk-on composite.",
+    "risk_sentiment": "MACRO_REGIME composite: market return adjusted by VIX change.",
+    "spread_stress": "MACRO_REGIME composite: credit spread relative to curve slope stress.",
+    "breadth_momentum": "MACRO_REGIME composite: breadth and market momentum composite.",
+    "macro_risk_on": "MACRO_REGIME composite: curve slope minus credit spread risk-on composite.",
 }
 
 assert len(TECHNICAL_FEATURE_NAMES) == 30

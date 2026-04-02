@@ -173,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
             "source_run_id": source_run_id,
             "window_id": source_window["window_id"],
             "experiment_name": source_window["mlflow"]["experiment_name"],
-            "best_alpha": source_window["best_alpha"],
+            "best_hyperparams": source_window.get("best_hyperparams", source_window.get("best_alpha")),
             "test_ic": source_window["test_metrics"]["ic"],
         },
         "packaging_run": packaging_info,

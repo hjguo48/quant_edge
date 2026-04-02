@@ -640,7 +640,7 @@ def build_window_payload(
         "train_period": metadata["train_period"],
         "validation_period": metadata["validation_period"],
         "test_period": metadata["test_period"],
-        "best_alpha": metadata["best_alpha"],
+        "best_hyperparams": metadata.get("best_hyperparams", metadata.get("best_alpha")),
         "test_ic": float(metadata["test_metrics"]["ic"]),
         "test_rank_ic": float(metadata["test_metrics"]["rank_ic"]),
         "test_icir": float(metadata["test_metrics"]["icir"]),
