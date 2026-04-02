@@ -1,1 +1,389 @@
-# Placeholder for execution assumptions and simulation.
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass
+from datetime import date
+import math
+
+from loguru import logger
+import numpy as np
+import pandas as pd
+
+from src.backtest.cost_model import AlmgrenChrissCostModel
+
+
+@dataclass(frozen=True)
+class PortfolioPeriodResult:
+    signal_date: str
+    execution_date: str
+    exit_date: str
+    universe_size: int
+    selected_count: int
+    turnover: float
+    cost_rate: float
+    gross_return: float
+    net_return: float
+    benchmark_return: float
+    gross_excess_return: float
+    net_excess_return: float
+    avg_gap: float
+    cost_breakdown: dict[str, float]
+    selected_tickers: list[str]
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class PortfolioBacktestResult:
+    periods: list[PortfolioPeriodResult]
+    gross_return: float
+    net_return: float
+    benchmark_return: float
+    gross_excess_return: float
+    net_excess_return: float
+    annualized_gross_return: float
+    annualized_net_return: float
+    annualized_benchmark_return: float
+    annualized_excess_gross: float
+    annualized_excess_net: float
+    total_cost_drag: float
+    average_turnover: float
+    cost_breakdown: dict[str, float]
+
+    def to_dict(self) -> dict[str, object]:
+        payload = asdict(self)
+        payload["periods"] = [period.to_dict() for period in self.periods]
+        return payload
+
+
+def prepare_execution_price_frame(prices_df: pd.DataFrame) -> pd.DataFrame:
+    required_columns = {"ticker", "trade_date", "open", "high", "low", "close", "adj_close", "volume"}
+    missing_columns = sorted(required_columns - set(prices_df.columns))
+    if missing_columns:
+        raise ValueError(f"prices_df is missing required columns: {missing_columns}")
+
+    frame = prices_df.copy()
+    frame["ticker"] = frame["ticker"].astype(str).str.upper()
+    frame["trade_date"] = pd.to_datetime(frame["trade_date"])
+
+    for column in ("open", "high", "low", "close", "adj_close", "volume"):
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+
+    frame.sort_values(["ticker", "trade_date"], inplace=True)
+    frame["adjustment_factor"] = np.where(
+        frame["close"].abs() > 1e-12,
+        frame["adj_close"] / frame["close"],
+        np.nan,
+    )
+    frame["adjustment_factor"] = (
+        frame["adjustment_factor"]
+        .replace([np.inf, -np.inf], np.nan)
+        .fillna(1.0)
+    )
+    frame["close_px"] = frame["adj_close"].fillna(frame["close"])
+    frame["open_px"] = (frame["open"] * frame["adjustment_factor"]).fillna(frame["close_px"])
+    frame["high_px"] = (frame["high"] * frame["adjustment_factor"]).fillna(frame["close_px"])
+    frame["low_px"] = (frame["low"] * frame["adjustment_factor"]).fillna(frame["close_px"])
+    frame["typical_price"] = (
+        frame["open_px"] + frame["high_px"] + frame["low_px"] + frame["close_px"]
+    ) / 4.0
+    frame["execution_price"] = ((frame["open_px"] * 0.5) + (frame["typical_price"] * 0.5)).fillna(frame["close_px"])
+
+    grouped = frame.groupby("ticker", sort=False)
+    frame["prev_close"] = grouped["close_px"].shift(1)
+    frame["open_gap"] = np.where(
+        frame["prev_close"] > 0,
+        (frame["open_px"] - frame["prev_close"]) / frame["prev_close"],
+        0.0,
+    )
+    frame["daily_return"] = grouped["close_px"].pct_change()
+    frame["sigma_20d"] = (
+        grouped["daily_return"]
+        .transform(lambda series: series.shift(1).rolling(20, min_periods=5).std())
+        .fillna(0.02)
+    )
+    frame["adv_20d_shares"] = (
+        grouped["volume"]
+        .transform(lambda series: series.shift(1).rolling(20, min_periods=5).mean())
+        .fillna(frame["volume"])
+        .fillna(0.0)
+    )
+    frame["volume_ratio"] = np.where(
+        frame["adv_20d_shares"] > 0,
+        frame["volume"] / frame["adv_20d_shares"],
+        1.0,
+    )
+
+    prepared = frame[
+        [
+            "ticker",
+            "trade_date",
+            "execution_price",
+            "close_px",
+            "open_px",
+            "volume",
+            "adv_20d_shares",
+            "sigma_20d",
+            "open_gap",
+            "volume_ratio",
+        ]
+    ].copy()
+    prepared.set_index(["trade_date", "ticker"], inplace=True)
+    return prepared.sort_index()
+
+
+def build_execution_schedule(
+    signal_dates: Sequence[pd.Timestamp | date],
+    available_trade_dates: Sequence[pd.Timestamp | date],
+) -> dict[pd.Timestamp, pd.Timestamp]:
+    signal_index = pd.DatetimeIndex(pd.to_datetime(signal_dates)).sort_values().unique()
+    trade_index = pd.DatetimeIndex(pd.to_datetime(available_trade_dates)).sort_values().unique()
+    schedule: dict[pd.Timestamp, pd.Timestamp] = {}
+
+    for signal_date in signal_index:
+        insert_at = trade_index.searchsorted(signal_date, side="right")
+        if insert_at >= len(trade_index):
+            continue
+        schedule[pd.Timestamp(signal_date)] = pd.Timestamp(trade_index[insert_at])
+
+    return schedule
+
+
+def simulate_top_decile_portfolio(
+    *,
+    predictions: pd.Series,
+    prices: pd.DataFrame,
+    cost_model: AlmgrenChrissCostModel,
+    benchmark_ticker: str = "SPY",
+    universe_by_date: Mapping[pd.Timestamp, set[str]] | None = None,
+    initial_capital: float = 1_000_000.0,
+    min_external_universe_overlap: int = 100,
+) -> PortfolioBacktestResult:
+    if predictions.empty:
+        return PortfolioBacktestResult(
+            periods=[],
+            gross_return=0.0,
+            net_return=0.0,
+            benchmark_return=0.0,
+            gross_excess_return=0.0,
+            net_excess_return=0.0,
+            annualized_gross_return=0.0,
+            annualized_net_return=0.0,
+            annualized_benchmark_return=0.0,
+            annualized_excess_gross=0.0,
+            annualized_excess_net=0.0,
+            total_cost_drag=0.0,
+            average_turnover=0.0,
+            cost_breakdown=_empty_cost_breakdown(),
+        )
+
+    execution = prepare_execution_price_frame(prices)
+    if execution.empty:
+        raise RuntimeError("Execution price frame is empty.")
+
+    benchmark = benchmark_ticker.upper()
+    signal_dates = pd.DatetimeIndex(
+        pd.to_datetime(predictions.index.get_level_values("trade_date")),
+    ).sort_values().unique()
+    trade_dates = execution.index.get_level_values("trade_date").unique().sort_values()
+    schedule = build_execution_schedule(signal_dates, trade_dates)
+
+    current_weights: dict[str, float] = {}
+    portfolio_value = float(initial_capital)
+    periods: list[PortfolioPeriodResult] = []
+    cost_totals = _empty_cost_breakdown()
+    cumulative_gross = 1.0
+    cumulative_net = 1.0
+    cumulative_benchmark = 1.0
+    universe_fallback_warnings = 0
+
+    for signal_date, next_signal_date in zip(signal_dates[:-1], signal_dates[1:]):
+        execution_date = schedule.get(pd.Timestamp(signal_date))
+        exit_date = schedule.get(pd.Timestamp(next_signal_date))
+        if execution_date is None or exit_date is None or exit_date <= execution_date:
+            continue
+
+        score_frame = predictions.xs(signal_date, level="trade_date").dropna().sort_values(ascending=False)
+        eligible = set(score_frame.index.astype(str))
+        if universe_by_date is not None:
+            external_universe = set(universe_by_date.get(pd.Timestamp(signal_date), set()))
+            overlap = eligible & external_universe
+            if len(overlap) >= min_external_universe_overlap:
+                eligible = overlap
+            elif external_universe and universe_fallback_warnings < 5:
+                logger.warning(
+                    "external universe overlap too small on {} (overlap={} candidates={}); using signal cross-section",
+                    pd.Timestamp(signal_date).date(),
+                    len(overlap),
+                    len(eligible),
+                )
+                universe_fallback_warnings += 1
+
+        if (execution_date, benchmark) not in execution.index or (exit_date, benchmark) not in execution.index:
+            continue
+
+        entry_names = set(execution.xs(execution_date, level="trade_date").index.astype(str))
+        exit_names = set(execution.xs(exit_date, level="trade_date").index.astype(str))
+        eligible &= entry_names & exit_names
+        eligible.discard(benchmark)
+        if len(eligible) < 10:
+            continue
+
+        score_frame = score_frame.loc[score_frame.index.astype(str).isin(eligible)]
+        score_frame = score_frame.sort_values(ascending=False)
+        decile_size = max(1, int(math.ceil(len(score_frame) * 0.10)))
+        selected = score_frame.head(decile_size)
+        selected_tickers = [str(ticker) for ticker in selected.index]
+        target_weights = {ticker: 1.0 / len(selected_tickers) for ticker in selected_tickers}
+        previous_weights = current_weights.copy()
+
+        period_costs = _empty_cost_breakdown()
+        all_trade_tickers = set(previous_weights) | set(target_weights)
+        for ticker in all_trade_tickers:
+            delta_weight = target_weights.get(ticker, 0.0) - previous_weights.get(ticker, 0.0)
+            if math.isclose(delta_weight, 0.0, abs_tol=1e-12):
+                continue
+            bar = execution.loc[(execution_date, ticker)]
+            order_notional = abs(delta_weight) * portfolio_value
+            order_shares = order_notional / max(float(bar["execution_price"]), 1e-12)
+            estimate = cost_model.estimate_trade(
+                order_shares=order_shares,
+                execution_price=float(bar["execution_price"]),
+                sigma_20d=float(bar["sigma_20d"]),
+                adv_20d_shares=float(bar["adv_20d_shares"]),
+                open_gap=float(bar["open_gap"]),
+                execution_volume_ratio=float(bar["volume_ratio"]),
+            )
+            period_costs["commission"] += estimate.commission_cost
+            period_costs["spread"] += estimate.spread_cost
+            period_costs["temporary_impact"] += estimate.temporary_cost
+            period_costs["permanent_impact"] += estimate.permanent_cost
+            period_costs["gap_penalty"] += estimate.gap_cost
+            period_costs["total"] += estimate.total_cost
+
+        cost_rate = period_costs["total"] / portfolio_value if portfolio_value else 0.0
+
+        asset_returns: dict[str, float] = {}
+        gross_return = 0.0
+        gaps: list[float] = []
+        for ticker, weight in target_weights.items():
+            entry_bar = execution.loc[(execution_date, ticker)]
+            exit_bar = execution.loc[(exit_date, ticker)]
+            entry_price = max(float(entry_bar["execution_price"]), 1e-12)
+            exit_price = float(exit_bar["execution_price"])
+            realized = (exit_price / entry_price) - 1.0
+            asset_returns[ticker] = realized
+            gross_return += weight * realized
+            gaps.append(abs(float(entry_bar["open_gap"])))
+
+        bench_entry = execution.loc[(execution_date, benchmark)]
+        bench_exit = execution.loc[(exit_date, benchmark)]
+        benchmark_return = (
+            float(bench_exit["execution_price"]) / max(float(bench_entry["execution_price"]), 1e-12)
+        ) - 1.0
+        net_return = ((1.0 - cost_rate) * (1.0 + gross_return)) - 1.0
+
+        cumulative_gross *= 1.0 + gross_return
+        cumulative_net *= 1.0 + net_return
+        cumulative_benchmark *= 1.0 + benchmark_return
+        portfolio_value *= 1.0 + net_return
+
+        drift_denominator = 1.0 + gross_return
+        if math.isclose(drift_denominator, 0.0, abs_tol=1e-12):
+            current_weights = {}
+        else:
+            current_weights = {
+                ticker: (weight * (1.0 + asset_returns[ticker])) / drift_denominator
+                for ticker, weight in target_weights.items()
+            }
+
+        turnover = 0.5 * sum(
+            abs(target_weights.get(ticker, 0.0) - previous_weights.get(ticker, 0.0))
+            for ticker in set(target_weights) | set(previous_weights)
+        )
+        period = PortfolioPeriodResult(
+            signal_date=pd.Timestamp(signal_date).date().isoformat(),
+            execution_date=pd.Timestamp(execution_date).date().isoformat(),
+            exit_date=pd.Timestamp(exit_date).date().isoformat(),
+            universe_size=int(len(score_frame)),
+            selected_count=int(len(selected_tickers)),
+            turnover=float(turnover),
+            cost_rate=float(cost_rate),
+            gross_return=float(gross_return),
+            net_return=float(net_return),
+            benchmark_return=float(benchmark_return),
+            gross_excess_return=float(gross_return - benchmark_return),
+            net_excess_return=float(net_return - benchmark_return),
+            avg_gap=float(np.mean(gaps)) if gaps else 0.0,
+            cost_breakdown={key: float(value) for key, value in period_costs.items()},
+            selected_tickers=selected_tickers,
+        )
+        periods.append(period)
+
+        for key, value in period_costs.items():
+            cost_totals[key] += float(value)
+
+    if not periods:
+        return PortfolioBacktestResult(
+            periods=[],
+            gross_return=0.0,
+            net_return=0.0,
+            benchmark_return=0.0,
+            gross_excess_return=0.0,
+            net_excess_return=0.0,
+            annualized_gross_return=0.0,
+            annualized_net_return=0.0,
+            annualized_benchmark_return=0.0,
+            annualized_excess_gross=0.0,
+            annualized_excess_net=0.0,
+            total_cost_drag=0.0,
+            average_turnover=0.0,
+            cost_breakdown=cost_totals,
+        )
+
+    start_date = pd.Timestamp(periods[0].execution_date)
+    end_date = pd.Timestamp(periods[-1].exit_date)
+    total_days = max((end_date - start_date).days, 1)
+
+    gross_return_total = cumulative_gross - 1.0
+    net_return_total = cumulative_net - 1.0
+    benchmark_total = cumulative_benchmark - 1.0
+    annualized_gross = _annualize(total_return=gross_return_total, total_days=total_days)
+    annualized_net = _annualize(total_return=net_return_total, total_days=total_days)
+    annualized_benchmark = _annualize(total_return=benchmark_total, total_days=total_days)
+
+    return PortfolioBacktestResult(
+        periods=periods,
+        gross_return=float(gross_return_total),
+        net_return=float(net_return_total),
+        benchmark_return=float(benchmark_total),
+        gross_excess_return=float(gross_return_total - benchmark_total),
+        net_excess_return=float(net_return_total - benchmark_total),
+        annualized_gross_return=float(annualized_gross),
+        annualized_net_return=float(annualized_net),
+        annualized_benchmark_return=float(annualized_benchmark),
+        annualized_excess_gross=float(annualized_gross - annualized_benchmark),
+        annualized_excess_net=float(annualized_net - annualized_benchmark),
+        total_cost_drag=float(annualized_gross - annualized_net),
+        average_turnover=float(np.mean([period.turnover for period in periods])),
+        cost_breakdown={key: float(value) for key, value in cost_totals.items()},
+    )
+
+
+def _annualize(*, total_return: float, total_days: int) -> float:
+    base = 1.0 + float(total_return)
+    if base <= 0.0:
+        return -1.0
+    return float(base ** (365.25 / max(total_days, 1)) - 1.0)
+
+
+def _empty_cost_breakdown() -> dict[str, float]:
+    return {
+        "commission": 0.0,
+        "spread": 0.0,
+        "temporary_impact": 0.0,
+        "permanent_impact": 0.0,
+        "gap_penalty": 0.0,
+        "total": 0.0,
+    }
