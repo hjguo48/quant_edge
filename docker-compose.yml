@@ -62,18 +62,25 @@ services:
       - quantedge_net
 
   airflow:
-    image: apache/airflow:2.9-python3.11
+    image: apache/airflow:2.9.3-python3.11
+    working_dir: /opt/quantedge
     command: standalone
     restart: on-failure
     environment:
+      _PIP_ADDITIONAL_REQUIREMENTS: >-
+        sqlalchemy psycopg2-binary pandas numpy pydantic pydantic-settings
+        python-dotenv mlflow loguru polygon-api-client pyarrow scipy scikit-learn
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/quantedge/dags
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "False"
+      PYTHONPATH: /opt/quantedge
+      QUANTEDGE_REPO_ROOT: /opt/quantedge
     ports:
       - "8080:8080"
     volumes:
-      - ./dags:/opt/airflow/dags
+      - .:/opt/quantedge
       - airflow_home:/opt/airflow
     depends_on:
       timescaledb:
@@ -86,7 +93,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2).read(1)",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/v1/health', timeout=2).read(1)",
         ]
       interval: 15s
       timeout: 5s
