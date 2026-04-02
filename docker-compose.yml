@@ -68,14 +68,18 @@ services:
     restart: on-failure
     environment:
       _PIP_ADDITIONAL_REQUIREMENTS: >-
-        sqlalchemy psycopg2-binary pandas numpy pydantic pydantic-settings
+        sqlalchemy>=1.4.36,<2.0 psycopg2-binary pandas numpy pydantic pydantic-settings
         python-dotenv mlflow loguru polygon-api-client pyarrow scipy scikit-learn
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__DAGS_FOLDER: /opt/quantedge/dags
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "False"
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
       PYTHONPATH: /opt/quantedge
+      REDIS_HOST: redis
       QUANTEDGE_REPO_ROOT: /opt/quantedge
       QUANTEDGE_ENABLE_LIVE_FETCH: "true"
     ports:

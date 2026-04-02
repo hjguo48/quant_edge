@@ -9,14 +9,29 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+try:
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+except ImportError:
+    from sqlalchemy.ext.declarative import declarative_base
 
+    Base = declarative_base()
+    Base.__allow_unmapped__ = True
 
-class Base(DeclarativeBase):
-    pass
+    class Mapped:
+        @classmethod
+        def __class_getitem__(cls, _item: Any) -> Any:
+            return Any
+
+    def mapped_column(*args: Any, **kwargs: Any) -> sa.Column[Any]:
+        return sa.Column(*args, **kwargs)
+else:
+    class Base(DeclarativeBase):
+        __allow_unmapped__ = True
 
 
 class TimestampMixin:
+    __allow_unmapped__ = True
+
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         server_default=sa.func.now(),
