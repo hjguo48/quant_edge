@@ -1,0 +1,2418 @@
+<!-- Portfolio -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#410004",
+                        "surface-tint": "#3ce42f",
+                        "secondary-fixed-dim": "#ffb3ae",
+                        "primary-container": "#00c805",
+                        "inverse-primary": "#006e01",
+                        "inverse-on-surface": "#2a303f",
+                        "inverse-surface": "#dce2f5",
+                        "surface-variant": "#2e3543",
+                        "tertiary": "#3de530",
+                        "outline": "#86957e",
+                        "secondary-container": "#a00118",
+                        "on-error": "#690005",
+                        "tertiary-container": "#00c805",
+                        "on-primary-container": "#004c00",
+                        "on-background": "#dce2f5",
+                        "tertiary-fixed-dim": "#3ce42f",
+                        "surface-bright": "#323948",
+                        "on-secondary": "#68000c",
+                        "outline-variant": "#3d4b37",
+                        "on-primary": "#003a00",
+                        "surface-container-high": "#232a38",
+                        "secondary-fixed": "#ffdad7",
+                        "background": "#0c1320",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#0c1320",
+                        "on-secondary-container": "#ffa8a3",
+                        "on-secondary-fixed-variant": "#930015",
+                        "surface-container-highest": "#2e3543",
+                        "surface-container-low": "#151c29",
+                        "on-tertiary-container": "#004c00",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#002200",
+                        "on-tertiary": "#003a00",
+                        "on-surface-variant": "#bbcbb2",
+                        "surface-container": "#19202d",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed": "#77ff62",
+                        "primary-fixed": "#77ff62",
+                        "surface-dim": "#0c1320",
+                        "secondary": "#ffb3ae",
+                        "surface-container-lowest": "#070e1b",
+                        "primary": "#3de530",
+                        "on-tertiary-fixed": "#002200",
+                        "primary-fixed-dim": "#3ce42f",
+                        "on-primary-fixed-variant": "#005300",
+                        "on-tertiary-fixed-variant": "#005300",
+                        "on-surface": "#dce2f5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .tabular { font-variant-numeric: tabular-nums; }
+        .glass-panel {
+            background: rgba(46, 53, 67, 0.6);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased">
+<nav class="fixed top-0 w-full z-50 bg-[#151c29] flex justify-between items-center h-14 px-6 w-full">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#dce2f5]">QuantEdge</span>
+<div class="hidden md:flex space-x-6 text-sm font-medium">
+<a class="text-[#bbcbb2] hover:bg-[#232a38] transition-colors px-3 py-1 rounded-lg" href="#">Dashboard</a>
+<a class="text-[#bbcbb2] hover:bg-[#232a38] transition-colors px-3 py-1 rounded-lg" href="#">Signals</a>
+<a class="text-[#00c805] font-bold px-3 py-1 rounded-lg" href="#">Portfolio</a>
+<a class="text-[#bbcbb2] hover:bg-[#232a38] transition-colors px-3 py-1 rounded-lg" href="#">Backtest</a>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<div class="relative group">
+<span class="material-symbols-outlined text-[#bbcbb2] cursor-pointer">notifications</span>
+<div class="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full"></div>
+</div>
+<span class="material-symbols-outlined text-[#bbcbb2] cursor-pointer">person</span>
+</div>
+</nav>
+<aside class="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-[#0c1320] border-r border-[#bbcbb2]/15 flex flex-col py-4 space-y-1 hidden md:flex">
+<div class="px-6 mb-6">
+<h2 class="text-lg font-black text-[#dce2f5]">QuantEdge</h2>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant/60">Institutional Terminal</p>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<a class="flex items-center space-x-3 px-4 py-2.5 rounded-lg text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-2.5 rounded-lg text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200" href="#">
+<span class="material-symbols-outlined">show_chart</span>
+<span class="font-medium text-sm">Signals</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-2.5 rounded-lg text-[#00c805] bg-[#151c29] border-r-2 border-[#00c805] transition-all duration-200" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-medium text-sm">Portfolio</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-2.5 rounded-lg text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200" href="#">
+<span class="material-symbols-outlined">biotech</span>
+<span class="font-medium text-sm">Backtest</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-2.5 rounded-lg text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-medium text-sm">G4 Gate</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-2.5 rounded-lg text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-6 py-4 border-t border-outline-variant/10">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/20">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Professional headshot of a financial portfolio manager in a dark suit with a clean neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkede_D2OUuBNQUmZMAOz9uf8bMPeNozjvVGPffbrYE0wEmEeDi5kVZa5PHij-pnY5GNAWllQ2jtQrofNc01ozuiYitfjeu_xaE_KCXysbFQt-R-EDXPTkKgn34PaFVX_-37LLqQY4Xwm5xCZ_TPidPfcgOcLakvGh8S04QDjx6y301Z9Bj5dRbDcLVlpZS86z1tL4DOAr7wuRoFh3HNNZeZL2dClbv0kKObmWve2eLYGN7pp5Tg49yzD-PGs0Yg3oTfIhF55N_6N0"/>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Alex Mercer</p>
+<p class="text-[10px] text-on-surface-variant">Chief Strategist</p>
+</div>
+</div>
+</div>
+</aside>
+<main class="md:ml-64 mt-14 p-6 lg:p-8 min-h-screen bg-surface">
+<header class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Institutional Portfolio</h1>
+<p class="text-on-surface-variant text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-xs">calendar_today</span> Last updated: Sep 24, 14:02:45 UTC
+                </p>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-3 bg-surface-container-low text-on-surface text-sm font-semibold rounded-lg hover:bg-surface-container-high transition-all active:scale-95 flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">download</span> Export Data
+                </button>
+<button class="px-6 py-3 bg-gradient-to-br from-primary to-primary-container text-on-primary-container text-sm font-extrabold rounded-lg hover:opacity-90 transition-all active:scale-95 shadow-[0_4px_20px_rgba(61,229,48,0.2)]">
+                    REBALANCE NOW
+                </button>
+</div>
+</header>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<div class="lg:col-span-8 bg-surface-container-low rounded-xl p-8 overflow-hidden relative group">
+<div class="flex justify-between items-start relative z-10">
+<div>
+<p class="text-sm font-medium text-on-surface-variant uppercase tracking-widest mb-1">Portfolio Net Worth</p>
+<h2 class="text-5xl font-black tabular tracking-tighter text-on-surface">$3,428,940.32</h2>
+<div class="flex items-center gap-2 mt-2 text-primary font-bold">
+<span class="material-symbols-outlined">trending_up</span>
+<span>+14.2% ($428,102.50)</span>
+<span class="text-on-surface-variant font-normal text-sm ml-2">YTD Performance</span>
+</div>
+</div>
+<div class="flex gap-1 bg-surface-container-lowest p-1 rounded-lg">
+<button class="px-3 py-1 text-xs font-bold rounded text-on-surface-variant hover:text-on-surface transition-colors">1D</button>
+<button class="px-3 py-1 text-xs font-bold rounded text-on-surface-variant hover:text-on-surface transition-colors">1M</button>
+<button class="px-3 py-1 text-xs font-bold rounded bg-surface-container-highest text-primary transition-colors">1Y</button>
+<button class="px-3 py-1 text-xs font-bold rounded text-on-surface-variant hover:text-on-surface transition-colors">ALL</button>
+</div>
+</div>
+<div class="mt-12 h-64 w-full relative">
+<svg class="w-full h-full drop-shadow-[0_0_15px_rgba(61,229,48,0.3)]" viewbox="0 0 1000 200">
+<defs>
+<lineargradient id="gradient-area" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#3de530" stop-opacity="0.2"></stop>
+<stop offset="100%" stop-color="#3de530" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,150 Q100,160 200,120 T400,130 T600,60 T800,80 T1000,20 L1000,200 L0,200 Z" fill="url(#gradient-area)"></path>
+<path d="M0,150 Q100,160 200,120 T400,130 T600,60 T800,80 T1000,20" fill="none" stroke="#3de530" stroke-linecap="round" stroke-width="3"></path>
+<circle class="animate-pulse" cx="1000" cy="20" fill="#3de530" r="4"></circle>
+</svg>
+</div>
+</div>
+<div class="lg:col-span-4 flex flex-col gap-6">
+<div class="bg-surface-container-low rounded-xl p-6 h-full flex flex-col">
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-6">Asset Allocation</h3>
+<div class="flex-1 flex items-center justify-center relative py-6">
+<div class="w-48 h-48 rounded-full border-[12px] border-surface-container-highest flex items-center justify-center relative">
+<div class="absolute inset-0 rounded-full border-[12px] border-primary border-t-transparent border-l-transparent transform rotate-45"></div>
+<div class="absolute inset-0 rounded-full border-[12px] border-secondary border-b-transparent border-r-transparent transform -rotate-12 opacity-80"></div>
+<div class="text-center">
+<span class="block text-2xl font-black text-on-surface">Tech</span>
+<span class="text-xs text-on-surface-variant font-bold">Dominant Sector</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-4">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<span class="text-sm font-bold">AAPL</span>
+<span class="text-xs text-on-surface-variant ml-auto tabular font-medium">30%</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-primary-container opacity-70"></div>
+<span class="text-sm font-bold">MSFT</span>
+<span class="text-xs text-on-surface-variant ml-auto tabular font-medium">25%</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-secondary"></div>
+<span class="text-sm font-bold">NVDA</span>
+<span class="text-xs text-on-surface-variant ml-auto tabular font-medium">15%</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-surface-container-highest"></div>
+<span class="text-sm font-bold">Others</span>
+<span class="text-xs text-on-surface-variant ml-auto tabular font-medium">30%</span>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-8 bg-surface-container-low rounded-xl overflow-hidden">
+<div class="px-6 py-5 flex justify-between items-center border-b border-outline-variant/10">
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest">S&amp;P 500 Performance &amp; Estimates</h3>
+<div class="flex gap-4">
+<div class="flex items-center gap-2 text-xs font-bold text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-primary"></span> Bullish Signal
+                        </div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container/50">
+<th class="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase">Ticker</th>
+<th class="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tabular">Price</th>
+<th class="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tabular text-right">24h Change</th>
+<th class="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tabular text-right">Expected Return</th>
+<th class="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase text-right">Trend</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-container-high transition-colors cursor-pointer group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#2e3543] flex items-center justify-center font-black text-xs text-white">AAPL</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Apple Inc.</p>
+<p class="text-[10px] text-on-surface-variant">Technology</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 tabular font-bold text-sm">$192.32</td>
+<td class="px-6 py-4 tabular font-bold text-sm text-primary text-right">+1.24%</td>
+<td class="px-6 py-4 tabular font-bold text-sm text-on-surface text-right">8.4% <span class="text-[10px] text-on-surface-variant font-normal">/yr</span></td>
+<td class="px-6 py-4 text-right">
+<span class="material-symbols-outlined text-primary group-hover:scale-125 transition-transform">trending_up</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors cursor-pointer group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#2e3543] flex items-center justify-center font-black text-xs text-white">MSFT</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Microsoft Corp.</p>
+<p class="text-[10px] text-on-surface-variant">Software</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 tabular font-bold text-sm">$415.60</td>
+<td class="px-6 py-4 tabular font-bold text-sm text-primary text-right">+0.82%</td>
+<td class="px-6 py-4 tabular font-bold text-sm text-on-surface text-right">10.2% <span class="text-[10px] text-on-surface-variant font-normal">/yr</span></td>
+<td class="px-6 py-4 text-right">
+<span class="material-symbols-outlined text-primary group-hover:scale-125 transition-transform">trending_up</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors cursor-pointer group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#2e3543] flex items-center justify-center font-black text-xs text-white">NVDA</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Nvidia Corp.</p>
+<p class="text-[10px] text-on-surface-variant">Hardware</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 tabular font-bold text-sm">$894.52</td>
+<td class="px-6 py-4 tabular font-bold text-sm text-primary text-right">+3.45%</td>
+<td class="px-6 py-4 tabular font-bold text-sm text-on-surface text-right">15.8% <span class="text-[10px] text-on-surface-variant font-normal">/yr</span></td>
+<td class="px-6 py-4 text-right">
+<span class="material-symbols-outlined text-primary group-hover:scale-125 transition-transform">trending_up</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors cursor-pointer group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-[#2e3543] flex items-center justify-center font-black text-xs text-white">GOOGL</div>
+<div>
+<p class="text-sm font-bold text-on-surface">Alphabet Inc.</p>
+<p class="text-[10px] text-on-surface-variant">Interactive Media</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 tabular font-bold text-sm">$152.06</td>
+<td class="px-6 py-4 tabular font-bold text-sm text-secondary text-right">-0.42%</td>
+<td class="px-6 py-4 tabular font-bold text-sm text-on-surface text-right">6.1% <span class="text-[10px] text-on-surface-variant font-normal">/yr</span></td>
+<td class="px-6 py-4 text-right">
+<span class="material-symbols-outlined text-secondary group-hover:scale-125 transition-transform">trending_flat</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="lg:col-span-4 space-y-6">
+<section class="bg-surface-container-low rounded-xl p-6">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest">Rebalancing Orders</h3>
+<span class="bg-primary-container/20 text-primary text-[10px] font-black px-2 py-0.5 rounded">3 PENDING</span>
+</div>
+<div class="space-y-4">
+<div class="bg-surface-container rounded-lg p-4 border-l-4 border-primary">
+<div class="flex justify-between items-start mb-2">
+<span class="text-xs font-black text-primary uppercase">Buy Execution</span>
+<span class="text-[10px] text-on-surface-variant font-medium">Model: Alpha-9</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm font-bold text-on-surface">TSLA</span>
+<span class="text-sm tabular font-bold text-on-surface">+12.5 Units</span>
+</div>
+<div class="mt-3 flex justify-between items-center gap-2">
+<div class="flex-1 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-1/2 h-full bg-primary"></div>
+</div>
+<span class="text-[10px] text-on-surface-variant tabular font-bold">50% FILLED</span>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-4 border-l-4 border-secondary">
+<div class="flex justify-between items-start mb-2">
+<span class="text-xs font-black text-secondary uppercase">Sell Execution</span>
+<span class="text-[10px] text-on-surface-variant font-medium">Risk Offset</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm font-bold text-on-surface">META</span>
+<span class="text-sm tabular font-bold text-on-surface">-4.2 Units</span>
+</div>
+<div class="mt-3 flex justify-between items-center gap-2">
+<div class="flex-1 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-0 h-full bg-secondary"></div>
+</div>
+<span class="text-[10px] text-on-surface-variant tabular font-bold">PENDING</span>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-4 border-l-4 border-primary">
+<div class="flex justify-between items-start mb-2">
+<span class="text-xs font-black text-primary uppercase">Buy Execution</span>
+<span class="text-[10px] text-on-surface-variant font-medium">Mean Reversion</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm font-bold text-on-surface">AMD</span>
+<span class="text-sm tabular font-bold text-on-surface">+80.0 Units</span>
+</div>
+<div class="mt-3 flex justify-between items-center gap-2">
+<div class="flex-1 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-0 h-full bg-primary"></div>
+</div>
+<span class="text-[10px] text-on-surface-variant tabular font-bold">PENDING</span>
+</div>
+</div>
+</div>
+<button class="w-full mt-6 py-3 border border-outline-variant/30 rounded-lg text-xs font-bold text-on-surface hover:bg-surface-container-highest transition-colors">
+                        VIEW ORDER HISTORY
+                    </button>
+</section>
+<div class="bg-gradient-to-br from-[#151c29] to-[#0c1320] rounded-xl p-6 border border-primary/10 relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+<span class="material-symbols-outlined text-9xl">bolt</span>
+</div>
+<h4 class="text-xs font-black text-primary uppercase tracking-widest mb-2">Portfolio Insights</h4>
+<p class="text-sm text-on-surface font-medium leading-relaxed mb-4">
+                        Model predicts a <span class="text-primary font-black">2.4% volatility reduction</span> if rebalancing is executed within the next 4 hours.
+                    </p>
+<div class="flex items-center gap-2 text-[10px] text-on-surface-variant uppercase font-black">
+<span class="material-symbols-outlined text-sm">security</span> G4 Gate Verified Strategy
+                    </div>
+</div>
+</div>
+</div>
+</main>
+<footer class="md:ml-64 bg-surface p-8 border-t border-outline-variant/5">
+<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="text-lg font-bold tracking-tighter text-on-surface">QuantEdge</span>
+<span class="text-xs text-on-surface-variant">© 2024 Institutional Terminal</span>
+</div>
+<div class="flex gap-8">
+<a class="text-xs font-bold text-on-surface-variant hover:text-primary transition-colors uppercase" href="#">Terms of Execution</a>
+<a class="text-xs font-bold text-on-surface-variant hover:text-primary transition-colors uppercase" href="#">Privacy Protocol</a>
+<a class="text-xs font-bold text-on-surface-variant hover:text-primary transition-colors uppercase" href="#">API Access</a>
+</div>
+</div>
+</footer>
+<div class="md:hidden fixed bottom-0 left-0 right-0 bg-[#0c1320] flex justify-around items-center h-16 z-50 border-t border-outline-variant/10">
+<a class="flex flex-col items-center gap-1 text-[#bbcbb2]" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold">Main</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-[#00c805]" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="text-[10px] font-bold">Portfolio</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-[#bbcbb2]" href="#">
+<span class="material-symbols-outlined">show_chart</span>
+<span class="text-[10px] font-bold">Trade</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-[#bbcbb2]" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold">More</span>
+</a>
+</div>
+</body></html>
+
+<!-- G4 Gate Verification -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#410004",
+                    "surface-tint": "#3ce42f",
+                    "secondary-fixed-dim": "#ffb3ae",
+                    "primary-container": "#00c805",
+                    "inverse-primary": "#006e01",
+                    "inverse-on-surface": "#2a303f",
+                    "inverse-surface": "#dce2f5",
+                    "surface-variant": "#2e3543",
+                    "tertiary": "#3de530",
+                    "outline": "#86957e",
+                    "secondary-container": "#a00118",
+                    "on-error": "#690005",
+                    "tertiary-container": "#00c805",
+                    "on-primary-container": "#004c00",
+                    "on-background": "#dce2f5",
+                    "tertiary-fixed-dim": "#3ce42f",
+                    "surface-bright": "#323948",
+                    "on-secondary": "#68000c",
+                    "outline-variant": "#3d4b37",
+                    "on-primary": "#003a00",
+                    "surface-container-high": "#232a38",
+                    "secondary-fixed": "#ffdad7",
+                    "background": "#0c1320",
+                    "on-error-container": "#ffdad6",
+                    "surface": "#0c1320",
+                    "on-secondary-container": "#ffa8a3",
+                    "on-secondary-fixed-variant": "#930015",
+                    "surface-container-highest": "#2e3543",
+                    "surface-container-low": "#151c29",
+                    "on-tertiary-container": "#004c00",
+                    "error-container": "#93000a",
+                    "on-primary-fixed": "#002200",
+                    "on-tertiary": "#003a00",
+                    "on-surface-variant": "#bbcbb2",
+                    "surface-container": "#19202d",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed": "#77ff62",
+                    "primary-fixed": "#77ff62",
+                    "surface-dim": "#0c1320",
+                    "secondary": "#ffb3ae",
+                    "surface-container-lowest": "#070e1b",
+                    "primary": "#3de530",
+                    "on-tertiary-fixed": "#002200",
+                    "primary-fixed-dim": "#3ce42f",
+                    "on-primary-fixed-variant": "#005300",
+                    "on-tertiary-fixed-variant": "#005300",
+                    "on-surface": "#dce2f5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      body { font-family: 'Manrope', sans-serif; }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .kinetic-grid {
+        background-image: radial-gradient(circle at 1px 1px, rgba(187, 203, 178, 0.05) 1px, transparent 0);
+        background-size: 40px 40px;
+      }
+      .phosphor-glow {
+        text-shadow: 0 0 8px rgba(61, 229, 48, 0.4);
+      }
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: #0c1320; }
+      ::-webkit-scrollbar-thumb { background: #232a38; border-radius: 2px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface selection:bg-primary/30">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-[#151c29] font-['Manrope'] antialiased tracking-tight flex justify-between items-center h-14 px-6 w-full">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#dce2f5]">QuantEdge</span>
+<div class="hidden md:flex items-center gap-6">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-sm">search</span>
+<input class="bg-surface-container-lowest border-none rounded-lg py-1.5 pl-10 pr-4 text-xs w-64 focus:ring-1 focus:ring-primary focus:bg-surface-container-low transition-all" placeholder="Search systems..." type="text"/>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-[#232a38] transition-colors rounded-full cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-[#bbcbb2]">notifications</span>
+</button>
+<button class="p-2 hover:bg-[#232a38] transition-colors rounded-full cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-[#bbcbb2]">person</span>
+</button>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-[#0c1320] border-r border-[#bbcbb2]/15 font-['Manrope'] text-sm font-medium flex flex-col py-4 space-y-1">
+<div class="px-6 mb-6">
+<h2 class="text-lg font-black text-[#dce2f5]">QuantEdge</h2>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant/60">Institutional Terminal</p>
+</div>
+<nav class="flex-1">
+<a class="flex items-center gap-4 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-4 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">show_chart</span>
+                Signals
+            </a>
+<a class="flex items-center gap-4 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+                Portfolio
+            </a>
+<a class="flex items-center gap-4 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">biotech</span>
+                Backtest
+            </a>
+<a class="flex items-center gap-4 px-6 py-3 text-[#00c805] bg-[#151c29] border-r-2 border-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
+                G4 Gate
+            </a>
+<a class="flex items-center gap-4 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="px-6 py-4 mt-auto">
+<div class="flex items-center gap-3 p-3 rounded-lg bg-surface-container-low border border-outline-variant/10">
+<div class="w-8 h-8 rounded bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm">shield_with_heart</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Secure Core</p>
+<p class="text-[10px] text-on-surface-variant">v4.2.8-stable</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 pt-14 min-h-screen kinetic-grid p-8">
+<!-- Header / Verification Headline -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+<div>
+<nav class="flex items-center gap-2 text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em] mb-2">
+<span>SECURITY</span>
+<span class="material-symbols-outlined text-[10px]">chevron_right</span>
+<span>VERIFICATION ENGINE</span>
+</nav>
+<h1 class="text-4xl font-extrabold tracking-tighter text-on-surface leading-none">G4 Gate <span class="text-on-surface-variant/40 font-light">Gray-box Verification</span></h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Status</span>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded bg-primary/10 border border-primary/20 text-primary text-sm font-bold">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+                        Active
+                    </div>
+</div>
+<div class="h-10 w-[1px] bg-outline-variant/20 mx-2"></div>
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Last Sync</span>
+<span class="text-sm font-medium text-on-surface tabular-nums">0.002s ago</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Model Integrity Card (Primary Metric) -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container-high p-6 rounded-lg relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-7xl">verified_user</span>
+</div>
+<h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-8">Model Integrity Score</h3>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="text-6xl font-black tracking-tighter tabular-nums phosphor-glow">98.2<span class="text-3xl text-primary/60">%</span></span>
+</div>
+<div class="flex items-center gap-2 text-primary text-xs font-bold mb-6">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+                    +0.4% from baseline
+                </div>
+<!-- Mini Progress Bar -->
+<div class="h-1 w-full bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-primary-container w-[98.2%]"></div>
+</div>
+<p class="mt-4 text-[11px] text-on-surface-variant leading-relaxed">Verification protocol G4-V2 is currently monitoring 1.4M daily parameters with a confidence interval of 99.9%.</p>
+</div>
+<!-- Data Flux Analytics (Visual) -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-low p-6 rounded-lg">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Data Flux Analytics</h3>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-surface-container-highest border border-outline-variant/20">Flux Capacity: 84%</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-surface-container-highest border border-outline-variant/20">Gate: 01-ALPHA</span>
+</div>
+</div>
+<div class="h-[180px] w-full flex items-end gap-1.5">
+<!-- Simulated Data Viz -->
+<div class="flex-1 bg-surface-container-highest h-[40%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[55%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[48%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[65%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[90%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-primary/40 h-[95%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[70%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[55%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[45%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[60%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[75%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[82%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[68%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[50%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[40%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[30%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-surface-container-highest h-[45%] rounded-t-sm hover:bg-primary transition-colors cursor-help"></div>
+<div class="flex-1 bg-primary h-[85%] rounded-t-sm hover:bg-primary transition-colors cursor-help shadow-[0_-4px_10px_rgba(61,229,48,0.2)]"></div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">
+<span>14:00:00</span>
+<span>14:15:00</span>
+<span>14:30:00</span>
+<span>14:45:00</span>
+<span>Live (UTC)</span>
+</div>
+</div>
+<!-- Live Verification Stream -->
+<div class="col-span-12 lg:col-span-7 bg-surface-container-lowest p-6 rounded-lg border border-outline-variant/10">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                        Live Verification Stream
+                    </h3>
+<div class="flex items-center gap-4">
+<div class="text-[10px] font-mono text-on-surface-variant">Stream: G4-GATE-ETH_L1</div>
+<span class="material-symbols-outlined text-sm cursor-pointer hover:text-on-surface">download</span>
+</div>
+</div>
+<div class="space-y-3 font-mono text-[11px]">
+<div class="flex items-start gap-4 p-2 rounded hover:bg-surface-container-high transition-colors group">
+<span class="text-primary/40">14:52:01.03</span>
+<span class="text-primary font-bold">[AUTH]</span>
+<span class="text-on-surface">Input Packet Sequence <span class="bg-primary/10 px-1">ID_772A</span> Verified. Checksum match.</span>
+</div>
+<div class="flex items-start gap-4 p-2 rounded hover:bg-surface-container-high transition-colors">
+<span class="text-primary/40">14:52:01.05</span>
+<span class="text-on-tertiary-container font-bold">[BIAS]</span>
+<span class="text-on-surface">Structural Integrity Test: 0.9982. Pass.</span>
+</div>
+<div class="flex items-start gap-4 p-2 rounded hover:bg-surface-container-high transition-colors">
+<span class="text-primary/40">14:52:01.09</span>
+<span class="text-primary font-bold">[AUTH]</span>
+<span class="text-on-surface">Output Gate Mapping: No leakage detected. Entropy level normal.</span>
+</div>
+<div class="flex items-start gap-4 p-2 rounded hover:bg-surface-container-high transition-colors bg-secondary-container/5 border-l-2 border-secondary">
+<span class="text-secondary/60">14:52:01.12</span>
+<span class="text-secondary font-bold">[WARN]</span>
+<span class="text-secondary">Micro-jitter detected in signal latency (+2ms). Adjusting buffer.</span>
+</div>
+<div class="flex items-start gap-4 p-2 rounded hover:bg-surface-container-high transition-colors">
+<span class="text-primary/40">14:52:01.15</span>
+<span class="text-primary font-bold">[AUTH]</span>
+<span class="text-on-surface">Verification Cycle #9,102 Complete. Standard protocol maintained.</span>
+</div>
+</div>
+</div>
+<!-- Anomaly Alerts & Actions -->
+<div class="col-span-12 lg:col-span-5 flex flex-col gap-6">
+<!-- Alerts Card -->
+<div class="flex-1 bg-surface-container-high p-6 rounded-lg border border-outline-variant/15">
+<h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-6">Anomaly Alerts</h3>
+<div class="space-y-4">
+<div class="flex gap-4 p-4 rounded bg-error-container/10 border border-error-container/30">
+<div class="p-2 h-fit rounded bg-error/20 text-error">
+<span class="material-symbols-outlined text-lg">warning</span>
+</div>
+<div>
+<h4 class="text-xs font-bold text-on-surface">Input Divergence Detected</h4>
+<p class="text-[10px] text-on-surface-variant mt-1">G4 Gate intercepted an irregular input vector at 14:48:12. Model execution paused for 2.1ms.</p>
+<button class="mt-2 text-[10px] font-black uppercase text-error hover:underline">Review Divergence Log</button>
+</div>
+</div>
+<div class="flex gap-4 p-4 rounded bg-surface-container-highest border border-outline-variant/10">
+<div class="p-2 h-fit rounded bg-primary/20 text-primary">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h4 class="text-xs font-bold text-on-surface">Auto-Recovery Success</h4>
+<p class="text-[10px] text-on-surface-variant mt-1">Verification system self-healed after transient noise spike.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Control Center Card -->
+<div class="bg-surface-container-low p-6 rounded-lg">
+<h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-6">Verification Controls</h3>
+<div class="grid grid-cols-2 gap-4">
+<button class="flex flex-col items-center justify-center gap-2 p-4 rounded bg-surface-container-high border border-outline-variant/20 hover:border-primary/50 transition-all group">
+<span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">restart_alt</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Recalibrate</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-4 rounded bg-surface-container-high border border-outline-variant/20 hover:border-secondary/50 transition-all group">
+<span class="material-symbols-outlined text-secondary group-hover:scale-110 transition-transform">stop_circle</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Kill Switch</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Model Specifications (Data Table Alternative) -->
+<div class="col-span-12 bg-surface-container-low p-8 rounded-lg">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12">
+<div>
+<span class="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-widest">Target Model</span>
+<div class="mt-2 text-xl font-bold">ALPHA-G4-GRAY</div>
+<p class="text-xs text-on-surface-variant mt-1 leading-tight">High-frequency mean reversion engine targeting S&amp;P 500 volatility indices.</p>
+</div>
+<div>
+<span class="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-widest">Execution Path</span>
+<div class="mt-2 text-xl font-bold">Direct Memory Access</div>
+<p class="text-xs text-on-surface-variant mt-1 leading-tight">Zero-proxy verification cluster hosted in NY4 Data Center.</p>
+</div>
+<div>
+<span class="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-widest">Verification Node</span>
+<div class="mt-2 text-xl font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">hub</span>
+                            Cluster 09
+                        </div>
+<p class="text-xs text-on-surface-variant mt-1 leading-tight">Redundant verification across 12 distributed nodes.</p>
+</div>
+<div>
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-4 rounded-lg text-sm shadow-lg shadow-primary/20 hover:brightness-110 active:scale-[0.98] transition-all">
+                            Export Compliance Audit
+                        </button>
+</div>
+</div>
+</div>
+</div>
+<footer class="mt-12 py-6 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em]">
+                System Secure: Quantum-Resistant Encryption Active
+            </div>
+<div class="flex gap-6 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+<a class="hover:text-primary transition-colors" href="#">Documentation</a>
+<a class="hover:text-primary transition-colors" href="#">API Status</a>
+<a class="hover:text-primary transition-colors" href="#">Legal Terms</a>
+</div>
+</footer>
+</main>
+</body></html>
+
+<!-- Signals -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>QuantEdge | Alpha Stream</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "on-secondary-fixed": "#410004",
+                  "surface-tint": "#3ce42f",
+                  "secondary-fixed-dim": "#ffb3ae",
+                  "primary-container": "#00c805",
+                  "inverse-primary": "#006e01",
+                  "inverse-on-surface": "#2a303f",
+                  "inverse-surface": "#dce2f5",
+                  "surface-variant": "#2e3543",
+                  "tertiary": "#3de530",
+                  "outline": "#86957e",
+                  "secondary-container": "#a00118",
+                  "on-error": "#690005",
+                  "tertiary-container": "#00c805",
+                  "on-primary-container": "#004c00",
+                  "on-background": "#dce2f5",
+                  "tertiary-fixed-dim": "#3ce42f",
+                  "surface-bright": "#323948",
+                  "on-secondary": "#68000c",
+                  "outline-variant": "#3d4b37",
+                  "on-primary": "#003a00",
+                  "surface-container-high": "#232a38",
+                  "secondary-fixed": "#ffdad7",
+                  "background": "#0c1320",
+                  "on-error-container": "#ffdad6",
+                  "surface": "#0c1320",
+                  "on-secondary-container": "#ffa8a3",
+                  "on-secondary-fixed-variant": "#930015",
+                  "surface-container-highest": "#2e3543",
+                  "surface-container-low": "#151c29",
+                  "on-tertiary-container": "#004c00",
+                  "error-container": "#93000a",
+                  "on-primary-fixed": "#002200",
+                  "on-tertiary": "#003a00",
+                  "on-surface-variant": "#bbcbb2",
+                  "surface-container": "#19202d",
+                  "error": "#ffb4ab",
+                  "tertiary-fixed": "#77ff62",
+                  "primary-fixed": "#77ff62",
+                  "surface-dim": "#0c1320",
+                  "secondary": "#ffb3ae",
+                  "surface-container-lowest": "#070e1b",
+                  "primary": "#3de530",
+                  "on-tertiary-fixed": "#002200",
+                  "primary-fixed-dim": "#3ce42f",
+                  "on-primary-fixed-variant": "#005300",
+                  "on-tertiary-fixed-variant": "#005300",
+                  "on-surface": "#dce2f5"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.125rem",
+                  "lg": "0.25rem",
+                  "xl": "0.5rem",
+                  "full": "0.75rem"
+          },
+          "fontFamily": {
+                  "headline": ["Manrope"],
+                  "body": ["Manrope"],
+                  "label": ["Manrope"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .monospaced-numeric {
+      font-variant-numeric: tabular-nums;
+    }
+    .glass-panel {
+      background: rgba(46, 53, 67, 0.6);
+      backdrop-filter: blur(24px);
+    }
+    .phosphor-glow {
+      filter: drop-shadow(0 0 4px rgba(61, 229, 48, 0.5));
+    }
+    .phosphor-glow-red {
+      filter: drop-shadow(0 0 4px rgba(255, 179, 174, 0.5));
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar Implementation -->
+<nav class="fixed top-0 w-full z-50 bg-[#0c1320] flex justify-between items-center h-14 px-6 w-full font-['Manrope'] antialiased tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#dce2f5]">QuantEdge</span>
+<div class="hidden md:flex items-center bg-[#151c29] px-3 py-1 rounded-lg">
+<span class="material-symbols-outlined text-[#bbcbb2] text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-on-surface placeholder-[#bbcbb2] w-64" placeholder="Search markets..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-[#232a38] transition-colors rounded-full cursor-pointer active:opacity-80 transition-all">
+<span class="material-symbols-outlined text-[#bbcbb2]">notifications</span>
+</button>
+<button class="p-2 hover:bg-[#232a38] transition-colors rounded-full cursor-pointer active:opacity-80 transition-all">
+<span class="material-symbols-outlined text-[#bbcbb2]">person</span>
+</button>
+</div>
+</nav>
+<!-- SideNavBar Implementation -->
+<aside class="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-[#0c1320] border-r border-[#bbcbb2]/15 flex flex-col py-4 space-y-1 hidden md:flex">
+<div class="px-6 mb-6">
+<h2 class="text-lg font-black text-[#dce2f5]">QuantEdge</h2>
+<p class="text-xs text-[#bbcbb2] font-medium uppercase tracking-widest">Institutional Terminal</p>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 rounded cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#00c805] bg-[#151c29] border-r-2 border-[#00c805] transition-all duration-200 rounded cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined">show_chart</span>
+<span class="font-medium text-sm">Signals</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 rounded cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-medium text-sm">Portfolio</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 rounded cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined">biotech</span>
+<span class="font-medium text-sm">Backtest</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 rounded cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-medium text-sm">G4 Gate</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 rounded cursor-pointer active:scale-95" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+</nav>
+<div class="px-6 py-4 mt-auto">
+<div class="flex items-center gap-3 p-3 rounded-lg bg-surface-container-low border border-outline-variant/10">
+<img class="w-8 h-8 rounded-full bg-surface-variant" data-alt="professional male financial analyst portrait in sharp focus with corporate office lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuATrcUqYEVa1syITrtdT9SwNNBZ4AbqRzjkZ8GBFQO6IXWxj4OO31pJwXvvi5VRMrlV-PLYClqunhJLhwDeKDAccTKlRR8qtMwBjmOEICVK3uvT6j63Z3vysInEC6KMI4IEyaki7o0pWyvJw_jaGSuizldM-M_Pc_7Y_h--xkrlUkpVMIMjvX2t64VaTEB6ggfZAd_9aoUEhRNaBQWTEFJS5gpcOc9hjJ4ck58ykG4q51evDUEbJ6RJdApWlaIQUsqABdS6rwGlYtYZ"/>
+<div>
+<p class="text-xs font-bold text-on-surface">DR. ELIAS VANCE</p>
+<p class="text-[10px] text-on-surface-variant">Chief Strategist</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="md:ml-64 pt-14 min-h-screen">
+<div class="p-6 lg:p-8 max-w-7xl mx-auto">
+<!-- Page Header -->
+<header class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h1 class="text-3xl font-extrabold tracking-tight text-on-surface mb-2">Alpha Stream</h1>
+<p class="text-on-surface-variant max-w-xl">Real-time proprietary signals generated by our high-frequency ensemble models. Data verified every 300ms.</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-container-high border border-outline-variant/20">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-tighter">Live Feed</span>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-2 rounded-lg font-bold text-sm hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/10">
+            Export JSON
+          </button>
+</div>
+</header>
+<!-- Signals Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- AAPL Card -->
+<article class="bg-surface-container-low rounded-xl p-6 relative overflow-hidden group hover:bg-surface-container transition-colors border border-outline-variant/5">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container-highest flex items-center justify-center p-2">
+<img alt="AAPL" class="w-full h-full object-contain filter grayscale invert brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBIwaKQmflTxQkBMJKxNeRuQUoJBYB4hhOWF4k92FELwz4RzVTqB2_w6wJIJzhh2hG8tSAG_khkC-vTRakrRGi8WucKZpRrbUtFhgxpO5socjNe4wpAFgi3Xqo11AsuT3--uGPuwCVIoE6ztATcgP_23ZFTu0mJFIEW4eMOLYyp5D6xDqKU5oVk9OVH_mGB6UdYF6fVpL8MHa2EK42_wT2ELytb91LA_zRmdSvQdD60_BBmJQL3ptIpZFT-2SRhnfYW5cWEre2Ma0g-"/>
+</div>
+<div>
+<h3 class="text-xl font-extrabold tracking-tighter monospaced-numeric">AAPL</h3>
+<p class="text-xs text-on-surface-variant font-medium">Apple Inc.</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-primary tracking-widest uppercase mb-1 block">Accumulate</span>
+<div class="flex items-center gap-1 justify-end">
+<span class="text-2xl font-black text-on-surface monospaced-numeric tracking-tight">92%</span>
+<span class="text-[10px] text-on-surface-variant font-bold">CONF.</span>
+</div>
+</div>
+</div>
+<div class="mb-6 h-20 flex items-end gap-1">
+<div class="flex-1 bg-primary/20 rounded-t h-[40%] group-hover:h-[60%] transition-all duration-500"></div>
+<div class="flex-1 bg-primary/20 rounded-t h-[55%] group-hover:h-[45%] transition-all duration-500"></div>
+<div class="flex-1 bg-primary/20 rounded-t h-[30%] group-hover:h-[80%] transition-all duration-500"></div>
+<div class="flex-1 bg-primary/40 rounded-t h-[65%] group-hover:h-[35%] transition-all duration-500"></div>
+<div class="flex-1 bg-primary/60 rounded-t h-[85%] group-hover:h-[95%] transition-all duration-500 phosphor-glow"></div>
+<div class="flex-1 bg-primary rounded-t h-[100%] phosphor-glow"></div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/10">
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Expected 5D Return</p>
+<p class="text-lg font-bold text-primary monospaced-numeric">+3.24%</p>
+</div>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Model Volatility</p>
+<p class="text-lg font-bold text-on-surface monospaced-numeric">1.12σ</p>
+</div>
+</div>
+</article>
+<!-- MSFT Card -->
+<article class="bg-surface-container-low rounded-xl p-6 relative overflow-hidden group hover:bg-surface-container transition-colors border border-outline-variant/5">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container-highest flex items-center justify-center p-2">
+<img alt="MSFT" class="w-full h-full object-contain filter grayscale invert brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvN04K1edcO1kOIGcgAjHmo1ghS9xLZ2HCDEXzVUlmh7kyWP2-mrT3_IyNwErgAKqWu0M1PhslAoyUQIcbRcg1TrYTGS7XkyDiIBAyabpvhC_DvKSZJqRaHHqRpXdI2UbumpuMhvCAnaPfPW69j6W6LzwmsxgDLv29u0cnYHzOxbF2axChlpWRFu5UOONMmmeLjusyb2yNc7CfT_uF59b2Belsn7ykCXpaRepQK0AzSXtE5WNpS2XV7HvviiqhqiVLOlS6IHhI6vL5"/>
+</div>
+<div>
+<h3 class="text-xl font-extrabold tracking-tighter monospaced-numeric">MSFT</h3>
+<p class="text-xs text-on-surface-variant font-medium">Microsoft Corp.</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-secondary tracking-widest uppercase mb-1 block">Distribute</span>
+<div class="flex items-center gap-1 justify-end">
+<span class="text-2xl font-black text-on-surface monospaced-numeric tracking-tight">88%</span>
+<span class="text-[10px] text-on-surface-variant font-bold">CONF.</span>
+</div>
+</div>
+</div>
+<div class="mb-6 h-20 flex items-end gap-1">
+<div class="flex-1 bg-secondary/20 rounded-t h-[90%] group-hover:h-[60%] transition-all duration-500"></div>
+<div class="flex-1 bg-secondary/20 rounded-t h-[75%] group-hover:h-[85%] transition-all duration-500"></div>
+<div class="flex-1 bg-secondary/20 rounded-t h-[60%] group-hover:h-[40%] transition-all duration-500"></div>
+<div class="flex-1 bg-secondary/40 rounded-t h-[45%] group-hover:h-[55%] transition-all duration-500"></div>
+<div class="flex-1 bg-secondary/60 rounded-t h-[25%] group-hover:h-[15%] transition-all duration-500 phosphor-glow-red"></div>
+<div class="flex-1 bg-secondary rounded-t h-[10%] phosphor-glow-red"></div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/10">
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Expected 5D Return</p>
+<p class="text-lg font-bold text-secondary monospaced-numeric">-1.85%</p>
+</div>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Model Volatility</p>
+<p class="text-lg font-bold text-on-surface monospaced-numeric">0.94σ</p>
+</div>
+</div>
+</article>
+<!-- NVDA Card (Featured / Asymmetric) -->
+<article class="bg-surface-container-high rounded-xl p-6 md:col-span-2 lg:col-span-1 relative overflow-hidden group border border-primary/20">
+<div class="absolute top-0 right-0 p-3">
+<span class="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded border border-primary/20 uppercase">High Conviction</span>
+</div>
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container-highest flex items-center justify-center p-2">
+<img alt="NVDA" class="w-full h-full object-contain filter grayscale invert brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSY1-6YHX5Wh26rvAYtNwmcwakDbqCqVL9ymWWPbIiLjAMUpfZRD8RY5LckWDQFHde0kT0bYllblWs0YBE_1Wziyb6hcOf-mhPmfMcU5eCNQZCSTHm7q9LkiLCI_aERBIotQJyQVAFB312REezZ3KnhpY7fWBW1kSlhtfTUip9tBlQj8cdONmzALRUbpNro7GU6zPTbyp3wHL4tAFyOPikkhsUYwIirY4vBtmwa9b2i5XSlUI1lIvJCXOJ8dLlgJai3GRi7PnmxoTo"/>
+</div>
+<div>
+<h3 class="text-xl font-extrabold tracking-tighter monospaced-numeric">NVDA</h3>
+<p class="text-xs text-on-surface-variant font-medium">NVIDIA Corp.</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-primary tracking-widest uppercase mb-1 block">Accumulate</span>
+<div class="flex items-center gap-1 justify-end">
+<span class="text-2xl font-black text-on-surface monospaced-numeric tracking-tight">96%</span>
+<span class="text-[10px] text-on-surface-variant font-bold">CONF.</span>
+</div>
+</div>
+</div>
+<div class="mb-6 relative h-24 w-full">
+<svg class="w-full h-full phosphor-glow" preserveaspectratio="none" viewbox="0 0 100 40">
+<path class="text-primary" d="M0 35 L10 32 L20 36 L30 25 L40 28 L50 15 L60 18 L70 5 L80 12 L90 2 L100 5" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+<path class="text-primary/10" d="M0 35 L10 32 L20 36 L30 25 L40 28 L50 15 L60 18 L70 5 L80 12 L90 2 L100 5 V40 H0 Z" fill="currentColor"></path>
+</svg>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/20">
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Expected 5D Return</p>
+<p class="text-xl font-black text-primary monospaced-numeric">+5.42%</p>
+</div>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Alpha Score</p>
+<p class="text-xl font-black text-on-surface monospaced-numeric">8.42/10</p>
+</div>
+</div>
+</article>
+<!-- AMZN Card -->
+<article class="bg-surface-container-low rounded-xl p-6 relative overflow-hidden group hover:bg-surface-container transition-colors border border-outline-variant/5">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container-highest flex items-center justify-center p-2">
+<img alt="AMZN" class="w-full h-full object-contain filter grayscale invert brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADFnywGeeMCrQ4Vt0YOIoi-srmRh5eTpNfMD-T1OVbor9NGLpgtAJZ9azN-IkQnlu35PLFuZnM4yDBrqEUCTMen-jg4VhuIGQzjVvWFp6NEzXShXnGdkVgar7eWGxaihPGJHWrgEG_wEEQUPLURP9Isg-LRK5xNptd4OeEL3fQJ5OiFLS1qC9_LdSVOhWlkqBDd4FQ6bo_roG3QfO5-ed780T9pCINYXQLVk2OxlvfSdHHfQAFRY1OVZ8L2ZubMTCEauOVoT10vcMb"/>
+</div>
+<div>
+<h3 class="text-xl font-extrabold tracking-tighter monospaced-numeric">AMZN</h3>
+<p class="text-xs text-on-surface-variant font-medium">Amazon.com Inc.</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-primary tracking-widest uppercase mb-1 block">Accumulate</span>
+<div class="flex items-center gap-1 justify-end">
+<span class="text-2xl font-black text-on-surface monospaced-numeric tracking-tight">74%</span>
+<span class="text-[10px] text-on-surface-variant font-bold">CONF.</span>
+</div>
+</div>
+</div>
+<div class="mb-6 h-20 flex items-end gap-1">
+<div class="flex-1 bg-primary/20 rounded-t h-[20%] group-hover:h-[40%] transition-all duration-500"></div>
+<div class="flex-1 bg-primary/20 rounded-t h-[35%] group-hover:h-[25%] transition-all duration-500"></div>
+<div class="flex-1 bg-primary/20 rounded-t h-[40%] group-hover:h-[60%] transition-all duration-500"></div>
+<div class="flex-1 bg-primary/40 rounded-t h-[55%] group-hover:h-[45%] transition-all duration-500"></div>
+<div class="flex-1 bg-primary/60 rounded-t h-[70%] group-hover:h-[80%] transition-all duration-500 phosphor-glow"></div>
+<div class="flex-1 bg-primary rounded-t h-[75%] phosphor-glow"></div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/10">
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Expected 5D Return</p>
+<p class="text-lg font-bold text-primary monospaced-numeric">+1.12%</p>
+</div>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Model Volatility</p>
+<p class="text-lg font-bold text-on-surface monospaced-numeric">0.62σ</p>
+</div>
+</div>
+</article>
+<!-- GOOGL Card -->
+<article class="bg-surface-container-low rounded-xl p-6 relative overflow-hidden group hover:bg-surface-container transition-colors border border-outline-variant/5">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded bg-surface-container-highest flex items-center justify-center p-2">
+<img alt="GOOGL" class="w-full h-full object-contain filter grayscale invert brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAF0IKKQnH7yW6gMsmOXe8OfvV4wDXPsvz72vezW_Cavyd-GS5OYoWLFhyAnZJ4DDlBGnhUfHoNM1zIsj5V6NLLK9h2FiU9p0b1vaELguIdH1nDBVsHtCXM-q1BulSB8yCnxd7NTOFnCMGtUw-ZuWS2HpvM8VMQQX77dDKuhtFzRFWLlfaQqZWqvkCI9xmGyQFOj-wpay9qST0UYGmv4qSAefRZFXGbEEFC7ZDmQB0MtUvXe_35hnB7dWcq0TzZsqA8zwQMuxutFMY8"/>
+</div>
+<div>
+<h3 class="text-xl font-extrabold tracking-tighter monospaced-numeric">GOOGL</h3>
+<p class="text-xs text-on-surface-variant font-medium">Alphabet Inc.</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-secondary tracking-widest uppercase mb-1 block">Distribute</span>
+<div class="flex items-center gap-1 justify-end">
+<span class="text-2xl font-black text-on-surface monospaced-numeric tracking-tight">61%</span>
+<span class="text-[10px] text-on-surface-variant font-bold">CONF.</span>
+</div>
+</div>
+</div>
+<div class="mb-6 h-20 flex items-end gap-1">
+<div class="flex-1 bg-secondary/20 rounded-t h-[40%] group-hover:h-[60%] transition-all duration-500"></div>
+<div class="flex-1 bg-secondary/20 rounded-t h-[55%] group-hover:h-[45%] transition-all duration-500"></div>
+<div class="flex-1 bg-secondary/20 rounded-t h-[30%] group-hover:h-[50%] transition-all duration-500"></div>
+<div class="flex-1 bg-secondary/40 rounded-t h-[45%] group-hover:h-[35%] transition-all duration-500"></div>
+<div class="flex-1 bg-secondary/60 rounded-t h-[25%] group-hover:h-[15%] transition-all duration-500 phosphor-glow-red"></div>
+<div class="flex-1 bg-secondary rounded-t h-[20%] phosphor-glow-red"></div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/10">
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Expected 5D Return</p>
+<p class="text-lg font-bold text-secondary monospaced-numeric">-0.42%</p>
+</div>
+<div>
+<p class="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Model Volatility</p>
+<p class="text-lg font-bold text-on-surface monospaced-numeric">0.31σ</p>
+</div>
+</div>
+</article>
+<!-- New Signal Placeholder Card -->
+<article class="bg-surface-container-lowest rounded-xl p-6 flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/20 group cursor-pointer hover:border-primary/40 transition-colors">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">add</span>
+</div>
+<p class="text-sm font-bold text-on-surface-variant group-hover:text-on-surface">Add Filtered Watchlist</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest mt-1">Sector: FinTech / AI</p>
+</article>
+</div>
+<!-- Execution Log (Technical Detail) -->
+<section class="mt-12 bg-surface-container-low rounded-xl overflow-hidden">
+<div class="p-4 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container">
+<h2 class="text-sm font-black uppercase tracking-[0.2em] text-on-surface-variant">Live Execution Log</h2>
+<div class="flex items-center gap-4 text-[10px] font-bold text-on-surface-variant uppercase">
+<span>Latency: 12ms</span>
+<span>Uptime: 99.998%</span>
+</div>
+</div>
+<div class="p-0 overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-container-lowest/50 text-[10px] uppercase font-black tracking-widest text-on-surface-variant">
+<tr>
+<th class="px-6 py-3">Timestamp</th>
+<th class="px-6 py-3">Ticker</th>
+<th class="px-6 py-3">Action</th>
+<th class="px-6 py-3">Confidence</th>
+<th class="px-6 py-3">Trigger Price</th>
+<th class="px-6 py-3">Status</th>
+</tr>
+</thead>
+<tbody class="text-xs font-medium monospaced-numeric">
+<tr class="hover:bg-surface-container-high/50 transition-colors">
+<td class="px-6 py-4 text-on-surface-variant">14:22:01.042</td>
+<td class="px-6 py-4 font-bold">AAPL</td>
+<td class="px-6 py-4 text-primary">Accumulate</td>
+<td class="px-6 py-4">92.4%</td>
+<td class="px-6 py-4">$184.22</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">ACTIVE</span></td>
+</tr>
+<tr class="hover:bg-surface-container-high/50 transition-colors">
+<td class="px-6 py-4 text-on-surface-variant">14:21:58.891</td>
+<td class="px-6 py-4 font-bold">NVDA</td>
+<td class="px-6 py-4 text-primary">Accumulate</td>
+<td class="px-6 py-4">96.1%</td>
+<td class="px-6 py-4">$874.15</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">ACTIVE</span></td>
+</tr>
+<tr class="hover:bg-surface-container-high/50 transition-colors">
+<td class="px-6 py-4 text-on-surface-variant">14:21:42.332</td>
+<td class="px-6 py-4 font-bold">MSFT</td>
+<td class="px-6 py-4 text-secondary">Distribute</td>
+<td class="px-6 py-4">88.2%</td>
+<td class="px-6 py-4">$412.50</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary text-[10px] font-bold">ALERT</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+</main>
+<!-- Mobile Navigation Shell -->
+<footer class="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant/10 z-50">
+<div class="flex justify-around items-center h-16">
+<a class="flex flex-col items-center justify-center gap-1 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold">HOME</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined">show_chart</span>
+<span class="text-[10px] font-bold">SIGNALS</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-[10px] font-bold">WALLET</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold">SETTINGS</span>
+</a>
+</div>
+</footer>
+</body></html>
+
+<!-- Signal Detail -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>QuantEdge | NVDA Signal Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#410004",
+                    "surface-tint": "#3ce42f",
+                    "secondary-fixed-dim": "#ffb3ae",
+                    "primary-container": "#00c805",
+                    "inverse-primary": "#006e01",
+                    "inverse-on-surface": "#2a303f",
+                    "inverse-surface": "#dce2f5",
+                    "surface-variant": "#2e3543",
+                    "tertiary": "#3de530",
+                    "outline": "#86957e",
+                    "secondary-container": "#a00118",
+                    "on-error": "#690005",
+                    "tertiary-container": "#00c805",
+                    "on-primary-container": "#004c00",
+                    "on-background": "#dce2f5",
+                    "tertiary-fixed-dim": "#3ce42f",
+                    "surface-bright": "#323948",
+                    "on-secondary": "#68000c",
+                    "outline-variant": "#3d4b37",
+                    "on-primary": "#003a00",
+                    "surface-container-high": "#232a38",
+                    "secondary-fixed": "#ffdad7",
+                    "background": "#0c1320",
+                    "on-error-container": "#ffdad6",
+                    "surface": "#0c1320",
+                    "on-secondary-container": "#ffa8a3",
+                    "on-secondary-fixed-variant": "#930015",
+                    "surface-container-highest": "#2e3543",
+                    "surface-container-low": "#151c29",
+                    "on-tertiary-container": "#004c00",
+                    "error-container": "#93000a",
+                    "on-primary-fixed": "#002200",
+                    "on-tertiary": "#003a00",
+                    "on-surface-variant": "#bbcbb2",
+                    "surface-container": "#19202d",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed": "#77ff62",
+                    "primary-fixed": "#77ff62",
+                    "surface-dim": "#0c1320",
+                    "secondary": "#ffb3ae",
+                    "surface-container-lowest": "#070e1b",
+                    "primary": "#3de530",
+                    "on-tertiary-fixed": "#002200",
+                    "primary-fixed-dim": "#3ce42f",
+                    "on-primary-fixed-variant": "#005300",
+                    "on-tertiary-fixed-variant": "#005300",
+                    "on-surface": "#dce2f5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .candlestick-green { background: #3de530; }
+        .candlestick-red { background: #ffb3ae; }
+        .glass-panel {
+            background: rgba(46, 53, 67, 0.6);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#151c29] flex justify-between items-center h-14 px-6 w-full font-['Manrope'] antialiased tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#dce2f5]">QuantEdge</span>
+<div class="hidden md:flex gap-6 items-center">
+<span class="text-sm font-medium text-[#00c805] font-bold cursor-pointer transition-all">Terminal</span>
+<span class="text-sm font-medium text-[#bbcbb2] hover:text-[#dce2f5] cursor-pointer transition-all">Watchlist</span>
+<span class="text-sm font-medium text-[#bbcbb2] hover:text-[#dce2f5] cursor-pointer transition-all">Markets</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="bg-[#232a38] px-3 py-1.5 rounded flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-[#bbcbb2]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48 text-on-surface" placeholder="Search NVDA, AAPL..." type="text"/>
+</div>
+<span class="material-symbols-outlined text-[#bbcbb2] cursor-pointer hover:bg-[#232a38] p-1 rounded transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-[#bbcbb2] cursor-pointer hover:bg-[#232a38] p-1 rounded transition-colors" data-icon="person">person</span>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-[#0c1320] border-r border-[#bbcbb2]/15 flex flex-col py-4 space-y-1 hidden md:flex">
+<div class="px-6 mb-6">
+<p class="text-xs font-bold text-primary uppercase tracking-widest">Institutional Terminal</p>
+</div>
+<div class="flex items-center px-6 py-3 space-x-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 cursor-pointer active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</div>
+<div class="flex items-center px-6 py-3 space-x-3 text-[#00c805] bg-[#151c29] border-r-2 border-[#00c805] transition-all duration-200 cursor-pointer active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="Show_chart">show_chart</span>
+<span class="text-sm font-medium">Signals</span>
+</div>
+<div class="flex items-center px-6 py-3 space-x-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 cursor-pointer active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="text-sm font-medium">Portfolio</span>
+</div>
+<div class="flex items-center px-6 py-3 space-x-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 cursor-pointer active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="biotech">biotech</span>
+<span class="text-sm font-medium">Backtest</span>
+</div>
+<div class="flex items-center px-6 py-3 space-x-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 cursor-pointer active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="text-sm font-medium">G4 Gate</span>
+</div>
+<div class="mt-auto">
+<div class="flex items-center px-6 py-3 space-x-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 cursor-pointer active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 pt-14 min-h-screen bg-background">
+<div class="p-6 space-y-6">
+<!-- Header Ticker Section -->
+<header class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 pb-6">
+<div>
+<div class="flex items-center gap-3">
+<h1 class="text-4xl font-extrabold tracking-tighter text-on-surface">NVDA</h1>
+<span class="px-2 py-0.5 border border-outline-variant/15 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest rounded">NASDAQ</span>
+</div>
+<p class="text-on-surface-variant text-sm font-medium">NVIDIA Corporation | GPU &amp; AI Cloud</p>
+</div>
+<div class="text-right">
+<div class="text-4xl font-black tracking-tight text-on-surface tabular-nums">
+                        $724.12
+                    </div>
+<div class="flex items-center justify-end gap-2 text-primary font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+2.41%</span>
+<span class="text-on-surface-variant font-normal text-xs ml-1">Today</span>
+</div>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+<!-- Main K-Line Chart Container -->
+<div class="md:col-span-8 bg-surface-container-low rounded-lg p-6 flex flex-col h-[480px] relative overflow-hidden">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h2 class="text-lg font-bold text-on-surface">Core Performance</h2>
+<p class="text-xs text-on-surface-variant">Intraday 1-Min Interval Candlestick</p>
+</div>
+<div class="flex gap-2">
+<button class="bg-surface-container-highest px-3 py-1 text-xs font-bold rounded hover:bg-surface-tint/20 transition-all">1D</button>
+<button class="bg-surface-container-highest px-3 py-1 text-xs font-bold rounded hover:bg-surface-tint/20 transition-all text-primary">1W</button>
+<button class="bg-surface-container-highest px-3 py-1 text-xs font-bold rounded hover:bg-surface-tint/20 transition-all">1M</button>
+<button class="bg-surface-container-highest px-3 py-1 text-xs font-bold rounded hover:bg-surface-tint/20 transition-all">1Y</button>
+</div>
+</div>
+<!-- Simulated Candlestick Chart -->
+<div class="flex-grow flex items-end gap-1 px-2 pb-8 overflow-hidden">
+<div class="w-2 bg-primary/40 h-[40%] rounded-t-sm relative group">
+<div class="absolute -top-4 left-0 right-0 h-1 bg-primary"></div>
+</div>
+<div class="w-2 bg-primary/60 h-[55%] rounded-t-sm relative"></div>
+<div class="w-2 bg-secondary/40 h-[45%] rounded-t-sm relative"></div>
+<div class="w-2 bg-primary/40 h-[60%] rounded-t-sm relative"></div>
+<div class="w-2 bg-primary/70 h-[75%] rounded-t-sm relative"></div>
+<div class="w-2 bg-secondary/50 h-[65%] rounded-t-sm relative"></div>
+<div class="w-2 bg-primary/40 h-[80%] rounded-t-sm relative"></div>
+<div class="w-2 bg-primary/90 h-[95%] rounded-t-sm relative">
+<div class="absolute -top-2 left-1/2 -translate-x-1/2 w-0.5 h-16 bg-primary opacity-30"></div>
+</div>
+<!-- ... repeating bars ... -->
+<div class="w-2 bg-primary/40 h-[85%] rounded-t-sm relative"></div>
+<div class="w-2 bg-primary/40 h-[70%] rounded-t-sm relative"></div>
+<div class="w-2 bg-secondary/40 h-[60%] rounded-t-sm relative"></div>
+<div class="w-2 bg-primary/40 h-[75%] rounded-t-sm relative"></div>
+<div class="w-2 bg-primary/60 h-[80%] rounded-t-sm relative"></div>
+<div class="w-2 bg-primary/80 h-[90%] rounded-t-sm relative"></div>
+</div>
+<!-- Chart Legend/Axes -->
+<div class="absolute bottom-4 left-6 right-6 flex justify-between text-[10px] text-on-surface-variant font-mono uppercase tracking-widest border-t border-outline-variant/10 pt-2">
+<span>09:30 AM</span>
+<span>12:00 PM</span>
+<span>02:30 PM</span>
+<span>04:00 PM</span>
+</div>
+</div>
+<!-- Signal Confidence Score -->
+<div class="md:col-span-4 bg-surface-container-high rounded-lg p-6 flex flex-col justify-between border-l border-primary/20">
+<div>
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-1">Signal Status</h3>
+<div class="flex items-center gap-2">
+<span class="text-3xl font-black text-primary">BULLISH</span>
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-2">Model: Alpha-Beta Quant v4.2</p>
+</div>
+<div class="py-8 text-center">
+<div class="relative inline-block">
+<svg class="w-32 h-32 transform -rotate-90">
+<circle class="text-surface-container-lowest" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-primary" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-dasharray="364.4" stroke-dashoffset="46" stroke-width="8"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-2xl font-black text-on-surface">87.4%</span>
+<span class="text-[10px] font-bold text-on-surface-variant">CONFIDENCE</span>
+</div>
+</div>
+</div>
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-black py-3 rounded-lg text-sm tracking-tight active:scale-95 transition-all">
+                        EXECUTE BUY ORDER
+                    </button>
+</div>
+<!-- SHAP Feature Importance -->
+<div class="md:col-span-5 bg-surface-container-low rounded-lg p-6">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-lg font-bold text-on-surface">SHAP Explainer</h3>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="info">info</span>
+</div>
+<div class="space-y-4">
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-bold text-on-surface-variant">
+<span>RSI (14) Momentum</span>
+<span class="text-primary">+0.32</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[75%]"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-bold text-on-surface-variant">
+<span>Volatility Gap</span>
+<span class="text-primary">+0.18</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[45%]"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-bold text-on-surface-variant">
+<span>Social Sentiment</span>
+<span class="text-primary">+0.14</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[35%]"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-bold text-on-surface-variant">
+<span>Mean Reversion Skew</span>
+<span class="text-secondary">-0.05</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden flex justify-end">
+<div class="h-full bg-secondary w-[15%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- IC (Information Coefficient) Chart -->
+<div class="md:col-span-3 bg-surface-container-low rounded-lg p-6 flex flex-col">
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-4">Model Predictive IC</h3>
+<div class="flex-grow relative mt-2">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-b border-outline-variant/20 border-dashed"></div>
+</div>
+<!-- Minimal IC Path -->
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<path d="M0,50 Q10,20 20,40 T40,10 T60,60 T80,30 T100,50" fill="none" stroke="#3de530" stroke-width="2"></path>
+<circle cx="100" cy="50" fill="#3de530" r="3">
+<animate attributename="opacity" dur="2s" repeatcount="indefinite" values="0.5;1;0.5"></animate>
+</circle>
+</svg>
+</div>
+<div class="flex justify-between text-[10px] font-mono text-on-surface-variant mt-4">
+<span>L-30D</span>
+<span class="text-primary">Avg: 0.054</span>
+<span>NOW</span>
+</div>
+</div>
+<!-- Order Book Heatmap -->
+<div class="md:col-span-4 bg-surface-container-low rounded-lg p-6 overflow-hidden">
+<h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-widest mb-4">Order Book Heatmap</h3>
+<div class="grid grid-cols-5 gap-1">
+<!-- Heatmap Grid Cells -->
+<div class="h-8 bg-secondary/10 rounded-sm"></div>
+<div class="h-8 bg-secondary/20 rounded-sm"></div>
+<div class="h-8 bg-secondary/40 rounded-sm"></div>
+<div class="h-8 bg-secondary/60 rounded-sm"></div>
+<div class="h-8 bg-secondary/80 rounded-sm"></div>
+<div class="h-8 bg-surface-container-highest rounded-sm"></div>
+<div class="h-8 bg-secondary/10 rounded-sm"></div>
+<div class="h-8 bg-secondary/30 rounded-sm"></div>
+<div class="h-8 bg-surface-container-highest rounded-sm"></div>
+<div class="h-8 bg-secondary/20 rounded-sm"></div>
+<div class="h-8 border border-primary/40 rounded-sm flex items-center justify-center text-[10px] font-bold text-primary col-span-5 my-1">
+                            $724.12 CURRENT
+                        </div>
+<div class="h-8 bg-primary/20 rounded-sm"></div>
+<div class="h-8 bg-primary/10 rounded-sm"></div>
+<div class="h-8 bg-surface-container-highest rounded-sm"></div>
+<div class="h-8 bg-primary/40 rounded-sm"></div>
+<div class="h-8 bg-primary/10 rounded-sm"></div>
+<div class="h-8 bg-primary/80 rounded-sm"></div>
+<div class="h-8 bg-primary/60 rounded-sm"></div>
+<div class="h-8 bg-primary/40 rounded-sm"></div>
+<div class="h-8 bg-primary/20 rounded-sm"></div>
+<div class="h-8 bg-primary/10 rounded-sm"></div>
+</div>
+<div class="mt-4 flex justify-between text-[10px] text-on-surface-variant font-bold">
+<span class="text-secondary">SELL WALL</span>
+<span class="text-primary">BUY WALL</span>
+</div>
+</div>
+</div>
+<!-- Trade Execution Log -->
+<section class="bg-surface-container-low rounded-lg p-6">
+<h3 class="text-lg font-bold text-on-surface mb-4">Execution Log</h3>
+<div class="space-y-0.5">
+<div class="grid grid-cols-4 py-3 px-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider bg-surface-container-lowest/50">
+<span>Timestamp</span>
+<span>Action</span>
+<span>Size</span>
+<span class="text-right">Price</span>
+</div>
+<div class="grid grid-cols-4 py-3 px-4 text-sm text-on-surface hover:bg-surface-container-highest transition-colors cursor-pointer">
+<span class="font-mono">14:24:01</span>
+<span class="text-primary font-bold">Limit Buy</span>
+<span class="tabular-nums">1,400 Shares</span>
+<span class="text-right tabular-nums">$724.10</span>
+</div>
+<div class="grid grid-cols-4 py-3 px-4 text-sm text-on-surface hover:bg-surface-container-highest transition-colors cursor-pointer">
+<span class="font-mono">14:23:58</span>
+<span class="text-primary font-bold">Limit Buy</span>
+<span class="tabular-nums">250 Shares</span>
+<span class="text-right tabular-nums">$724.08</span>
+</div>
+<div class="grid grid-cols-4 py-3 px-4 text-sm text-on-surface hover:bg-surface-container-highest transition-colors cursor-pointer">
+<span class="font-mono">14:23:45</span>
+<span class="text-secondary font-bold">Limit Sell</span>
+<span class="tabular-nums">500 Shares</span>
+<span class="text-right tabular-nums">$724.15</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Contextual FAB (Hidden on detail pages as per rules, but included if needed for mobile quick-trade) -->
+<!-- Suppressed for this specific Signal Detail page as per Shell Visibility rules -->
+</body></html>
+
+<!-- Backtest -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#410004",
+                    "surface-tint": "#3ce42f",
+                    "secondary-fixed-dim": "#ffb3ae",
+                    "primary-container": "#00c805",
+                    "inverse-primary": "#006e01",
+                    "inverse-on-surface": "#2a303f",
+                    "inverse-surface": "#dce2f5",
+                    "surface-variant": "#2e3543",
+                    "tertiary": "#3de530",
+                    "outline": "#86957e",
+                    "secondary-container": "#a00118",
+                    "on-error": "#690005",
+                    "tertiary-container": "#00c805",
+                    "on-primary-container": "#004c00",
+                    "on-background": "#dce2f5",
+                    "tertiary-fixed-dim": "#3ce42f",
+                    "surface-bright": "#323948",
+                    "on-secondary": "#68000c",
+                    "outline-variant": "#3d4b37",
+                    "on-primary": "#003a00",
+                    "surface-container-high": "#232a38",
+                    "secondary-fixed": "#ffdad7",
+                    "background": "#0c1320",
+                    "on-error-container": "#ffdad6",
+                    "surface": "#0c1320",
+                    "on-secondary-container": "#ffa8a3",
+                    "on-secondary-fixed-variant": "#930015",
+                    "surface-container-highest": "#2e3543",
+                    "surface-container-low": "#151c29",
+                    "on-tertiary-container": "#004c00",
+                    "error-container": "#93000a",
+                    "on-primary-fixed": "#002200",
+                    "on-tertiary": "#003a00",
+                    "on-surface-variant": "#bbcbb2",
+                    "surface-container": "#19202d",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed": "#77ff62",
+                    "primary-fixed": "#77ff62",
+                    "surface-dim": "#0c1320",
+                    "secondary": "#ffb3ae",
+                    "surface-container-lowest": "#070e1b",
+                    "primary": "#3de530",
+                    "on-tertiary-fixed": "#002200",
+                    "primary-fixed-dim": "#3ce42f",
+                    "on-primary-fixed-variant": "#005300",
+                    "on-tertiary-fixed-variant": "#005300",
+                    "on-surface": "#dce2f5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; background-color: #0c1320; color: #dce2f5; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glow-primary { filter: drop-shadow(0 0 4px rgba(61, 229, 48, 0.5)); }
+        .glass-panel { background: rgba(46, 53, 67, 0.6); backdrop-filter: blur(24px); }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); }
+    </style>
+</head>
+<body class="antialiased selection:bg-primary selection:text-on-primary">
+<!-- TopNavBar Shell -->
+<nav class="fixed top-0 w-full z-50 bg-[#0c1320] flex justify-between items-center h-14 px-6 w-full font-['Manrope'] antialiased tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#dce2f5]">QuantEdge</span>
+<div class="hidden md:flex items-center bg-[#151c29] px-3 py-1 rounded-lg">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-on-surface ml-2 w-48" placeholder="Search strategies..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-[#232a38] transition-colors cursor-pointer active:opacity-80 rounded-lg">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 hover:bg-[#232a38] transition-colors cursor-pointer active:opacity-80 rounded-lg">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+</div>
+</nav>
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-[#0c1320] border-r border-[#bbcbb2]/15 flex flex-col py-4 space-y-1">
+<div class="px-6 mb-6">
+<h3 class="text-lg font-black text-[#dce2f5]">QuantEdge</h3>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant">Institutional Terminal</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="Show_chart">show_chart</span>
+<span class="font-medium text-sm">Signals</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-medium text-sm">Portfolio</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#00c805] bg-[#151c29] border-r-2 border-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="biotech">biotech</span>
+<span class="font-medium text-sm">Backtest</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="font-medium text-sm">G4 Gate</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#bbcbb2] hover:bg-[#151c29] hover:text-[#00c805] transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/15">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-8 h-8 rounded bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="bolt">bolt</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Pro Terminal</p>
+<p class="text-[10px] text-on-surface-variant">Active</p>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 pt-14 min-h-screen">
+<div class="grid grid-cols-12 gap-0">
+<!-- Left Config Sidebar -->
+<section class="col-span-3 border-r border-outline-variant/15 p-6 space-y-8 bg-surface-container-low min-h-[calc(100vh-3.5rem)]">
+<div>
+<h2 class="text-sm font-bold text-on-surface tracking-tight flex items-center gap-2">
+<span class="material-symbols-outlined text-xs" data-icon="tune">tune</span>
+                        CONFIGURATION
+                    </h2>
+<div class="mt-6 space-y-6">
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Asset Selection</label>
+<div class="bg-surface-container-lowest p-3 rounded flex items-center justify-between cursor-pointer border-b border-transparent focus-within:border-primary transition-all">
+<span class="text-sm">S&amp;P 500 ETF (SPY)</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Start Date</label>
+<input class="w-full bg-surface-container-lowest text-sm p-3 rounded border-none focus:ring-1 focus:ring-primary" type="date" value="2010-01-01"/>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">End Date</label>
+<input class="w-full bg-surface-container-lowest text-sm p-3 rounded border-none focus:ring-1 focus:ring-primary" type="date" value="2023-12-31"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Strategy Preset</label>
+<div class="space-y-2">
+<button class="w-full text-left p-3 rounded text-sm bg-surface-container-high border border-primary/30 text-primary flex items-center justify-between">
+                                    Mean Reversion Alpha
+                                    <span class="material-symbols-outlined text-sm" data-icon="check_circle" data-weight="fill">check_circle</span>
+</button>
+<button class="w-full text-left p-3 rounded text-sm hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center justify-between">
+                                    Trend Following
+                                    <span class="material-symbols-outlined text-sm opacity-0" data-icon="radio_button_unchecked">radio_button_unchecked</span>
+</button>
+<button class="w-full text-left p-3 rounded text-sm hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center justify-between">
+                                    Volatility Scalp
+                                    <span class="material-symbols-outlined text-sm opacity-0" data-icon="radio_button_unchecked">radio_button_unchecked</span>
+</button>
+</div>
+</div>
+<div class="pt-6">
+<button class="w-full py-4 rounded-lg bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold text-sm tracking-tight shadow-lg shadow-primary/10 active:scale-95 transition-all">
+                                EXECUTE BACKTEST
+                            </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Backtest View -->
+<section class="col-span-9 p-8 space-y-8">
+<!-- Performance Header -->
+<div class="grid grid-cols-4 gap-6">
+<div class="col-span-1 bg-surface-container-low p-6 rounded-lg">
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Alpha Metric</p>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black text-primary tracking-tighter">+16.1%</span>
+</div>
+<p class="text-[10px] text-on-surface-variant mt-2">vs. S&amp;P 500 Benchmark</p>
+</div>
+<div class="col-span-1 bg-surface-container-low p-6 rounded-lg">
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Sharpe Ratio</p>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black text-on-surface tracking-tighter">2.84</span>
+</div>
+<p class="text-[10px] text-on-surface-variant mt-2">Risk-adjusted return</p>
+</div>
+<div class="col-span-1 bg-surface-container-low p-6 rounded-lg">
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Max Drawdown</p>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black text-secondary tracking-tighter">-11.4%</span>
+</div>
+<p class="text-[10px] text-on-surface-variant mt-2">Historical peak-to-trough</p>
+</div>
+<div class="col-span-1 bg-surface-container-low p-6 rounded-lg">
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Win Rate</p>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black text-on-surface tracking-tighter">64.2%</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-3 overflow-hidden">
+<div class="bg-primary h-full w-[64.2%]"></div>
+</div>
+</div>
+</div>
+<!-- Main Equity Chart Area -->
+<div class="bg-surface-container-low p-8 rounded-xl relative overflow-hidden">
+<div class="flex justify-between items-center mb-12">
+<div>
+<h3 class="text-xl font-bold text-on-surface tracking-tighter">Strategy Equity Curve</h3>
+<p class="text-sm text-on-surface-variant">Mean Reversion Alpha Performance (2010 - 2024)</p>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary"></span>
+<span class="text-xs text-on-surface-variant font-medium">Strategy Pulse</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-on-surface-variant/30"></span>
+<span class="text-xs text-on-surface-variant font-medium">S&amp;P 500 Index</span>
+</div>
+</div>
+</div>
+<!-- Placeholder for the kinetic sparkline visualization -->
+<div class="h-[400px] w-full relative flex flex-col justify-end">
+<!-- Chart Lines (Simulated with SVG) -->
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 400">
+<!-- Benchmark Line -->
+<path d="M0 380 L50 370 L100 375 L150 360 L200 365 L250 350 L300 355 L350 340 L400 330 L450 345 L500 320 L550 310 L600 325 L650 300 L700 290 L750 295 L800 270 L850 260 L900 275 L950 240 L1000 250" fill="none" stroke="#bbcbb2" stroke-dasharray="4" stroke-opacity="0.3" stroke-width="1.5"></path>
+<!-- Strategy Line -->
+<path class="glow-primary" d="M0 380 L50 350 L100 360 L150 320 L200 330 L250 280 L300 300 L350 240 L400 220 L450 250 L500 180 L550 160 L600 190 L650 120 L700 100 L750 110 L800 60 L850 40 L900 70 L950 20 L1000 30" fill="none" stroke="#3de530" stroke-width="2.5"></path>
+</svg>
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-5">
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+</div>
+<!-- X-Axis Labels -->
+<div class="flex justify-between mt-4 px-2">
+<span class="text-[10px] text-on-surface-variant font-medium">2010</span>
+<span class="text-[10px] text-on-surface-variant font-medium">2014</span>
+<span class="text-[10px] text-on-surface-variant font-medium">2018</span>
+<span class="text-[10px] text-on-surface-variant font-medium">2022</span>
+<span class="text-[10px] text-on-surface-variant font-medium">PRESENT</span>
+</div>
+</div>
+</div>
+<!-- Execution Logs & Micro Data -->
+<div class="grid grid-cols-3 gap-8">
+<div class="col-span-2">
+<div class="flex items-center justify-between mb-4">
+<h4 class="text-sm font-bold text-on-surface uppercase tracking-widest">Execution Logs</h4>
+<span class="text-[10px] text-on-surface-variant">Last 50 Trades</span>
+</div>
+<div class="bg-surface-container-low rounded-lg overflow-hidden border border-outline-variant/10">
+<table class="w-full text-left text-xs">
+<thead class="bg-surface-container-high">
+<tr>
+<th class="p-4 text-on-surface-variant font-bold uppercase">Timestamp</th>
+<th class="p-4 text-on-surface-variant font-bold uppercase">Action</th>
+<th class="p-4 text-on-surface-variant font-bold uppercase">Price</th>
+<th class="p-4 text-on-surface-variant font-bold uppercase">PnL</th>
+<th class="p-4 text-on-surface-variant font-bold uppercase">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-4 text-on-surface-variant">2023.12.28 14:30</td>
+<td class="p-4 font-bold text-primary">LONG (Buy)</td>
+<td class="p-4 font-mono">4,783.35</td>
+<td class="p-4 text-primary font-bold">+1.24%</td>
+<td class="p-4"><span class="px-2 py-0.5 rounded-full border border-primary/20 text-[10px] text-primary">SETTLED</span></td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-4 text-on-surface-variant">2023.12.15 09:45</td>
+<td class="p-4 font-bold text-secondary">SHORT (Sell)</td>
+<td class="p-4 font-mono">4,720.10</td>
+<td class="p-4 text-secondary font-bold">-0.45%</td>
+<td class="p-4"><span class="px-2 py-0.5 rounded-full border border-secondary/20 text-[10px] text-secondary">SETTLED</span></td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-4 text-on-surface-variant">2023.11.30 11:15</td>
+<td class="p-4 font-bold text-primary">LONG (Buy)</td>
+<td class="p-4 font-mono">4,567.80</td>
+<td class="p-4 text-primary font-bold">+2.81%</td>
+<td class="p-4"><span class="px-2 py-0.5 rounded-full border border-primary/20 text-[10px] text-primary">SETTLED</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="col-span-1 space-y-6">
+<h4 class="text-sm font-bold text-on-surface uppercase tracking-widest">Market Context</h4>
+<div class="p-6 bg-surface-container-low rounded-lg border-l-2 border-primary">
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                                Strategy <span class="text-on-surface font-bold">"Mean Reversion Alpha"</span> shows high resilience during low-volatility regimes. Beta correlation to SPY remains controlled at <span class="text-on-surface font-bold">0.65</span>.
+                            </p>
+</div>
+<div class="relative group">
+<div class="absolute -inset-0.5 bg-gradient-to-r from-primary to-primary-container rounded-lg blur opacity-10 group-hover:opacity-30 transition"></div>
+<div class="relative bg-surface-container-low p-6 rounded-lg">
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">Risk Exposure</p>
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 rounded-full border-4 border-surface-container-highest flex items-center justify-center relative">
+<svg class="absolute inset-0 w-full h-full -rotate-90">
+<circle cx="32" cy="32" fill="none" r="28" stroke="#3de530" stroke-dasharray="175" stroke-dashoffset="40" stroke-width="4"></circle>
+</svg>
+<span class="text-xs font-bold">75%</span>
+</div>
+<div class="text-xs space-y-1">
+<p class="text-on-surface font-bold">Allocation Limit</p>
+<p class="text-on-surface-variant">Daily VAR: $12,450</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- FAB Action (Suppressed as per rules for Details/Backtest focused view, but showing logic if needed) -->
+<!-- <button class="fixed bottom-8 right-8 w-14 h-14 bg-primary rounded-full shadow-2xl flex items-center justify-center text-on-primary">
+        <span class="material-symbols-outlined" data-icon="add">add</span>
+    </button> -->
+</body></html>
+
+<!-- Dashboard -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#410004",
+                        "surface-tint": "#3ce42f",
+                        "secondary-fixed-dim": "#ffb3ae",
+                        "primary-container": "#00c805",
+                        "inverse-primary": "#006e01",
+                        "inverse-on-surface": "#2a303f",
+                        "inverse-surface": "#dce2f5",
+                        "surface-variant": "#2e3543",
+                        "tertiary": "#3de530",
+                        "outline": "#86957e",
+                        "secondary-container": "#a00118",
+                        "on-error": "#690005",
+                        "tertiary-container": "#00c805",
+                        "on-primary-container": "#004c00",
+                        "on-background": "#dce2f5",
+                        "tertiary-fixed-dim": "#3ce42f",
+                        "surface-bright": "#323948",
+                        "on-secondary": "#68000c",
+                        "outline-variant": "#3d4b37",
+                        "on-primary": "#003a00",
+                        "surface-container-high": "#232a38",
+                        "secondary-fixed": "#ffdad7",
+                        "background": "#0c1320",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#0c1320",
+                        "on-secondary-container": "#ffa8a3",
+                        "on-secondary-fixed-variant": "#930015",
+                        "surface-container-highest": "#2e3543",
+                        "surface-container-low": "#151c29",
+                        "on-tertiary-container": "#004c00",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#002200",
+                        "on-tertiary": "#003a00",
+                        "on-surface-variant": "#bbcbb2",
+                        "surface-container": "#19202d",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed": "#77ff62",
+                        "primary-fixed": "#77ff62",
+                        "surface-dim": "#0c1320",
+                        "secondary": "#ffb3ae",
+                        "surface-container-lowest": "#070e1b",
+                        "primary": "#3de530",
+                        "on-tertiary-fixed": "#002200",
+                        "primary-fixed-dim": "#3ce42f",
+                        "on-primary-fixed-variant": "#005300",
+                        "on-tertiary-fixed-variant": "#005300",
+                        "on-surface": "#dce2f5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; background-color: #0c1320; color: #dce2f5; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-panel { background: rgba(46, 53, 67, 0.6); backdrop-filter: blur(24px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="antialiased">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-[#0c1320] flex justify-between items-center h-14 px-6 w-full font-['Manrope'] antialiased tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#dce2f5]">QuantEdge</span>
+<div class="hidden md:flex items-center bg-[#151c29] px-3 py-1.5 rounded-lg border border-[#3d4b37]/20">
+<span class="material-symbols-outlined text-on-surface-variant text-sm mr-2">search</span>
+<input class="bg-transparent border-none text-sm focus:ring-0 text-on-surface placeholder:text-on-surface-variant/50 w-64" placeholder="Search markets, signals, or assets..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-[#bbcbb2] hover:bg-[#232a38] transition-colors rounded-lg cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-[#bbcbb2] hover:bg-[#232a38] transition-colors rounded-lg cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined">person</span>
+</button>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-[#0c1320] border-r border-[#bbcbb2]/15 flex flex-col py-4 space-y-1 z-40 hidden md:flex">
+<div class="px-6 mb-8">
+<h2 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">Institutional Terminal</h2>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#00c805] bg-[#151c29] border-r-2 border-[#00c805] font-['Manrope'] text-sm font-medium transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#bbcbb2] hover:text-[#dce2f5] hover:bg-[#151c29] transition-all duration-200 font-['Manrope'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">show_chart</span>
+                Signals
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#bbcbb2] hover:text-[#dce2f5] hover:bg-[#151c29] transition-all duration-200 font-['Manrope'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+                Portfolio
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#bbcbb2] hover:text-[#dce2f5] hover:bg-[#151c29] transition-all duration-200 font-['Manrope'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">biotech</span>
+                Backtest
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#bbcbb2] hover:text-[#dce2f5] hover:bg-[#151c29] transition-all duration-200 font-['Manrope'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">security</span>
+                G4 Gate
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#bbcbb2] hover:text-[#dce2f5] hover:bg-[#151c29] transition-all duration-200 font-['Manrope'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="px-6 py-4">
+<div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/10">
+<p class="text-[10px] text-on-surface-variant uppercase font-bold tracking-tighter">Connection Status</p>
+<div class="flex items-center gap-2 mt-1">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="text-xs font-mono">FIX API: ACTIVE</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="md:ml-64 pt-14 p-6 min-h-screen">
+<!-- Header / Stats Bento -->
+<div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 mb-6">
+<!-- Portfolio Hero -->
+<div class="lg:col-span-6 bg-surface-container-high rounded-xl p-6 flex flex-col justify-between overflow-hidden relative group">
+<div class="relative z-10">
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Total Portfolio Value</span>
+<h1 class="text-5xl font-extrabold tracking-tighter mt-2 tabular-nums">$3,421,980.52</h1>
+<div class="flex items-center gap-3 mt-4">
+<span class="text-primary flex items-center font-bold text-lg">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span>
+                            +$24,102.12
+                        </span>
+<span class="text-on-surface-variant text-sm font-medium opacity-60">Unrealized P/L Today</span>
+</div>
+</div>
+<div class="mt-8 flex gap-6 z-10">
+<div>
+<p class="text-[10px] text-on-surface-variant uppercase font-bold tracking-widest">Buying Power</p>
+<p class="text-xl font-bold tabular-nums text-on-surface">$1,204,500</p>
+</div>
+<div class="h-10 w-px bg-outline-variant/20 self-end mb-1"></div>
+<div>
+<p class="text-[10px] text-on-surface-variant uppercase font-bold tracking-widest">Margin Util</p>
+<p class="text-xl font-bold tabular-nums text-on-surface">12.4%</p>
+</div>
+</div>
+<!-- Abstract Glow -->
+<div class="absolute -right-16 -top-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-700"></div>
+</div>
+<!-- Market Sentiment -->
+<div class="lg:col-span-3 bg-surface-container-low rounded-xl p-6 flex flex-col justify-between border border-outline-variant/5">
+<div>
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Greed/Fear Index</span>
+<div class="mt-4 flex items-baseline gap-2">
+<span class="text-4xl font-black text-primary">76</span>
+<span class="text-sm font-bold text-primary uppercase">Extreme Greed</span>
+</div>
+</div>
+<div class="relative h-2 w-full bg-surface-container-highest rounded-full mt-4 overflow-hidden">
+<div class="absolute left-0 top-0 h-full bg-primary" style="width: 76%;"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant mt-4 leading-relaxed">
+                    Sentiment is pushing upper resistance levels. Algorithmic bias suggests caution on long breakouts.
+                </p>
+</div>
+<!-- Cycle Budget -->
+<div class="lg:col-span-3 bg-surface-container-low rounded-xl p-6 flex flex-col justify-between border border-outline-variant/5">
+<div>
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Cycle Budget</span>
+<p class="text-[10px] text-on-surface-variant mt-1">Allocation for next rebalancing</p>
+</div>
+<div class="relative mt-4">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-bold">$</span>
+<input class="w-full bg-surface-container-lowest border-none rounded-lg pl-8 pr-4 py-3 text-lg font-bold focus:ring-1 focus:ring-primary tabular-nums" type="text" value="250,000"/>
+</div>
+<button class="mt-4 w-full bg-gradient-to-br from-primary to-primary-container text-on-primary py-3 rounded-lg font-bold text-sm tracking-tight active:scale-95 transition-transform">
+                    Set Budget
+                </button>
+</div>
+</div>
+<!-- Main Workspace Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Center Column: Market Chart & Orders -->
+<div class="lg:col-span-8 space-y-6">
+<!-- S&P 500 Index Chart -->
+<div class="bg-surface-container rounded-xl p-6 border border-outline-variant/5">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary/10 rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">analytics</span>
+</div>
+<div>
+<h3 class="text-lg font-bold tracking-tight">S&amp;P 500 Index</h3>
+<p class="text-xs text-on-surface-variant font-mono uppercase">SPX . SPY . VOO</p>
+</div>
+</div>
+<div class="flex gap-1 bg-surface-container-lowest p-1 rounded-lg">
+<button class="px-3 py-1 text-xs font-bold rounded-md bg-surface-container-highest">1H</button>
+<button class="px-3 py-1 text-xs font-bold rounded-md hover:bg-surface-container-highest transition-colors">1D</button>
+<button class="px-3 py-1 text-xs font-bold rounded-md hover:bg-surface-container-highest transition-colors">1W</button>
+<button class="px-3 py-1 text-xs font-bold rounded-md hover:bg-surface-container-highest transition-colors">1M</button>
+</div>
+</div>
+<div class="h-64 w-full relative">
+<img class="w-full h-full object-cover rounded-lg opacity-80" data-alt="high contrast trading chart of S&amp;P 500 index with glowing green neon line and dark navy background with subtle grid lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwDdLWiA3y1uTKypC1fyjGsQK1gfHWgwzv_rYTA1e0vFg4eKRARAw9eLtEbgLvfaJ8fHWSYxRu6lO95fSiLDrwtAfzXDlkbaRmXIQJR-5rxOIBbUHMcDs0D-luRNI1HxiOwlPmHTHf9CLI3yz_qyduneZKtzfQW9k0xqi9BnLW_OctyGB-1l4gasHYgAWCWkxOxewOOIE5q6P2TVaWAMxR4ogQopBCHvHoSLVPb_B4RB0C2hMfei0Xns6GmySimvG3T2Tb3qrztZeL"/>
+<div class="absolute bottom-4 right-4 glass-panel px-4 py-2 rounded border border-outline-variant/20">
+<span class="text-[10px] text-on-surface-variant uppercase font-black block">Live Feed</span>
+<span class="text-xl font-bold tabular-nums">5,024.18 <span class="text-primary text-xs ml-1">+0.42%</span></span>
+</div>
+</div>
+</div>
+<!-- Rebalancing Panel -->
+<div class="bg-surface-container-low border border-outline-variant/10 rounded-xl overflow-hidden">
+<div class="p-6 flex justify-between items-center bg-surface-container-highest/20">
+<div>
+<h3 class="text-lg font-bold tracking-tight">Systemic Rebalancing</h3>
+<p class="text-xs text-on-surface-variant">Model Output: Alpha-Optimized Weights</p>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all">
+                            Preview Rebalance Orders
+                            <span class="material-symbols-outlined text-sm">rocket_launch</span>
+</button>
+</div>
+<div class="p-6">
+<div class="grid grid-cols-3 gap-4">
+<div class="p-4 bg-surface-container-lowest rounded-lg">
+<span class="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">Est. Turnover</span>
+<p class="text-2xl font-bold mt-1">12.4%</p>
+</div>
+<div class="p-4 bg-surface-container-lowest rounded-lg">
+<span class="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">Slippage Tolerance</span>
+<p class="text-2xl font-bold mt-1">0.05%</p>
+</div>
+<div class="p-4 bg-surface-container-lowest rounded-lg">
+<span class="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">Signal Strength</span>
+<p class="text-2xl font-bold mt-1 text-primary">High</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Signals & Watchlist -->
+<div class="lg:col-span-4 space-y-6">
+<!-- Active Signals -->
+<div class="bg-surface-container-high rounded-xl p-6 border border-outline-variant/10">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-bold tracking-tight">Active Signals</h3>
+<span class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">SEC COMPLIANT</span>
+</div>
+<div class="space-y-4">
+<!-- Signal Item -->
+<div class="flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center font-bold text-on-surface">AAPL</div>
+<div>
+<p class="text-sm font-bold">Apple Inc.</p>
+<p class="text-[10px] text-on-surface-variant uppercase font-medium">Institutional Buy</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-[10px] px-2 py-1 rounded border border-primary/30 text-primary font-bold uppercase tracking-tight">Breakout</span>
+<p class="text-xs font-mono mt-1 text-on-surface-variant">Conf: 89%</p>
+</div>
+</div>
+<!-- Signal Item -->
+<div class="flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center font-bold text-on-surface">NVDA</div>
+<div>
+<p class="text-sm font-bold">NVIDIA Corp.</p>
+<p class="text-[10px] text-on-surface-variant uppercase font-medium">Sideways Delta</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-[10px] px-2 py-1 rounded border border-outline-variant/30 text-on-surface-variant font-bold uppercase tracking-tight">Consolidation</span>
+<p class="text-xs font-mono mt-1 text-on-surface-variant">Conf: 42%</p>
+</div>
+</div>
+<!-- Signal Item -->
+<div class="flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center font-bold text-on-surface text-secondary">TSLA</div>
+<div>
+<p class="text-sm font-bold">Tesla, Inc.</p>
+<p class="text-[10px] text-on-surface-variant uppercase font-medium">Distribution Ph.</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-[10px] px-2 py-1 rounded border border-secondary/30 text-secondary font-bold uppercase tracking-tight">Overbought</span>
+<p class="text-xs font-mono mt-1 text-on-surface-variant">Conf: 94%</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Watchlist Mini-Table -->
+<div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/5">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-bold tracking-tight">Watchlist</h3>
+<button class="text-xs font-bold text-primary hover:underline">Edit List</button>
+</div>
+<div class="space-y-0.5">
+<div class="grid grid-cols-12 px-2 py-2 text-[10px] font-black text-on-surface-variant uppercase tracking-widest border-b border-outline-variant/10">
+<div class="col-span-5">Ticker</div>
+<div class="col-span-4 text-right">Price</div>
+<div class="col-span-3 text-right">Chg</div>
+</div>
+<div class="grid grid-cols-12 px-2 py-3 text-sm items-center hover:bg-surface-container transition-colors rounded cursor-pointer">
+<div class="col-span-5 font-bold">MSFT</div>
+<div class="col-span-4 text-right tabular-nums">412.52</div>
+<div class="col-span-3 text-right tabular-nums text-primary">+1.2%</div>
+</div>
+<div class="grid grid-cols-12 px-2 py-3 text-sm items-center hover:bg-surface-container transition-colors rounded cursor-pointer">
+<div class="col-span-5 font-bold">META</div>
+<div class="col-span-4 text-right tabular-nums">482.10</div>
+<div class="col-span-3 text-right tabular-nums text-secondary">-0.8%</div>
+</div>
+<div class="grid grid-cols-12 px-2 py-3 text-sm items-center hover:bg-surface-container transition-colors rounded cursor-pointer">
+<div class="col-span-5 font-bold">AMZN</div>
+<div class="col-span-4 text-right tabular-nums">174.45</div>
+<div class="col-span-3 text-right tabular-nums text-primary">+0.5%</div>
+</div>
+<div class="grid grid-cols-12 px-2 py-3 text-sm items-center hover:bg-surface-container transition-colors rounded cursor-pointer">
+<div class="col-span-5 font-bold">GOOGL</div>
+<div class="col-span-4 text-right tabular-nums">142.12</div>
+<div class="col-span-3 text-right tabular-nums text-on-surface-variant">0.0%</div>
+</div>
+</div>
+</div>
+<!-- Model Performance Banner -->
+<div class="rounded-xl overflow-hidden relative p-6 bg-primary-container group">
+<div class="relative z-10 flex flex-col h-full justify-between">
+<div>
+<h4 class="text-on-primary-container font-black text-lg leading-tight">G4 Edge Engine v4.2</h4>
+<p class="text-on-primary-container/80 text-xs mt-1">Current Alpha Factor: 1.84x Over Benchmark</p>
+</div>
+<div class="mt-4">
+<button class="bg-on-primary-container text-primary-container px-4 py-2 rounded font-bold text-xs uppercase tracking-tighter hover:bg-white transition-colors">
+                                View Full Metrics
+                            </button>
+</div>
+</div>
+<!-- Decorative Graphic -->
+<div class="absolute -right-4 bottom-0 opacity-20 pointer-events-none transform group-hover:scale-110 transition-transform duration-500">
+<span class="material-symbols-outlined text-[120px]" style="font-variation-settings: 'FILL' 1;">biotech</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Mobile Nav -->
+<footer class="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[#0c1320] flex items-center justify-around border-t border-[#bbcbb2]/15 z-50">
+<button class="flex flex-col items-center gap-1 text-[#00c805]">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-[#bbcbb2]">
+<span class="material-symbols-outlined">show_chart</span>
+<span class="text-[10px] font-bold">Signals</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-[#bbcbb2]">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-[10px] font-bold">Wallet</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-[#bbcbb2]">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold">Settings</span>
+</button>
+</footer>
+</body></html>

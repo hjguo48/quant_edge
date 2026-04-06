@@ -1210,6 +1210,10 @@ subject to:
 | 22.5 | 不确定性量化展示 | 95% 置信区间 | 区间宽度直观 |
 | 22.6 | 组合构建器 API | `/api/portfolio/*` | 有效前沿+权重调整 |
 | 22.7 | 组合构建器页面 | `Portfolio.tsx` | 前沿图+饼图+行业暴露 |
+| 22.8 | 预算与持仓配置 | 预算输入+股数计算 | 输入金额→输出每只股票具体买几股 |
+| 22.9 | 自选股票池 | 用户自定义 ticker 列表 | 支持从模型全排名中筛选/锁定特定股票 |
+| 22.10 | 调仓指令生成 | 买卖清单+股数+预估成本 | 对比上周持仓，输出具体买入/卖出/持有指令 |
+| 22.11 | 预期收益估算 | 历史同类信号回报统计 | 基于回测数据展示该信号强度的历史平均周收益与分布 |
 
 **SHAP 解释层 UI 规范：**
 
@@ -1244,37 +1248,25 @@ subject to:
 | 参数 | 选项 | 默认值 |
 |------|------|--------|
 | 回测区间 | 自定义起止日期 | 最近 3 年 |
-| 股票池 | S&P 500 / 自定义 | S&P 500 |
+| 股票池 | S&P 500 / 自选股票池 / 自定义 ticker 列表 | S&P 500 |
+| 投入预算 | 用户输入金额 | $100,000 |
+| 持仓数量 | 10 / 20 / 30 / 50 / 自定义 | 50 |
 | 模型选择 | Baseline / Tree / Deep | Tree (XGBoost) |
 | 预测窗口 | 5D / 10D / 20D | 5D |
 | 仓位方案 | 等权 / Vol-weighted / BL | Vol-weighted |
 | 成本模型 | 无 / 简单 / Almgren-Chriss | Almgren-Chriss |
 | 基准 | SPY / Equal-Weight | SPY |
 
-### 5.4 第 26-27 周：用户系统 + 合规
+### 5.4 第 26-27 周：用户系统 + 部署
+
+> **注意：** 本系统为个人使用，不对外提供投资建议服务，合规要求从简。
 
 | 序号 | 任务 | 交付物 | 验收标准 |
 |------|------|--------|----------|
-| 26.1 | JWT 认证系统 | 注册/登录/Token刷新 | 安全标准达标 |
-| 26.2 | 订阅系统 | 免费/基础/高级 三档 | Stripe 集成 |
-| 26.3 | 合规声明组件 | 全局不可折叠免责声明 | 每个预测页必须展示 |
-| 26.4 | 合规话术替换 | UI 全面审查 | 无 "buy/sell/recommendation" |
-| 26.5 | 隐私政策+用户协议 | 法律文档 | 律师审核通过 |
-| 26.6 | 收费描述合规 | "SaaS Access Fee" | 绝非 "Advisory Fee" |
+| 26.1 | 用户认证 | 登录/Token 管理 | 安全标准达标 |
+| 26.2 | 免责声明组件 | 简洁的风险提示 | 提醒模型输出非投资建议 |
+| 26.3 | 隐私与安全 | 密码加密+HTTPS | 个人数据不泄露 |
 
-**合规 UI 检查清单：**
-
-| 检查项 | 合规写法 | 违规写法 |
-|--------|----------|----------|
-| 信号展示 | "Model Output: Top Decile" | "Buy Recommendation" |
-| 组合展示 | "Model Tracking Portfolio" | "Your Portfolio" |
-| 历史表现 | "Historical Model IC/RankIC" | "Guaranteed Returns" |
-| 归因分析 | "SHAP Factor Attribution" | "Why you should invest" |
-| 收费描述 | "SaaS / Data Service Fee" | "Advisory Fee" |
-
-**强制免责声明（每个预测页底部，不可折叠）：**
-
-> *"QuantEdge is a data analytics platform, not a registered investment adviser. The algorithmic outputs and model portfolios provided are for informational and educational purposes only and do not constitute personalized investment advice. All trading strategies involve risk of loss. Past performance of any algorithmic model does not guarantee future results."*
 
 ### 5.5 第 27-28 周：系统联调与压力测试
 

@@ -51,3 +51,6 @@ data/features/all_features_batches/
 htmlcov/
 
 *.log
+# Frontend
+frontend/node_modules/
+frontend/dist/
