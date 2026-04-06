@@ -1,0 +1,300 @@
+{
+  "generated_at_utc": "2026-04-02T20:14:15Z",
+  "request_id": "20260403-030754-565-11289-4",
+  "branch": "feature/batch6-day0-coldstart",
+  "status": "completed_with_residual_risks",
+  "daily_data_pipeline": {
+    "dag_id": "daily_data_pipeline",
+    "execution_date": "2026-04-02",
+    "dag_run_state": "success",
+    "tasks": {
+      "fetch_prices": {
+        "status": "ok",
+        "datasource": "polygon",
+        "health_check": true,
+        "latest_trade_date": "2026-04-02",
+        "ticker_count": 504
+      },
+      "check_quality": {
+        "status": "ok",
+        "latest_trade_date": "2026-04-02",
+        "latest_feature_date": "2025-06-30",
+        "overall_severity": "green"
+      },
+      "store_to_db": {
+        "status": "skipped",
+        "reason": "no_staging_batch_present",
+        "stock_price_rows": 996284
+      },
+      "update_features_cache": {
+        "status": "skipped",
+        "reason": "feature_refresh_disabled",
+        "feature_path": "/opt/quantedge/data/features/all_features.parquet"
+      }
+    },
+    "db_validation": {
+      "stock_prices_max_trade_date": "2026-04-02"
+    }
+  },
+  "weekly_signal_pipeline": {
+    "dag_id": "weekly_signal_pipeline",
+    "execution_date": "2026-04-02",
+    "dag_run_state": "success",
+    "pit_signal_date": "2026-03-31",
+    "tasks": {
+      "check_data_freshness": "success",
+      "compute_features": "success",
+      "model_inference": "success",
+      "signal_risk_check": "success"
+    },
+    "feature_matrix_shape": {
+      "n_stocks": 503,
+      "n_features": 58
+    },
+    "feature_batch_id": "735f3329-7415-4ff1-9ada-ab7c3d76b150",
+    "feature_rows_total": 3128925,
+    "feature_rows_live_date": 37725,
+    "feature_store_rows_saved": 37725,
+    "model": {
+      "model_name": "ridge_60d",
+      "version": 1,
+      "stage": "Production",
+      "run_id": "81ca402814bd4069a4e09e4d37ffe1b0"
+    },
+    "mlflow": {
+      "tracking_uri": "http://mlflow:5000",
+      "experiment_id": "45",
+      "run_id": "6c7d66c63de641eb9c00b93b4ff59012"
+    },
+    "prediction_snapshot": {
+      "path": "/opt/airflow/live_weekly/predictions.parquet",
+      "rows": 503,
+      "window_id": "LIVE_20260331"
+    },
+    "top_10_predictions": [
+      {
+        "ticker": "SMCI",
+        "score": 0.6344995678096617
+      },
+      {
+        "ticker": "BAX",
+        "score": 0.5792777890609873
+      },
+      {
+        "ticker": "CNC",
+        "score": 0.5429459275501176
+      },
+      {
+        "ticker": "PSKY",
+        "score": 0.47218174005770286
+      },
+      {
+        "ticker": "FICO",
+        "score": 0.43546552144133344
+      },
+      {
+        "ticker": "TTD",
+        "score": 0.41848101095442347
+      },
+      {
+        "ticker": "COIN",
+        "score": 0.4154905768680799
+      },
+      {
+        "ticker": "IP",
+        "score": 0.4133781723475476
+      },
+      {
+        "ticker": "AMCR",
+        "score": 0.41119184618954363
+      },
+      {
+        "ticker": "CSGP",
+        "score": 0.4096077501839981
+      }
+    ],
+    "signal_risk": {
+      "overall_severity": "yellow",
+      "history_dates": 23,
+      "history_rows": 11546,
+      "aligned_prediction_rows": 11546,
+      "live_ic": 0.04132677165022242,
+      "rolling_ic_alert_severity": "green",
+      "calibration_alert_severity": "yellow",
+      "calibration_spearman": 0.6727272727272726,
+      "calibration_monotonic": false,
+      "model_switch_alert_severity": "green",
+      "recommend_switch": false
+    }
+  },
+  "weekly_rebalance_pipeline": {
+    "dag_id": "weekly_rebalance_pipeline",
+    "execution_date": "2026-04-02",
+    "dag_run_state": "success",
+    "tasks": {
+      "load_signals": "success",
+      "portfolio_optimize": "success",
+      "portfolio_risk_check": "success",
+      "generate_orders": "success",
+      "audit_log": "success"
+    },
+    "signal_source": "fresh_live_snapshot",
+    "signal_date": "2026-03-31",
+    "optimizer": {
+      "name": "equal_weight_portfolio",
+      "fallback_used": false,
+      "holding_count_pre_risk": 101,
+      "gross_exposure_pre_risk": 1.0000000000000007
+    },
+    "portfolio_risk": {
+      "status": "warning",
+      "execution_date": "2026-03-31",
+      "execution_mode": "same_day_indicative",
+      "holding_count_post_risk": 97,
+      "turnover": 0.3999999999999999,
+      "portfolio_beta": 0.9891414474527493,
+      "triggered_rules": [
+        "correlation_dedup",
+        "turnover_cap"
+      ],
+      "warnings": []
+    },
+    "orders": {
+      "order_count": 97,
+      "estimated_total_cost": 2626.142729906983
+    },
+    "operational_risk": {
+      "overall_severity": "green",
+      "fail_safe_mode": false,
+      "critical_alerts": [
+        "portfolio_risk_check_warning"
+      ]
+    }
+  },
+  "audit_log": {
+    "inserted_ids": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "inserted_count": 9,
+    "rows": [
+      {
+        "id": 5,
+        "action": "weekly_signal_features_ready",
+        "actor": "weekly_signal_pipeline"
+      },
+      {
+        "id": 6,
+        "action": "weekly_signal_model_inference",
+        "actor": "weekly_signal_pipeline"
+      },
+      {
+        "id": 7,
+        "action": "weekly_signal_snapshot_saved",
+        "actor": "weekly_signal_pipeline"
+      },
+      {
+        "id": 8,
+        "action": "weekly_signal_risk_evaluated",
+        "actor": "weekly_signal_pipeline"
+      },
+      {
+        "id": 9,
+        "action": "load_signals_completed",
+        "actor": "weekly_rebalance_pipeline"
+      },
+      {
+        "id": 10,
+        "action": "portfolio_optimize_completed",
+        "actor": "weekly_rebalance_pipeline"
+      },
+      {
+        "id": 11,
+        "action": "portfolio_risk_check_completed",
+        "actor": "weekly_rebalance_pipeline"
+      },
+      {
+        "id": 12,
+        "action": "generate_orders_completed",
+        "actor": "weekly_rebalance_pipeline"
+      },
+      {
+        "id": 13,
+        "action": "operational_risk_evaluated",
+        "actor": "risk_engine"
+      }
+    ]
+  },
+  "fail_safe_validation": {
+    "status": "pass_with_cli_caveat",
+    "evidence": {
+      "full_dag_failure_propagation": {
+        "dag_id": "weekly_signal_pipeline",
+        "execution_date": "2026-04-02",
+        "task_id": "model_inference",
+        "observed_marker": "Marking task as FAILED",
+        "observed_error": "[Errno 13] Permission denied: '/home/jiahao'",
+        "note": "Observed on the full DAG run before the container-path MLflow fallback patch. This verified the false-green fix in _run_task()."
+      },
+      "post_fix_bad_mlflow_task_test": {
+        "command": "MLFLOW_TRACKING_URI=http://127.0.0.1:5999 airflow tasks test weekly_signal_pipeline model_inference 2026-04-02",
+        "exception_observed": true,
+        "error_contains": "API request to http://127.0.0.1:5999/api/2.0/mlflow/model-versions/search failed",
+        "note": "The Airflow 2.9 tasks-test CLI in this container surfaced the exception but did not preserve failed state or nonzero exit cleanly."
+      }
+    }
+  },
+  "live_ic_validation": {
+    "status": "fail",
+    "live_ic": 0.04132677165022242,
+    "backtest_ic_expected": 0.0648,
+    "relative_error_pct": 36.22411782373083,
+    "threshold_pct": 20.0,
+    "comparison_method": "abs(live_ic - backtest_ic_expected) / backtest_ic_expected"
+  },
+  "shadow_mode_checklist": [
+    {
+      "item": "weekly_signals_generated_without_missing_data",
+      "status": "pass",
+      "details": "Fresh weekly signal snapshot produced 503 scores for 503 active SP500 members on 2026-03-31."
+    },
+    {
+      "item": "risk_rules_trigger_correctly",
+      "status": "pass",
+      "details": "Signal risk flagged yellow calibration; portfolio risk triggered correlation_dedup and turnover_cap."
+    },
+    {
+      "item": "optimizer_converges_without_fallback",
+      "status": "pass",
+      "details": "Equal-weight optimizer completed without fallback and produced 101 pre-risk holdings."
+    },
+    {
+      "item": "fail_safe_or_failure_path_marks_failed",
+      "status": "pass_with_cli_caveat",
+      "details": "Full weekly_signal DAG failure marked model_inference FAILED after the false-green fix. Post-fix tasks-test injections raise the expected exception, but the CLI in this image does not persist failed state cleanly."
+    },
+    {
+      "item": "audit_log_complete_decision_chain",
+      "status": "pass",
+      "details": "Audit log ids 5-13 cover feature readiness, inference, signal risk, rebalance, orders, and operational risk."
+    },
+    {
+      "item": "live_ic_within_20pct_of_backtest",
+      "status": "fail",
+      "details": "Live IC 0.0413 vs backtest 0.0648 implies 36.22% relative error."
+    }
+  ],
+  "residual_risks": [
+    "daily_data_pipeline currently validates connectivity and quality but store_to_db remained a no-op because no staging batch was present.",
+    "daily_data_pipeline quality check used data/features/all_features.parquet with latest_feature_date 2025-06-30; weekly_signal_pipeline is not blocked because it computes fresh features directly from the database.",
+    "Champion model loading in Airflow depends on fallback direct file-store lookup because the imported registry artifact lacks a loadable MLmodel package.",
+    "Airflow tasks-test CLI in this image does not reliably persist failed state or nonzero exit codes for injected exceptions, so failure-path validation should prefer full dag tests for authoritative results."
+  ]
+}

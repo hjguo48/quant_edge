@@ -2,7 +2,7 @@
 
 **基于 QuantEdge.md v3.0 生成**
 **生成日期：** 2026-03-28
-**项目当前状态：** 空白项目，尚未开始开发
+**项目当前状态：** Phase 2 — Batch 8 全部完成，灰度 v2 自动运行中 (2026-04-06)
 
 ---
 
@@ -1007,6 +1007,178 @@ subject to:
 > **注:** Bootstrap CI 下限 -0.09 未过零属于统计功效限制 (n=40 个 4W 周期 ≈ 3.8 年)。
 > Mean excess p-value = 0.042 已显著, Sharpe 0.632 方向正确。
 > 接受 5/6 作为 CONDITIONAL_GO, 在 4 周灰度中持续监控。
+
+**R5.8 状态更新 (2026-04-03):** ✅ 已完成。main 与 origin/main 已同步，0 个未推送 commit。
+
+#### Batch 6: Day 0 冷启动 — Phase 3 最终前置
+
+> **背景 (2026-04-03):** Batch 1-5 已完成，剩余 3 项 Live Pipeline 验证任务是进入 Phase 3 的唯一阻塞项。
+> 同时确认：`benchmarks.py`、`report.py`、`run_backtest.py` 三个 placeholder **延期到 Phase 3 W24-25** 随回测 API 一起实现（需求驱动，避免无上下文返工）。
+
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R6.1 | 数据回填至 2026-04 | DB 数据完整到最新交易日 | Airflow `dag_daily_data` 真实运行成功 | ✅ |
+| R6.2 | Live Pipeline 端到端 | 数据→特征→推理→组合→风控 全链路 | 一次完整执行无报错 | ✅ |
+| R6.3 | Live IC 一致性验证 | `live_ic_consistency.json` | Live 推理 IC vs 回测 IC 误差 < 20% | ✅ (fusion IC=0.068 vs 回测 0.072, 衰减 5.6%) |
+| R6.4 | 启动 4 周真实灰度 | Airflow 每周自动推理 | dag_weekly_signal + rebalance 连续 4 周正常 | ⏸️ 暂停 → Batch 7 数据修复后重启 |
+| R6.5 | 灰度 4 周验收 | shadow_mode_live_report.json | 6/6 checklist 全绿 → 进入 Phase 3 | ⬜ 待 Batch 8 重启灰度后 |
+
+**Placeholder 延期记录：**
+
+| 文件 | 原计划 | 延期至 | 理由 |
+|------|--------|--------|------|
+| `src/backtest/benchmarks.py` | W8-9 | Phase 3 W24-25 | Phase 1-2 回测未使用，需求应由前端 API 倒推定义 |
+| `src/backtest/report.py` | W8-9 | Phase 3 W24-25 | 报告格式取决于前端展示需求，提前实现会返工 |
+| `scripts/run_backtest.py` | W8-9 | Phase 3 W24-25 | `run_walkforward_backtest.py` 已覆盖研究阶段需求 |
+
+#### Batch 7: 数据底座全面优化 (2026-04-05)
+
+> **背景:** 灰度第 1 周发现数据底座存在多项缺陷：PIT 未来函数、退市股票数据缺失、dividend/consensus 覆盖为零、
+> 历史数据仅从 2018 起步导致 walk-forward 窗口不足 (n=40)、Bootstrap CI 统计功效受限。
+> 本 Batch 在重启灰度前一次性修复所有数据底座问题。
+
+**R7.1 PIT Look-Ahead 修复 (P0)** ✅
+
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R7.1.1 | pit.py event_time guard | `src/data/db/pit.py` 修复 | `event_time <= as_of_date` | ✅ |
+| R7.1.2 | technical.py shares query 修复 | `src/features/technical.py` | 同上 | ✅ |
+| R7.1.3 | run_ic_screening.py 修复 | `scripts/run_ic_screening.py` | 同上 | ✅ |
+| R7.1.4 | PIT 回归测试 | `tests/test_data/test_pit.py` | 新增 future event_time 排除测试 | ✅ |
+
+**R7.2 Universe Membership 全量重建** ✅
+
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R7.2.1 | strict_fmp 参数 | `src/universe/builder.py` | 禁用 Wikipedia fallback | ✅ |
+| R7.2.2 | 重建 2015-01-01 起 | `universe_membership` 表 | 729 行, 226 退市 ticker | ✅ |
+
+**R7.3 退市股票数据补齐** ✅
+
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R7.3.1 | backfill_sp500_history.py | 新脚本 | --phase {membership,prices,fundamentals,all} | ✅ |
+| R7.3.2 | 退市股价格 | stock_prices 新增行 | 216,264 行 (193/226 成功) | ✅ |
+| R7.3.3 | 退市股基本面 | fundamentals_pit 新增行 | 82,040 行 (183/226 成功) | ✅ |
+| R7.3.4 | 活跃 ticker 2015-2017 价格 | stock_prices 新增行 | 195,205 行 (Polygon 边界 2016-04-06) | ✅ |
+
+**R7.4 Dividend / Consensus 数据入库 (P3b)** ✅
+
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R7.4.1 | fmp.py 扩展 | dividends + earnings 端点 | `_build_dividend_records()`, `_build_consensus_records()` | ✅ |
+| R7.4.2 | 503 活跃 ticker 刷新 | fundamentals_pit 新增 56,114 行 | annual_dividend: 473 ticker, consensus_eps: 581 ticker | ✅ |
+
+**R7.5 Stocks 表 Metadata 补齐** ✅
+
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R7.5.1 | backfill_stocks_metadata.py | 新脚本 | --dry-run, --limit, --tickers, --failures-csv | ✅ |
+| R7.5.2 | 全量运行 | stocks 表更新 | ipo_date NULL: 503→0, shares_outstanding NULL: 504→19 | ✅ |
+| R7.5.3 | 退市 ticker 插入 | stocks 表新增 87 行 | 87/108 成功 (21 FMP 无数据) | ✅ |
+
+**R7.6 FRED 宏观数据扩展** ✅
+
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R7.6.1 | 2015-2017 宏观回填 | macro_series_pit 新增 3,794 行 | earliest=2015-01-01, 6 个 FRED 序列 | ✅ |
+
+**R7.7 Polygon 价格缺口补齐 (2015-01 ~ 2016-04)** ✅
+
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R7.7.1 | backfill_price_gap.py | 新脚本 (yfinance + FMP 双源) | 活跃 ticker 用 yfinance, 退市用 FMP | ✅ |
+| R7.7.2 | 全量运行 | stock_prices 补齐 2015-01 ~ 2016-04 | 619/713 成功, 196,037 行, earliest=2015-01-02 | ✅ |
+
+**Batch 7 新增脚本：**
+
+| 脚本 | 用途 | 数据源 |
+|------|------|--------|
+| `scripts/backfill_sp500_history.py` | 退市股票 membership/prices/fundamentals 补齐 | Polygon + FMP |
+| `scripts/backfill_stocks_metadata.py` | stocks 表 ipo_date/shares/delist 补齐 | FMP profile + shares-float |
+| `scripts/backfill_price_gap.py` | Polygon 10 年边界外价格补齐 | yfinance (优先) + FMP (fallback) |
+
+**数据底座最终状态 (Batch 7 全部完成, 2026-04-05):**
+
+| 数据表 | 行数 | Ticker 覆盖 | 时间范围 | 对比 Batch 6 |
+|--------|------|------------|----------|-------------|
+| universe_membership | 729 | 729 (503 活跃 + 226 退市) | 2015-01-01 ~ 2026-04-05 | 从 108 ticker / 2018 扩展 |
+| stock_prices | 1,605,370 | 709 | **2015-01-02** ~ 2026-04-02 | +600k 行, 从 2018 扩展到 2015 |
+| fundamentals_pit | 424,585 | 686 | 2015-01-02 ~ 2026-02-28 | +138k 行, dividend/consensus 从 0 到 56k |
+| macro_series_pit | 21,492 | 6 序列 | 2015-01-01 ~ 2026-04-02 | +3.8k 行, 从 2018 扩展到 2015 |
+| stocks | 591 | 591 | ipo_date 0 NULL, shares 19 NULL | 从 504 行扩展, NULL 大幅清零 |
+
+**关键修复影响：**
+- PIT 未来函数: 已消除 (event_time guard)
+- 幸存者偏差: 226 退市 ticker 数据补齐
+- 特征覆盖: dividend_yield/eps_surprise 从 0% → 有数据
+- 数据深度: 从 3.8 年 → **7+ 年**, walk-forward 窗口从 8 → 预期 11-12
+- Bootstrap CI 统计功效: n 从 40 → 预期 55-60
+
+**残留缺口 (可接受)：**
+- 21 只退市 ticker FMP 无 profile 数据 (stocks 表缺失)
+- 94 只 ticker 2015 价格无法获取 (大多为 2015 后上市)
+- 43 只退市 ticker fundamentals 无法获取 (FMP 无数据)
+- 19 只 ticker shares_outstanding 为 NULL
+
+---
+
+#### Batch 8: 模型重测 + 融合升级 ✅ (2026-04-06 完成)
+
+> **前置条件:** Batch 7 数据底座完成。
+> **目标:** 用修复后的 7+ 年数据重训模型，目标 G3 Gate 6/6。
+> **结果:** G3 Gate **6/6 PASS**，三模型 IC 加权融合 mean IC = 0.091 (+27% vs old 0.072)。
+
+| 序号 | 任务 | 交付物 | 验收标准 | 状态 |
+|------|------|--------|----------|------|
+| R8.1 | 重跑 FeaturePipeline | feature_store 全量更新 (2016-03-01 起) | dividend_yield 186/186, eps_surprise 155/186 | ✅ |
+| R8.2 | 树模型公平重测 | 11-window Walk-Forward (Ridge/XGB/LGBM 60D) | XGB mean IC=0.086 (8/11 best) | ✅ walkforward_comparison_60d.json |
+| R8.3 | Regime Detection | VIX 阈值分析 | regime_weights: low=1.0, mid=0.8, high=0.8 | ✅ regime_analysis_60d.json |
+| R8.4 | IC 加权融合 | 三模型 softmax fusion (T=5.0) | mean IC=0.091 (+27%), 9/11 windows positive | ✅ fusion_analysis_60d.json |
+| R8.5 | G3 Gate 重测 | 6 项统计检验 | 6/6 PASS (Bootstrap CI 下限=+0.030) | ✅ g3_gate_results.json |
+| R8.6 | 灰度 v2 重启 | 三模型持久化 + DAG 升级 | dry-run 507 stocks, 4/4 risk PASS | ✅ greyscale/week_01.json |
+
+**Batch 8 新增脚本：**
+
+| 脚本 | 用途 |
+|------|------|
+| scripts/run_walkforward_comparison.py | 11-window 三模型对比 |
+| scripts/run_regime_analysis.py | VIX regime 分析 |
+| scripts/run_ic_weighted_fusion.py | IC 加权融合分析 |
+| scripts/run_g3_gate.py | G3 Gate 6 项统计检验 |
+| scripts/train_fusion_models.py | 三模型训练 + pickle 持久化 |
+| scripts/run_greyscale_live.py | 灰度 live 信号生成 |
+| scripts/run_greyscale_monitor.py | G4 Gate 监控 |
+
+**Batch 8 关键指标：**
+
+| 指标 | Batch 7 前 | Batch 8 后 | 提升 |
+|------|-----------|-----------|------|
+| OOS IC | 0.072 | 0.091 | +26% |
+| G3 Gate | 5/6 CONDITIONAL_GO | 6/6 PASS | Bootstrap CI 翻正 |
+| 模型 | Ridge only | Ridge+XGB+LGBM fusion | 三模型互补 |
+| Walk-forward 窗口 | ~5 | 11 | +120% |
+| Cost-adjusted excess | — | 14.52% | 远超 5% 阈值 |
+
+#### 灰度 v2: 4 周自动运行 (进行中)
+
+> **架构:** 三模型 IC 加权融合 (Ridge + XGBoost + LightGBM), Airflow 每周五 16:30 ET 自动触发。
+> **DAG:** dag_weekly_signal.py 已升级为三模型融合路径。
+
+| 周次 | 日期 | 状态 |
+|------|------|------|
+| Week 1 | 2026-04-10 | ⬜ 待自动触发 |
+| Week 2 | 2026-04-17 | ⬜ |
+| Week 3 | 2026-04-24 | ⬜ |
+| Week 4 | 2026-05-01 | ⬜ |
+| G4 Gate | ~2026-05-01 | ⬜ PASS → Phase 3 |
+
+**G4 Gate 准出标准:**
+- Live IC > 0.06 (允许 34% 衰减 vs backtest 0.091)
+- IC 正率 >= 3/4 周
+- 无 Layer 1/2 halt 触发
+- 换手率 < 0.45
+- 模型一致性 pairwise rank corr > 0.5
 
 ---
 

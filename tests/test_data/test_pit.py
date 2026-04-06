@@ -143,14 +143,11 @@ def test_prices_pit_respects_knowledge_time(db_engine: Engine) -> None:
             session.commit()
 
 
-def test_universe_pit_returns_correct_members(db_engine: Engine) -> None:
-    _ensure_tables(db_engine)
-    session_factory = _session_factory(db_engine)
+def test_universe_pit_returns_correct_members(monkeypatch: pytest.MonkeyPatch) -> None:
+    session_factory = _sqlite_session_factory(UniverseMembership.__table__)
+    monkeypatch.setattr(pit_module, "get_session_factory", lambda: session_factory)
 
     with session_factory() as session:
-        session.execute(
-            sa.delete(UniverseMembership).where(UniverseMembership.ticker.in_(["PITU1", "PITU2"])),
-        )
         session.add_all(
             [
                 UniverseMembership(
@@ -171,24 +168,17 @@ def test_universe_pit_returns_correct_members(db_engine: Engine) -> None:
         )
         session.commit()
 
-    try:
-        january_members = get_universe_pit(
-            as_of=datetime(2024, 1, 15, 12, tzinfo=timezone.utc),
-            index_name="SP500",
-        )
-        march_members = get_universe_pit(
-            as_of=datetime(2024, 3, 15, 12, tzinfo=timezone.utc),
-            index_name="SP500",
-        )
+    january_members = get_universe_pit(
+        as_of=datetime(2024, 1, 15, 12, tzinfo=timezone.utc),
+        index_name="SP500",
+    )
+    march_members = get_universe_pit(
+        as_of=datetime(2024, 3, 15, 12, tzinfo=timezone.utc),
+        index_name="SP500",
+    )
 
-        assert january_members == ["PITU1"]
-        assert march_members == ["PITU2"]
-    finally:
-        with session_factory() as session:
-            session.execute(
-                sa.delete(UniverseMembership).where(UniverseMembership.ticker.in_(["PITU1", "PITU2"])),
-            )
-            session.commit()
+    assert january_members == ["PITU1"]
+    assert march_members == ["PITU2"]
 
 
 def test_fundamentals_pit_returns_shares_outstanding_snapshot_without_external_db(
@@ -264,3 +254,44 @@ def test_fundamentals_pit_excludes_rows_until_knowledge_time_arrives(
     assert before_release.empty
     assert len(after_release) == 1
     assert pd.Timestamp(after_release.iloc[0]["knowledge_time"], tz="UTC").date() > after_release.iloc[0]["event_time"]
+
+
+def test_fundamentals_pit_excludes_future_event_time_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_factory = _sqlite_session_factory(FundamentalsPIT.__table__)
+    monkeypatch.setattr(pit_module, "get_session_factory", lambda: session_factory)
+
+    with session_factory() as session:
+        session.add_all(
+            [
+                FundamentalsPIT(
+                    ticker="FUTR",
+                    fiscal_period="2024Q4",
+                    metric_name="revenue",
+                    metric_value=Decimal("100.0"),
+                    event_time=date(2024, 12, 31),
+                    knowledge_time=datetime(2025, 2, 21, 21, tzinfo=timezone.utc),
+                    source="test",
+                ),
+                FundamentalsPIT(
+                    ticker="FUTR",
+                    fiscal_period="2025Q1",
+                    metric_name="revenue",
+                    metric_value=Decimal("125.0"),
+                    event_time=date(2025, 3, 31),
+                    knowledge_time=datetime(2025, 2, 20, 21, tzinfo=timezone.utc),
+                    source="test",
+                ),
+            ],
+        )
+        session.commit()
+
+    result = pit_module.get_fundamentals_pit(
+        ticker="FUTR",
+        as_of=datetime(2025, 2, 25, 12, tzinfo=timezone.utc),
+        metric_names=["revenue"],
+    )
+
+    assert result["fiscal_period"].tolist() == ["2024Q4"]
+    assert result["event_time"].tolist() == [date(2024, 12, 31)]

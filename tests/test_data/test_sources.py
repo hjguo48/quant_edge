@@ -46,7 +46,8 @@ def test_fmp_knowledge_time_per_metric(monkeypatch: pytest.MonkeyPatch) -> None:
                 },
             ],
             "balance-sheet-statement": [],
-            "key-metrics": [],
+            "dividends": [],
+            "earnings": [],
         }
         return data[endpoint]
 
@@ -61,6 +62,79 @@ def test_fmp_knowledge_time_per_metric(monkeypatch: pytest.MonkeyPatch) -> None:
     assert revenue_record["event_time"] == date(2024, 3, 31)
     assert revenue_record["fiscal_period"] == "2024Q1"
     assert revenue_record["knowledge_time"] < cash_flow_record["knowledge_time"]
+
+
+def test_fmp_fetch_ticker_records_includes_dividend_and_consensus_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = FMPDataSource(api_key="test-key")
+
+    def fake_get_endpoint_rows(
+        endpoint: str,
+        ticker: str,
+        *,
+        limit: int = 120,
+        page: int = 0,
+        period: str | None = "quarter",
+    ) -> list[dict[str, object]]:
+        data = {
+            "income-statement": [
+                {
+                    "date": "2024-03-31",
+                    "period": "Q1",
+                    "acceptedDate": "2024-05-10 16:00:00",
+                    "revenue": 1000,
+                    "eps": 1.5,
+                },
+            ],
+            "balance-sheet-statement": [
+                {
+                    "date": "2024-03-31",
+                    "period": "Q1",
+                    "acceptedDate": "2024-05-11 16:00:00",
+                    "totalStockholdersEquity": 500,
+                },
+            ],
+            "cash-flow-statement": [],
+            "dividends": [
+                {
+                    "date": "2024-05-10",
+                    "declarationDate": "2024-05-01",
+                    "dividend": 0.25,
+                },
+            ],
+            "earnings": [
+                {
+                    "date": "2024-05-02",
+                    "epsEstimated": 1.4,
+                },
+                {
+                    "date": "2024-09-15",
+                    "epsEstimated": 1.8,
+                },
+            ],
+        }
+        return data.get(endpoint, [])
+
+    monkeypatch.setattr(source, "_get_endpoint_rows", fake_get_endpoint_rows)
+
+    records = source._fetch_ticker_records("AAPL")
+    by_metric = {
+        record["metric_name"]: record
+        for record in records
+        if record["metric_name"] in {"annual_dividend", "dividend_per_share", "consensus_eps", "eps_consensus"}
+    }
+
+    assert set(by_metric) == {"annual_dividend", "dividend_per_share", "consensus_eps", "eps_consensus"}
+    assert by_metric["dividend_per_share"]["fiscal_period"] == "2024Q1"
+    assert by_metric["dividend_per_share"]["event_time"] == date(2024, 3, 31)
+    assert float(by_metric["dividend_per_share"]["metric_value"]) == 0.25
+    assert by_metric["dividend_per_share"]["knowledge_time"] == datetime(2024, 5, 1, 20, tzinfo=timezone.utc)
+    assert float(by_metric["annual_dividend"]["metric_value"]) == 0.25
+    assert float(by_metric["consensus_eps"]["metric_value"]) == 1.4
+    assert float(by_metric["eps_consensus"]["metric_value"]) == 1.4
+    assert by_metric["consensus_eps"]["event_time"] == date(2024, 3, 31)
+    assert by_metric["consensus_eps"]["knowledge_time"] == datetime(2024, 5, 2, 20, tzinfo=timezone.utc)
 
 
 def test_polygon_ticker_mapping_helpers() -> None:
@@ -282,11 +356,15 @@ def test_backfill_universe_membership_reconstructs_history(
         )
         session.commit()
 
-    monkeypatch.setattr(builder_module, "_fetch_index_constituents", lambda index_name="SP500": ["AAA", "CCC"])
+    monkeypatch.setattr(
+        builder_module,
+        "_fetch_index_constituents",
+        lambda index_name="SP500", strict_fmp=False: ["AAA", "CCC"],
+    )
     monkeypatch.setattr(
         builder_module,
         "_fetch_index_change_events",
-        lambda index_name="SP500": [
+        lambda index_name="SP500", strict_fmp=False: [
             builder_module.UniverseChangeEvent(
                 effective_date=date(2024, 3, 1),
                 added_ticker="BBB",
@@ -334,3 +412,77 @@ def test_backfill_universe_membership_reconstructs_history(
             ),
         )
         session.commit()
+
+
+def test_fetch_index_constituents_strict_fmp_raises_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(builder_module.settings, "FMP_API_KEY", "test-key")
+    monkeypatch.setattr(
+        builder_module,
+        "_fetch_sp500_from_fmp",
+        lambda: (_ for _ in ()).throw(RuntimeError("fmp boom")),
+    )
+    monkeypatch.setattr(builder_module, "_fetch_sp500_from_wikipedia", lambda: ["WIKI"])
+
+    with pytest.raises(RuntimeError, match="fmp boom"):
+        builder_module._fetch_index_constituents(index_name="SP500", strict_fmp=True)
+
+
+def test_fetch_index_change_events_strict_fmp_disables_empty_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(builder_module.settings, "FMP_API_KEY", "test-key")
+    monkeypatch.setattr(builder_module, "_fetch_sp500_historical_changes_from_fmp", lambda: [])
+    monkeypatch.setattr(
+        builder_module,
+        "_fetch_sp500_historical_changes_from_wikipedia",
+        lambda: (_ for _ in ()).throw(AssertionError("Wikipedia fallback should be disabled")),
+    )
+
+    assert builder_module._fetch_index_change_events(index_name="SP500", strict_fmp=True) == []
+
+
+def test_backfill_universe_membership_forwards_strict_fmp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: dict[str, bool] = {}
+
+    def fake_fetch_index_constituents(index_name: str = "SP500", *, strict_fmp: bool = False) -> list[str]:
+        seen["constituents"] = strict_fmp
+        return ["AAA"]
+
+    def fake_fetch_index_change_events(
+        index_name: str = "SP500",
+        *,
+        strict_fmp: bool = False,
+    ) -> list[builder_module.UniverseChangeEvent]:
+        seen["events"] = strict_fmp
+        return []
+
+    monkeypatch.setattr(builder_module, "_fetch_index_constituents", fake_fetch_index_constituents)
+    monkeypatch.setattr(builder_module, "_fetch_index_change_events", fake_fetch_index_change_events)
+    monkeypatch.setattr(
+        builder_module,
+        "_reconstruct_membership_rows",
+        lambda **kwargs: [
+            {
+                "ticker": "AAA",
+                "index_name": "SP500",
+                "effective_date": date(2024, 1, 1),
+                "end_date": None,
+                "reason": "test",
+            },
+        ],
+    )
+    monkeypatch.setattr(builder_module, "_replace_membership_rows", lambda *args, **kwargs: None)
+
+    rows_written = builder_module.backfill_universe_membership(
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 12, 31),
+        index_name="SP500",
+        strict_fmp=True,
+    )
+
+    assert rows_written == 1
+    assert seen == {"constituents": True, "events": True}

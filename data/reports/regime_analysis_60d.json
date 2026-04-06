@@ -1,0 +1,369 @@
+{
+  "config": {
+    "analysis_granularity": "test_window_mean_vix",
+    "as_of": "2026-03-31",
+    "comparison_report": "/home/jiahao/quant_edge/data/reports/walkforward_comparison_60d.json",
+    "high_vix_threshold": 30.0,
+    "low_vix_threshold": 20.0,
+    "series_id": "VIXCLS"
+  },
+  "regime_adjusted_ic": {
+    "lightgbm": 0.07109868811474133,
+    "ridge": 0.03355894422150885,
+    "xgboost": 0.0923904055695248
+  },
+  "regime_weights": {
+    "high": 0.8,
+    "low": 1.0,
+    "mid": 0.8,
+    "unknown": 1.0
+  },
+  "vix_regime_stats": {
+    "high": {
+      "lightgbm_ic": -0.01894306522128041,
+      "mean_vix": 35.269375,
+      "n_dates": 128,
+      "n_windows": 1,
+      "ridge_ic": 0.13890209214788082,
+      "vix_range": ">30",
+      "xgboost_ic": 0.015431405893600009
+    },
+    "low": {
+      "lightgbm_ic": 0.09482786224785948,
+      "mean_vix": 16.229065268519125,
+      "n_dates": 770,
+      "n_windows": 6,
+      "ridge_ic": 0.022735073760592778,
+      "vix_range": "<20",
+      "xgboost_ic": 0.13058552228993442
+    },
+    "mid": {
+      "lightgbm_ic": 0.047917404285614376,
+      "mean_vix": 24.080982331269958,
+      "n_dates": 505,
+      "n_windows": 4,
+      "ridge_ic": 0.028514378953104467,
+      "vix_range": "20-30",
+      "xgboost_ic": 0.03780506850691807
+    },
+    "unknown": {
+      "lightgbm_ic": null,
+      "mean_vix": null,
+      "n_dates": 0,
+      "n_windows": 0,
+      "ridge_ic": null,
+      "vix_range": "unknown",
+      "xgboost_ic": null
+    }
+  },
+  "windows": [
+    {
+      "mean_vix": 15.096612903225807,
+      "n_vix_dates": 124,
+      "regime": "low",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.5267456104532462,
+          "test_ic": 0.01133318221493478,
+          "test_icir": 0.20052926649326952,
+          "test_rank_ic": 0.05946243486366053
+        },
+        "ridge": {
+          "test_hit_rate": 0.49666530556689803,
+          "test_ic": 0.053796850150560495,
+          "test_icir": 0.6413344209838899,
+          "test_rank_ic": 0.023379151585884186
+        },
+        "xgboost": {
+          "test_hit_rate": 0.5594800598883898,
+          "test_ic": 0.054710330383818215,
+          "test_icir": 0.6344661448265282,
+          "test_rank_ic": 0.17735907588836117
+        }
+      },
+      "test_end": "2020-02-29",
+      "test_start": "2019-09-01",
+      "window_id": "W1"
+    },
+    {
+      "mean_vix": 35.269375,
+      "n_vix_dates": 128,
+      "regime": "high",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.5213662575779979,
+          "test_ic": -0.01894306522128041,
+          "test_icir": -0.19282396393956083,
+          "test_rank_ic": 0.03517065037447707
+        },
+        "ridge": {
+          "test_hit_rate": 0.562841934052935,
+          "test_ic": 0.13890209214788082,
+          "test_icir": 1.1051241202766262,
+          "test_rank_ic": 0.15080793132989143
+        },
+        "xgboost": {
+          "test_hit_rate": 0.5241017300014786,
+          "test_ic": 0.015431405893600009,
+          "test_icir": 0.1577683313619481,
+          "test_rank_ic": 0.08673749053831463
+        }
+      },
+      "test_end": "2020-08-31",
+      "test_start": "2020-03-01",
+      "window_id": "W2"
+    },
+    {
+      "mean_vix": 25.474390243902437,
+      "n_vix_dates": 123,
+      "regime": "mid",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.43545983007899836,
+          "test_ic": 0.01622208854824022,
+          "test_icir": 0.20943716669247936,
+          "test_rank_ic": -0.14349172391744264
+        },
+        "ridge": {
+          "test_hit_rate": 0.5626770010433746,
+          "test_ic": 0.1552513385380374,
+          "test_icir": 0.9412671935292891,
+          "test_rank_ic": 0.15104421669697865
+        },
+        "xgboost": {
+          "test_hit_rate": 0.4383663735280966,
+          "test_ic": 0.012335752647816431,
+          "test_icir": 0.1824427456326118,
+          "test_rank_ic": -0.13696114601392229
+        }
+      },
+      "test_end": "2021-02-28",
+      "test_start": "2020-09-01",
+      "window_id": "W3"
+    },
+    {
+      "mean_vix": 18.530697674418604,
+      "n_vix_dates": 129,
+      "regime": "low",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.49938597124900674,
+          "test_ic": 0.11746075930470892,
+          "test_icir": 0.4179731209303036,
+          "test_rank_ic": 0.06506831368208636
+        },
+        "ridge": {
+          "test_hit_rate": 0.49830239110019503,
+          "test_ic": 0.09062564163290043,
+          "test_icir": 0.7868592052936126,
+          "test_rank_ic": 0.03697036773745232
+        },
+        "xgboost": {
+          "test_hit_rate": 0.45156396734811816,
+          "test_ic": 0.11888117067884414,
+          "test_icir": 0.429644815469,
+          "test_rank_ic": 0.07054112928267141
+        }
+      },
+      "test_end": "2021-08-31",
+      "test_start": "2021-03-01",
+      "window_id": "W4"
+    },
+    {
+      "mean_vix": 20.990080645161296,
+      "n_vix_dates": 124,
+      "regime": "mid",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.4529578694608164,
+          "test_ic": 0.06342687468441977,
+          "test_icir": 0.5187207776446666,
+          "test_rank_ic": -0.08346768194649645
+        },
+        "ridge": {
+          "test_hit_rate": 0.45601397074874483,
+          "test_ic": -0.0781770126786796,
+          "test_icir": -0.720704445743003,
+          "test_rank_ic": -0.14378884702141287
+        },
+        "xgboost": {
+          "test_hit_rate": 0.46314487375391106,
+          "test_ic": -0.01170240324370678,
+          "test_icir": -0.08763959949294094,
+          "test_rank_ic": -0.08530800009578991
+        }
+      },
+      "test_end": "2022-02-28",
+      "test_start": "2021-09-01",
+      "window_id": "W5"
+    },
+    {
+      "mean_vix": 26.01969465648855,
+      "n_vix_dates": 131,
+      "regime": "mid",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.5127545394398294,
+          "test_ic": -0.02833860109445828,
+          "test_icir": -0.4699864342474037,
+          "test_rank_ic": 0.014965006981115869
+        },
+        "ridge": {
+          "test_hit_rate": 0.4924648974490921,
+          "test_ic": -0.01738507715684341,
+          "test_icir": -0.13214563131413806,
+          "test_rank_ic": -0.03179530021965072
+        },
+        "xgboost": {
+          "test_hit_rate": 0.5179004631331324,
+          "test_ic": -0.006449178839218499,
+          "test_icir": -0.11079921472885597,
+          "test_rank_ic": 0.037618712274006
+        }
+      },
+      "test_end": "2022-08-31",
+      "test_start": "2022-03-01",
+      "window_id": "W6"
+    },
+    {
+      "mean_vix": 23.83976377952755,
+      "n_vix_dates": 127,
+      "regime": "mid",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.5375178316690442,
+          "test_ic": 0.1403592550042558,
+          "test_icir": 0.9244694990282528,
+          "test_rank_ic": 0.11822650671755519
+        },
+        "ridge": {
+          "test_hit_rate": 0.5245363766048502,
+          "test_ic": 0.05436826710990347,
+          "test_icir": 0.6203428112496651,
+          "test_rank_ic": 0.06933412024309946
+        },
+        "xgboost": {
+          "test_hit_rate": 0.5466476462196862,
+          "test_ic": 0.15703610346278113,
+          "test_icir": 0.8140846918805746,
+          "test_rank_ic": 0.1282888815598664
+        }
+      },
+      "test_end": "2023-02-28",
+      "test_start": "2022-09-01",
+      "window_id": "W7"
+    },
+    {
+      "mean_vix": 16.84946564885496,
+      "n_vix_dates": 131,
+      "regime": "low",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.5662506539122637,
+          "test_ic": 0.17812267701005532,
+          "test_icir": 1.1095190375763264,
+          "test_rank_ic": 0.11765329934757149
+        },
+        "ridge": {
+          "test_hit_rate": 0.49801958000149465,
+          "test_ic": 0.020944960582553702,
+          "test_icir": 0.1644578469054289,
+          "test_rank_ic": 0.024258588814833903
+        },
+        "xgboost": {
+          "test_hit_rate": 0.5702114939092744,
+          "test_ic": 0.2345800780653615,
+          "test_icir": 0.9652653007608889,
+          "test_rank_ic": 0.15860134582750324
+        }
+      },
+      "test_end": "2023-08-31",
+      "test_start": "2023-03-01",
+      "window_id": "W8"
+    },
+    {
+      "mean_vix": 14.72734375,
+      "n_vix_dates": 128,
+      "regime": "low",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.557514450867052,
+          "test_ic": 0.10194311911979681,
+          "test_icir": 1.0787227211443045,
+          "test_rank_ic": 0.1439079684575411
+        },
+        "ridge": {
+          "test_hit_rate": 0.5065028901734104,
+          "test_ic": -0.001660231261839776,
+          "test_icir": -0.020192115691006866,
+          "test_rank_ic": -0.005339887181041907
+        },
+        "xgboost": {
+          "test_hit_rate": 0.5501445086705202,
+          "test_ic": 0.12577773116974666,
+          "test_icir": 2.582301718618236,
+          "test_rank_ic": 0.14502794030625515
+        }
+      },
+      "test_end": "2024-02-29",
+      "test_start": "2023-09-01",
+      "window_id": "W9"
+    },
+    {
+      "mean_vix": 14.922615384615385,
+      "n_vix_dates": 130,
+      "regime": "low",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.5079862883815914,
+          "test_ic": 0.03851336245465305,
+          "test_icir": 0.4675227034587097,
+          "test_rank_ic": 0.010781873707881216
+        },
+        "ridge": {
+          "test_hit_rate": 0.48982568740427396,
+          "test_ic": -0.005589754634767291,
+          "test_icir": -0.06401019850544755,
+          "test_rank_ic": -0.019627583025617915
+        },
+        "xgboost": {
+          "test_hit_rate": 0.5232295237400627,
+          "test_ic": 0.060761337594819935,
+          "test_icir": 0.5429905177479978,
+          "test_rank_ic": 0.04743077473836848
+        }
+      },
+      "test_end": "2024-08-31",
+      "test_start": "2024-03-01",
+      "window_id": "W10"
+    },
+    {
+      "mean_vix": 17.24765625,
+      "n_vix_dates": 128,
+      "regime": "low",
+      "results": {
+        "lightgbm": {
+          "test_hit_rate": 0.5530989756061611,
+          "test_ic": 0.12159407338300797,
+          "test_icir": 0.7573558943946366,
+          "test_rank_ic": 0.05539027634126628
+        },
+        "ridge": {
+          "test_hit_rate": 0.4981944137371951,
+          "test_ic": -0.02170702390585088,
+          "test_icir": -0.17251683275373192,
+          "test_rank_ic": -0.02062254748510115
+        },
+        "xgboost": {
+          "test_hit_rate": 0.5554572923575798,
+          "test_ic": 0.18880248584701612,
+          "test_icir": 0.6502439778418654,
+          "test_rank_ic": 0.15085109064578794
+        }
+      },
+      "test_end": "2025-02-28",
+      "test_start": "2024-09-01",
+      "window_id": "W11"
+    }
+  ]
+}

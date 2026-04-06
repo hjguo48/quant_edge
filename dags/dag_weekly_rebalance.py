@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 import logging
 import os
 from pathlib import Path
@@ -8,12 +9,14 @@ import sys
 from typing import Any
 
 from airflow import DAG
+from airflow.exceptions import AirflowException
 from airflow.operators.python import PythonOperator
 import pendulum
 
 LOGGER = logging.getLogger(__name__)
-DEFAULT_PREDICTIONS_PATH = "data/backtest/extended_walkforward_predictions.parquet"
-DEFAULT_PRICES_PATH = "data/backtest/extended_walkforward_prices.parquet"
+LIVE_PREDICTIONS_PATH = "/opt/airflow/live_weekly/predictions.parquet"
+LIVE_PRICES_PATH = "/opt/airflow/live_weekly/prices.parquet"
+LIVE_MANIFEST_PATH = "/opt/airflow/live_weekly/state.json"
 
 
 def _project_root() -> Path:
@@ -52,16 +55,53 @@ def _run_task(step: str, handler: Any, **context: Any) -> dict[str, Any]:
         payload.setdefault("status", "ok")
         payload.setdefault("step", step)
         payload.setdefault("timestamp_utc", datetime.now(timezone.utc).isoformat())
+        if str(payload.get("status", "")).lower() == "error":
+            raise AirflowException(payload.get("error") or f"{step} returned status=error")
         return payload
     except Exception as exc:
         LOGGER.exception("weekly_rebalance_pipeline task %s failed", step)
-        return _result(step, "error", error=str(exc))
+        raise AirflowException(str(exc)) from exc
+
+
+def _artifact_path(repo_root: Path, relative_path: str) -> Path:
+    path = Path(relative_path)
+    if path.is_absolute():
+        return path
+    return repo_root / relative_path
+
+
+def _load_signal_state(repo_root: Path) -> dict[str, Any] | None:
+    path = _artifact_path(repo_root, LIVE_MANIFEST_PATH)
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())
+
+
+def _write_signal_state(repo_root: Path, payload: dict[str, Any]) -> None:
+    from scripts.run_ic_screening import write_json_atomic
+    from scripts.run_single_window_validation import json_safe
+
+    write_json_atomic(_artifact_path(repo_root, LIVE_MANIFEST_PATH), json_safe(payload))
+
+
+def _load_price_snapshot(repo_root: Path):
+    import pandas as pd
+
+    path = _artifact_path(repo_root, LIVE_PRICES_PATH)
+    if not path.exists():
+        return None
+    frame = pd.read_parquet(path)
+    if frame.empty:
+        return None
+    frame["trade_date"] = pd.to_datetime(frame["trade_date"])
+    frame["ticker"] = frame["ticker"].astype(str).str.upper()
+    return frame
 
 
 def _latest_signal_snapshot(repo_root: Path) -> dict[str, Any] | None:
     import pandas as pd
 
-    prediction_path = repo_root / DEFAULT_PREDICTIONS_PATH
+    prediction_path = _artifact_path(repo_root, LIVE_PREDICTIONS_PATH)
     if not prediction_path.exists():
         return None
     frame = pd.read_parquet(prediction_path)
@@ -76,33 +116,47 @@ def _latest_signal_snapshot(repo_root: Path) -> dict[str, Any] | None:
         "trade_date": latest_trade_date.date().isoformat(),
         "frame": latest,
         "ticker_count": int(latest["ticker"].nunique()),
+        "window_ids": sorted(latest["window_id"].astype(str).unique().tolist()),
+        "state": _load_signal_state(repo_root) or {},
     }
 
 
+def _resolve_execution_date(execution, signal_date):
+    import pandas as pd
+
+    execution_dates = execution.index.get_level_values("trade_date").unique().sort_values()
+    signal_ts = pd.Timestamp(signal_date)
+    eligible_trade_dates = execution_dates[execution_dates > signal_ts]
+    if len(eligible_trade_dates):
+        return eligible_trade_dates[0], "next_trade_date"
+    if signal_ts in set(execution_dates):
+        return signal_ts, "same_day_indicative"
+    return None, "missing"
+
+
 def _load_signals_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
-    from src.models.registry import ModelRegistry
-
-    registry = ModelRegistry()
-    champion = registry.get_champion("ridge_60d")
     snapshot = _latest_signal_snapshot(repo_root)
-    if champion is None:
-        return _result("load_signals", "skipped", reason="no_champion_registered")
     if snapshot is None:
-        return _result("load_signals", "skipped", reason="no_cached_signal_snapshot")
+        return _result("load_signals", "skipped", reason="no_fresh_live_signal_snapshot")
 
-    top_scores = (
-        snapshot["frame"][["ticker", "score"]]
-        .head(10)
-        .to_dict(orient="records")
-    )
+    top_scores = snapshot["frame"][["ticker", "score"]].head(10).to_dict(orient="records")
+    state = snapshot["state"]
+    strategy = dict(state.get("strategy") or {})
+    portfolio_state = dict(state.get("portfolio_state") or {})
     return _result(
         "load_signals",
         "ok",
-        model_name=champion.name,
-        version=champion.version,
+        signal_source="fresh_live_snapshot",
+        model_name=((state.get("model") or {}).get("model_name")),
+        signal_method=strategy.get("method"),
+        holding_period=strategy.get("holding_period"),
         latest_signal_date=snapshot["trade_date"],
         ticker_count=snapshot["ticker_count"],
         top_scores=top_scores,
+        mlflow_run_id=(state.get("mlflow") or {}).get("run_id"),
+        feature_batch_id=((state.get("feature_pipeline") or {}).get("batch_id")),
+        current_portfolio_holdings=int(len(portfolio_state.get("current_weights") or {})),
+        last_rebalance_signal_date=portfolio_state.get("last_rebalance_signal_date"),
     )
 
 
@@ -113,39 +167,71 @@ def load_signals(**context: Any) -> dict[str, Any]:
 def _portfolio_optimize_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     import pandas as pd
 
-    from src.portfolio.constraints import PortfolioConstraints
-    from src.portfolio.equal_weight import equal_weight_portfolio
+    from scripts.live_strategy import build_buffered_target_weights, should_rebalance
 
     snapshot = _latest_signal_snapshot(repo_root)
     if snapshot is None:
-        return _result("portfolio_optimize", "skipped", reason="no_cached_signal_snapshot")
+        return _result("portfolio_optimize", "skipped", reason="no_fresh_live_signal_snapshot")
 
-    scores = (
-        snapshot["frame"]
-        .set_index("ticker")["score"]
-        .astype(float)
+    state = snapshot["state"]
+    strategy = dict(state.get("strategy") or {})
+    if not strategy:
+        return _result("portfolio_optimize", "skipped", reason="missing_live_strategy_config")
+
+    portfolio_state = dict(state.get("portfolio_state") or {})
+    current_weights = {
+        str(ticker): float(weight)
+        for ticker, weight in dict(portfolio_state.get("current_weights") or {}).items()
+    }
+    rebalance_due = should_rebalance(
+        signal_date=snapshot["trade_date"],
+        holding_period=str(strategy.get("holding_period") or "4W"),
+        last_rebalance_signal_date=portfolio_state.get("last_rebalance_signal_date"),
     )
-    constraints = PortfolioConstraints(max_weight=0.05, min_holdings=20)
-    weights = equal_weight_portfolio(
-        scores,
-        selection_pct=0.20,
-        constraints=constraints,
+    if not rebalance_due and current_weights:
+        top_weights = pd.Series(current_weights, dtype=float).sort_values(ascending=False).head(10).to_dict()
+        return _result(
+            "portfolio_optimize",
+            "ok",
+            latest_signal_date=snapshot["trade_date"],
+            holding_count=len(current_weights),
+            gross_exposure=float(sum(current_weights.values())),
+            optimizer_name="hold_previous_portfolio",
+            fallback_used=False,
+            rebalance_due=False,
+            target_weights=current_weights,
+            top_weights=top_weights,
+            last_rebalance_signal_date=portfolio_state.get("last_rebalance_signal_date"),
+            holding_period=strategy.get("holding_period"),
+        )
+
+    scores = snapshot["frame"].set_index("ticker")["score"].astype(float)
+    weights, selection_details = build_buffered_target_weights(
+        scores=scores,
+        current_weights=current_weights,
+        strategy_config=strategy,
     )
     if not weights:
         return _result("portfolio_optimize", "skipped", reason="optimizer_returned_empty_weights")
 
-    top_weights = (
-        pd.Series(weights, dtype=float)
-        .sort_values(ascending=False)
-        .head(10)
-        .to_dict()
-    )
+    top_weights = pd.Series(weights, dtype=float).sort_values(ascending=False).head(10).to_dict()
     return _result(
         "portfolio_optimize",
         "ok",
         latest_signal_date=snapshot["trade_date"],
         holding_count=len(weights),
         gross_exposure=float(sum(weights.values())),
+        optimizer_name="equal_weight_portfolio",
+        fallback_used=False,
+        rebalance_due=True,
+        holding_period=strategy.get("holding_period"),
+        selection_pct=float(strategy.get("selection_pct", 0.20)),
+        sell_buffer_pct=strategy.get("sell_buffer_pct"),
+        candidate_count=int(selection_details["candidate_count"]),
+        retained_from_buffer=selection_details["retained_from_buffer"],
+        retained_count=int(selection_details["retained_count"]),
+        previous_holding_count=len(current_weights),
+        last_rebalance_signal_date=portfolio_state.get("last_rebalance_signal_date"),
         target_weights=weights,
         top_weights=top_weights,
     )
@@ -161,52 +247,64 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
 
     from src.backtest.execution import prepare_execution_price_frame
     from src.data.db.session import get_engine
-    from src.risk.portfolio_risk import PortfolioRiskEngine, compute_sector_weights
+    from src.risk.portfolio_risk import PortfolioRiskEngine
 
     optimize_payload = context["ti"].xcom_pull(task_ids="portfolio_optimize") or {}
     if optimize_payload.get("status") != "ok":
         return _result("portfolio_risk_check", "skipped", reason="no_optimized_portfolio_available")
 
     snapshot = _latest_signal_snapshot(repo_root)
-    prices_path = repo_root / DEFAULT_PRICES_PATH
-    if snapshot is None or not prices_path.exists():
-        return _result("portfolio_risk_check", "skipped", reason="missing_signal_or_price_cache")
+    state = (snapshot or {}).get("state") or {}
+    strategy = dict(state.get("strategy") or {})
+    portfolio_state = dict(state.get("portfolio_state") or {})
+    current_weights = {
+        str(ticker): float(weight)
+        for ticker, weight in dict(portfolio_state.get("current_weights") or {}).items()
+    }
+    if not bool(optimize_payload.get("rebalance_due", True)) and current_weights:
+        return _result(
+            "portfolio_risk_check",
+            "ok",
+            latest_signal_date=snapshot["trade_date"] if snapshot else None,
+            execution_date=None,
+            execution_mode="holding_period_gate",
+            holding_count=len(current_weights),
+            turnover=0.0,
+            portfolio_beta=None,
+            approved_weights=current_weights,
+            sector_weights={},
+            triggered_rules=[],
+            warnings=["holding_period_active"],
+            audit_entries=0,
+            rebalance_due=False,
+        )
 
-    prices = pd.read_parquet(prices_path)
+    prices = _load_price_snapshot(repo_root)
+    if snapshot is None or prices is None:
+        return _result("portfolio_risk_check", "skipped", reason="missing_live_signal_or_price_snapshot")
+
     execution = prepare_execution_price_frame(prices)
     latest_signal_date = pd.Timestamp(snapshot["trade_date"])
-    execution_dates = execution.index.get_level_values("trade_date").unique().sort_values()
-    eligible_trade_dates = execution_dates[execution_dates > latest_signal_date]
-    if eligible_trade_dates.empty:
-        return _result("portfolio_risk_check", "skipped", reason="no_execution_date_after_signal")
-    execution_date = pd.Timestamp(eligible_trade_dates[0])
+    execution_date, execution_mode = _resolve_execution_date(execution, latest_signal_date)
+    if execution_date is None:
+        return _result("portfolio_risk_check", "skipped", reason="no_execution_date_available")
 
     score_frame = snapshot["frame"].copy()
     scores = score_frame.set_index("ticker")["score"].astype(float).sort_values(ascending=False)
     raw_weights = {
         str(ticker): float(weight)
-        for ticker, weight in (
-            pd.Series(optimize_payload["target_weights"], dtype=float)
-            if optimize_payload.get("target_weights")
-            else pd.Series(dtype=float)
-        ).items()
+        for ticker, weight in pd.Series(optimize_payload.get("target_weights") or {}, dtype=float).items()
     }
-    if not raw_weights:
-        from src.portfolio.constraints import PortfolioConstraints
-        from src.portfolio.equal_weight import equal_weight_portfolio
-
-        raw_weights = equal_weight_portfolio(
-            scores,
-            selection_pct=0.20,
-            constraints=PortfolioConstraints(max_weight=0.05, min_holdings=20),
-        )
     if not raw_weights:
         return _result("portfolio_risk_check", "skipped", reason="empty_raw_weights")
 
     with get_engine().connect() as conn:
         stocks = pd.read_sql(text("select ticker, sector from stocks"), conn)
     sector_map = (
-        stocks.assign(ticker=stocks["ticker"].astype(str).str.upper(), sector=stocks["sector"].fillna("Unknown").astype(str))
+        stocks.assign(
+            ticker=stocks["ticker"].astype(str).str.upper(),
+            sector=stocks["sector"].fillna("Unknown").astype(str),
+        )
         .set_index("ticker")["sector"]
         .to_dict()
     )
@@ -214,7 +312,6 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
     score_tickers = scores.index.astype(str).tolist()
     benchmark_weight = 1.0 / len(score_tickers) if score_tickers else 0.0
     benchmark_weights = {ticker: benchmark_weight for ticker in score_tickers}
-    entry_slice = execution.xs(execution_date, level="trade_date")
     trailing_history = (
         execution["daily_return"]
         .unstack("ticker")
@@ -231,24 +328,28 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         sector_map=sector_map,
         return_history=trailing_history.reindex(columns=list(raw_weights)),
         spy_returns=spy_returns,
-        current_weights={},
+        current_weights=current_weights,
         candidate_ranking=score_tickers,
-        max_single_stock_weight=0.05,
+        max_single_stock_weight=float(strategy.get("max_weight", 0.05)),
         max_sector_deviation=0.15,
-        min_holdings=20,
+        min_holdings=int(strategy.get("min_holdings", 20)),
     )
     triggered_rules = [entry.rule_name for entry in constrained.audit_trail if entry.triggered]
     return _result(
         "portfolio_risk_check",
         "warning" if triggered_rules or constrained.warnings else "ok",
         latest_signal_date=snapshot["trade_date"],
+        execution_date=pd.Timestamp(execution_date).date().isoformat(),
+        execution_mode=execution_mode,
         holding_count=constrained.holding_count,
         turnover=constrained.turnover,
         portfolio_beta=constrained.portfolio_beta,
+        approved_weights={str(ticker): float(weight) for ticker, weight in constrained.weights.items()},
         sector_weights=constrained.sector_weights,
         triggered_rules=triggered_rules,
         warnings=constrained.warnings,
         audit_entries=len(constrained.audit_trail),
+        rebalance_due=True,
     )
 
 
@@ -259,6 +360,7 @@ def portfolio_risk_check(**context: Any) -> dict[str, Any]:
 def _generate_orders_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     import pandas as pd
 
+    from scripts.live_strategy import normalize_weight_dict
     from src.backtest.cost_model import AlmgrenChrissCostModel
     from src.backtest.execution import prepare_execution_price_frame
 
@@ -266,38 +368,70 @@ def _generate_orders_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
     if risk_payload.get("status") == "skipped":
         return _result("generate_orders", "skipped", reason="no_risk_approved_portfolio")
 
-    optimize_payload = context["ti"].xcom_pull(task_ids="portfolio_optimize") or {}
     snapshot = _latest_signal_snapshot(repo_root)
-    prices_path = repo_root / DEFAULT_PRICES_PATH
-    if optimize_payload.get("status") != "ok" or snapshot is None or not prices_path.exists():
-        return _result("generate_orders", "skipped", reason="missing_optimizer_output_or_prices")
+    state = (snapshot or {}).get("state") or {}
+    strategy = dict(state.get("strategy") or {})
+    portfolio_state = dict(state.get("portfolio_state") or {})
+    current_weights = {
+        str(ticker): float(weight)
+        for ticker, weight in dict(portfolio_state.get("current_weights") or {}).items()
+    }
+    prices = _load_price_snapshot(repo_root)
+    if snapshot is None or prices is None:
+        return _result("generate_orders", "skipped", reason="missing_live_signal_or_price_snapshot")
 
-    target_weights = pd.Series(optimize_payload["target_weights"], dtype=float)
+    target_weights = pd.Series(risk_payload.get("approved_weights") or {}, dtype=float)
     if target_weights.empty:
-        return _result("generate_orders", "skipped", reason="empty_target_weights")
+        return _result("generate_orders", "skipped", reason="empty_approved_weights")
+    if not bool(risk_payload.get("rebalance_due", True)):
+        state["portfolio_state"] = {
+            **portfolio_state,
+            "current_weights": normalize_weight_dict(current_weights),
+            "holding_count": int(len(current_weights)),
+            "holding_period": strategy.get("holding_period"),
+            "selection_pct": strategy.get("selection_pct"),
+            "sell_buffer_pct": strategy.get("sell_buffer_pct"),
+            "last_reviewed_signal_date": snapshot["trade_date"],
+            "rebalance_due_last_run": False,
+        }
+        _write_signal_state(repo_root, state)
+        return _result(
+            "generate_orders",
+            "skipped",
+            reason="holding_period_active",
+            latest_signal_date=snapshot["trade_date"],
+            execution_date=None,
+            execution_mode="holding_period_gate",
+            order_count=0,
+            estimated_total_cost=0.0,
+            orders=[],
+            rebalance_due=False,
+        )
 
-    prices = pd.read_parquet(prices_path)
     execution = prepare_execution_price_frame(prices)
     latest_signal_date = pd.Timestamp(snapshot["trade_date"])
-    execution_dates = execution.index.get_level_values("trade_date").unique().sort_values()
-    eligible_trade_dates = execution_dates[execution_dates > latest_signal_date]
-    if eligible_trade_dates.empty:
-        return _result("generate_orders", "skipped", reason="no_execution_date_after_signal")
-    execution_date = pd.Timestamp(eligible_trade_dates[0])
-    entry_slice = execution.xs(execution_date, level="trade_date")
+    execution_date, execution_mode = _resolve_execution_date(execution, latest_signal_date)
+    if execution_date is None:
+        return _result("generate_orders", "skipped", reason="no_execution_date_available")
+    entry_slice = execution.xs(pd.Timestamp(execution_date), level="trade_date")
 
     portfolio_value = 1_000_000.0
     cost_model = AlmgrenChrissCostModel()
     orders: list[dict[str, Any]] = []
-    for ticker, weight in target_weights.items():
+    for ticker in sorted(set(target_weights.index.astype(str)) | set(current_weights)):
+        target_weight = float(target_weights.get(ticker, 0.0))
+        current_weight = float(current_weights.get(ticker, 0.0))
+        delta_weight = target_weight - current_weight
+        if abs(delta_weight) <= 1e-12:
+            continue
         if ticker not in entry_slice.index:
             continue
         bar = entry_slice.loc[ticker]
-        notional = float(weight) * portfolio_value
+        notional = float(delta_weight) * portfolio_value
         execution_price = max(float(bar["execution_price"]), 1e-12)
         shares = notional / execution_price
         estimate = cost_model.estimate_trade(
-            order_shares=shares,
+            order_shares=abs(shares),
             execution_price=execution_price,
             sigma_20d=float(bar["sigma_20d"]),
             adv_20d_shares=float(bar["adv_20d_shares"]),
@@ -307,20 +441,41 @@ def _generate_orders_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
         orders.append(
             {
                 "ticker": str(ticker),
-                "target_weight": float(weight),
+                "current_weight": float(current_weight),
+                "target_weight": float(target_weight),
+                "delta_weight": float(delta_weight),
+                "side": "buy" if delta_weight > 0.0 else "sell",
                 "estimated_shares": float(shares),
                 "estimated_cost": float(estimate.total_cost),
             },
         )
 
+    state["portfolio_state"] = {
+        **portfolio_state,
+        "current_weights": normalize_weight_dict({str(ticker): float(weight) for ticker, weight in target_weights.items()}),
+        "previous_weights": normalize_weight_dict(current_weights),
+        "holding_count": int(len(target_weights)),
+        "holding_period": strategy.get("holding_period"),
+        "selection_pct": strategy.get("selection_pct"),
+        "sell_buffer_pct": strategy.get("sell_buffer_pct"),
+        "last_rebalance_signal_date": snapshot["trade_date"],
+        "last_reviewed_signal_date": snapshot["trade_date"],
+        "last_execution_date": pd.Timestamp(execution_date).date().isoformat(),
+        "execution_mode": execution_mode,
+        "rebalance_due_last_run": True,
+    }
+    _write_signal_state(repo_root, state)
+
     return _result(
         "generate_orders",
         "ok" if orders else "skipped",
         latest_signal_date=snapshot["trade_date"],
-        execution_date=execution_date.date().isoformat(),
+        execution_date=pd.Timestamp(execution_date).date().isoformat(),
+        execution_mode=execution_mode,
         order_count=len(orders),
         estimated_total_cost=float(sum(order["estimated_cost"] for order in orders)),
         orders=orders[:20],
+        rebalance_due=True,
     )
 
 
@@ -329,34 +484,57 @@ def generate_orders(**context: Any) -> dict[str, Any]:
 
 
 def _audit_log_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    from scripts.run_live_pipeline import persist_audit_log
     from src.risk.operational_risk import OperationalRiskMonitor
+
+    snapshot = _latest_signal_snapshot(repo_root)
+    if snapshot is None:
+        return _result("audit_log", "skipped", reason="no_live_signal_snapshot")
+
+    state = snapshot["state"]
+    feature_batch_id = ((state.get("feature_pipeline") or {}).get("batch_id"))
+    model_version_id = ((state.get("model") or {}).get("run_id"))
 
     monitor = OperationalRiskMonitor()
     events = []
+    critical_alerts: list[str] = []
     for task_id in ("load_signals", "portfolio_optimize", "portfolio_risk_check", "generate_orders"):
         payload = context["ti"].xcom_pull(task_ids=task_id) or {}
+        if payload.get("status") in {"warning", "error"}:
+            critical_alerts.append(f"{task_id}_{payload.get('status')}")
         events.append(
             monitor.audit_decision(
                 action=f"{task_id}_completed",
-                actor="airflow",
+                actor="weekly_rebalance_pipeline",
                 details={
                     "status": payload.get("status"),
                     "step": payload.get("step"),
+                    "latest_signal_date": payload.get("latest_signal_date"),
                 },
             ),
         )
+
     report = monitor.run_all_checks(
         runtime_seconds=0.0,
         critical_alerts=[],
         audit_events=events,
         max_runtime_seconds=3600.0,
     )
+    audit_insert = persist_audit_log(
+        audit_records=report.audit_log,
+        model_version_id=model_version_id,
+        feature_batch_id=feature_batch_id,
+    )
     return _result(
         "audit_log",
         "ok",
+        latest_signal_date=snapshot["trade_date"],
         audit_entries=len(report.audit_log),
+        inserted_count=int(audit_insert["inserted_count"]),
+        inserted_ids=audit_insert["inserted_ids"],
         overall_severity=report.overall_severity.value,
         fail_safe_mode=report.fail_safe_mode,
+        critical_alerts=critical_alerts,
         report=report.to_dict(),
     )
 

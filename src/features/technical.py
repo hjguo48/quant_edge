@@ -135,6 +135,7 @@ def _load_pit_shares_outstanding(date_pairs: pd.DataFrame) -> pd.DataFrame:
             FundamentalsPIT.ticker.in_(normalized_tickers),
             FundamentalsPIT.metric_name == _PIT_SHARES_METRIC_NAME,
             FundamentalsPIT.knowledge_time <= as_of_cutoff,
+            FundamentalsPIT.event_time <= max_trade_date,
         )
         .order_by(
             FundamentalsPIT.ticker,

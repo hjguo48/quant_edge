@@ -28,6 +28,7 @@ def get_fundamentals_pit(
     metric_names: Sequence[str] | None = None,
 ) -> pd.DataFrame:
     as_of_ts = _coerce_as_of(as_of)
+    as_of_date = as_of_ts.date()
     normalized_metrics = tuple(metric_names) if metric_names else None
 
     ranked = (
@@ -59,6 +60,7 @@ def get_fundamentals_pit(
         .where(
             FundamentalsPIT.ticker == ticker.upper(),
             FundamentalsPIT.knowledge_time <= as_of_ts,
+            FundamentalsPIT.event_time <= as_of_date,
         )
     )
     if normalized_metrics:

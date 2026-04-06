@@ -39,6 +39,7 @@ services:
     command: >-
       sh -c "python -m pip install --no-cache-dir --retries 20 --timeout 1000 'mlflow>=2.11' &&
       mlflow server --host 0.0.0.0 --port 5000
+      --allowed-hosts mlflow,mlflow:5000,localhost,localhost:5000,localhost:5001,127.0.0.1,127.0.0.1:5000,127.0.0.1:5001
       --backend-store-uri sqlite:///mlflow.db
       --default-artifact-root /mlflow"
     restart: on-failure

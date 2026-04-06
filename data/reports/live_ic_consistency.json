@@ -1,0 +1,285 @@
+{
+  "analysis": {
+    "live_window": {
+      "days": 731,
+      "end": "2025-12-31",
+      "start": "2024-01-01"
+    },
+    "observed_live_metrics_source": {
+      "aligned_prediction_rows": 11546,
+      "calibration_monotonic": false,
+      "calibration_spearman": 0.6727272727272726,
+      "feature_matrix_shape": {
+        "n_features": 58,
+        "n_stocks": 503
+      },
+      "feature_rows_live_date": 37725,
+      "feature_rows_total": 3128925,
+      "generated_at_utc": "2026-04-02T20:14:15Z",
+      "history_dates": 23,
+      "history_rows": 11546,
+      "live_ic": 0.04132677165022242,
+      "model_name": "ridge_60d",
+      "model_run_id": "81ca402814bd4069a4e09e4d37ffe1b0",
+      "model_version": 1,
+      "pit_signal_date": "2026-03-31",
+      "report_path": "/home/jiahao/quant_edge/data/reports/shadow_mode_dry_run.json",
+      "status": "completed_with_residual_risks"
+    },
+    "reference_alignment": {
+      "extended_walkforward": {
+        "coverage_end": "2025-06-30",
+        "coverage_start": "2021-07-01",
+        "fully_covers_live_window": false,
+        "overlap_days": 547
+      },
+      "walkforward_backtest": {
+        "coverage_end": "2023-12-31",
+        "coverage_start": "2021-07-01",
+        "fully_covers_live_window": false,
+        "overlap_days": 0
+      }
+    },
+    "summary": "walkforward_backtest coverage ends on 2023-12-31, before the live evaluation window starts on 2024-01-01; extended_walkforward overlaps the live window through 2025-06-30 and is the closest report-backed reference."
+  },
+  "champion_metadata": {
+    "features": [
+      "atr_14",
+      "vol_60d",
+      "gk_vol",
+      "vol_20d",
+      "vol_rank",
+      "bb_width",
+      "low_52w_ratio",
+      "revenue_growth_yoy",
+      "trend_confirmation",
+      "high_52w_ratio",
+      "macd_histogram",
+      "mean_reversion_combo",
+      "current_ratio",
+      "ret_vol_interaction_60d",
+      "momentum_rank_60d",
+      "ret_60d",
+      "ret_5d",
+      "amihud",
+      "earnings_growth_yoy",
+      "value_mom_pb",
+      "cci_20",
+      "bb_position",
+      "macd_signal",
+      "stoch_d",
+      "pb_ratio",
+      "stoch_k",
+      "quality_value_roe_pb",
+      "turnover_rate",
+      "operating_margin",
+      "mom_vol_adj_60d",
+      "ev_ebitda",
+      "fcf_mom_20d",
+      "vwap_deviation",
+      "liquidity_momentum",
+      "ret_vol_interaction_20d",
+      "mom_vol_adj_20d",
+      "rsi_14",
+      "ret_10d",
+      "obv_slope",
+      "momentum_rank_20d",
+      "ret_20d",
+      "rsi_28",
+      "breadth_momentum",
+      "credit_spread",
+      "credit_spread_change",
+      "dividend_yield",
+      "eps_surprise",
+      "ffr",
+      "macro_risk_on",
+      "market_ret_20d",
+      "risk_sentiment",
+      "sp500_breadth",
+      "spread_stress",
+      "vix",
+      "vix_change_5d",
+      "vix_rank",
+      "yield_10y",
+      "yield_spread_10y2y"
+    ],
+    "horizon": "60D",
+    "hyperparameters": {
+      "alpha": 0.001,
+      "alpha_grid": "0.001,0.01,0.1,1.0,10.0,100.0",
+      "best_alpha": 0.001,
+      "fit_intercept": true,
+      "rebalance_weekday": 4,
+      "test_end": "2021-12-31",
+      "test_start": "2021-07-01",
+      "train_end": "2020-12-31",
+      "train_start": "2018-01-01",
+      "validation_end": "2021-06-30",
+      "validation_start": "2021-01-01"
+    },
+    "metrics": {
+      "dsr_pvalue": 0.033132485688221275,
+      "max_drawdown": 0.1090298152688135,
+      "mean_oos_ic": 0.0718846301185171,
+      "mean_oos_icir": 0.5222627186647546,
+      "mean_rank_ic": 0.05211551974336596,
+      "net_excess_annualized": 0.02777683515875773,
+      "windows_positive_ic": 7.0
+    },
+    "model_type": "ridge",
+    "n_features": 58,
+    "train_end": "2020-12-31",
+    "train_start": "2018-01-01",
+    "val_end": "2021-06-30",
+    "val_start": "2021-01-01",
+    "walk_forward_windows": 8
+  },
+  "comparison": {
+    "champion_metadata_error_pct": 0.4250958573190618,
+    "champion_metadata_reference_ic": 0.0718846301185171,
+    "extended_walkforward_error_pct": 0.4250958573190618,
+    "extended_walkforward_reference_ic": 0.0718846301185171,
+    "passed": false,
+    "primary_error_pct": 0.4250958573190618,
+    "primary_reference": "extended_walkforward",
+    "primary_reference_ic": 0.0718846301185171,
+    "primary_reference_reason": "walkforward_backtest coverage ends on 2023-12-31, before the live evaluation window starts on 2024-01-01; extended_walkforward overlaps the live window through 2025-06-30 and is the closest report-backed reference.",
+    "reference_window_mismatch": {
+      "extended_walkforward_partial_coverage": true,
+      "walkforward_backtest": true
+    },
+    "threshold_pct": 0.2,
+    "walkforward_backtest_error_pct": 0.36223277449701186,
+    "walkforward_backtest_reference_ic": 0.06479914614243343
+  },
+  "comparison_basis": "extended_walkforward",
+  "evaluation_window": {
+    "as_of": "2026-04-01",
+    "benchmark_ticker": "SPY",
+    "end": "2025-12-31",
+    "horizon_days": 60,
+    "rebalance_weekday": 4,
+    "start": "2024-01-01"
+  },
+  "feature_audit": {
+    "feature_diagnostics": {
+      "feature_matrix_shape": {
+        "n_features": 58,
+        "n_stocks": 503
+      },
+      "feature_rows_live_date": 37725,
+      "feature_rows_total": 3128925,
+      "pit_signal_date": "2026-03-31",
+      "report_path": "/home/jiahao/quant_edge/data/reports/shadow_mode_dry_run.json",
+      "source": "shadow_mode_dry_run"
+    },
+    "metadata_feature_count": 58,
+    "metadata_not_in_retained": [],
+    "retained_feature_count": 58,
+    "retained_not_in_metadata": []
+  },
+  "generated_at_utc": "2026-04-03T03:01:46.318379+00:00",
+  "git_branch": "feature/batch6-day0-coldstart",
+  "ic_series": [],
+  "label_audit": {
+    "aligned_prediction_rows": 11546,
+    "history_dates": 23,
+    "history_rows": 11546,
+    "report_path": "/home/jiahao/quant_edge/data/reports/shadow_mode_dry_run.json",
+    "source": "shadow_mode_dry_run"
+  },
+  "live_metrics_source": "shadow_mode_report",
+  "metrics": {
+    "live_ic": 0.04132677165022242,
+    "live_icir": null,
+    "live_rank_ic": null
+  },
+  "model_source": {
+    "load_path": {
+      "artifact_path": "model/model.pkl",
+      "artifact_resolution": "mlflow_download_artifacts",
+      "local_model_path": "/tmp/tmpzd3o1zgg/model.pkl",
+      "method": "source_run_pickle_fallback",
+      "registry_pyfunc_error": "Could not find an \"MLmodel\" configuration file at \"/tmp/tmp39nefl8q/MLmodel\"",
+      "resolved_source_tracking_uri": "file:///home/jiahao/quant_edge/mlruns",
+      "source_run_id": "ff223fd41f344d3f8a117ddb963f9e32",
+      "source_tracking_uri": "file:///home/jiahao/quant_edge/mlruns"
+    },
+    "model_uri": "models:/ridge_60d@champion",
+    "registry_model_name": "ridge_60d",
+    "registry_tracking_uri": "http://127.0.0.1:5001",
+    "run_id": "81ca402814bd4069a4e09e4d37ffe1b0",
+    "stage": "Production",
+    "version": 1
+  },
+  "pit_mode": "batch_scoring_as_of",
+  "preprocessing": {
+    "feature_fill_method": "cross_sectional_median_then_0.5",
+    "feature_source": "FeaturePipeline.run",
+    "friday_only": true,
+    "min_cross_section_size": 10
+  },
+  "rank_ic_series": [],
+  "references": {
+    "backtest_aggregate_ic": 0.06479914614243343,
+    "champion_recorded_mean_oos_ic": 0.0718846301185171,
+    "extended_walkforward_aggregate_ic": 0.0718846301185171,
+    "reference_details": {
+      "champion_metadata": {
+        "coverage_end": "2025-06-30",
+        "coverage_start": "2021-07-01",
+        "fully_covers_live_window": false,
+        "generated_at_utc": "2026-04-02T06:43:22.117196+00:00",
+        "ic": 0.0718846301185171,
+        "name": "champion_metadata",
+        "overlap_days": 547,
+        "overlaps_live_window": true,
+        "report_exists": true,
+        "report_path": "/home/jiahao/quant_edge/data/reports/extended_walkforward.json",
+        "source": "registry_metadata_matched_extended_walkforward",
+        "window_count": 8
+      },
+      "extended_walkforward": {
+        "coverage_end": "2025-06-30",
+        "coverage_start": "2021-07-01",
+        "fully_covers_live_window": false,
+        "generated_at_utc": "2026-04-02T06:43:22.117196+00:00",
+        "ic": 0.0718846301185171,
+        "name": "extended_walkforward",
+        "overlap_days": 547,
+        "overlaps_live_window": true,
+        "report_exists": true,
+        "report_path": "/home/jiahao/quant_edge/data/reports/extended_walkforward.json",
+        "source": "walkforward_report",
+        "window_count": 8
+      },
+      "walkforward_backtest": {
+        "coverage_end": "2023-12-31",
+        "coverage_start": "2021-07-01",
+        "fully_covers_live_window": false,
+        "generated_at_utc": "2026-04-02T05:13:19.904133+00:00",
+        "ic": 0.06479914614243343,
+        "name": "walkforward_backtest",
+        "overlap_days": 0,
+        "overlaps_live_window": false,
+        "report_exists": true,
+        "report_path": "/home/jiahao/quant_edge/data/reports/walkforward_backtest.json",
+        "source": "walkforward_report",
+        "window_count": 5
+      }
+    }
+  },
+  "sample_size": {
+    "aligned_rows_after_filter": 11546,
+    "aligned_rows_before_filter": 11546,
+    "avg_cross_section_size": 502.0,
+    "dates_with_ic": 23,
+    "friday_dates_before_filter": 23,
+    "label_rows": 11546,
+    "max_cross_section_size": 502,
+    "min_cross_section_size": 502,
+    "prediction_rows": 11546
+  },
+  "script": "run_live_ic_validation.py",
+  "status": "fail"
+}

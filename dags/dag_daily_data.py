@@ -8,6 +8,7 @@ import sys
 from typing import Any
 
 from airflow import DAG
+from airflow.exceptions import AirflowException
 from airflow.operators.python import PythonOperator
 import pendulum
 
@@ -51,10 +52,12 @@ def _run_task(step: str, handler: Any, **context: Any) -> dict[str, Any]:
         payload.setdefault("status", "ok")
         payload.setdefault("step", step)
         payload.setdefault("timestamp_utc", datetime.now(timezone.utc).isoformat())
+        if str(payload.get("status", "")).lower() == "error":
+            raise AirflowException(payload.get("error") or f"{step} returned status=error")
         return payload
     except Exception as exc:
         LOGGER.exception("daily_data_pipeline task %s failed", step)
-        return _result(step, "error", error=str(exc))
+        raise AirflowException(str(exc)) from exc
 
 
 def _latest_feature_dates(repo_root: Path) -> tuple[str | None, str | None]:

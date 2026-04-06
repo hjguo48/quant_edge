@@ -31,6 +31,20 @@ data/reports/portfolio_optimization_comparison.json
 .DS_Store
 Thumbs.db
 
+# AI tooling
+.ccb/
+.claude/
+
+# Stray directories
+home/
+
+# MLflow local databases
+mlruns_*.db
+
+# Large data directories (cached, reproducible)
+data/backtest/
+data/features/all_features_batches/
+
 .ipynb_checkpoints/
 
 .coverage

@@ -59,14 +59,15 @@ def backfill_universe_membership(
     end_date: date | datetime,
     *,
     index_name: str = "SP500",
+    strict_fmp: bool = False,
 ) -> int:
     start = start_date.date() if isinstance(start_date, datetime) else start_date
     end = end_date.date() if isinstance(end_date, datetime) else end_date
     if end < start:
         raise ValueError("end_date must be on or after start_date")
 
-    current_constituents = _fetch_index_constituents(index_name=index_name)
-    change_events = _fetch_index_change_events(index_name=index_name)
+    current_constituents = _fetch_index_constituents(index_name=index_name, strict_fmp=strict_fmp)
+    change_events = _fetch_index_change_events(index_name=index_name, strict_fmp=strict_fmp)
     membership_rows = _reconstruct_membership_rows(
         current_constituents=current_constituents,
         change_events=change_events,
@@ -90,7 +91,7 @@ def backfill_universe_membership(
     return len(membership_rows)
 
 
-def _fetch_index_constituents(index_name: str) -> list[str]:
+def _fetch_index_constituents(index_name: str, *, strict_fmp: bool = False) -> list[str]:
     if index_name.upper() != "SP500":
         raise ValueError(f"Unsupported index_name={index_name!r}. Only SP500 is implemented.")
 
@@ -98,21 +99,25 @@ def _fetch_index_constituents(index_name: str) -> list[str]:
         try:
             return _fetch_sp500_from_fmp()
         except Exception as exc:
+            if strict_fmp:
+                raise
             logger.warning("FMP constituent fetch failed, falling back to Wikipedia: {}", exc)
 
     return _fetch_sp500_from_wikipedia()
 
 
-def _fetch_index_change_events(index_name: str) -> list[UniverseChangeEvent]:
+def _fetch_index_change_events(index_name: str, *, strict_fmp: bool = False) -> list[UniverseChangeEvent]:
     if index_name.upper() != "SP500":
         raise ValueError(f"Unsupported index_name={index_name!r}. Only SP500 is implemented.")
 
     if settings.FMP_API_KEY:
         try:
             events = _fetch_sp500_historical_changes_from_fmp()
-            if events:
+            if strict_fmp or events:
                 return events
         except Exception as exc:
+            if strict_fmp:
+                raise
             logger.warning(
                 "FMP historical constituent fetch failed, falling back to Wikipedia changes: {}",
                 exc,

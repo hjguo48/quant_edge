@@ -1,0 +1,710 @@
+{
+  "audit_log": {
+    "feature_batch_id": "d873cc5c-212e-4415-9b2b-0224e688bc65",
+    "inserted_count": 4,
+    "inserted_ids": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "db_state": {
+    "as_of_utc": "2026-04-02T18:03:22.032030+00:00",
+    "latest_pit_trade_date": "2026-03-31",
+    "latest_stored_trade_date": "2026-04-02",
+    "stock_universe_size": 503,
+    "universe_membership_live_count": 0
+  },
+  "feature_pipeline": {
+    "batch_id": "d873cc5c-212e-4415-9b2b-0224e688bc65",
+    "end_date": "2026-03-31",
+    "feature_matrix_shape": {
+      "n_features": 58,
+      "n_stocks": 503
+    },
+    "feature_rows_live_date": 37725,
+    "feature_rows_total": 3128925,
+    "feature_store_rows_saved": 37725,
+    "start_date": "2025-12-01"
+  },
+  "generated_at_utc": "2026-04-02T18:10:43.652941+00:00",
+  "issues": [
+    {
+      "code": "pit_lag_due_to_knowledge_time",
+      "message": "Latest stored price rows are newer than the PIT-visible cutoff; live scoring used the latest knowledge-time-safe date."
+    },
+    {
+      "code": "stale_universe_membership",
+      "message": "universe_membership has no active 2026 constituents, so the live run used the tracked stocks table as the current universe source."
+    },
+    {
+      "code": "no_challenger_registered",
+      "message": "No challenger model is registered; model-switch checks ran in neutral mode."
+    }
+  ],
+  "live_outputs": {
+    "signal_date": "2026-03-31",
+    "target_weights_after_risk": {
+      "AMCR": 0.01568627450980392,
+      "ANET": 0.01568627450980392,
+      "APP": 0.007686274509803921,
+      "ARE": 0.01568627450980392,
+      "AXON": 0.01568627450980392,
+      "BAX": 0.01568627450980392,
+      "BEN": 0.01568627450980392,
+      "BF-B": 0.055058823529411764,
+      "BLDR": 0.01568627450980392,
+      "CAG": 0.01568627450980392,
+      "CCL": 0.01568627450980392,
+      "CEG": 0.01568627450980392,
+      "CNC": 0.01568627450980392,
+      "COHR": 0.01568627450980392,
+      "CPB": 0.01568627450980392,
+      "CPRT": 0.01568627450980392,
+      "CRL": 0.01568627450980392,
+      "CSGP": 0.01568627450980392,
+      "DDOG": 0.01568627450980392,
+      "DOW": 0.01568627450980392,
+      "EL": 0.01568627450980392,
+      "FICO": 0.01568627450980392,
+      "GNRC": 0.01568627450980392,
+      "GPC": 0.01568627450980392,
+      "GPN": 0.01568627450980392,
+      "HOOD": 0.01568627450980392,
+      "HPE": 0.01568627450980392,
+      "IFF": 0.01568627450980392,
+      "IP": 0.01568627450980392,
+      "IR": 0.01568627450980392,
+      "IVZ": 0.01568627450980392,
+      "LEN": 0.01568627450980392,
+      "LUV": 0.01568627450980392,
+      "MAS": 0.01568627450980392,
+      "MCHP": 0.01568627450980392,
+      "MOS": 0.01568627450980392,
+      "NCLH": 0.01568627450980392,
+      "OMC": 0.01568627450980392,
+      "PSKY": 0.01568627450980392,
+      "RVTY": 0.01568627450980392,
+      "SW": 0.01568627450980392,
+      "SWK": 0.01568627450980392,
+      "TECH": 0.01568627450980392,
+      "TPL": 0.01568627450980392,
+      "TTD": 0.01568627450980392,
+      "ULTA": 0.01568627450980392,
+      "VTRS": 0.01568627450980392,
+      "WDAY": 0.01568627450980392,
+      "XYZ": 0.01568627450980392
+    },
+    "target_weights_raw": {
+      "AMCR": 0.0196078431372549,
+      "ANET": 0.0196078431372549,
+      "APP": 0.0196078431372549,
+      "ARE": 0.0196078431372549,
+      "AXON": 0.0196078431372549,
+      "BAX": 0.0196078431372549,
+      "BEN": 0.0196078431372549,
+      "BF-B": 0.0196078431372549,
+      "BLDR": 0.0196078431372549,
+      "CAG": 0.0196078431372549,
+      "CCL": 0.0196078431372549,
+      "CEG": 0.0196078431372549,
+      "CNC": 0.0196078431372549,
+      "COHR": 0.0196078431372549,
+      "COIN": 0.0196078431372549,
+      "CPB": 0.0196078431372549,
+      "CPRT": 0.0196078431372549,
+      "CRL": 0.0196078431372549,
+      "CSGP": 0.0196078431372549,
+      "DDOG": 0.0196078431372549,
+      "DOW": 0.0196078431372549,
+      "EL": 0.0196078431372549,
+      "FICO": 0.0196078431372549,
+      "GNRC": 0.0196078431372549,
+      "GPC": 0.0196078431372549,
+      "GPN": 0.0196078431372549,
+      "HOOD": 0.0196078431372549,
+      "HPE": 0.0196078431372549,
+      "IFF": 0.0196078431372549,
+      "IP": 0.0196078431372549,
+      "IR": 0.0196078431372549,
+      "IVZ": 0.0196078431372549,
+      "LEN": 0.0196078431372549,
+      "LUV": 0.0196078431372549,
+      "MAS": 0.0196078431372549,
+      "MCHP": 0.0196078431372549,
+      "MOS": 0.0196078431372549,
+      "NCLH": 0.0196078431372549,
+      "OMC": 0.0196078431372549,
+      "PSKY": 0.0196078431372549,
+      "RVTY": 0.0196078431372549,
+      "SMCI": 0.0196078431372549,
+      "SW": 0.0196078431372549,
+      "SWK": 0.0196078431372549,
+      "TECH": 0.0196078431372549,
+      "TPL": 0.0196078431372549,
+      "TTD": 0.0196078431372549,
+      "ULTA": 0.0196078431372549,
+      "VTRS": 0.0196078431372549,
+      "WDAY": 0.0196078431372549,
+      "XYZ": 0.0196078431372549
+    },
+    "top_10_scores": [
+      {
+        "score": 0.6344995678096617,
+        "ticker": "SMCI"
+      },
+      {
+        "score": 0.5792777890609873,
+        "ticker": "BAX"
+      },
+      {
+        "score": 0.5429459275501176,
+        "ticker": "CNC"
+      },
+      {
+        "score": 0.47218174005770286,
+        "ticker": "PSKY"
+      },
+      {
+        "score": 0.43546552144133344,
+        "ticker": "FICO"
+      },
+      {
+        "score": 0.41848101095442347,
+        "ticker": "TTD"
+      },
+      {
+        "score": 0.4154905768680799,
+        "ticker": "COIN"
+      },
+      {
+        "score": 0.4133781723475476,
+        "ticker": "IP"
+      },
+      {
+        "score": 0.4111918461895441,
+        "ticker": "AMCR"
+      },
+      {
+        "score": 0.4096077501839981,
+        "ticker": "CSGP"
+      }
+    ]
+  },
+  "model": {
+    "horizon": "60D",
+    "load_audit": {
+      "artifact_path": "model/model.pkl",
+      "local_model_path": "/tmp/tmpkqnmrtcf/model.pkl",
+      "method": "source_run_pickle_fallback",
+      "source_run_id": "ff223fd41f344d3f8a117ddb963f9e32",
+      "source_tracking_uri": "file:///home/jiahao/quant_edge/mlruns"
+    },
+    "model_name": "ridge_60d",
+    "n_features": 58,
+    "run_id": "81ca402814bd4069a4e09e4d37ffe1b0",
+    "stage": "Production",
+    "version": 1
+  },
+  "pipeline_success": true,
+  "risk_checks": {
+    "layer1_data": {
+      "pass": true,
+      "report": {
+        "api_health_alert": {
+          "consecutive_failures": 0,
+          "error_count": 0,
+          "halt_pipeline": false,
+          "max_consecutive_failures": 3,
+          "mean_response_time": 0.0,
+          "message": "API health stable: mean_response_time=0.000s, errors=0.",
+          "severity": "green",
+          "switch_to_backup": false
+        },
+        "feature_distribution_alerts": [],
+        "halt_pipeline": false,
+        "missing_rate_alert": {
+          "check_name": "missing_rate",
+          "halt_pipeline": false,
+          "message": "Observed 503 / 503 tickers; missing_rate=0.00%.",
+          "observed_value": 0.0,
+          "severity": "green",
+          "threshold_red": 0.15,
+          "threshold_yellow": 0.05
+        },
+        "overall_severity": "green"
+      },
+      "severity": "green"
+    },
+    "layer2_signal": {
+      "history_dates": 23,
+      "history_rows": 11546,
+      "pass": true,
+      "report": {
+        "calibration_alert": {
+          "bin_summary": [
+            {
+              "bin": 0,
+              "count": 1155.0,
+              "mean_realized": 0.05070483935967029,
+              "mean_score": -0.16512282366612094
+            },
+            {
+              "bin": 1,
+              "count": 1155.0,
+              "mean_realized": 0.04007184296752345,
+              "mean_score": -0.08819768856778688
+            },
+            {
+              "bin": 2,
+              "count": 1154.0,
+              "mean_realized": 0.02268569995406471,
+              "mean_score": -0.04878557916285725
+            },
+            {
+              "bin": 3,
+              "count": 1155.0,
+              "mean_realized": 0.032944748773874155,
+              "mean_score": -0.017427717957163733
+            },
+            {
+              "bin": 4,
+              "count": 1154.0,
+              "mean_realized": 0.0464032491125955,
+              "mean_score": 0.012135398052604955
+            },
+            {
+              "bin": 5,
+              "count": 1155.0,
+              "mean_realized": 0.05227938625420421,
+              "mean_score": 0.04112730546089169
+            },
+            {
+              "bin": 6,
+              "count": 1154.0,
+              "mean_realized": 0.06617064640115755,
+              "mean_score": 0.07109470155397463
+            },
+            {
+              "bin": 7,
+              "count": 1155.0,
+              "mean_realized": 0.048165214719813707,
+              "mean_score": 0.10495569304768078
+            },
+            {
+              "bin": 8,
+              "count": 1154.0,
+              "mean_realized": 0.07020582954186147,
+              "mean_score": 0.15347797318007533
+            },
+            {
+              "bin": 9,
+              "count": 1155.0,
+              "mean_realized": 0.060427005375349015,
+              "mean_score": 0.2628723807843083
+            }
+          ],
+          "message": "Calibration check completed with spearman=0.6727 and monotonic=False.",
+          "monotonic": false,
+          "n_bins": 10,
+          "severity": "yellow",
+          "spearman": 0.6727272727272726
+        },
+        "model_switch_alert": {
+          "challenger_ic": 0.04132677165022242,
+          "champion_ic": 0.04132677165022242,
+          "consecutive_challenger_wins": 0,
+          "message": "Champion remains active: challenger_wins=0, required=4.",
+          "recommend_switch": false,
+          "required_wins": 4,
+          "severity": "green"
+        },
+        "overall_severity": "yellow",
+        "recommend_switch": false,
+        "rolling_ic_alert": {
+          "consecutive_breaches": 2,
+          "consecutive_limit": 4,
+          "historical_mean_ic": 0.04132677165022242,
+          "message": "rolling_ic=0.0355, historical_mean=0.0413, consecutive_breaches=2.",
+          "rolling_mean_ic": 0.03546356873120814,
+          "severity": "green",
+          "switch_model": false,
+          "threshold_ratio": 0.5
+        }
+      },
+      "severity": "yellow"
+    },
+    "layer3_portfolio": {
+      "checks": {
+        "checks": {
+          "audit_trail_complete": {
+            "limit": 8,
+            "pass": true,
+            "value": 8
+          },
+          "beta_bounds": {
+            "bounds": [
+              0.7,
+              1.3
+            ],
+            "pass": true,
+            "value": 0.9331090046698249
+          },
+          "cash_non_negative": {
+            "limit": 0.0,
+            "pass": true,
+            "value": 0.19999999999999996
+          },
+          "cvar_floor": {
+            "limit": -0.05,
+            "pass": true,
+            "value": -0.027096509796404343
+          },
+          "gross_exposure_non_negative": {
+            "limit": 0.0,
+            "pass": true,
+            "value": 0.8
+          },
+          "max_single_stock_weight": {
+            "limit": 0.1,
+            "pass": true,
+            "value": 0.055058823529411764
+          },
+          "min_holdings": {
+            "limit": 20,
+            "pass": true,
+            "value": 49
+          },
+          "sector_deviation_cap": {
+            "limit": 0.15,
+            "pass": true,
+            "value": 0.09210618641094606
+          },
+          "stress_test": {
+            "limit": -0.12,
+            "pass": true,
+            "value": -0.074648720373586
+          },
+          "turnover_cap": {
+            "limit": 0.4,
+            "pass": true,
+            "value": 0.4
+          }
+        },
+        "max_abs_sector_deviation_vs_equal_weight_universe": 0.09210618641094606,
+        "overall_pass": true,
+        "sector_deviation_vs_equal_weight_universe": {
+          "Basic Materials": 0.007297392117880955,
+          "Communication Services": -0.008388882391922967,
+          "Consumer Cyclical": 0.037796748918255185,
+          "Consumer Defensive": 0.03253514208864462,
+          "Energy": -0.03003937161345651,
+          "Financial Services": -0.09210618641094606,
+          "Healthcare": -0.02317857560519236,
+          "Industrials": -0.025603243285385713,
+          "Real Estate": -0.030257669668264917,
+          "Technology": -0.02012333840096675,
+          "Utilities": -0.047932015748645376
+        },
+        "triggered_rules": [
+          "beta_alignment",
+          "turnover_cap"
+        ],
+        "warnings": []
+      },
+      "pass": true,
+      "report": {
+        "audit_trail": [
+          {
+            "action": "cap_weights",
+            "after": {
+              "max_weight": 0.0196078431372549
+            },
+            "before": {
+              "limit": 0.1,
+              "max_weight": 0.0196078431372549
+            },
+            "message": "Cap each name at the maximum single-stock weight.",
+            "priority": "P0",
+            "rule_name": "single_stock_cap",
+            "triggered": false
+          },
+          {
+            "action": "trim_overweight_sectors",
+            "after": {
+              "max_abs_deviation": 0.073090866565314,
+              "sector_weights": {
+                "Basic Materials": 0.058823529411764705,
+                "Communication Services": 0.0392156862745098,
+                "Consumer Cyclical": 0.1764705882352941,
+                "Consumer Defensive": 0.0784313725490196,
+                "Energy": 0.0196078431372549,
+                "Financial Services": 0.0784313725490196,
+                "Healthcare": 0.11764705882352941,
+                "Industrials": 0.1568627450980392,
+                "Real Estate": 0.0392156862745098,
+                "Technology": 0.21568627450980393,
+                "Utilities": 0.0196078431372549
+              }
+            },
+            "before": {
+              "max_abs_deviation": 0.073090866565314,
+              "sector_weights": {
+                "Basic Materials": 0.058823529411764705,
+                "Communication Services": 0.0392156862745098,
+                "Consumer Cyclical": 0.1764705882352941,
+                "Consumer Defensive": 0.0784313725490196,
+                "Energy": 0.0196078431372549,
+                "Financial Services": 0.0784313725490196,
+                "Healthcare": 0.11764705882352941,
+                "Industrials": 0.1568627450980392,
+                "Real Estate": 0.0392156862745098,
+                "Technology": 0.21568627450980393,
+                "Utilities": 0.0196078431372549
+              }
+            },
+            "message": "Keep sector deviation versus benchmark within the configured band.",
+            "priority": "P0",
+            "rule_name": "sector_deviation_cap",
+            "triggered": false
+          },
+          {
+            "action": "scale_down_gross",
+            "after": {
+              "cvar_99": -0.032878465741450626,
+              "gross_exposure": 1.0
+            },
+            "before": {
+              "cvar_99": -0.032878465741450626,
+              "floor": -0.05,
+              "gross_exposure": 1.0
+            },
+            "message": "Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+            "priority": "P0",
+            "rule_name": "cvar_haircut",
+            "triggered": false
+          },
+          {
+            "action": "tilt_toward_target_beta",
+            "after": {
+              "portfolio_beta": 1.166386255837281,
+              "target_bounds": [
+                0.8,
+                1.2
+              ]
+            },
+            "before": {
+              "hard_bounds": [
+                0.7,
+                1.3
+              ],
+              "portfolio_beta": 1.3608785584141252
+            },
+            "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+            "priority": "P1",
+            "rule_name": "beta_alignment",
+            "triggered": true
+          },
+          {
+            "action": "remove_redundant_names",
+            "after": {
+              "high_corr_pairs": 0
+            },
+            "before": {
+              "high_corr_pairs": 0
+            },
+            "message": "Trim highly correlated duplicate positions.",
+            "priority": "P1",
+            "rule_name": "correlation_dedup",
+            "triggered": false
+          },
+          {
+            "action": "blend_with_current_weights",
+            "after": {
+              "turnover": 0.4
+            },
+            "before": {
+              "limit": 0.4,
+              "turnover": 0.5
+            },
+            "message": "Cap one-period turnover at the configured limit.",
+            "priority": "P1",
+            "rule_name": "turnover_cap",
+            "triggered": true
+          },
+          {
+            "action": "add_small_satellite_positions",
+            "after": {
+              "holding_count": 49
+            },
+            "before": {
+              "holding_count": 49,
+              "minimum": 20
+            },
+            "message": "Maintain a diversified minimum number of holdings.",
+            "priority": "P2",
+            "rule_name": "minimum_holdings",
+            "triggered": false
+          },
+          {
+            "action": "warning_only",
+            "after": {
+              "stressed_return": -0.074648720373586
+            },
+            "before": {
+              "shock": -0.1,
+              "warning_threshold": -0.12
+            },
+            "message": "Run a simple market shock stress test without modifying weights.",
+            "priority": "P2",
+            "rule_name": "stress_test",
+            "triggered": false
+          }
+        ],
+        "cash_weight": 0.19999999999999996,
+        "cvar_99": -0.027096509796404343,
+        "gross_exposure": 0.8,
+        "holding_count": 49,
+        "portfolio_beta": 0.9331090046698249,
+        "sector_weights": {
+          "Basic Materials": 0.047058823529411764,
+          "Communication Services": 0.03137254901960784,
+          "Consumer Cyclical": 0.1411764705882353,
+          "Consumer Defensive": 0.10211764705882354,
+          "Energy": 0.01568627450980392,
+          "Financial Services": 0.047058823529411764,
+          "Healthcare": 0.09411764705882353,
+          "Industrials": 0.12549019607843137,
+          "Real Estate": 0.03137254901960784,
+          "Technology": 0.1488627450980392,
+          "Utilities": 0.01568627450980392
+        },
+        "turnover": 0.4,
+        "warnings": [],
+        "weights": {
+          "AMCR": 0.01568627450980392,
+          "ANET": 0.01568627450980392,
+          "APP": 0.007686274509803921,
+          "ARE": 0.01568627450980392,
+          "AXON": 0.01568627450980392,
+          "BAX": 0.01568627450980392,
+          "BEN": 0.01568627450980392,
+          "BF-B": 0.055058823529411764,
+          "BLDR": 0.01568627450980392,
+          "CAG": 0.01568627450980392,
+          "CCL": 0.01568627450980392,
+          "CEG": 0.01568627450980392,
+          "CNC": 0.01568627450980392,
+          "COHR": 0.01568627450980392,
+          "CPB": 0.01568627450980392,
+          "CPRT": 0.01568627450980392,
+          "CRL": 0.01568627450980392,
+          "CSGP": 0.01568627450980392,
+          "DDOG": 0.01568627450980392,
+          "DOW": 0.01568627450980392,
+          "EL": 0.01568627450980392,
+          "FICO": 0.01568627450980392,
+          "GNRC": 0.01568627450980392,
+          "GPC": 0.01568627450980392,
+          "GPN": 0.01568627450980392,
+          "HOOD": 0.01568627450980392,
+          "HPE": 0.01568627450980392,
+          "IFF": 0.01568627450980392,
+          "IP": 0.01568627450980392,
+          "IR": 0.01568627450980392,
+          "IVZ": 0.01568627450980392,
+          "LEN": 0.01568627450980392,
+          "LUV": 0.01568627450980392,
+          "MAS": 0.01568627450980392,
+          "MCHP": 0.01568627450980392,
+          "MOS": 0.01568627450980392,
+          "NCLH": 0.01568627450980392,
+          "OMC": 0.01568627450980392,
+          "PSKY": 0.01568627450980392,
+          "RVTY": 0.01568627450980392,
+          "SW": 0.01568627450980392,
+          "SWK": 0.01568627450980392,
+          "TECH": 0.01568627450980392,
+          "TPL": 0.01568627450980392,
+          "TTD": 0.01568627450980392,
+          "ULTA": 0.01568627450980392,
+          "VTRS": 0.01568627450980392,
+          "WDAY": 0.01568627450980392,
+          "XYZ": 0.01568627450980392
+        }
+      }
+    },
+    "layer4_operational": {
+      "pass": true,
+      "report": {
+        "audit_log": [
+          {
+            "action": "live_features_generated",
+            "actor": "run_live_pipeline",
+            "details": {
+              "feature_batch_id": "d873cc5c-212e-4415-9b2b-0224e688bc65",
+              "feature_rows": 37725,
+              "trade_date": "2026-03-31"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-02T18:10:43.599054+00:00"
+          },
+          {
+            "action": "live_scores_generated",
+            "actor": "run_live_pipeline",
+            "details": {
+              "model_name": "ridge_60d",
+              "model_version": 1,
+              "top_score_ticker": "SMCI"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-02T18:10:43.599094+00:00"
+          },
+          {
+            "action": "portfolio_risk_evaluated",
+            "actor": "run_live_pipeline",
+            "details": {
+              "overall_pass": true,
+              "triggered_rules": [
+                "beta_alignment",
+                "turnover_cap"
+              ]
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-02T18:10:43.599102+00:00"
+          },
+          {
+            "action": "operational_risk_evaluated",
+            "actor": "risk_engine",
+            "details": {
+              "fail_safe": false,
+              "runtime_seconds": 441.0900797690001,
+              "timeout_severity": "green"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-02T18:10:43.599141+00:00"
+          }
+        ],
+        "fail_safe_alert": {
+          "check_name": "fail_safe_mode",
+          "fail_safe_mode": false,
+          "halt_pipeline": false,
+          "message": "Fail-safe mode not required.",
+          "severity": "green"
+        },
+        "fail_safe_mode": false,
+        "halt_pipeline": false,
+        "overall_severity": "green",
+        "timeout_alert": {
+          "check_name": "timeout",
+          "fail_safe_mode": false,
+          "halt_pipeline": false,
+          "message": "Pipeline runtime 441.1s is within the allowed limit.",
+          "severity": "green"
+        }
+      },
+      "severity": "green"
+    }
+  }
+}

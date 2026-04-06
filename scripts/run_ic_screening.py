@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover - exercised only in misconfigured enviro
     pq = None
 
 
-FEATURE_START_DATE = date(2019, 7, 1)
+FEATURE_START_DATE = date(2016, 3, 1)
 FEATURE_END_DATE = date(2025, 6, 30)
 AS_OF_DATE = date(2026, 3, 31)
 LABEL_BUFFER_DAYS = 120
@@ -362,6 +362,7 @@ def load_raw_fundamentals_history(*, ticker: str, max_trade_date: date) -> pd.Da
             FundamentalsPIT.ticker == ticker.upper(),
             FundamentalsPIT.metric_name.in_(fundamental_module._PIT_METRIC_NAMES),
             FundamentalsPIT.knowledge_time <= cutoff,
+            FundamentalsPIT.event_time <= max_trade_date,
         )
         .order_by(
             FundamentalsPIT.knowledge_time,

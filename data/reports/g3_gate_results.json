@@ -1,0 +1,151 @@
+{
+  "artifacts": {
+    "comparison_report": "/home/jiahao/quant_edge/data/reports/walkforward_comparison_60d.json",
+    "fusion_report": "/home/jiahao/quant_edge/data/reports/fusion_analysis_60d.json",
+    "tracking_uri": "http://127.0.0.1:5001"
+  },
+  "champion": "ic_weighted_fusion_60d",
+  "checks": {
+    "bootstrap_ci_positive": {
+      "annualized_excess_ci_lower": 0.11002138344394426,
+      "annualized_excess_ci_upper": 0.3201610368193504,
+      "annualized_excess_estimate": 0.2053450971966655,
+      "annualized_excess_p_value": 0.0,
+      "block_size": 12,
+      "ci_level": 0.95,
+      "mean_excess_ci_lower": 0.02957437742729009,
+      "mean_excess_ci_upper": 0.07811668315269753,
+      "mean_excess_estimate": 0.05247627849604694,
+      "mean_excess_p_value": 0.0,
+      "method": "top_decile_excess_per_test_date_proxy",
+      "n_bootstrap": 10000,
+      "n_observations": 278,
+      "passed": true,
+      "sharpe_ci_lower": 0.6439266542939457,
+      "sharpe_ci_upper": 1.4868087480941183,
+      "sharpe_estimate": 0.9882073345576524,
+      "sharpe_p_value": 0.0
+    },
+    "cost_adjusted_excess": {
+      "annual_turnover_cost": 0.07141468312445443,
+      "cost_per_turnover_bps": 50.0,
+      "gross_annualized_excess": 0.21665368540518737,
+      "mean_turnover": 0.27467185817097856,
+      "method": "estimated_top_decile_60d_geometric_annualization_minus_turnover_cost",
+      "n_obs": 278,
+      "passed": true,
+      "threshold": 0.05,
+      "value": 0.14523900228073294
+    },
+    "dsr_significant": {
+      "dsr_stat": 15.660982617065986,
+      "e_max_sr": 0.09961679161527465,
+      "family_counts": {
+        "model:lightgbm:5D": 19,
+        "model:lstm:5D": 21,
+        "model:ridge:10D": 4,
+        "model:ridge:1D": 3,
+        "model:ridge:20D": 3,
+        "model:ridge:2D": 3,
+        "model:ridge:5D": 6,
+        "model:ridge:60D": 34,
+        "model:xgboost:5D": 19,
+        "other:unknown": 16,
+        "portfolio:black_litterman": 1,
+        "portfolio:equal_weight": 2,
+        "portfolio:equal_weight_buffered": 2,
+        "portfolio:vol_inverse": 1,
+        "portfolio:vol_inverse_buffered": 1
+      },
+      "independent_trials": 15,
+      "method": "daily_cross_sectional_ic_proxy",
+      "n_observations": 278,
+      "observed_sharpe": 3.9715869729127733,
+      "p_value": 1.8869259418778677e-53,
+      "passed": true,
+      "performance_metric_priority": [
+        "annualized_net_excess",
+        "annualized_gross_excess",
+        "mean_ic",
+        "test_ic",
+        "validation_ic"
+      ],
+      "raw_p_value": 1.3977229199095317e-55,
+      "sample_kurtosis": 6.45747905830623,
+      "sample_skew": 1.4072430245327718,
+      "se_sharpe": 0.24723673322248374,
+      "sigma_sr": 0.042804477180588094,
+      "significant": true,
+      "total_trials": 135,
+      "tracking_uri": "http://127.0.0.1:5001",
+      "usable_trial_metrics": 118
+    },
+    "ic_ttest_significant": {
+      "alternative": "greater",
+      "mean_ic": 0.09137099618774651,
+      "method": "one_sided_ttest_on_window_ics",
+      "n_observations": 11,
+      "p_value": 0.0007052214881598893,
+      "passed": true,
+      "significant": true,
+      "std_ic": 0.06942836172597751,
+      "t_statistic": 4.364834536522863,
+      "threshold": 0.05
+    },
+    "oos_ic_above_threshold": {
+      "n_windows": 11,
+      "passed": true,
+      "positive_windows": 9,
+      "source": "/home/jiahao/quant_edge/data/reports/fusion_analysis_60d.json:ic_weighted_fusion",
+      "threshold": 0.03,
+      "value": 0.09137099618774651
+    },
+    "spa_vs_old_champion": {
+      "benchmark": "ridge_proxy",
+      "benchmark_proxy": "ridge_from_r8.2",
+      "comparison": {
+        "adjusted_p_value": 2.620085669203484e-10,
+        "benchmark_mean_ic": 0.0342421076973686,
+        "competitor": "new_fusion",
+        "competitor_mean_ic": 0.09162117077805129,
+        "mean_ic_delta": 0.057379063080682684,
+        "n_observations": 278,
+        "p_value": 2.620085669203484e-10,
+        "significant": true,
+        "t_statistic": 6.440622529209353
+      },
+      "comparisons": [
+        {
+          "adjusted_p_value": 2.620085669203484e-10,
+          "benchmark_mean_ic": 0.0342421076973686,
+          "competitor": "new_fusion",
+          "competitor_mean_ic": 0.09162117077805129,
+          "mean_ic_delta": 0.057379063080682684,
+          "n_observations": 278,
+          "p_value": 2.620085669203484e-10,
+          "significant": true,
+          "t_statistic": 6.440622529209353
+        }
+      ],
+      "method": "paired_t_test_holm_fallback",
+      "null_hypothesis": "ridge_proxy is not worse than any competitor on aligned test-period IC.",
+      "p_value": 2.620085669203484e-10,
+      "passed": true,
+      "significant": true
+    }
+  },
+  "gate": "G3",
+  "gate_result": "PASS",
+  "gate_rule": "PASS requires 6/6, CONDITIONAL_GO requires 5/6",
+  "mean_test_ic": 0.09137099618774651,
+  "positive_window_count": 9,
+  "series_reconstruction": {
+    "daily_fusion_ic_observations": 278,
+    "daily_ridge_ic_observations": 278,
+    "top_decile_excess_observations": 278,
+    "turnover_observations": 267
+  },
+  "total_checks": 6,
+  "total_passed": 6,
+  "window_count": 11
+}

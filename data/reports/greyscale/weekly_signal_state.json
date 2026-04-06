@@ -1,0 +1,199 @@
+{
+  "artifacts": {
+    "monitor_summary_path": "data/reports/greyscale/g4_gate_summary.json",
+    "report_dir": "data/reports/greyscale"
+  },
+  "as_of_utc": "2026-04-06T01:16:01.771198+00:00",
+  "db_state": {
+    "latest_pit_trade_date": "2026-04-02",
+    "latest_stored_trade_date": "2026-04-02",
+    "universe_membership_live_count": 503
+  },
+  "feature_pipeline": {
+    "end_date": "2026-04-02",
+    "expected_feature_count": 29,
+    "mode": "delegated_to_run_greyscale_live",
+    "reference_feature_matrix_path": "data/features/walkforward_feature_matrix_60d.parquet",
+    "start_date": "2025-02-26"
+  },
+  "generated_at_utc": "2026-04-06T01:16:03.626103+00:00",
+  "greyscale_monitor": {
+    "generated_at_utc": "2026-04-06T01:16:04.174711+00:00",
+    "summary": {
+      "checks": {
+        "live_ic_above_threshold": {
+          "passed": null,
+          "threshold": 0.06,
+          "value": null
+        },
+        "model_consistency_above_threshold": {
+          "passed": null,
+          "threshold": 0.5,
+          "value": 0.36904489222668974
+        },
+        "no_layer12_halts": {
+          "passed": null,
+          "threshold": 0,
+          "value": 0
+        },
+        "positive_ic_weeks": {
+          "passed": null,
+          "threshold": ">= 3/4",
+          "value": 0
+        },
+        "turnover_below_cap": {
+          "passed": null,
+          "threshold": 0.45,
+          "value": 0.0
+        }
+      },
+      "gate_rule": "PASS requires 5/5 checks after 4 matured weekly reports; otherwise PENDING or FAIL.",
+      "gate_status": "PENDING",
+      "layer12_halt_count": 0,
+      "matured_weeks": 0,
+      "mean_live_ic": null,
+      "mean_pairwise_rank_correlation": 0.36904489222668974,
+      "mean_turnover": 0.0,
+      "positive_live_ic_weeks": 0,
+      "reports_seen": 1,
+      "rolling_live_ic_std": null
+    },
+    "summary_path": "/home/jiahao/quant_edge/data/reports/greyscale/g4_gate_summary.json"
+  },
+  "latest_greyscale_report": {
+    "regime": {
+      "regime": "mid",
+      "scalar": 0.8,
+      "vix": 24.54,
+      "weights": {
+        "high": 0.8,
+        "low": 1.0,
+        "mid": 0.8,
+        "unknown": 1.0
+      }
+    },
+    "report_path": "/home/jiahao/quant_edge/data/reports/greyscale/week_01.json",
+    "signal_date": "2026-04-02",
+    "weight_source": "seed_w11_avg_weights"
+  },
+  "live_outputs": {
+    "signal_date": "2026-04-02",
+    "ticker_count": 507,
+    "top_10_scores": [
+      {
+        "score": 4.50971485191672,
+        "ticker": "ARE"
+      },
+      {
+        "score": 3.800802106517766,
+        "ticker": "IBKR"
+      },
+      {
+        "score": 2.8339914681696876,
+        "ticker": "PLTR"
+      },
+      {
+        "score": 2.7304275960424933,
+        "ticker": "PGR"
+      },
+      {
+        "score": 2.2725612269077455,
+        "ticker": "CVNA"
+      },
+      {
+        "score": 2.2663175751419495,
+        "ticker": "FIX"
+      },
+      {
+        "score": 1.7767710166340966,
+        "ticker": "BA"
+      },
+      {
+        "score": 1.5632744310864235,
+        "ticker": "CCI"
+      },
+      {
+        "score": 1.554370361491757,
+        "ticker": "NVDA"
+      },
+      {
+        "score": 1.4925830886689666,
+        "ticker": "ANET"
+      }
+    ]
+  },
+  "model_bundle": {
+    "horizon_days": 60,
+    "models": {
+      "lightgbm": "/home/jiahao/quant_edge/data/models/fusion_lightgbm_60d.pkl",
+      "ridge": "/home/jiahao/quant_edge/data/models/fusion_ridge_60d.pkl",
+      "xgboost": "/home/jiahao/quant_edge/data/models/fusion_xgboost_60d.pkl"
+    },
+    "path": "/home/jiahao/quant_edge/data/models/fusion_model_bundle_60d.json",
+    "regime_weights": {
+      "high": 0.8,
+      "low": 1.0,
+      "mid": 0.8,
+      "unknown": 1.0
+    },
+    "retained_feature_count": 29,
+    "retained_features": [
+      "vol_60d",
+      "atr_14",
+      "low_52w_ratio",
+      "gk_vol",
+      "vol_20d",
+      "vol_rank",
+      "bb_width",
+      "value_mom_pb",
+      "quality_value_roe_pb",
+      "pb_ratio",
+      "ev_ebitda",
+      "current_ratio",
+      "fcf_yield",
+      "dividend_yield",
+      "revenue_growth_yoy",
+      "ps_ratio",
+      "adx_14",
+      "amihud",
+      "high_52w_ratio",
+      "roa",
+      "profitability_combo",
+      "debt_to_equity",
+      "roe",
+      "value_mom_pe",
+      "pe_ratio",
+      "quality_value_roa_pe",
+      "earnings_growth_yoy",
+      "operating_margin",
+      "stoch_d"
+    ],
+    "seed_weights": {
+      "lightgbm": 0.35536666592571287,
+      "ridge": 0.25469836741574375,
+      "xgboost": 0.3899349666585434
+    },
+    "temperature": 5.0,
+    "window_id": "W11"
+  },
+  "signal_date": "2026-04-02",
+  "signal_risk": {
+    "challenger_ic": 0.0,
+    "fusion_ic": null,
+    "history_dates": 0,
+    "history_rows": 0,
+    "pass": true,
+    "recommend_switch": false,
+    "report": {
+      "matured_history_points": 0,
+      "message": "Insufficient matured live history for rolling signal-risk checks; the greyscale run stays on seeded fusion weights.",
+      "mode": "cold_start_seed_weights",
+      "required_points": 12
+    },
+    "severity": "green"
+  },
+  "universe": {
+    "size": 507,
+    "source": "stock_prices_pit"
+  }
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from typing import Any
@@ -51,6 +52,27 @@ ENDPOINT_CONFIG = {
         "free_cash_flow": "freeCashFlow",
     },
 }
+
+DIVIDEND_ENDPOINT = "dividends"
+EARNINGS_ENDPOINT = "earnings"
+CONSENSUS_METRIC_NAMES = ("consensus_eps", "eps_consensus")
+DERIVED_FUNDAMENTAL_METRICS = (
+    "book_value_per_share",
+    "annual_dividend",
+    "dividend_per_share",
+    *CONSENSUS_METRIC_NAMES,
+)
+INGESTED_FUNDAMENTAL_METRICS = frozenset(
+    metric_name
+    for endpoint_metrics in ENDPOINT_CONFIG.values()
+    for metric_name in endpoint_metrics
+).union(DERIVED_FUNDAMENTAL_METRICS)
+
+
+@dataclass(frozen=True)
+class FundamentalAnchor:
+    fiscal_period: str
+    event_time: date
 
 
 class FMPDataSource(DataSource):
@@ -238,6 +260,7 @@ class FMPDataSource(DataSource):
     def _fetch_ticker_records(self, ticker: str) -> list[dict[str, Any]]:
         metric_records: list[dict[str, Any]] = []
         derived_inputs: dict[tuple[str, date], dict[str, Any]] = {}
+        canonical_anchors: dict[str, FundamentalAnchor] = {}
 
         for endpoint, metric_mapping in ENDPOINT_CONFIG.items():
             try:
@@ -256,6 +279,11 @@ class FMPDataSource(DataSource):
 
                 fiscal_period = self._derive_fiscal_period(row, event_time)
                 knowledge_time = self._parse_knowledge_time(row) or self._fallback_knowledge_time(event_time)
+                if endpoint == "income-statement" or fiscal_period not in canonical_anchors:
+                    canonical_anchors[fiscal_period] = FundamentalAnchor(
+                        fiscal_period=fiscal_period,
+                        event_time=event_time,
+                    )
                 derived_bucket = derived_inputs.setdefault(
                     (fiscal_period, event_time),
                     {
@@ -279,17 +307,19 @@ class FMPDataSource(DataSource):
                         derived_bucket["shares"] = metric_value
                         derived_bucket["shares_knowledge_time"] = knowledge_time
                     metric_records.append(
-                        {
-                            "ticker": ticker,
-                            "fiscal_period": fiscal_period,
-                            "metric_name": metric_name,
-                            "metric_value": metric_value,
-                            "event_time": event_time,
-                            "knowledge_time": knowledge_time,
-                            "is_restated": False,
-                            "source": self.source_name,
-                        },
+                        self._build_metric_record(
+                            ticker=ticker,
+                            fiscal_period=fiscal_period,
+                            metric_name=metric_name,
+                            metric_value=metric_value,
+                            event_time=event_time,
+                            knowledge_time=knowledge_time,
+                        ),
                     )
+
+        anchors = self._sorted_anchors(canonical_anchors)
+        metric_records.extend(self._build_dividend_records(ticker=ticker, anchors=anchors))
+        metric_records.extend(self._build_consensus_records(ticker=ticker, anchors=anchors))
 
         for payload in derived_inputs.values():
             equity = payload["equity"]
@@ -305,16 +335,14 @@ class FMPDataSource(DataSource):
 
             knowledge_time = max(equity_knowledge_time, shares_knowledge_time)
             metric_records.append(
-                {
-                    "ticker": ticker,
-                    "fiscal_period": payload["fiscal_period"],
-                    "metric_name": "book_value_per_share",
-                    "metric_value": self._to_decimal(float(equity) / shares_float),
-                    "event_time": payload["event_time"],
-                    "knowledge_time": knowledge_time,
-                    "is_restated": False,
-                    "source": self.source_name,
-                },
+                self._build_metric_record(
+                    ticker=ticker,
+                    fiscal_period=str(payload["fiscal_period"]),
+                    metric_name="book_value_per_share",
+                    metric_value=self._to_decimal(float(equity) / shares_float),
+                    event_time=payload["event_time"],
+                    knowledge_time=knowledge_time,
+                ),
             )
 
         return sorted(
@@ -325,6 +353,189 @@ class FMPDataSource(DataSource):
                 record["knowledge_time"],
             ),
         )
+
+    def _build_dividend_records(
+        self,
+        *,
+        ticker: str,
+        anchors: Sequence[FundamentalAnchor],
+    ) -> list[dict[str, Any]]:
+        if not anchors:
+            return []
+
+        try:
+            rows = self._get_all_endpoint_rows(DIVIDEND_ENDPOINT, ticker, period=None)
+        except DataSourceTransientError:
+            raise
+        except Exception as exc:
+            raise DataSourceTransientError(
+                f"Failed to retrieve FMP {DIVIDEND_ENDPOINT} for {ticker}: {exc}",
+            ) from exc
+
+        dividend_history: list[tuple[date, Decimal]] = []
+        records: list[dict[str, Any]] = []
+        for row in sorted(rows, key=lambda payload: self._parse_date_value(payload.get("date")) or date.min):
+            dividend_date = self._parse_date_value(row.get("date"))
+            declaration_date = self._parse_date_value(row.get("declarationDate"))
+            if dividend_date is None:
+                continue
+
+            anchor = self._match_anchor(
+                reference_date=declaration_date or dividend_date,
+                anchors=anchors,
+                max_lag_days=120,
+            )
+            if anchor is None:
+                continue
+
+            dividend_value = self._to_decimal(row.get("dividend"))
+            if dividend_value is None:
+                dividend_value = self._to_decimal(row.get("adjDividend"))
+            if dividend_value is None or float(dividend_value) <= 0:
+                continue
+
+            knowledge_time = self._knowledge_time_from_calendar_date(declaration_date or dividend_date)
+            if knowledge_time is None:
+                knowledge_time = self._fallback_knowledge_time(anchor.event_time)
+
+            dividend_history.append((dividend_date, dividend_value))
+            annual_dividend = self._rolling_annual_dividend(dividend_history, as_of_date=dividend_date)
+            records.append(
+                self._build_metric_record(
+                    ticker=ticker,
+                    fiscal_period=anchor.fiscal_period,
+                    metric_name="dividend_per_share",
+                    metric_value=dividend_value,
+                    event_time=anchor.event_time,
+                    knowledge_time=knowledge_time,
+                ),
+            )
+            if annual_dividend is not None:
+                records.append(
+                    self._build_metric_record(
+                        ticker=ticker,
+                        fiscal_period=anchor.fiscal_period,
+                        metric_name="annual_dividend",
+                        metric_value=annual_dividend,
+                        event_time=anchor.event_time,
+                        knowledge_time=knowledge_time,
+                    ),
+                )
+
+        return records
+
+    def _build_consensus_records(
+        self,
+        *,
+        ticker: str,
+        anchors: Sequence[FundamentalAnchor],
+    ) -> list[dict[str, Any]]:
+        if not anchors:
+            return []
+
+        try:
+            rows = self._get_all_endpoint_rows(EARNINGS_ENDPOINT, ticker, period=None)
+        except DataSourceTransientError:
+            raise
+        except Exception as exc:
+            raise DataSourceTransientError(
+                f"Failed to retrieve FMP {EARNINGS_ENDPOINT} for {ticker}: {exc}",
+            ) from exc
+
+        records: list[dict[str, Any]] = []
+        seen_keys: set[tuple[str, str, datetime]] = set()
+        for row in sorted(rows, key=lambda payload: self._parse_date_value(payload.get("date")) or date.min):
+            earnings_date = self._parse_date_value(row.get("date"))
+            if earnings_date is None:
+                continue
+
+            anchor = self._match_anchor(reference_date=earnings_date, anchors=anchors, max_lag_days=120)
+            if anchor is None:
+                continue
+
+            consensus_value = self._to_decimal(row.get("epsEstimated"))
+            if consensus_value is None:
+                continue
+
+            knowledge_time = self._knowledge_time_from_calendar_date(earnings_date)
+            if knowledge_time is None:
+                knowledge_time = self._fallback_knowledge_time(anchor.event_time)
+
+            for metric_name in CONSENSUS_METRIC_NAMES:
+                dedupe_key = (anchor.fiscal_period, metric_name, knowledge_time)
+                if dedupe_key in seen_keys:
+                    continue
+                seen_keys.add(dedupe_key)
+                records.append(
+                    self._build_metric_record(
+                        ticker=ticker,
+                        fiscal_period=anchor.fiscal_period,
+                        metric_name=metric_name,
+                        metric_value=consensus_value,
+                        event_time=anchor.event_time,
+                        knowledge_time=knowledge_time,
+                    ),
+                )
+
+        return records
+
+    @staticmethod
+    def _sorted_anchors(anchors_by_period: dict[str, FundamentalAnchor]) -> list[FundamentalAnchor]:
+        return sorted(
+            anchors_by_period.values(),
+            key=lambda anchor: (anchor.event_time, anchor.fiscal_period),
+        )
+
+    @staticmethod
+    def _match_anchor(
+        *,
+        reference_date: date,
+        anchors: Sequence[FundamentalAnchor],
+        max_lag_days: int,
+    ) -> FundamentalAnchor | None:
+        matched_anchor: FundamentalAnchor | None = None
+        for anchor in anchors:
+            if anchor.event_time > reference_date:
+                break
+            if (reference_date - anchor.event_time).days <= max_lag_days:
+                matched_anchor = anchor
+        return matched_anchor
+
+    @staticmethod
+    def _rolling_annual_dividend(
+        dividend_history: Sequence[tuple[date, Decimal]],
+        *,
+        as_of_date: date,
+    ) -> Decimal | None:
+        trailing_values = [
+            float(value)
+            for dividend_date, value in dividend_history
+            if as_of_date - timedelta(days=365) <= dividend_date <= as_of_date
+        ]
+        if not trailing_values:
+            return None
+        return FMPDataSource._to_decimal(sum(trailing_values))
+
+    @staticmethod
+    def _build_metric_record(
+        *,
+        ticker: str,
+        fiscal_period: str,
+        metric_name: str,
+        metric_value: Decimal | None,
+        event_time: date,
+        knowledge_time: datetime,
+    ) -> dict[str, Any]:
+        return {
+            "ticker": ticker,
+            "fiscal_period": fiscal_period,
+            "metric_name": metric_name,
+            "metric_value": metric_value,
+            "event_time": event_time,
+            "knowledge_time": knowledge_time,
+            "is_restated": False,
+            "source": FMPDataSource.source_name,
+        }
 
     def persist_fundamentals(self, frame: pd.DataFrame, *, batch_size: int = 1_000) -> int:
         if frame.empty:
@@ -385,6 +596,13 @@ class FMPDataSource(DataSource):
         return timestamp.date()
 
     @staticmethod
+    def _parse_date_value(raw_value: Any) -> date | None:
+        timestamp = pd.to_datetime(raw_value, errors="coerce")
+        if pd.isna(timestamp):
+            return None
+        return timestamp.date()
+
+    @staticmethod
     def _derive_fiscal_period(row: dict[str, Any], event_time: date) -> str:
         period = str(row.get("period") or "").upper()
         if period in {"Q1", "Q2", "Q3", "Q4"}:
@@ -421,6 +639,18 @@ class FMPDataSource(DataSource):
             tzinfo=ZoneInfo("America/New_York"),
         )
         return conservative_time.astimezone(timezone.utc)
+
+    @staticmethod
+    def _knowledge_time_from_calendar_date(raw_value: Any) -> datetime | None:
+        observed_date = FMPDataSource._parse_date_value(raw_value)
+        if observed_date is None:
+            return None
+        localized = datetime.combine(
+            observed_date,
+            time(16, 0),
+            tzinfo=ZoneInfo("America/New_York"),
+        )
+        return localized.astimezone(timezone.utc)
 
     @staticmethod
     def _to_decimal(value: Any) -> Decimal | None:
