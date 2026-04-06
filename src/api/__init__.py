@@ -1,1 +1,1 @@
-# API package placeholder for Phase 3.
+"""QuantEdge FastAPI package."""
