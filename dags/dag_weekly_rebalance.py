@@ -14,9 +14,12 @@ from airflow.operators.python import PythonOperator
 import pendulum
 
 LOGGER = logging.getLogger(__name__)
-LIVE_PREDICTIONS_PATH = "/opt/airflow/live_weekly/predictions.parquet"
-LIVE_PRICES_PATH = "/opt/airflow/live_weekly/prices.parquet"
-LIVE_MANIFEST_PATH = "/opt/airflow/live_weekly/state.json"
+LIVE_PREDICTIONS_PATH = "data/reports/greyscale/weekly_signal_predictions.parquet"
+LIVE_PRICES_PATH = "data/reports/greyscale/weekly_signal_prices.parquet"
+LIVE_MANIFEST_PATH = "data/reports/greyscale/weekly_signal_state.json"
+LEGACY_LIVE_PREDICTIONS_PATH = "/opt/airflow/live_weekly/predictions.parquet"
+LEGACY_LIVE_PRICES_PATH = "/opt/airflow/live_weekly/prices.parquet"
+LEGACY_LIVE_MANIFEST_PATH = "/opt/airflow/live_weekly/state.json"
 
 
 def _project_root() -> Path:
@@ -70,55 +73,119 @@ def _artifact_path(repo_root: Path, relative_path: str) -> Path:
     return repo_root / relative_path
 
 
+def _artifact_candidates(repo_root: Path, *relative_paths: str) -> list[Path]:
+    return [_artifact_path(repo_root, relative_path) for relative_path in relative_paths]
+
+
+def _runtime_artifact_path(repo_root: Path, primary_path: str, fallback_path: str) -> Path:
+    primary = _artifact_path(repo_root, primary_path)
+    if primary.parent.exists() and os.access(primary.parent, os.W_OK):
+        return primary
+    fallback = _artifact_path(repo_root, fallback_path)
+    fallback.parent.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
+def _signal_state_rank(path: Path, payload: dict[str, Any]) -> tuple[int, float, float]:
+    feature_pipeline = dict(payload.get("feature_pipeline") or {})
+    artifacts = dict(payload.get("artifacts") or {})
+    rebalance_pipeline = dict(payload.get("rebalance_pipeline") or {})
+    richness = sum(
+        int(flag)
+        for flag in (
+            bool(payload.get("strategy")),
+            bool(payload.get("model")),
+            bool(payload.get("mlflow")),
+            bool(payload.get("portfolio_state")),
+            bool(feature_pipeline.get("batch_id")),
+            bool(artifacts.get("feature_matrix_path")),
+            bool(artifacts.get("prediction_snapshot_path")),
+            bool(rebalance_pipeline.get("load_signals")),
+            bool(rebalance_pipeline.get("portfolio_optimize")),
+            bool(rebalance_pipeline.get("portfolio_risk_check")),
+            bool(rebalance_pipeline.get("generate_orders")),
+            bool(rebalance_pipeline.get("audit_log")),
+        )
+    )
+    generated_raw = str(payload.get("generated_at_utc") or payload.get("timestamp_utc") or "")
+    try:
+        generated_ts = datetime.fromisoformat(generated_raw.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        generated_ts = 0.0
+    return richness, generated_ts, path.stat().st_mtime
+
+
 def _load_signal_state(repo_root: Path) -> dict[str, Any] | None:
-    path = _artifact_path(repo_root, LIVE_MANIFEST_PATH)
-    if not path.exists():
+    candidates: list[tuple[tuple[int, float, float], dict[str, Any]]] = []
+    for path in _artifact_candidates(repo_root, LIVE_MANIFEST_PATH, LEGACY_LIVE_MANIFEST_PATH):
+        if path.exists():
+            payload = json.loads(path.read_text())
+            candidates.append((_signal_state_rank(path, payload), payload))
+    if not candidates:
         return None
-    return json.loads(path.read_text())
+    return max(candidates, key=lambda item: item[0])[1]
 
 
 def _write_signal_state(repo_root: Path, payload: dict[str, Any]) -> None:
     from scripts.run_ic_screening import write_json_atomic
     from scripts.run_single_window_validation import json_safe
 
-    write_json_atomic(_artifact_path(repo_root, LIVE_MANIFEST_PATH), json_safe(payload))
+    write_json_atomic(
+        _runtime_artifact_path(repo_root, LIVE_MANIFEST_PATH, LEGACY_LIVE_MANIFEST_PATH),
+        json_safe(payload),
+    )
+
+
+def _stored_rebalance_step(state: dict[str, Any], step: str) -> dict[str, Any]:
+    return dict((state.get("rebalance_pipeline") or {}).get(step) or {})
+
+
+def _persist_rebalance_step(repo_root: Path, state: dict[str, Any], step: str, payload: dict[str, Any]) -> None:
+    persisted_state = dict(state or {})
+    pipeline_state = dict(persisted_state.get("rebalance_pipeline") or {})
+    pipeline_state[step] = dict(payload)
+    pipeline_state["updated_at_utc"] = datetime.now(timezone.utc).isoformat()
+    persisted_state["rebalance_pipeline"] = pipeline_state
+    _write_signal_state(repo_root, persisted_state)
 
 
 def _load_price_snapshot(repo_root: Path):
     import pandas as pd
 
-    path = _artifact_path(repo_root, LIVE_PRICES_PATH)
-    if not path.exists():
-        return None
-    frame = pd.read_parquet(path)
-    if frame.empty:
-        return None
-    frame["trade_date"] = pd.to_datetime(frame["trade_date"])
-    frame["ticker"] = frame["ticker"].astype(str).str.upper()
-    return frame
+    for path in _artifact_candidates(repo_root, LIVE_PRICES_PATH, LEGACY_LIVE_PRICES_PATH):
+        if not path.exists():
+            continue
+        frame = pd.read_parquet(path)
+        if frame.empty:
+            continue
+        frame["trade_date"] = pd.to_datetime(frame["trade_date"])
+        frame["ticker"] = frame["ticker"].astype(str).str.upper()
+        return frame
+    return None
 
 
 def _latest_signal_snapshot(repo_root: Path) -> dict[str, Any] | None:
     import pandas as pd
 
-    prediction_path = _artifact_path(repo_root, LIVE_PREDICTIONS_PATH)
-    if not prediction_path.exists():
-        return None
-    frame = pd.read_parquet(prediction_path)
-    if frame.empty:
-        return None
-    frame["trade_date"] = pd.to_datetime(frame["trade_date"])
-    latest_trade_date = frame["trade_date"].max()
-    latest = frame.loc[frame["trade_date"] == latest_trade_date].copy()
-    latest["ticker"] = latest["ticker"].astype(str).str.upper()
-    latest.sort_values("score", ascending=False, inplace=True)
-    return {
-        "trade_date": latest_trade_date.date().isoformat(),
-        "frame": latest,
-        "ticker_count": int(latest["ticker"].nunique()),
-        "window_ids": sorted(latest["window_id"].astype(str).unique().tolist()),
-        "state": _load_signal_state(repo_root) or {},
-    }
+    for prediction_path in _artifact_candidates(repo_root, LIVE_PREDICTIONS_PATH, LEGACY_LIVE_PREDICTIONS_PATH):
+        if not prediction_path.exists():
+            continue
+        frame = pd.read_parquet(prediction_path)
+        if frame.empty:
+            continue
+        frame["trade_date"] = pd.to_datetime(frame["trade_date"])
+        latest_trade_date = frame["trade_date"].max()
+        latest = frame.loc[frame["trade_date"] == latest_trade_date].copy()
+        latest["ticker"] = latest["ticker"].astype(str).str.upper()
+        latest.sort_values("score", ascending=False, inplace=True)
+        return {
+            "trade_date": latest_trade_date.date().isoformat(),
+            "frame": latest,
+            "ticker_count": int(latest["ticker"].nunique()),
+            "window_ids": sorted(latest["window_id"].astype(str).unique().tolist()),
+            "state": _load_signal_state(repo_root) or {},
+        }
+    return None
 
 
 def _resolve_execution_date(execution, signal_date):
@@ -140,10 +207,10 @@ def _load_signals_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
         return _result("load_signals", "skipped", reason="no_fresh_live_signal_snapshot")
 
     top_scores = snapshot["frame"][["ticker", "score"]].head(10).to_dict(orient="records")
-    state = snapshot["state"]
+    state = dict(snapshot["state"] or {})
     strategy = dict(state.get("strategy") or {})
     portfolio_state = dict(state.get("portfolio_state") or {})
-    return _result(
+    payload = _result(
         "load_signals",
         "ok",
         signal_source="fresh_live_snapshot",
@@ -158,6 +225,8 @@ def _load_signals_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
         current_portfolio_holdings=int(len(portfolio_state.get("current_weights") or {})),
         last_rebalance_signal_date=portfolio_state.get("last_rebalance_signal_date"),
     )
+    _persist_rebalance_step(repo_root, state, "load_signals", payload)
+    return payload
 
 
 def load_signals(**context: Any) -> dict[str, Any]:
@@ -173,10 +242,12 @@ def _portfolio_optimize_impl(*, repo_root: Path, context: dict[str, Any]) -> dic
     if snapshot is None:
         return _result("portfolio_optimize", "skipped", reason="no_fresh_live_signal_snapshot")
 
-    state = snapshot["state"]
+    state = dict(snapshot["state"] or {})
     strategy = dict(state.get("strategy") or {})
     if not strategy:
-        return _result("portfolio_optimize", "skipped", reason="missing_live_strategy_config")
+        payload = _result("portfolio_optimize", "skipped", reason="missing_live_strategy_config")
+        _persist_rebalance_step(repo_root, state, "portfolio_optimize", payload)
+        return payload
 
     portfolio_state = dict(state.get("portfolio_state") or {})
     current_weights = {
@@ -190,7 +261,7 @@ def _portfolio_optimize_impl(*, repo_root: Path, context: dict[str, Any]) -> dic
     )
     if not rebalance_due and current_weights:
         top_weights = pd.Series(current_weights, dtype=float).sort_values(ascending=False).head(10).to_dict()
-        return _result(
+        payload = _result(
             "portfolio_optimize",
             "ok",
             latest_signal_date=snapshot["trade_date"],
@@ -204,6 +275,8 @@ def _portfolio_optimize_impl(*, repo_root: Path, context: dict[str, Any]) -> dic
             last_rebalance_signal_date=portfolio_state.get("last_rebalance_signal_date"),
             holding_period=strategy.get("holding_period"),
         )
+        _persist_rebalance_step(repo_root, state, "portfolio_optimize", payload)
+        return payload
 
     scores = snapshot["frame"].set_index("ticker")["score"].astype(float)
     weights, selection_details = build_buffered_target_weights(
@@ -212,10 +285,12 @@ def _portfolio_optimize_impl(*, repo_root: Path, context: dict[str, Any]) -> dic
         strategy_config=strategy,
     )
     if not weights:
-        return _result("portfolio_optimize", "skipped", reason="optimizer_returned_empty_weights")
+        payload = _result("portfolio_optimize", "skipped", reason="optimizer_returned_empty_weights")
+        _persist_rebalance_step(repo_root, state, "portfolio_optimize", payload)
+        return payload
 
     top_weights = pd.Series(weights, dtype=float).sort_values(ascending=False).head(10).to_dict()
-    return _result(
+    payload = _result(
         "portfolio_optimize",
         "ok",
         latest_signal_date=snapshot["trade_date"],
@@ -235,6 +310,8 @@ def _portfolio_optimize_impl(*, repo_root: Path, context: dict[str, Any]) -> dic
         target_weights=weights,
         top_weights=top_weights,
     )
+    _persist_rebalance_step(repo_root, state, "portfolio_optimize", payload)
+    return payload
 
 
 def portfolio_optimize(**context: Any) -> dict[str, Any]:
@@ -249,12 +326,21 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
     from src.data.db.session import get_engine
     from src.risk.portfolio_risk import PortfolioRiskEngine
 
-    optimize_payload = context["ti"].xcom_pull(task_ids="portfolio_optimize") or {}
-    if optimize_payload.get("status") != "ok":
-        return _result("portfolio_risk_check", "skipped", reason="no_optimized_portfolio_available")
-
     snapshot = _latest_signal_snapshot(repo_root)
-    state = (snapshot or {}).get("state") or {}
+    if snapshot is None:
+        return _result("portfolio_risk_check", "skipped", reason="no_fresh_live_signal_snapshot")
+
+    state = dict(snapshot.get("state") or {})
+    optimize_payload = (
+        context["ti"].xcom_pull(task_ids="portfolio_optimize")
+        or _stored_rebalance_step(state, "portfolio_optimize")
+        or {}
+    )
+    if optimize_payload.get("status") != "ok":
+        payload = _result("portfolio_risk_check", "skipped", reason="no_optimized_portfolio_available")
+        _persist_rebalance_step(repo_root, state, "portfolio_risk_check", payload)
+        return payload
+
     strategy = dict(state.get("strategy") or {})
     portfolio_state = dict(state.get("portfolio_state") or {})
     current_weights = {
@@ -262,7 +348,7 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         for ticker, weight in dict(portfolio_state.get("current_weights") or {}).items()
     }
     if not bool(optimize_payload.get("rebalance_due", True)) and current_weights:
-        return _result(
+        payload = _result(
             "portfolio_risk_check",
             "ok",
             latest_signal_date=snapshot["trade_date"] if snapshot else None,
@@ -278,16 +364,22 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
             audit_entries=0,
             rebalance_due=False,
         )
+        _persist_rebalance_step(repo_root, state, "portfolio_risk_check", payload)
+        return payload
 
     prices = _load_price_snapshot(repo_root)
-    if snapshot is None or prices is None:
-        return _result("portfolio_risk_check", "skipped", reason="missing_live_signal_or_price_snapshot")
+    if prices is None:
+        payload = _result("portfolio_risk_check", "skipped", reason="missing_live_signal_or_price_snapshot")
+        _persist_rebalance_step(repo_root, state, "portfolio_risk_check", payload)
+        return payload
 
     execution = prepare_execution_price_frame(prices)
     latest_signal_date = pd.Timestamp(snapshot["trade_date"])
     execution_date, execution_mode = _resolve_execution_date(execution, latest_signal_date)
     if execution_date is None:
-        return _result("portfolio_risk_check", "skipped", reason="no_execution_date_available")
+        payload = _result("portfolio_risk_check", "skipped", reason="no_execution_date_available")
+        _persist_rebalance_step(repo_root, state, "portfolio_risk_check", payload)
+        return payload
 
     score_frame = snapshot["frame"].copy()
     scores = score_frame.set_index("ticker")["score"].astype(float).sort_values(ascending=False)
@@ -296,7 +388,9 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         for ticker, weight in pd.Series(optimize_payload.get("target_weights") or {}, dtype=float).items()
     }
     if not raw_weights:
-        return _result("portfolio_risk_check", "skipped", reason="empty_raw_weights")
+        payload = _result("portfolio_risk_check", "skipped", reason="empty_raw_weights")
+        _persist_rebalance_step(repo_root, state, "portfolio_risk_check", payload)
+        return payload
 
     with get_engine().connect() as conn:
         stocks = pd.read_sql(text("select ticker, sector from stocks"), conn)
@@ -335,7 +429,7 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         min_holdings=int(strategy.get("min_holdings", 20)),
     )
     triggered_rules = [entry.rule_name for entry in constrained.audit_trail if entry.triggered]
-    return _result(
+    payload = _result(
         "portfolio_risk_check",
         "warning" if triggered_rules or constrained.warnings else "ok",
         latest_signal_date=snapshot["trade_date"],
@@ -351,6 +445,8 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         audit_entries=len(constrained.audit_trail),
         rebalance_due=True,
     )
+    _persist_rebalance_step(repo_root, state, "portfolio_risk_check", payload)
+    return payload
 
 
 def portfolio_risk_check(**context: Any) -> dict[str, Any]:
@@ -364,12 +460,21 @@ def _generate_orders_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
     from src.backtest.cost_model import AlmgrenChrissCostModel
     from src.backtest.execution import prepare_execution_price_frame
 
-    risk_payload = context["ti"].xcom_pull(task_ids="portfolio_risk_check") or {}
-    if risk_payload.get("status") == "skipped":
-        return _result("generate_orders", "skipped", reason="no_risk_approved_portfolio")
-
     snapshot = _latest_signal_snapshot(repo_root)
-    state = (snapshot or {}).get("state") or {}
+    if snapshot is None:
+        return _result("generate_orders", "skipped", reason="no_fresh_live_signal_snapshot")
+
+    state = dict(snapshot.get("state") or {})
+    risk_payload = (
+        context["ti"].xcom_pull(task_ids="portfolio_risk_check")
+        or _stored_rebalance_step(state, "portfolio_risk_check")
+        or {}
+    )
+    if risk_payload.get("status") == "skipped":
+        payload = _result("generate_orders", "skipped", reason="no_risk_approved_portfolio")
+        _persist_rebalance_step(repo_root, state, "generate_orders", payload)
+        return payload
+
     strategy = dict(state.get("strategy") or {})
     portfolio_state = dict(state.get("portfolio_state") or {})
     current_weights = {
@@ -377,12 +482,16 @@ def _generate_orders_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
         for ticker, weight in dict(portfolio_state.get("current_weights") or {}).items()
     }
     prices = _load_price_snapshot(repo_root)
-    if snapshot is None or prices is None:
-        return _result("generate_orders", "skipped", reason="missing_live_signal_or_price_snapshot")
+    if prices is None:
+        payload = _result("generate_orders", "skipped", reason="missing_live_signal_or_price_snapshot")
+        _persist_rebalance_step(repo_root, state, "generate_orders", payload)
+        return payload
 
     target_weights = pd.Series(risk_payload.get("approved_weights") or {}, dtype=float)
     if target_weights.empty:
-        return _result("generate_orders", "skipped", reason="empty_approved_weights")
+        payload = _result("generate_orders", "skipped", reason="empty_approved_weights")
+        _persist_rebalance_step(repo_root, state, "generate_orders", payload)
+        return payload
     if not bool(risk_payload.get("rebalance_due", True)):
         state["portfolio_state"] = {
             **portfolio_state,
@@ -394,8 +503,7 @@ def _generate_orders_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
             "last_reviewed_signal_date": snapshot["trade_date"],
             "rebalance_due_last_run": False,
         }
-        _write_signal_state(repo_root, state)
-        return _result(
+        payload = _result(
             "generate_orders",
             "skipped",
             reason="holding_period_active",
@@ -407,12 +515,16 @@ def _generate_orders_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
             orders=[],
             rebalance_due=False,
         )
+        _persist_rebalance_step(repo_root, state, "generate_orders", payload)
+        return payload
 
     execution = prepare_execution_price_frame(prices)
     latest_signal_date = pd.Timestamp(snapshot["trade_date"])
     execution_date, execution_mode = _resolve_execution_date(execution, latest_signal_date)
     if execution_date is None:
-        return _result("generate_orders", "skipped", reason="no_execution_date_available")
+        payload = _result("generate_orders", "skipped", reason="no_execution_date_available")
+        _persist_rebalance_step(repo_root, state, "generate_orders", payload)
+        return payload
     entry_slice = execution.xs(pd.Timestamp(execution_date), level="trade_date")
 
     portfolio_value = 1_000_000.0
@@ -464,9 +576,7 @@ def _generate_orders_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
         "execution_mode": execution_mode,
         "rebalance_due_last_run": True,
     }
-    _write_signal_state(repo_root, state)
-
-    return _result(
+    payload = _result(
         "generate_orders",
         "ok" if orders else "skipped",
         latest_signal_date=snapshot["trade_date"],
@@ -477,6 +587,8 @@ def _generate_orders_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
         orders=orders[:20],
         rebalance_due=True,
     )
+    _persist_rebalance_step(repo_root, state, "generate_orders", payload)
+    return payload
 
 
 def generate_orders(**context: Any) -> dict[str, Any]:
@@ -499,7 +611,7 @@ def _audit_log_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, An
     events = []
     critical_alerts: list[str] = []
     for task_id in ("load_signals", "portfolio_optimize", "portfolio_risk_check", "generate_orders"):
-        payload = context["ti"].xcom_pull(task_ids=task_id) or {}
+        payload = context["ti"].xcom_pull(task_ids=task_id) or _stored_rebalance_step(state, task_id) or {}
         if payload.get("status") in {"warning", "error"}:
             critical_alerts.append(f"{task_id}_{payload.get('status')}")
         events.append(
@@ -525,7 +637,7 @@ def _audit_log_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, An
         model_version_id=model_version_id,
         feature_batch_id=feature_batch_id,
     )
-    return _result(
+    payload = _result(
         "audit_log",
         "ok",
         latest_signal_date=snapshot["trade_date"],
@@ -537,6 +649,8 @@ def _audit_log_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, An
         critical_alerts=critical_alerts,
         report=report.to_dict(),
     )
+    _persist_rebalance_step(repo_root, state, "audit_log", payload)
+    return payload
 
 
 def audit_log(**context: Any) -> dict[str, Any]:

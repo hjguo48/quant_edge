@@ -68,6 +68,7 @@ DEFAULT_HIGH_VIX_THRESHOLD = 30.0
 MODEL_NAMES = ("ridge", "xgboost", "lightgbm")
 FUSION_NAME = "fusion"
 WEEK_REPORT_PATTERN = re.compile(r"week_(\d+)\.json$")
+REPO_PATH_ANCHORS = ("data", "src", "scripts", "dags", "configs", "mlruns")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -440,10 +441,34 @@ def parse_as_of(value: str | None) -> datetime:
 def load_models(bundle: dict[str, Any]) -> dict[str, Any]:
     models: dict[str, Any] = {}
     for model_name in MODEL_NAMES:
-        artifact_path = Path(bundle["models"][model_name]["artifact_path"])
+        artifact_path = _resolve_bundle_artifact_path(Path(bundle["models"][model_name]["artifact_path"]))
         with artifact_path.open("rb") as handle:
             models[model_name] = pickle.load(handle)
     return models
+
+
+def _resolve_bundle_artifact_path(artifact_path: Path) -> Path:
+    if artifact_path.exists():
+        return artifact_path
+    if not artifact_path.is_absolute():
+        rebound = REPO_ROOT / artifact_path
+        if rebound.exists():
+            return rebound
+    if REPO_ROOT.name in artifact_path.parts:
+        suffix = artifact_path.parts[artifact_path.parts.index(REPO_ROOT.name) + 1 :]
+        rebound = REPO_ROOT.joinpath(*suffix)
+        if rebound.exists():
+            return rebound
+    for anchor in REPO_PATH_ANCHORS:
+        if anchor in artifact_path.parts:
+            suffix = artifact_path.parts[artifact_path.parts.index(anchor) :]
+            rebound = REPO_ROOT.joinpath(*suffix)
+            if rebound.exists():
+                return rebound
+    rebound = REPO_ROOT / artifact_path.name
+    if rebound.exists():
+        return rebound
+    raise FileNotFoundError(f"Bundle artifact path is not available in this runtime: {artifact_path}")
 
 
 def resolve_output_path(*, report_dir: Path, explicit: Path | None) -> Path:

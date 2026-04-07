@@ -3,7 +3,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
+import json
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import urlopen
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -58,6 +62,58 @@ MACRO_COLUMNS = [
     "is_revision",
     "source",
 ]
+
+
+class _HttpFredClient:
+    root_url = "https://api.stlouisfed.org/fred/series/observations"
+    page_size = 1_000
+
+    def __init__(self, api_key: str) -> None:
+        self.api_key = api_key
+
+    def get_series_all_releases(
+        self,
+        series_id: str,
+        *,
+        realtime_start: str,
+        realtime_end: str,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        offset = 0
+
+        while True:
+            params = {
+                "series_id": series_id,
+                "api_key": self.api_key,
+                "file_type": "json",
+                "sort_order": "asc",
+                "realtime_start": realtime_start,
+                "realtime_end": realtime_end,
+                "limit": self.page_size,
+                "offset": offset,
+            }
+            request_url = f"{self.root_url}?{urlencode(params)}"
+            try:
+                with urlopen(request_url, timeout=30) as response:  # noqa: S310
+                    payload = json.load(response)
+            except HTTPError as exc:
+                response_text = exc.read().decode("utf-8", errors="replace")
+                DataSource.classify_http_error(exc.code, response_text, context=f"FRED releases request for {series_id}")
+                raise
+            except URLError as exc:
+                raise DataSourceTransientError(
+                    f"FRED releases request failed for {series_id}: {exc}",
+                ) from exc
+
+            observations = list(payload.get("observations") or [])
+            rows.extend(observations)
+
+            total = int(payload.get("count") or len(observations))
+            if not observations or len(rows) >= total:
+                break
+            offset += len(observations)
+
+        return rows
 
 
 class FredDataSource(DataSource):
@@ -156,6 +212,8 @@ class FredDataSource(DataSource):
                     realtime_start=chunk_start.isoformat(),
                     realtime_end=chunk_end.isoformat(),
                 )
+            except DataSourceError:
+                raise
             except Exception as exc:
                 raise DataSourceTransientError(
                     f"FRED series release request failed for {series_id}: {exc}",
@@ -216,9 +274,9 @@ class FredDataSource(DataSource):
         try:
             from fredapi import Fred
         except ImportError as exc:
-            raise DataSourceError(
-                "fredapi is not installed. Add the phase1-week2 dependency group.",
-            ) from exc
+            logger.info("fredapi is not installed; using HTTP fallback client for FRED releases")
+            self._client = _HttpFredClient(self.api_key)
+            return self._client
 
         self._client = Fred(api_key=self.api_key)
         return self._client

@@ -53,6 +53,8 @@ BENCHMARK_TICKER = "SPY"
 DEFAULT_BUNDLE_PATH = "data/models/fusion_model_bundle_60d.json"
 DEFAULT_GREYSCALE_REPORT_DIR = "data/reports/greyscale"
 DEFAULT_G4_SUMMARY_PATH = "data/reports/greyscale/g4_gate_summary.json"
+LEGACY_GREYSCALE_REPORT_DIR = "/opt/airflow/live_weekly/greyscale_reports"
+LEGACY_G4_SUMMARY_PATH = "/opt/airflow/live_weekly/g4_gate_summary.json"
 DEFAULT_HISTORY_LOOKBACK_DAYS = 400
 DEFAULT_MIN_SIGNAL_CROSS_SECTION = 50
 DEFAULT_SIGNAL_LOOKBACK_POINTS = 12
@@ -61,6 +63,11 @@ LIVE_FEATURE_MATRIX_PATH = "data/reports/greyscale/weekly_signal_feature_matrix.
 LIVE_PRICES_PATH = "data/reports/greyscale/weekly_signal_prices.parquet"
 LIVE_PREDICTIONS_PATH = "data/reports/greyscale/weekly_signal_predictions.parquet"
 LIVE_MANIFEST_PATH = "data/reports/greyscale/weekly_signal_state.json"
+LEGACY_LIVE_FEATURE_MATRIX_PATH = "/opt/airflow/live_weekly/feature_matrix.parquet"
+LEGACY_LIVE_PRICES_PATH = "/opt/airflow/live_weekly/prices.parquet"
+LEGACY_LIVE_PREDICTIONS_PATH = "/opt/airflow/live_weekly/predictions.parquet"
+LEGACY_LIVE_MANIFEST_PATH = "/opt/airflow/live_weekly/state.json"
+REPO_PATH_ANCHORS = ("data", "src", "scripts", "dags", "configs", "mlruns")
 
 
 def _project_root() -> Path:
@@ -114,20 +121,143 @@ def _artifact_path(repo_root: Path, relative_path: str) -> Path:
     return repo_root / relative_path
 
 
+def _signal_state_rank(path: Path, payload: dict[str, Any]) -> tuple[int, float, float]:
+    feature_pipeline = dict(payload.get("feature_pipeline") or {})
+    artifacts = dict(payload.get("artifacts") or {})
+    richness = sum(
+        int(flag)
+        for flag in (
+            bool(payload.get("strategy")),
+            bool(payload.get("model")),
+            bool(payload.get("mlflow")),
+            bool(payload.get("portfolio_state")),
+            bool(feature_pipeline.get("batch_id")),
+            bool(artifacts.get("feature_matrix_path")),
+            bool(artifacts.get("prediction_snapshot_path")),
+        )
+    )
+    generated_raw = str(payload.get("generated_at_utc") or payload.get("timestamp_utc") or "")
+    try:
+        generated_ts = datetime.fromisoformat(generated_raw.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        generated_ts = 0.0
+    return richness, generated_ts, path.stat().st_mtime
+
+
 def _load_signal_state(repo_root: Path) -> dict[str, Any] | None:
-    path = _artifact_path(repo_root, LIVE_MANIFEST_PATH)
-    if not path.exists():
+    candidates: list[tuple[tuple[int, float, float], dict[str, Any]]] = []
+    for path in (
+        _artifact_path(repo_root, LIVE_MANIFEST_PATH),
+        _artifact_path(repo_root, LEGACY_LIVE_MANIFEST_PATH),
+    ):
+        if path.exists():
+            payload = json.loads(path.read_text())
+            candidates.append((_signal_state_rank(path, payload), payload))
+    if not candidates:
         return None
-    return json.loads(path.read_text())
+    return max(candidates, key=lambda item: item[0])[1]
+
+
+def _runtime_artifact_path(repo_root: Path, primary_path: str, fallback_path: str) -> Path:
+    primary = _artifact_path(repo_root, primary_path)
+    if primary.parent.exists() and os.access(primary.parent, os.W_OK):
+        return primary
+    fallback = _artifact_path(repo_root, fallback_path)
+    fallback.parent.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
+def _runtime_report_dir(repo_root: Path) -> Path:
+    primary = _artifact_path(repo_root, DEFAULT_GREYSCALE_REPORT_DIR)
+    if primary.exists() and os.access(primary, os.W_OK):
+        return primary
+    fallback = _artifact_path(repo_root, LEGACY_GREYSCALE_REPORT_DIR)
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
 
 
 def _write_signal_state(repo_root: Path, payload: dict[str, Any]) -> None:
     from scripts.run_ic_screening import write_json_atomic
     from scripts.run_single_window_validation import json_safe
 
-    path = _artifact_path(repo_root, LIVE_MANIFEST_PATH)
+    path = _runtime_artifact_path(repo_root, LIVE_MANIFEST_PATH, LEGACY_LIVE_MANIFEST_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
     write_json_atomic(path, json_safe(payload))
+
+
+def _load_legacy_signal_state() -> dict[str, Any] | None:
+    path = Path(LEGACY_LIVE_MANIFEST_PATH)
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())
+
+
+def _seed_signal_state(repo_root: Path) -> dict[str, Any]:
+    return (_load_signal_state(repo_root) or _load_legacy_signal_state() or {}).copy()
+
+
+def _build_runtime_strategy_metadata(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    from scripts.live_strategy import load_live_strategy_config
+    from src.models.registry import ModelRegistry
+
+    registry = ModelRegistry()
+    champion = registry.get_champion("ridge_60d")
+    if champion is None or champion.metadata is None:
+        raise RuntimeError("Champion model ridge_60d is unavailable; weekly signal strategy config cannot be built.")
+
+    strategy_config = load_live_strategy_config(
+        repo_root=repo_root,
+        champion=champion,
+        registry_tracking_uri=registry.tracking_uri,
+    )
+    model_state = {
+        "model_name": "ic_weighted_fusion_60d",
+        "base_model_name": champion.name,
+        "version": int(champion.version),
+        "stage": champion.stage.value,
+        "run_id": champion.run_id,
+        "horizon": str(champion.metadata.horizon),
+        "n_features": int(champion.metadata.n_features),
+        "signal_label": strategy_config.get("signal_label"),
+        "load_audit": {
+            "tracking_uri": registry.tracking_uri,
+            "source": "weekly_signal_pipeline_runtime_strategy",
+        },
+    }
+    mlflow_state = {
+        "tracking_uri": registry.tracking_uri,
+        "run_id": champion.run_id,
+        "model_name": champion.name,
+        "version": int(champion.version),
+    }
+    return strategy_config, model_state, mlflow_state
+
+
+def _resolve_repo_bound_path(repo_root: Path, raw_path: str) -> Path:
+    candidate = Path(str(raw_path))
+    if not candidate.is_absolute():
+        candidate = repo_root / candidate
+    if candidate.exists():
+        return candidate
+
+    repo_name = repo_root.name
+    if repo_name in candidate.parts:
+        suffix = candidate.parts[candidate.parts.index(repo_name) + 1 :]
+        rebound = repo_root.joinpath(*suffix)
+        if rebound.exists():
+            return rebound
+
+    for anchor in REPO_PATH_ANCHORS:
+        if anchor in candidate.parts:
+            suffix = candidate.parts[candidate.parts.index(anchor) :]
+            rebound = repo_root.joinpath(*suffix)
+            if rebound.exists():
+                return rebound
+
+    rebound = repo_root / candidate.name
+    if rebound.exists():
+        return rebound
+    return candidate
 
 
 def _load_bundle_manifest(repo_root: Path) -> dict[str, Any]:
@@ -139,28 +269,42 @@ def _load_bundle_manifest(repo_root: Path) -> dict[str, Any]:
     if not retained_features:
         raise RuntimeError("Fusion bundle manifest does not contain retained features.")
     for model_name, model_payload in dict(payload.get("models") or {}).items():
-        artifact_path = Path(str(model_payload.get("artifact_path", "")))
-        resolved = artifact_path if artifact_path.is_absolute() else repo_root / artifact_path
+        resolved = _resolve_repo_bound_path(repo_root, str(model_payload.get("artifact_path", "")))
         if not resolved.exists():
             raise RuntimeError(f"Fusion model artifact for {model_name} is missing: {resolved}")
+        model_payload["artifact_path"] = str(resolved)
     return payload
 
 
 def _load_latest_greyscale_report(repo_root: Path) -> dict[str, Any] | None:
     from scripts.run_greyscale_live import load_greyscale_reports
 
-    report_dir = _artifact_path(repo_root, DEFAULT_GREYSCALE_REPORT_DIR)
-    reports = load_greyscale_reports(report_dir)
+    reports: list[dict[str, Any]] = []
+    for report_dir in (
+        _artifact_path(repo_root, DEFAULT_GREYSCALE_REPORT_DIR),
+        _artifact_path(repo_root, LEGACY_GREYSCALE_REPORT_DIR),
+    ):
+        if report_dir.exists():
+            reports.extend(load_greyscale_reports(report_dir))
     if not reports:
         return None
+    reports.sort(
+        key=lambda report: (
+            str(report.get("live_outputs", {}).get("signal_date", "")),
+            str(report.get("generated_at_utc", "")),
+        ),
+    )
     return reports[-1]
 
 
 def _load_g4_summary(repo_root: Path) -> dict[str, Any] | None:
-    path = _artifact_path(repo_root, DEFAULT_G4_SUMMARY_PATH)
-    if not path.exists():
-        return None
-    return json.loads(path.read_text())
+    for path in (
+        _artifact_path(repo_root, DEFAULT_G4_SUMMARY_PATH),
+        _artifact_path(repo_root, LEGACY_G4_SUMMARY_PATH),
+    ):
+        if path.exists():
+            return json.loads(path.read_text())
+    return None
 
 
 def _load_live_universe(*, trade_date: Any) -> tuple[list[str], str]:
@@ -205,58 +349,70 @@ def _load_live_universe(*, trade_date: Any) -> tuple[list[str], str]:
 def _load_feature_matrix(repo_root: Path):
     import pandas as pd
 
-    path = _artifact_path(repo_root, LIVE_FEATURE_MATRIX_PATH)
-    if not path.exists():
-        return None
-    frame = pd.read_parquet(path)
-    if frame.empty:
-        return None
-    frame["trade_date"] = pd.to_datetime(frame["trade_date"])
-    frame["ticker"] = frame["ticker"].astype(str).str.upper()
-    return frame.set_index(["trade_date", "ticker"]).sort_index()
+    for path in (
+        _artifact_path(repo_root, LIVE_FEATURE_MATRIX_PATH),
+        _artifact_path(repo_root, LEGACY_LIVE_FEATURE_MATRIX_PATH),
+    ):
+        if not path.exists():
+            continue
+        frame = pd.read_parquet(path)
+        if frame.empty:
+            continue
+        frame["trade_date"] = pd.to_datetime(frame["trade_date"])
+        frame["ticker"] = frame["ticker"].astype(str).str.upper()
+        return frame.set_index(["trade_date", "ticker"]).sort_index()
+    return None
 
 
 def _load_price_snapshot(repo_root: Path):
     import pandas as pd
 
-    path = _artifact_path(repo_root, LIVE_PRICES_PATH)
-    if not path.exists():
-        return None
-    frame = pd.read_parquet(path)
-    if frame.empty:
-        return None
-    frame["trade_date"] = pd.to_datetime(frame["trade_date"])
-    frame["ticker"] = frame["ticker"].astype(str).str.upper()
-    return frame
+    for path in (
+        _artifact_path(repo_root, LIVE_PRICES_PATH),
+        _artifact_path(repo_root, LEGACY_LIVE_PRICES_PATH),
+    ):
+        if not path.exists():
+            continue
+        frame = pd.read_parquet(path)
+        if frame.empty:
+            continue
+        frame["trade_date"] = pd.to_datetime(frame["trade_date"])
+        frame["ticker"] = frame["ticker"].astype(str).str.upper()
+        return frame
+    return None
 
 
 def _latest_prediction_snapshot(repo_root: Path) -> dict[str, Any] | None:
     import pandas as pd
 
-    prediction_path = _artifact_path(repo_root, LIVE_PREDICTIONS_PATH)
-    if not prediction_path.exists():
-        return None
+    for prediction_path in (
+        _artifact_path(repo_root, LIVE_PREDICTIONS_PATH),
+        _artifact_path(repo_root, LEGACY_LIVE_PREDICTIONS_PATH),
+    ):
+        if not prediction_path.exists():
+            continue
 
-    predictions = pd.read_parquet(prediction_path)
-    if predictions.empty:
-        return None
+        predictions = pd.read_parquet(prediction_path)
+        if predictions.empty:
+            continue
 
-    predictions["trade_date"] = pd.to_datetime(predictions["trade_date"])
-    latest_trade_date = predictions["trade_date"].max()
-    latest = predictions.loc[predictions["trade_date"] == latest_trade_date].copy()
-    latest["ticker"] = latest["ticker"].astype(str).str.upper()
-    latest.sort_values("score", ascending=False, inplace=True)
+        predictions["trade_date"] = pd.to_datetime(predictions["trade_date"])
+        latest_trade_date = predictions["trade_date"].max()
+        latest = predictions.loc[predictions["trade_date"] == latest_trade_date].copy()
+        latest["ticker"] = latest["ticker"].astype(str).str.upper()
+        latest.sort_values("score", ascending=False, inplace=True)
 
-    state = _load_signal_state(repo_root) or {}
-    return {
-        "trade_date": latest_trade_date.date().isoformat(),
-        "window_ids": sorted(latest["window_id"].astype(str).unique().tolist()),
-        "score_series": latest.set_index("ticker")["score"].astype(float),
-        "ticker_count": int(latest["ticker"].nunique()),
-        "top_tickers": latest["ticker"].head(10).tolist(),
-        "frame": latest,
-        "state": state,
-    }
+        state = _load_signal_state(repo_root) or {}
+        return {
+            "trade_date": latest_trade_date.date().isoformat(),
+            "window_ids": sorted(latest["window_id"].astype(str).unique().tolist()),
+            "score_series": latest.set_index("ticker")["score"].astype(float),
+            "ticker_count": int(latest["ticker"].nunique()),
+            "top_tickers": latest["ticker"].head(10).tolist(),
+            "frame": latest,
+            "state": state,
+        }
+    return None
 
 
 def _check_data_freshness_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
@@ -295,8 +451,13 @@ def check_data_freshness(**context: Any) -> dict[str, Any]:
 
 
 def _compute_features_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    from scripts.run_greyscale_live import build_feature_matrix as build_greyscale_feature_matrix
     from scripts.run_greyscale_live import load_live_universe
+    from scripts.run_ic_screening import install_runtime_optimizations, write_parquet_atomic
     from scripts.run_live_pipeline import load_db_state
+    from scripts.run_single_window_validation import feature_matrix_to_frame
+    from src.data.db.pit import get_prices_pit
+    from src.features.pipeline import FeaturePipeline
 
     as_of = datetime.now(timezone.utc)
     bundle = _load_bundle_manifest(repo_root)
@@ -316,12 +477,58 @@ def _compute_features_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[
     feature_start = live_trade_date - timedelta(days=DEFAULT_HISTORY_LOOKBACK_DAYS)
     latest_report = _load_latest_greyscale_report(repo_root)
     report_signal_date = None if latest_report is None else latest_report.get("live_outputs", {}).get("signal_date")
+    seed_state = _seed_signal_state(repo_root)
+    strategy_config, model_state, mlflow_state = _build_runtime_strategy_metadata(repo_root)
 
     retained_features = list(bundle["retained_features"])
     model_artifacts = {
         model_name: str(bundle["models"][model_name]["artifact_path"])
         for model_name in sorted(dict(bundle.get("models") or {}))
     }
+    price_tickers = [*live_universe, BENCHMARK_TICKER]
+    prices = get_prices_pit(
+        tickers=price_tickers,
+        start_date=feature_start,
+        end_date=live_trade_date,
+        as_of=as_of,
+    )
+    if prices.empty:
+        raise RuntimeError("No PIT price snapshot was available for weekly signal feature computation.")
+
+    install_runtime_optimizations()
+    pipeline = FeaturePipeline()
+    features_long = pipeline.run(
+        tickers=live_universe,
+        start_date=live_trade_date,
+        end_date=live_trade_date,
+        as_of=as_of,
+    )
+    if features_long.empty:
+        raise RuntimeError("FeaturePipeline returned no live rows for weekly signal computation.")
+
+    batch_id = str(features_long.attrs.get("batch_id") or pipeline.last_batch_id or "")
+    if not batch_id:
+        raise RuntimeError("Weekly signal feature computation did not produce a batch_id.")
+
+    current_feature_matrix = build_greyscale_feature_matrix(
+        features_long=features_long,
+        retained_features=retained_features,
+    )
+    if current_feature_matrix.empty:
+        raise RuntimeError("Weekly signal feature matrix is empty after retained-feature alignment.")
+
+    feature_matrix_path = _runtime_artifact_path(
+        repo_root,
+        LIVE_FEATURE_MATRIX_PATH,
+        LEGACY_LIVE_FEATURE_MATRIX_PATH,
+    )
+    price_snapshot_path = _runtime_artifact_path(
+        repo_root,
+        LIVE_PRICES_PATH,
+        LEGACY_LIVE_PRICES_PATH,
+    )
+    write_parquet_atomic(feature_matrix_to_frame(current_feature_matrix), feature_matrix_path)
+    write_parquet_atomic(prices.reset_index(drop=True), price_snapshot_path)
 
     state = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -346,16 +553,36 @@ def _compute_features_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[
             "regime_weights": bundle.get("regime_weights", {}),
             "temperature": float(bundle.get("fusion_temperature", DEFAULT_FUSION_TEMPERATURE)),
         },
+        "strategy": dict(seed_state.get("strategy") or strategy_config),
+        "portfolio_state": dict(seed_state.get("portfolio_state") or {}),
+        "model": dict(seed_state.get("model") or model_state),
+        "mlflow": dict(seed_state.get("mlflow") or mlflow_state),
         "feature_pipeline": {
             "start_date": feature_start.isoformat(),
             "end_date": live_trade_date.isoformat(),
-            "mode": "delegated_to_run_greyscale_live",
+            "mode": "materialized_for_weekly_signal_pipeline",
+            "batch_id": batch_id,
+            "feature_rows_total": int(len(features_long)),
+            "feature_rows_live_date": int(len(features_long)),
+            "feature_matrix_shape": {
+                "n_stocks": int(current_feature_matrix.shape[0]),
+                "n_features": int(current_feature_matrix.shape[1]),
+            },
             "expected_feature_count": int(len(retained_features)),
             "reference_feature_matrix_path": "data/features/walkforward_feature_matrix_60d.parquet",
         },
         "artifacts": {
             "report_dir": DEFAULT_GREYSCALE_REPORT_DIR,
             "monitor_summary_path": DEFAULT_G4_SUMMARY_PATH,
+            "feature_matrix_path": str(feature_matrix_path),
+            "price_snapshot_path": str(price_snapshot_path),
+            "prediction_snapshot_path": str(
+                _runtime_artifact_path(
+                    repo_root,
+                    LIVE_PREDICTIONS_PATH,
+                    LEGACY_LIVE_PREDICTIONS_PATH,
+                ),
+            ),
         },
         "latest_greyscale_report": {
             "signal_date": report_signal_date,
@@ -375,6 +602,10 @@ def _compute_features_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[
         bundle_window_id=str(bundle["window_id"]),
         horizon_days=int(bundle["horizon_days"]),
         existing_report_signal_date=report_signal_date,
+        batch_id=batch_id,
+        feature_rows_live_date=int(len(features_long)),
+        feature_matrix_path=str(feature_matrix_path),
+        price_snapshot_path=str(price_snapshot_path),
     )
 
 
@@ -383,7 +614,10 @@ def compute_features(**context: Any) -> dict[str, Any]:
 
 
 def _model_inference_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    import pandas as pd
+
     from scripts.run_greyscale_live import main as run_greyscale_live_main
+    from scripts.run_ic_screening import write_parquet_atomic
     from scripts.run_live_pipeline import load_db_state
 
     state = _load_signal_state(repo_root)
@@ -421,6 +655,42 @@ def _model_inference_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
     fusion_scores = dict(report.get("score_vectors", {}).get("fusion") or {})
     top_fusion_scores = list(report.get("live_outputs", {}).get("top_10_fusion_scores") or [])
     signal_date = str(report.get("live_outputs", {}).get("signal_date"))
+    if not fusion_scores or not signal_date:
+        raise RuntimeError("Greyscale report is missing fusion scores or signal_date.")
+
+    prediction_rows: list[dict[str, Any]] = []
+    for ticker, score in sorted(
+        fusion_scores.items(),
+        key=lambda item: (-float(item[1]), str(item[0])),
+    ):
+        row = {
+            "window_id": f"GREYSCALE_{signal_date.replace('-', '')}",
+            "trade_date": signal_date,
+            "ticker": str(ticker).upper(),
+            "score": float(score),
+        }
+        for model_name in ("ridge", "xgboost", "lightgbm"):
+            model_score = (report.get("score_vectors", {}).get(model_name) or {}).get(ticker)
+            if model_score is not None:
+                row[f"score_{model_name}"] = float(model_score)
+        prediction_rows.append(row)
+
+    prediction_frame = pd.DataFrame(prediction_rows).sort_values("score", ascending=False).reset_index(drop=True)
+    prediction_path = _runtime_artifact_path(
+        repo_root,
+        LIVE_PREDICTIONS_PATH,
+        LEGACY_LIVE_PREDICTIONS_PATH,
+    )
+    write_parquet_atomic(prediction_frame, prediction_path)
+
+    if not state.get("strategy") or not state.get("model") or not state.get("mlflow"):
+        strategy_config, model_state, mlflow_state = _build_runtime_strategy_metadata(repo_root)
+        state["strategy"] = dict(state.get("strategy") or strategy_config)
+        state["model"] = dict(state.get("model") or model_state)
+        state["mlflow"] = dict(state.get("mlflow") or mlflow_state)
+    state.setdefault("portfolio_state", {})
+    state.setdefault("artifacts", {})
+    state["artifacts"]["prediction_snapshot_path"] = str(prediction_path)
 
     state.update(
         {
@@ -455,6 +725,7 @@ def _model_inference_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[s
         weight_source=report.get("fusion", {}).get("weight_source"),
         live_weights=report.get("fusion", {}).get("live_weights", {}),
         execution_mode=execution_mode,
+        prediction_snapshot_path=str(prediction_path),
     )
 
 
@@ -503,12 +774,25 @@ def _greyscale_monitor_impl(*, repo_root: Path, context: dict[str, Any]) -> dict
     from scripts.run_greyscale_monitor import main as run_greyscale_monitor_main
 
     as_of = datetime.now(timezone.utc)
+    report_dir_candidates = (
+        _artifact_path(repo_root, DEFAULT_GREYSCALE_REPORT_DIR),
+        _artifact_path(repo_root, LEGACY_GREYSCALE_REPORT_DIR),
+    )
+    report_dir = next(
+        (
+            path
+            for path in report_dir_candidates
+            if path.exists() and any(path.glob("week_*.json"))
+        ),
+        report_dir_candidates[0],
+    )
+    summary_path = _runtime_artifact_path(repo_root, DEFAULT_G4_SUMMARY_PATH, LEGACY_G4_SUMMARY_PATH)
     status_code = run_greyscale_monitor_main(
         [
             "--report-dir",
-            DEFAULT_GREYSCALE_REPORT_DIR,
+            str(report_dir),
             "--output-path",
-            DEFAULT_G4_SUMMARY_PATH,
+            str(summary_path),
             "--as-of",
             as_of.isoformat(),
         ],
@@ -523,7 +807,7 @@ def _greyscale_monitor_impl(*, repo_root: Path, context: dict[str, Any]) -> dict
     state = _load_signal_state(repo_root) or {}
     state["greyscale_monitor"] = {
         "generated_at_utc": summary_payload.get("generated_at_utc"),
-        "summary_path": str(_artifact_path(repo_root, DEFAULT_G4_SUMMARY_PATH)),
+        "summary_path": str(summary_path),
         "summary": summary,
     }
     _write_signal_state(repo_root, state)
@@ -539,7 +823,7 @@ def _greyscale_monitor_impl(*, repo_root: Path, context: dict[str, Any]) -> dict
         mean_live_ic=summary.get("mean_live_ic"),
         mean_turnover=summary.get("mean_turnover"),
         mean_pairwise_rank_correlation=summary.get("mean_pairwise_rank_correlation"),
-        summary_path=str(_artifact_path(repo_root, DEFAULT_G4_SUMMARY_PATH)),
+        summary_path=str(summary_path),
     )
 
 
