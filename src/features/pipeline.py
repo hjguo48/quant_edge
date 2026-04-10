@@ -144,45 +144,54 @@ class FeaturePipeline:
         logger.info("feature pipeline completed batch {} with {} rows", batch_id, len(processed))
         return processed
 
-    def save_to_store(self, features_df: pd.DataFrame, batch_id: str) -> int:
+    def save_to_store(
+        self,
+        features_df: pd.DataFrame,
+        batch_id: str,
+        *,
+        batch_size: int = 10_000,
+    ) -> int:
         if features_df.empty:
             return 0
 
-        records = [
-            {
-                "ticker": str(row.ticker).upper(),
-                # calc_date stores the market date for the feature row. The
-                # actual availability time remains governed by PIT input
-                # knowledge_time and the batch's as_of cutoff used in run().
-                "calc_date": _coerce_date(row.trade_date),
-                "feature_name": str(row.feature_name),
-                "feature_value": _to_decimal(row.feature_value),
-                "is_filled": bool(getattr(row, "is_filled", False)),
-                "batch_id": batch_id,
-            }
-            for row in features_df.itertuples(index=False)
-        ]
-
         session_factory = get_session_factory()
+        rows_saved = 0
         with session_factory() as session:
             try:
-                statement = insert(FeatureStore).values(records)
-                upsert = statement.on_conflict_do_update(
-                    constraint="uq_feature_store_batch",
-                    set_={
-                        "feature_value": statement.excluded.feature_value,
-                        "is_filled": statement.excluded.is_filled,
-                    },
-                )
-                session.execute(upsert)
+                for start in range(0, len(features_df), batch_size):
+                    batch = features_df.iloc[start : start + batch_size]
+                    records = [
+                        {
+                            "ticker": str(row.ticker).upper(),
+                            # calc_date stores the market date for the feature row. The
+                            # actual availability time remains governed by PIT input
+                            # knowledge_time and the batch's as_of cutoff used in run().
+                            "calc_date": _coerce_date(row.trade_date),
+                            "feature_name": str(row.feature_name),
+                            "feature_value": _to_decimal(row.feature_value),
+                            "is_filled": bool(getattr(row, "is_filled", False)),
+                            "batch_id": batch_id,
+                        }
+                        for row in batch.itertuples(index=False)
+                    ]
+                    statement = insert(FeatureStore).values(records)
+                    upsert = statement.on_conflict_do_update(
+                        constraint="uq_feature_store_batch",
+                        set_={
+                            "feature_value": statement.excluded.feature_value,
+                            "is_filled": statement.excluded.is_filled,
+                        },
+                    )
+                    session.execute(upsert)
+                    rows_saved += len(records)
                 session.commit()
             except Exception as exc:
                 session.rollback()
                 logger.opt(exception=exc).error("failed to save feature batch {} to store", batch_id)
                 raise
 
-        logger.info("saved {} feature rows to feature_store for batch {}", len(records), batch_id)
-        return len(records)
+        logger.info("saved {} feature rows to feature_store for batch {}", rows_saved, batch_id)
+        return rows_saved
 
     def save_to_parquet(
         self,

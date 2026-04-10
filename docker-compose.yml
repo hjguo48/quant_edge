@@ -84,6 +84,7 @@ services:
       QUANTEDGE_REPO_ROOT: /opt/quantedge
       QUANTEDGE_ENABLE_LIVE_FETCH: "true"
       QUANTEDGE_ENABLE_FEATURE_REFRESH: "true"
+      QUANTEDGE_ENABLE_FUNDAMENTALS_FETCH: "true"
     ports:
       - "18081:8080"
     volumes:

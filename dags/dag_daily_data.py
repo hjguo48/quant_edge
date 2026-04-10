@@ -78,31 +78,70 @@ def _feature_path_candidates(repo_root: Path) -> list[Path]:
     ]
 
 
-def _runtime_feature_path(repo_root: Path) -> Path:
-    primary = _artifact_path(repo_root, DEFAULT_FEATURES_PATH)
-    if primary.parent.exists() and os.access(primary.parent, os.W_OK):
-        return primary
+def _fallback_feature_path(repo_root: Path) -> Path:
     fallback = _artifact_path(repo_root, LEGACY_FEATURES_PATH)
     fallback.parent.mkdir(parents=True, exist_ok=True)
     return fallback
 
 
-def _latest_feature_dates(repo_root: Path) -> tuple[str | None, str | None]:
+def _runtime_feature_path(repo_root: Path, *, prefer_fallback: bool = False) -> Path:
+    if prefer_fallback:
+        return _fallback_feature_path(repo_root)
+    primary = _artifact_path(repo_root, DEFAULT_FEATURES_PATH)
+    if primary.parent.exists() and os.access(primary.parent, os.W_OK):
+        return primary
+    return _fallback_feature_path(repo_root)
+
+
+def _latest_feature_date_for_path(feature_path: Path) -> str | None:
     import pandas as pd
 
+    try:
+        import pyarrow.parquet as pq
+    except ImportError:
+        pq = None
+
+    if pq is not None:
+        parquet_file = pq.ParquetFile(feature_path)
+        if parquet_file.metadata.num_rows <= 0:
+            return None
+        # Feature cache files are written sorted by trade_date, so the trailing
+        # row group contains the latest snapshot and avoids scanning the whole file.
+        last_group = parquet_file.read_row_group(
+            parquet_file.metadata.num_row_groups - 1,
+            columns=["trade_date"],
+        )
+        if last_group.num_rows <= 0:
+            return None
+        latest_feature_date = pd.to_datetime(
+            last_group.to_pandas()["trade_date"],
+            errors="coerce",
+        ).max()
+        if pd.isna(latest_feature_date):
+            return None
+        return latest_feature_date.date().isoformat()
+
+    frame = pd.read_parquet(feature_path, columns=["trade_date"])
+    if frame.empty:
+        return None
+    latest_feature_date = pd.to_datetime(frame["trade_date"], errors="coerce").max()
+    if pd.isna(latest_feature_date):
+        return None
+    return latest_feature_date.date().isoformat()
+
+
+def _latest_feature_dates(repo_root: Path) -> tuple[str | None, str | None]:
     candidates: list[tuple[tuple[int, float], str, str | None]] = []
     for feature_path in _feature_path_candidates(repo_root):
         if not feature_path.exists():
             continue
-        frame = pd.read_parquet(feature_path, columns=["trade_date"])
-        if frame.empty:
+        latest_feature_iso = _latest_feature_date_for_path(feature_path)
+        if latest_feature_iso is None:
             candidates.append(((0, feature_path.stat().st_mtime), str(feature_path), None))
             continue
-        latest_feature_date = pd.to_datetime(frame["trade_date"]).max()
-        latest_feature_iso = latest_feature_date.date().isoformat()
         candidates.append(
             (
-                (latest_feature_date.to_pydatetime().toordinal(), feature_path.stat().st_mtime),
+                (date.fromisoformat(latest_feature_iso).toordinal(), feature_path.stat().st_mtime),
                 str(feature_path),
                 latest_feature_iso,
             ),
@@ -119,6 +158,10 @@ def _live_fetch_enabled() -> bool:
 
 def _feature_refresh_enabled() -> bool:
     return os.environ.get("QUANTEDGE_ENABLE_FEATURE_REFRESH", "").lower() in {"1", "true", "yes"}
+
+
+def _fundamentals_fetch_enabled() -> bool:
+    return os.environ.get("QUANTEDGE_ENABLE_FUNDAMENTALS_FETCH", "").lower() in {"1", "true", "yes"}
 
 
 def _serialize_date(value: date | None) -> str | None:
@@ -171,6 +214,48 @@ def _load_macro_state(conn: Any) -> dict[str, Any]:
         "latest_observation_date": row["latest_observation_date"],
         "latest_knowledge_time": row["latest_knowledge_time"],
     }
+
+
+def _load_fundamentals_state(conn: Any) -> dict[str, Any]:
+    from sqlalchemy import text
+
+    row = conn.execute(
+        text(
+            """
+            select
+                count(*) as row_count,
+                count(distinct ticker) as ticker_count,
+                max(knowledge_time) filter (
+                    where knowledge_time <= now()
+                ) as latest_knowledge_time
+            from fundamentals_pit
+            """,
+        ),
+    ).mappings().one()
+    return {
+        "row_count": int(row["row_count"] or 0),
+        "ticker_count": int(row["ticker_count"] or 0),
+        "latest_knowledge_time": row["latest_knowledge_time"],
+    }
+
+
+def _load_active_universe_tickers(conn: Any, *, trade_date: date) -> list[str]:
+    from sqlalchemy import text
+
+    rows = conn.execute(
+        text(
+            """
+            select distinct ticker
+            from universe_membership
+            where index_name = 'SP500'
+              and effective_date <= :trade_date
+              and (end_date is null or end_date > :trade_date)
+            order by ticker
+            """,
+        ),
+        {"trade_date": trade_date},
+    ).scalars().all()
+    return [str(ticker).upper() for ticker in rows if ticker]
 
 
 def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
@@ -319,25 +404,187 @@ def fetch_prices(**context: Any) -> dict[str, Any]:
     return _run_task("fetch_prices", _fetch_prices_impl, **context)
 
 
+def _fetch_fundamentals_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    from sqlalchemy import text
+
+    from scripts._data_ops import current_market_data_end_date
+    from src.config import settings
+    from src.data.db.session import get_engine
+    from src.data.sources.fmp import FMPDataSource
+
+    market_data_end = current_market_data_end_date()
+    fundamentals_enabled = _fundamentals_fetch_enabled()
+
+    with get_engine().connect() as conn:
+        latest_trade_date = conn.execute(text("select max(trade_date) from stock_prices")).scalar()
+        active_universe_date = latest_trade_date or market_data_end
+        active_tickers = _load_active_universe_tickers(conn, trade_date=active_universe_date)
+        fundamentals_state_before = _load_fundamentals_state(conn)
+
+    if not active_tickers:
+        raise RuntimeError(
+            "No active universe_membership tickers are available for fundamentals ingestion.",
+        )
+
+    if not fundamentals_enabled:
+        return _result(
+            "fetch_fundamentals",
+            "skipped",
+            reason="fundamentals_fetch_disabled",
+            ticker_count=len(active_tickers),
+            active_universe_date=active_universe_date.isoformat(),
+            since_date=_serialize_datetime(fundamentals_state_before["latest_knowledge_time"]),
+            latest_knowledge_time_before=_serialize_datetime(
+                fundamentals_state_before["latest_knowledge_time"],
+            ),
+        )
+
+    if not settings.FMP_API_KEY:
+        raise RuntimeError(
+            "FMP_API_KEY is required when QUANTEDGE_ENABLE_FUNDAMENTALS_FETCH is enabled.",
+        )
+
+    source = FMPDataSource()
+    if not source.health_check():
+        raise RuntimeError("FMP health check failed before incremental fundamentals ingestion.")
+
+    latest_knowledge_time_before = fundamentals_state_before["latest_knowledge_time"]
+    since_date = latest_knowledge_time_before or datetime.combine(
+        market_data_end - timedelta(days=180),
+        datetime.min.time(),
+        tzinfo=timezone.utc,
+    )
+
+    LOGGER.info(
+        "daily_data_pipeline fundamentals ingestion starting for %s active tickers since %s",
+        len(active_tickers),
+        since_date.isoformat(),
+    )
+
+    successful_tickers: list[str] = []
+    skipped_tickers: list[str] = []
+    failed_tickers: list[str] = []
+    fetched_rows = 0
+
+    for index, ticker in enumerate(active_tickers, start=1):
+        LOGGER.info(
+            "daily_data_pipeline fundamentals [%s/%s] ingesting %s since %s",
+            index,
+            len(active_tickers),
+            ticker,
+            since_date.isoformat(),
+        )
+        try:
+            frame = source.fetch_incremental([ticker], since_date)
+        except Exception:
+            LOGGER.exception(
+                "daily_data_pipeline failed to fetch incremental FMP fundamentals for %s",
+                ticker,
+            )
+            failed_tickers.append(ticker)
+            continue
+
+        if frame.empty:
+            skipped_tickers.append(ticker)
+            continue
+
+        successful_tickers.append(ticker)
+        fetched_rows += int(len(frame))
+
+    if failed_tickers:
+        LOGGER.warning(
+            "daily_data_pipeline fundamentals failed for %s tickers: %s",
+            len(failed_tickers),
+            ",".join(failed_tickers),
+        )
+
+    if len(failed_tickers) > (len(active_tickers) / 2):
+        raise RuntimeError(
+            "FMP incremental fundamentals ingestion failed for more than 50% of active tickers: "
+            f"{len(failed_tickers)}/{len(active_tickers)}",
+        )
+
+    with get_engine().connect() as conn:
+        fundamentals_state_after = _load_fundamentals_state(conn)
+
+    LOGGER.info(
+        "daily_data_pipeline fundamentals ingestion finished: new_rows=%s success=%s skipped=%s failed=%s",
+        max(fundamentals_state_after["row_count"] - fundamentals_state_before["row_count"], 0),
+        len(successful_tickers),
+        len(skipped_tickers),
+        len(failed_tickers),
+    )
+
+    return _result(
+        "fetch_fundamentals",
+        "ok",
+        datasource=source.source_name,
+        ticker_count=len(active_tickers),
+        active_universe_date=active_universe_date.isoformat(),
+        since_date=since_date.isoformat(),
+        fetched_rows=fetched_rows,
+        new_rows_written=max(fundamentals_state_after["row_count"] - fundamentals_state_before["row_count"], 0),
+        successful_ticker_count=len(successful_tickers),
+        skipped_ticker_count=len(skipped_tickers),
+        failed_ticker_count=len(failed_tickers),
+        failed_ticker_preview=failed_tickers[:25],
+        latest_knowledge_time_before=_serialize_datetime(latest_knowledge_time_before),
+        latest_knowledge_time_after=_serialize_datetime(
+            fundamentals_state_after["latest_knowledge_time"],
+        ),
+        fundamentals_rows_before=fundamentals_state_before["row_count"],
+        fundamentals_rows_after=fundamentals_state_after["row_count"],
+        fundamentals_ticker_count_after=fundamentals_state_after["ticker_count"],
+    )
+
+
+def fetch_fundamentals(**context: Any) -> dict[str, Any]:
+    return _run_task("fetch_fundamentals", _fetch_fundamentals_impl, **context)
+
+
 def _check_quality_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     import pandas as pd
     from sqlalchemy import text
 
+    from scripts._data_ops import get_tracked_tickers
     from src.data.db.session import get_engine
     from src.risk.data_risk import DataRiskMonitor
 
     monitor = DataRiskMonitor()
+    as_of = datetime.now(timezone.utc)
     feature_path_str, _ = _latest_feature_dates(repo_root)
     feature_path = None if feature_path_str is None else Path(feature_path_str)
 
     with get_engine().connect() as conn:
-        latest_trade_date = conn.execute(text("select max(trade_date) from stock_prices")).scalar()
-        universe_size = int(conn.execute(text("select count(*) from stocks where ticker <> 'SPY'")).scalar() or 0)
-        latest_prices = pd.read_sql(
-            text("select ticker, trade_date from stock_prices where trade_date = :trade_date"),
-            conn,
-            params={"trade_date": latest_trade_date},
+        row = conn.execute(
+            text(
+                """
+                select
+                    max(trade_date) as latest_trade_date,
+                    max(trade_date) filter (where knowledge_time <= :as_of) as latest_pit_trade_date
+                from stock_prices
+                """,
+            ),
+            {"as_of": as_of},
+        ).mappings().one()
+        latest_trade_date = row["latest_pit_trade_date"] or row["latest_trade_date"]
+        latest_prices = (
+            pd.read_sql(
+                text(
+                    """
+                    select ticker, trade_date
+                    from stock_prices
+                    where trade_date = :trade_date
+                      and knowledge_time <= :as_of
+                    """,
+                ),
+                conn,
+                params={"trade_date": latest_trade_date, "as_of": as_of},
+            )
+            if latest_trade_date is not None
+            else pd.DataFrame(columns=["ticker", "trade_date"])
         )
+    universe_size = len(get_tracked_tickers())
 
     if latest_trade_date is None or latest_prices.empty or feature_path is None or not feature_path.exists():
         return _result(
@@ -354,6 +601,15 @@ def _check_quality_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str
     )
     feature_frame["trade_date"] = pd.to_datetime(feature_frame["trade_date"])
     latest_feature_date = feature_frame["trade_date"].max()
+    if pd.notna(latest_feature_date) and latest_feature_date.date() < latest_trade_date:
+        return _result(
+            "check_quality",
+            "skipped",
+            reason="stale_feature_cache",
+            latest_trade_date=latest_trade_date.isoformat(),
+            latest_feature_date=latest_feature_date.date().isoformat(),
+            feature_path=feature_path_str,
+        )
     current_long = feature_frame.loc[feature_frame["trade_date"] == latest_feature_date].copy()
     historical_long = feature_frame.loc[feature_frame["trade_date"] < latest_feature_date].copy()
     if current_long.empty or historical_long.empty:
@@ -563,8 +819,18 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
     if min_trade_date is None:
         raise RuntimeError("stock_prices is missing min_trade_date for feature refresh bootstrap.")
 
+    latest_feature_dt = date.fromisoformat(latest_feature_date) if latest_feature_date else None
+    stale_cache_gap_days = None
+    reseeded_recent_window = False
     if latest_feature_date is not None:
-        refresh_start = date.fromisoformat(latest_feature_date) + timedelta(days=1)
+        refresh_start = latest_feature_dt + timedelta(days=1)
+        stale_cache_gap_days = (latest_pit_trade_date - latest_feature_dt).days
+        if stale_cache_gap_days > DEFAULT_FEATURE_BOOTSTRAP_DAYS:
+            refresh_start = max(
+                min_trade_date,
+                latest_pit_trade_date - timedelta(days=DEFAULT_FEATURE_BOOTSTRAP_DAYS),
+            )
+            reseeded_recent_window = True
     else:
         refresh_start = max(min_trade_date, latest_pit_trade_date - timedelta(days=DEFAULT_FEATURE_BOOTSTRAP_DAYS))
     if refresh_start > latest_pit_trade_date:
@@ -602,8 +868,8 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
     refreshed["ticker"] = refreshed["ticker"].astype(str).str.upper()
 
     existing_path = None if feature_path is None else Path(feature_path)
-    target_path = _runtime_feature_path(repo_root)
-    if existing_path is not None and existing_path.exists():
+    target_path = _runtime_feature_path(repo_root, prefer_fallback=reseeded_recent_window)
+    if not reseeded_recent_window and existing_path is not None and existing_path.exists():
         existing = pd.read_parquet(
             existing_path,
             columns=["ticker", "trade_date", "feature_name", "feature_value"],
@@ -636,6 +902,8 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
         feature_path=str(target_path),
         pipeline_class=pipeline.__class__.__name__,
         batch_id=batch_id,
+        stale_cache_gap_days=stale_cache_gap_days,
+        reseeded_recent_window=reseeded_recent_window,
         feature_rows_generated=int(len(features_long)),
         feature_store_rows_saved=feature_store_rows_saved,
         cache_rows_after=int(len(combined)),
@@ -656,6 +924,10 @@ with DAG(
     default_args={"owner": "quantedge"},
 ) as dag:
     fetch_prices_task = PythonOperator(task_id="fetch_prices", python_callable=fetch_prices)
+    fetch_fundamentals_task = PythonOperator(
+        task_id="fetch_fundamentals",
+        python_callable=fetch_fundamentals,
+    )
     check_quality_task = PythonOperator(task_id="check_quality", python_callable=check_quality)
     store_to_db_task = PythonOperator(task_id="store_to_db", python_callable=store_to_db)
     update_features_cache_task = PythonOperator(
@@ -663,4 +935,6 @@ with DAG(
         python_callable=update_features_cache,
     )
 
-    fetch_prices_task >> check_quality_task >> store_to_db_task >> update_features_cache_task
+    fetch_prices_task >> store_to_db_task
+    [store_to_db_task, fetch_fundamentals_task] >> update_features_cache_task
+    update_features_cache_task >> check_quality_task

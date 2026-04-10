@@ -20,6 +20,8 @@ from src.data.db.session import get_engine, get_session_factory
 from src.data.sources.base import DataSource, DataSourceError, DataSourceTransientError
 
 DEFAULT_SERIES = ("VIXCLS", "DGS10", "DGS2", "BAA10Y", "AAA10Y", "FEDFUNDS")
+DEFAULT_INCREMENTAL_LOOKBACK_DAYS = 30
+MAX_INCREMENTAL_LOOKBACK_DAYS = 180
 SERIES_ALIASES = {
     "VIX": "VIXCLS",
     "10Y": "DGS10",
@@ -176,8 +178,25 @@ class FredDataSource(DataSource):
         since_date: date | datetime,
     ) -> pd.DataFrame:
         cutoff = self.coerce_datetime(since_date)
-        lookback_start = self.coerce_date(since_date) - timedelta(days=180)
-        frame = self.fetch_historical(tickers, lookback_start, self._current_realtime_date())
+        current_realtime_date = self._current_realtime_date()
+        current_cutoff = datetime.combine(current_realtime_date, time.min, tzinfo=timezone.utc)
+        if cutoff >= current_cutoff:
+            logger.info(
+                "fred incremental already current through knowledge_time {}; skipping fetch",
+                cutoff,
+            )
+            return pd.DataFrame(columns=MACRO_COLUMNS)
+
+        since_day = self.coerce_date(since_date)
+        gap_days = max(0, (current_realtime_date - since_day).days)
+        # Revisions matter for PIT macro series, but daily ops should not
+        # re-query an arbitrary 180-day window when we are already current.
+        lookback_days = min(
+            MAX_INCREMENTAL_LOOKBACK_DAYS,
+            max(DEFAULT_INCREMENTAL_LOOKBACK_DAYS, gap_days + 7),
+        )
+        lookback_start = since_day - timedelta(days=lookback_days)
+        frame = self.fetch_historical(tickers, lookback_start, current_realtime_date)
         if frame.empty:
             return frame
         incremental = frame.loc[pd.to_datetime(frame["knowledge_time"], utc=True) >= cutoff]
@@ -207,10 +226,11 @@ class FredDataSource(DataSource):
         while chunk_start <= end_date:
             chunk_end = min(chunk_start + timedelta(days=1_500), end_date)
             try:
-                releases = client.get_series_all_releases(
-                    series_id,
-                    realtime_start=chunk_start.isoformat(),
-                    realtime_end=chunk_end.isoformat(),
+                releases = self._fetch_release_window(
+                    client=client,
+                    series_id=series_id,
+                    start_date=chunk_start,
+                    end_date=chunk_end,
                 )
             except DataSourceError:
                 raise
@@ -235,6 +255,50 @@ class FredDataSource(DataSource):
         frame.dropna(subset=["observation_date", "realtime_start", "value"], inplace=True)
         frame.drop_duplicates(subset=["observation_date", "realtime_start", "value"], inplace=True)
         return frame[["observation_date", "realtime_start", "value"]]
+
+    def _fetch_release_window(
+        self,
+        *,
+        client: Any,
+        series_id: str,
+        start_date: date,
+        end_date: date,
+    ) -> list[dict[str, Any]]:
+        try:
+            return client.get_series_all_releases(
+                series_id,
+                realtime_start=start_date.isoformat(),
+                realtime_end=end_date.isoformat(),
+            )
+        except DataSourceTransientError:
+            if start_date >= end_date:
+                raise
+
+            midpoint = date.fromordinal(
+                start_date.toordinal() + ((end_date.toordinal() - start_date.toordinal()) // 2),
+            )
+            if midpoint < start_date or midpoint >= end_date:
+                raise
+
+            logger.warning(
+                "fred splitting release window for {} from {}..{} into smaller chunks",
+                series_id,
+                start_date,
+                end_date,
+            )
+            left = self._fetch_release_window(
+                client=client,
+                series_id=series_id,
+                start_date=start_date,
+                end_date=midpoint,
+            )
+            right = self._fetch_release_window(
+                client=client,
+                series_id=series_id,
+                start_date=midpoint + timedelta(days=1),
+                end_date=end_date,
+            )
+            return [*left, *right]
 
     def persist_series(self, frame: pd.DataFrame, *, batch_size: int = 1_000) -> int:
         if frame.empty:

@@ -542,6 +542,16 @@ class FMPDataSource(DataSource):
             return 0
 
         records = [self._frame_row_to_record(row) for row in frame.itertuples(index=False)]
+        deduped_records: dict[tuple[str, str, str, datetime], dict[str, Any]] = {}
+        for record in records:
+            dedupe_key = (
+                str(record["ticker"]),
+                str(record["fiscal_period"]),
+                str(record["metric_name"]),
+                record["knowledge_time"],
+            )
+            deduped_records[dedupe_key] = record
+        records = list(deduped_records.values())
         session_factory = get_session_factory()
 
         with session_factory() as session:
