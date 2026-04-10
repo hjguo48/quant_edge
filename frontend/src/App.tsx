@@ -1,30 +1,21 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import AppLayout from './components/layout/AppLayout';
-import Dashboard from './pages/Dashboard';
-import Signals from './pages/Signals';
-import SignalDetail from './pages/SignalDetail';
-import Portfolio from './pages/Portfolio';
-import Backtest from './pages/Backtest';
-import G4Gate from './pages/G4Gate';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Index from "./pages/Index";
 
-const App: React.FC = () => {
-  return (
-    <Router>
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<AppLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="signals" element={<Signals />} />
-          <Route path="signals/:ticker" element={<SignalDetail />} />
-          <Route path="portfolio" element={<Portfolio />} />
-          <Route path="backtest" element={<Backtest />} />
-          <Route path="g4gate" element={<G4Gate />} />
-          {/* Default fallback */}
-          <Route path="*" element={<Dashboard />} />
-        </Route>
+        <Route path="/" element={<Index />} />
+        <Route path="/signals" element={<Index />} />
+        <Route path="/portfolio" element={<Index />} />
+        <Route path="/backtest" element={<Index />} />
+        <Route path="/greyscale" element={<Index />} />
       </Routes>
-    </Router>
-  );
-};
+    </BrowserRouter>
+  </QueryClientProvider>
+);
 
 export default App;
