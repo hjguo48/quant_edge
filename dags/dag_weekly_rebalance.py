@@ -660,7 +660,7 @@ def audit_log(**context: Any) -> dict[str, Any]:
 with DAG(
     dag_id="weekly_rebalance_pipeline",
     description="Friday rebalance orchestration with portfolio risk controls.",
-    schedule="0 17 * * 5",
+    schedule="0 21 * * 5",
     start_date=pendulum.datetime(2026, 1, 2, tz="America/New_York"),
     catchup=False,
     tags=["quantedge", "rebalance", "weekly"],

@@ -834,7 +834,7 @@ def greyscale_monitor(**context: Any) -> dict[str, Any]:
 with DAG(
     dag_id="weekly_signal_pipeline",
     description="Friday greyscale fusion signal generation and G4 monitoring.",
-    schedule="30 16 * * 5",
+    schedule="30 20 * * 5",
     start_date=pendulum.datetime(2026, 1, 2, tz="America/New_York"),
     catchup=False,
     tags=["quantedge", "signals", "weekly"],
