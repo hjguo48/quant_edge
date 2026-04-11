@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 import logging
 import os
@@ -95,6 +95,10 @@ def _result(step: str, status: str, **payload: Any) -> dict[str, Any]:
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         **payload,
     }
+
+
+def _serialize_date(value: date | None) -> str | None:
+    return value.isoformat() if value is not None else None
 
 
 def _run_task(step: str, handler: Any, **context: Any) -> dict[str, Any]:
@@ -415,6 +419,40 @@ def _latest_prediction_snapshot(repo_root: Path) -> dict[str, Any] | None:
     return None
 
 
+def _expected_latest_market_trade_date(as_of: datetime) -> date | None:
+    from src.config import settings
+    from src.data.sources.polygon import PolygonDataSource
+
+    if not settings.POLYGON_API_KEY:
+        return None
+
+    source = PolygonDataSource(min_request_interval=0.05)
+    try:
+        return source.resolve_latest_available_trade_date(reference_time=as_of)
+    except Exception:
+        LOGGER.exception("weekly_signal_pipeline failed to resolve latest available Polygon trade date")
+        return None
+
+
+def _latest_visible_macro_observation_date(*, as_of: datetime, series_id: str) -> date | None:
+    from sqlalchemy import text
+
+    from src.data.db.session import get_engine
+
+    with get_engine().connect() as conn:
+        return conn.execute(
+            text(
+                """
+                select max(observation_date)
+                from macro_series_pit
+                where series_id = :series_id
+                  and knowledge_time <= :as_of
+                """,
+            ),
+            {"series_id": series_id, "as_of": as_of},
+        ).scalar()
+
+
 def _check_data_freshness_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     from scripts.run_live_pipeline import load_db_state
 
@@ -423,6 +461,33 @@ def _check_data_freshness_impl(*, repo_root: Path, context: dict[str, Any]) -> d
     latest_pit_trade_date = db_state["latest_pit_trade_date"]
     if latest_pit_trade_date is None:
         return _result("check_data_freshness", "skipped", reason="no_pit_visible_price_data_available")
+
+    expected_latest_trade_date = _expected_latest_market_trade_date(as_of)
+    latest_vix_observation_date = _latest_visible_macro_observation_date(as_of=as_of, series_id="VIXCLS")
+    if expected_latest_trade_date is not None and latest_pit_trade_date < expected_latest_trade_date:
+        raise RuntimeError(
+            "weekly_signal_pipeline is stale: latest_pit_trade_date="
+            f"{latest_pit_trade_date.isoformat()} but Polygon exposes {expected_latest_trade_date.isoformat()}",
+        )
+    if expected_latest_trade_date is not None and (
+        latest_vix_observation_date is None or latest_vix_observation_date < expected_latest_trade_date
+    ):
+        raise RuntimeError(
+            "weekly_signal_pipeline is stale: latest visible VIX observation date="
+            f"{latest_vix_observation_date.isoformat() if latest_vix_observation_date else 'none'} "
+            f"but expected {expected_latest_trade_date.isoformat()}",
+        )
+    latest_pit_trade_ticker_count = int(db_state.get("latest_pit_trade_ticker_count", 0) or 0)
+    expected_universe_size = int(
+        db_state.get("expected_live_universe_count")
+        or db_state.get("universe_membership_live_count")
+        or 0,
+    )
+    if latest_pit_trade_ticker_count < expected_universe_size:
+        raise RuntimeError(
+            "weekly_signal_pipeline price coverage is incomplete for the latest PIT trade date: "
+            f"visible_tickers={latest_pit_trade_ticker_count} expected_universe={expected_universe_size}",
+        )
 
     latest_report = _load_latest_greyscale_report(repo_root)
     latest_snapshot_date = None
@@ -440,9 +505,14 @@ def _check_data_freshness_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         if db_state["latest_stored_trade_date"]
         else None,
         latest_pit_trade_date=latest_pit_trade_date.isoformat(),
+        previous_pit_trade_date=_serialize_date(db_state.get("previous_pit_trade_date")),
+        expected_latest_trade_date=_serialize_date(expected_latest_trade_date),
+        latest_visible_vix_observation_date=_serialize_date(latest_vix_observation_date),
+        latest_pit_trade_ticker_count=latest_pit_trade_ticker_count,
         previous_signal_snapshot_date=latest_snapshot_date,
         previous_snapshot_current=not stale,
-        universe_membership_live_count=int(db_state["universe_membership_live_count"]),
+        expected_live_universe_count=expected_universe_size,
+        universe_membership_live_count=int(db_state.get("universe_membership_live_count", 0) or 0),
     )
 
 
@@ -837,12 +907,15 @@ with DAG(
     schedule="30 20 * * 5",
     start_date=pendulum.datetime(2026, 1, 2, tz="America/New_York"),
     catchup=False,
+    max_active_runs=1,
     tags=["quantedge", "signals", "weekly"],
     default_args={"owner": "quantedge"},
 ) as dag:
     check_data_freshness_task = PythonOperator(
         task_id="check_data_freshness",
         python_callable=check_data_freshness,
+        retries=12,
+        retry_delay=timedelta(minutes=10),
     )
     compute_features_task = PythonOperator(
         task_id="compute_features",

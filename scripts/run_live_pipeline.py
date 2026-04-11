@@ -1,4 +1,5 @@
 from __future__ import annotations
+# ruff: noqa: E402
 
 import argparse
 from datetime import date, datetime, timedelta, timezone
@@ -365,25 +366,96 @@ def load_db_state(*, as_of: datetime) -> dict[str, Any]:
             text("select max(trade_date) from stock_prices where knowledge_time <= :as_of"),
             {"as_of": as_of},
         ).scalar()
-        universe_membership_live_count = int(
-            conn.execute(
+        if latest_pit_trade_date is None:
+            universe_membership_live_count = 0
+            latest_pit_trade_ticker_count = 0
+            previous_pit_trade_date = None
+            expected_live_universe_count = 0
+        else:
+            previous_pit_trade_date = conn.execute(
                 text(
                     """
-                    select count(*)
-                    from universe_membership
-                    where index_name = 'SP500'
-                      and effective_date <= :trade_date
-                      and (end_date is null or end_date > :trade_date)
+                    select max(trade_date)
+                    from stock_prices
+                    where knowledge_time <= :as_of
+                      and trade_date < :trade_date
                     """,
                 ),
-                {"trade_date": latest_pit_trade_date},
+                {"as_of": as_of, "trade_date": latest_pit_trade_date},
             ).scalar()
-            or 0,
-        )
+            universe_membership_live_count = int(
+                conn.execute(
+                    text(
+                        """
+                        select count(*)
+                        from universe_membership
+                        where index_name = 'SP500'
+                          and effective_date <= :trade_date
+                          and (end_date is null or end_date > :trade_date)
+                        """,
+                    ),
+                    {"trade_date": latest_pit_trade_date},
+                ).scalar()
+                or 0,
+            )
+            latest_pit_trade_ticker_count = int(
+                conn.execute(
+                    text(
+                        """
+                        with live_universe as (
+                            select distinct ticker
+                            from universe_membership
+                            where index_name = 'SP500'
+                              and effective_date <= :trade_date
+                              and (end_date is null or end_date > :trade_date)
+                        )
+                        select count(distinct sp.ticker)
+                        from stock_prices sp
+                        join live_universe u on u.ticker = sp.ticker
+                        where sp.trade_date = :trade_date
+                          and sp.knowledge_time <= :as_of
+                        """,
+                    ),
+                    {"trade_date": latest_pit_trade_date, "as_of": as_of},
+                ).scalar()
+                or 0,
+            )
+            baseline_trade_date = previous_pit_trade_date or latest_pit_trade_date
+            baseline_coverage = int(
+                conn.execute(
+                    text(
+                        """
+                        with live_universe as (
+                            select distinct ticker
+                            from universe_membership
+                            where index_name = 'SP500'
+                              and effective_date <= :latest_trade_date
+                              and (end_date is null or end_date > :latest_trade_date)
+                        )
+                        select count(distinct sp.ticker)
+                        from stock_prices sp
+                        join live_universe u on u.ticker = sp.ticker
+                        where sp.trade_date = :baseline_trade_date
+                          and sp.knowledge_time <= :as_of
+                        """,
+                    ),
+                    {
+                        "latest_trade_date": latest_pit_trade_date,
+                        "baseline_trade_date": baseline_trade_date,
+                        "as_of": as_of,
+                    },
+                ).scalar()
+                or 0,
+            )
+            membership_floor = int(universe_membership_live_count * 0.95)
+            expected_live_universe_count = max(baseline_coverage, membership_floor)
     return {
         "latest_stored_trade_date": latest_stored_trade_date,
         "latest_pit_trade_date": latest_pit_trade_date,
+        "previous_pit_trade_date": previous_pit_trade_date,
         "universe_membership_live_count": universe_membership_live_count,
+        "expected_live_universe_count": expected_live_universe_count,
+        "latest_pit_trade_ticker_count": latest_pit_trade_ticker_count,
     }
 
 

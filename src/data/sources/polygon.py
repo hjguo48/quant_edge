@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 from loguru import logger
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert
 
 from src.config import settings
@@ -48,15 +49,24 @@ class PolygonDataSource(DataSource):
     ) -> None:
         super().__init__(api_key or settings.POLYGON_API_KEY, min_request_interval=min_request_interval)
         self._client: Any | None = None
+        self._http_session: Any | None = None
 
     def fetch_historical(
         self,
         tickers: Sequence[str],
         start_date: date | datetime,
         end_date: date | datetime,
+        *,
+        knowledge_time_mode: str = "historical",
+        observed_at: date | datetime | None = None,
     ) -> pd.DataFrame:
         start = self.coerce_date(start_date)
         end = self.coerce_date(end_date)
+        observed_at_ts = (
+            self.coerce_datetime(observed_at or datetime.now(timezone.utc))
+            if knowledge_time_mode == "observed_at"
+            else None
+        )
         rows: list[dict[str, Any]] = []
 
         canonical_tickers = tuple(
@@ -88,7 +98,11 @@ class PolygonDataSource(DataSource):
                         "close": raw_bar["close"],
                         "adj_close": adjusted_bar.get("close", raw_bar["close"]),
                         "volume": raw_bar["volume"],
-                        "knowledge_time": self._knowledge_time(trade_date),
+                        "knowledge_time": self._resolve_knowledge_time(
+                            trade_date,
+                            mode=knowledge_time_mode,
+                            observed_at=observed_at_ts,
+                        ),
                         "source": self.source_name,
                     },
                 )
@@ -109,8 +123,125 @@ class PolygonDataSource(DataSource):
         self,
         tickers: Sequence[str],
         since_date: date | datetime,
+        *,
+        knowledge_time_mode: str = "historical",
+        observed_at: date | datetime | None = None,
     ) -> pd.DataFrame:
-        return self.fetch_historical(tickers, self.coerce_date(since_date), self._current_market_end_date())
+        return self.fetch_historical(
+            tickers,
+            self.coerce_date(since_date),
+            self._current_market_end_date(),
+            knowledge_time_mode=knowledge_time_mode,
+            observed_at=observed_at,
+        )
+
+    def fetch_grouped_daily(
+        self,
+        trade_date: date | datetime,
+        *,
+        tickers: Sequence[str] | None = None,
+        knowledge_time_mode: str = "historical",
+        observed_at: date | datetime | None = None,
+    ) -> pd.DataFrame:
+        trade_day = self.coerce_date(trade_date)
+        observed_at_ts = (
+            self.coerce_datetime(observed_at or datetime.now(timezone.utc))
+            if knowledge_time_mode == "observed_at"
+            else None
+        )
+        ticker_filter = (
+            {normalize_polygon_ticker(ticker) for ticker in tickers}
+            if tickers is not None
+            else None
+        )
+
+        raw_bars = self._get_grouped_daily_rows(trade_day, adjusted=False)
+        adjusted_bars = self._get_grouped_daily_rows(trade_day, adjusted=True)
+        if not raw_bars:
+            logger.warning("polygon grouped daily returned no bars for {}", trade_day)
+            return pd.DataFrame(columns=PRICE_COLUMNS)
+
+        adjusted_by_ticker = {
+            normalize_polygon_ticker(str(self._extract_field(payload, "ticker", "T"))): payload
+            for payload in adjusted_bars
+            if self._extract_field(payload, "ticker", "T")
+        }
+
+        rows: list[dict[str, Any]] = []
+        for payload in raw_bars:
+            raw_ticker = self._extract_field(payload, "ticker", "T")
+            if not raw_ticker:
+                continue
+            ticker = normalize_polygon_ticker(str(raw_ticker))
+            if ticker_filter is not None and ticker not in ticker_filter:
+                continue
+
+            adjusted_payload = adjusted_by_ticker.get(ticker, {})
+            rows.append(
+                {
+                    "ticker": ticker,
+                    "trade_date": trade_day,
+                    "open": self._extract_field(payload, "open", "o"),
+                    "high": self._extract_field(payload, "high", "h"),
+                    "low": self._extract_field(payload, "low", "l"),
+                    "close": self._extract_field(payload, "close", "c"),
+                    "adj_close": self._extract_field(adjusted_payload, "close", "c")
+                    or self._extract_field(payload, "close", "c"),
+                    "volume": self._extract_field(payload, "volume", "v"),
+                    "knowledge_time": self._resolve_knowledge_time(
+                        trade_day,
+                        mode=knowledge_time_mode,
+                        observed_at=observed_at_ts,
+                    ),
+                    "source": self.source_name,
+                },
+            )
+
+        frame = self.dataframe_or_empty(rows, PRICE_COLUMNS)
+        if not frame.empty:
+            self.persist_prices(frame)
+        logger.info(
+            "polygon grouped daily fetched {} rows for {} between {} and {}",
+            len(frame),
+            len(set(frame["ticker"])) if not frame.empty else 0,
+            trade_day,
+            trade_day,
+        )
+        return frame
+
+    def fetch_grouped_daily_range(
+        self,
+        start_date: date | datetime,
+        end_date: date | datetime,
+        *,
+        tickers: Sequence[str] | None = None,
+        knowledge_time_mode: str = "historical",
+        observed_at: date | datetime | None = None,
+    ) -> pd.DataFrame:
+        start = self.coerce_date(start_date)
+        end = self.coerce_date(end_date)
+        if start > end:
+            return pd.DataFrame(columns=PRICE_COLUMNS)
+
+        frames: list[pd.DataFrame] = []
+        current = start
+        while current <= end:
+            frame = self.fetch_grouped_daily(
+                current,
+                tickers=tickers,
+                knowledge_time_mode=knowledge_time_mode,
+                observed_at=observed_at,
+            )
+            if not frame.empty:
+                frames.append(frame)
+            current += timedelta(days=1)
+
+        if not frames:
+            return pd.DataFrame(columns=PRICE_COLUMNS)
+        combined = pd.concat(frames, ignore_index=True)
+        combined.sort_values(["trade_date", "ticker"], inplace=True)
+        combined.reset_index(drop=True, inplace=True)
+        return combined
 
     def health_check(self) -> bool:
         try:
@@ -120,6 +251,32 @@ class PolygonDataSource(DataSource):
         except Exception as exc:
             logger.warning("polygon health check failed: {}", exc)
             return False
+
+    def resolve_latest_available_trade_date(
+        self,
+        *,
+        benchmark_ticker: str = "SPY",
+        reference_time: date | datetime | None = None,
+        lookback_days: int = 7,
+    ) -> date:
+        if lookback_days < 1:
+            raise ValueError("lookback_days must be at least 1.")
+
+        anchor = self.coerce_datetime(reference_time or datetime.now(timezone.utc)).astimezone(
+            ZoneInfo("America/New_York"),
+        ).date()
+        provider_ticker = to_polygon_request_ticker(normalize_polygon_ticker(benchmark_ticker))
+
+        for offset in range(lookback_days):
+            candidate = anchor - timedelta(days=offset)
+            bars = self._list_aggs(provider_ticker, candidate, candidate, adjusted=False)
+            if candidate in bars:
+                return candidate
+
+        raise DataSourceError(
+            f"Polygon did not expose a latest available trade date for {benchmark_ticker} "
+            f"within the last {lookback_days} calendar days.",
+        )
 
     @DataSource.retryable()
     def _list_aggs(
@@ -174,6 +331,55 @@ class PolygonDataSource(DataSource):
 
         return parsed
 
+    @DataSource.retryable()
+    def _get_grouped_daily_rows(
+        self,
+        trade_date: date,
+        *,
+        adjusted: bool,
+    ) -> list[dict[str, Any]]:
+        session = self._get_http_session()
+        self._before_request(f"grouped_daily {trade_date.isoformat()} adjusted={adjusted}")
+
+        try:
+            response = session.get(
+                f"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{trade_date.isoformat()}",
+                params={
+                    "adjusted": str(adjusted).lower(),
+                    "apiKey": self.api_key,
+                },
+                timeout=30,
+            )
+        except Exception as exc:
+            raise DataSourceTransientError(
+                f"Polygon grouped daily request failed for {trade_date.isoformat()}: {exc}",
+            ) from exc
+
+        if response.status_code == 200:
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise DataSourceError(
+                    f"Unexpected Polygon grouped daily payload for {trade_date.isoformat()}: "
+                    f"{type(payload).__name__}",
+                )
+            results = payload.get("results") or []
+            if not isinstance(results, list):
+                raise DataSourceError(
+                    f"Unexpected Polygon grouped daily results type for {trade_date.isoformat()}: "
+                    f"{type(results).__name__}",
+                )
+            return results
+
+        if response.status_code == 404:
+            return []
+
+        self.classify_http_error(
+            response.status_code,
+            response.text,
+            context=f"Polygon grouped daily {trade_date.isoformat()} adjusted={adjusted}",
+        )
+        return []
+
     def persist_prices(self, frame: pd.DataFrame, *, batch_size: int = 1_000) -> int:
         if frame.empty:
             return 0
@@ -195,7 +401,13 @@ class PolygonDataSource(DataSource):
                             "close": statement.excluded.close,
                             "adj_close": statement.excluded.adj_close,
                             "volume": statement.excluded.volume,
-                            "knowledge_time": statement.excluded.knowledge_time,
+                            "knowledge_time": sa.func.least(
+                                sa.func.coalesce(
+                                    StockPrice.knowledge_time,
+                                    statement.excluded.knowledge_time,
+                                ),
+                                statement.excluded.knowledge_time,
+                            ),
                             "source": statement.excluded.source,
                         },
                     )
@@ -224,8 +436,23 @@ class PolygonDataSource(DataSource):
         self._client = RESTClient(api_key=self.api_key)
         return self._client
 
+    def _get_http_session(self) -> Any:
+        if self._http_session is not None:
+            return self._http_session
+
+        try:
+            import requests
+        except ImportError as exc:
+            raise DataSourceError("requests is not installed. Add the phase1-week2 dependency group.") from exc
+
+        session = requests.Session()
+        session.trust_env = False
+        session.headers.update({"User-Agent": "QuantEdge/0.1.0"})
+        self._http_session = session
+        return self._http_session
+
     @staticmethod
-    def _knowledge_time(trade_date: date) -> datetime:
+    def _historical_knowledge_time(trade_date: date) -> datetime:
         next_close_local = datetime.combine(
             trade_date + timedelta(days=1),
             time(16, 0),
@@ -234,8 +461,31 @@ class PolygonDataSource(DataSource):
         return next_close_local.astimezone(timezone.utc)
 
     @staticmethod
-    def _current_market_end_date() -> date:
-        return datetime.now(ZoneInfo("America/New_York")).date() - timedelta(days=1)
+    def _market_close_time(trade_date: date) -> datetime:
+        close_local = datetime.combine(
+            trade_date,
+            time(16, 0),
+            tzinfo=ZoneInfo("America/New_York"),
+        )
+        return close_local.astimezone(timezone.utc)
+
+    @classmethod
+    def _resolve_knowledge_time(
+        cls,
+        trade_date: date,
+        *,
+        mode: str,
+        observed_at: datetime | None,
+    ) -> datetime:
+        if mode == "historical":
+            return cls._historical_knowledge_time(trade_date)
+        if mode == "observed_at":
+            effective_observed_at = observed_at or datetime.now(timezone.utc)
+            return max(effective_observed_at, cls._market_close_time(trade_date))
+        raise ValueError(f"Unsupported Polygon knowledge_time_mode: {mode!r}")
+
+    def _current_market_end_date(self) -> date:
+        return self.resolve_latest_available_trade_date()
 
     @staticmethod
     def _extract_field(payload: Any, *candidate_names: str) -> Any:

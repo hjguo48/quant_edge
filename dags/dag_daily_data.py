@@ -15,7 +15,8 @@ import pendulum
 LOGGER = logging.getLogger(__name__)
 DEFAULT_FEATURES_PATH = "data/features/all_features.parquet"
 LEGACY_FEATURES_PATH = "/opt/airflow/daily_features/all_features.parquet"
-DEFAULT_MACRO_SERIES = ("VIXCLS", "DGS10", "DGS2", "BAA10Y", "AAA10Y", "FEDFUNDS")
+FAST_VIX_SERIES = ("VIXCLS",)
+SLOW_MACRO_SERIES = ("DGS10", "DGS2", "BAA10Y", "AAA10Y", "FEDFUNDS")
 DEFAULT_PRICE_BOOTSTRAP_DAYS = 30
 DEFAULT_FEATURE_BOOTSTRAP_DAYS = 30
 
@@ -184,6 +185,14 @@ def _load_price_state(conn: Any) -> dict[str, Any]:
                 count(distinct ticker) filter (
                     where trade_date = (select max(trade_date) from stock_prices)
                 ) as latest_ticker_count
+                ,
+                count(distinct ticker) filter (
+                    where trade_date = (
+                        select max(trade_date)
+                        from stock_prices
+                        where trade_date < (select max(trade_date) from stock_prices)
+                    )
+                ) as previous_ticker_count
             from stock_prices
             """,
         ),
@@ -192,6 +201,7 @@ def _load_price_state(conn: Any) -> dict[str, Any]:
         "latest_trade_date": row["latest_trade_date"],
         "row_count": int(row["row_count"] or 0),
         "latest_ticker_count": int(row["latest_ticker_count"] or 0),
+        "previous_ticker_count": int(row["previous_ticker_count"] or 0),
     }
 
 
@@ -208,6 +218,29 @@ def _load_macro_state(conn: Any) -> dict[str, Any]:
             from macro_series_pit
             """,
         ),
+    ).mappings().one()
+    return {
+        "row_count": int(row["row_count"] or 0),
+        "latest_observation_date": row["latest_observation_date"],
+        "latest_knowledge_time": row["latest_knowledge_time"],
+    }
+
+
+def _load_macro_series_state(conn: Any, *, series_id: str) -> dict[str, Any]:
+    from sqlalchemy import text
+
+    row = conn.execute(
+        text(
+            """
+            select
+                count(*) as row_count,
+                max(observation_date) as latest_observation_date,
+                max(knowledge_time) as latest_knowledge_time
+            from macro_series_pit
+            where series_id = :series_id
+            """,
+        ),
+        {"series_id": series_id},
     ).mappings().one()
     return {
         "row_count": int(row["row_count"] or 0),
@@ -259,27 +292,22 @@ def _load_active_universe_tickers(conn: Any, *, trade_date: date) -> list[str]:
 
 
 def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
-    from scripts._data_ops import current_market_data_end_date, get_tracked_tickers
+    from scripts._data_ops import get_tracked_tickers
     from src.config import settings
     from src.data.db.session import get_engine
-    from src.data.sources.fred import FredDataSource
     from src.data.sources.polygon import PolygonDataSource
 
     live_fetch_enabled = _live_fetch_enabled()
-    market_data_end = current_market_data_end_date()
+    as_of = datetime.now(timezone.utc)
     tracked_tickers = get_tracked_tickers()
     if not tracked_tickers:
         raise RuntimeError("No active tracked tickers are available in stocks.")
 
     with get_engine().connect() as conn:
         price_state_before = _load_price_state(conn)
-        macro_state_before = _load_macro_state(conn)
 
     if not settings.POLYGON_API_KEY:
         raise RuntimeError("POLYGON_API_KEY is required when QUANTEDGE_ENABLE_LIVE_FETCH is enabled.")
-
-    if not settings.FRED_API_KEY:
-        raise RuntimeError("FRED_API_KEY is required for daily macro ingestion.")
 
     if not live_fetch_enabled:
         return _result(
@@ -289,31 +317,32 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
             latest_trade_date=_serialize_date(price_state_before["latest_trade_date"]),
             ticker_count=price_state_before["latest_ticker_count"],
             tracked_ticker_count=len(tracked_tickers),
-            market_data_end=market_data_end.isoformat(),
+            market_data_end=None,
         )
 
     polygon_source = PolygonDataSource(min_request_interval=0.15)
-    fred_source = FredDataSource(min_request_interval=0.10)
     if not polygon_source.health_check():
         raise RuntimeError("Polygon health check failed before incremental price ingestion.")
-    if not fred_source.health_check():
-        raise RuntimeError("FRED health check failed before macro ingestion.")
 
+    market_data_end = polygon_source.resolve_latest_available_trade_date(reference_time=as_of)
     latest_trade_date_before = price_state_before["latest_trade_date"]
     bootstrap_start = market_data_end - timedelta(days=DEFAULT_PRICE_BOOTSTRAP_DAYS)
-    request_start = bootstrap_start if latest_trade_date_before is None else latest_trade_date_before + timedelta(days=1)
+    latest_trade_ticker_count_before = int(price_state_before["latest_ticker_count"])
+    previous_ticker_count_before = int(price_state_before["previous_ticker_count"])
+    expected_complete_ticker_count = max(latest_trade_ticker_count_before, previous_ticker_count_before)
+    if latest_trade_date_before is None:
+        request_start = bootstrap_start
+    elif expected_complete_ticker_count > 0 and latest_trade_ticker_count_before < expected_complete_ticker_count:
+        request_start = latest_trade_date_before
+    else:
+        request_start = latest_trade_date_before + timedelta(days=1)
 
     if request_start > market_data_end:
-        macro_since = macro_state_before["latest_knowledge_time"] or (market_data_end - timedelta(days=30))
-        macro_frame = fred_source.fetch_incremental(list(DEFAULT_MACRO_SERIES), macro_since)
-        with get_engine().connect() as conn:
-            macro_state_after = _load_macro_state(conn)
         return _result(
             "fetch_prices",
             "ok",
             market_data_end=market_data_end.isoformat(),
             datasource=polygon_source.source_name,
-            macro_datasource=fred_source.source_name,
             tracked_ticker_count=len(tracked_tickers),
             updated_ticker_count=0,
             skipped_ticker_count=len(tracked_tickers),
@@ -322,16 +351,11 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
             request_start=request_start.isoformat(),
             latest_trade_date_before=_serialize_date(latest_trade_date_before),
             latest_trade_date_after=_serialize_date(latest_trade_date_before),
+            latest_trade_ticker_count_before=latest_trade_ticker_count_before,
+            previous_trade_ticker_count_before=previous_ticker_count_before,
             latest_trade_ticker_count_after=price_state_before["latest_ticker_count"],
             stock_price_rows_before=price_state_before["row_count"],
             stock_price_rows_after=price_state_before["row_count"],
-            macro_rows_written=int(len(macro_frame)),
-            macro_rows_before=macro_state_before["row_count"],
-            macro_rows_after=macro_state_after["row_count"],
-            macro_latest_observation_date_before=_serialize_date(macro_state_before["latest_observation_date"]),
-            macro_latest_observation_date_after=_serialize_date(macro_state_after["latest_observation_date"]),
-            macro_latest_knowledge_time_before=_serialize_datetime(macro_state_before["latest_knowledge_time"]),
-            macro_latest_knowledge_time_after=_serialize_datetime(macro_state_after["latest_knowledge_time"]),
         )
 
     fetched_trade_dates: set[date] = set()
@@ -339,25 +363,89 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
     skipped_tickers: list[str] = []
     failed_tickers: list[str] = []
     price_rows_written = 0
+    fetch_mode = "grouped_daily"
+    fallback_reason = None
+    tracked_ticker_set = {ticker.upper() for ticker in tracked_tickers}
 
-    for ticker in tracked_tickers:
-        try:
-            frame = polygon_source.fetch_historical([ticker], request_start, market_data_end)
-        except Exception:
-            LOGGER.exception("daily_data_pipeline failed to fetch incremental Polygon bars for %s", ticker)
-            failed_tickers.append(ticker)
-            continue
-
-        if frame.empty:
-            skipped_tickers.append(ticker)
-            continue
-
-        updated_tickers.append(ticker)
-        price_rows_written += int(len(frame))
-        fetched_trade_dates.update(
-            trade_date.date() if hasattr(trade_date, "date") else trade_date
-            for trade_date in frame["trade_date"].tolist()
+    try:
+        frame = polygon_source.fetch_grouped_daily_range(
+            request_start,
+            market_data_end,
+            tickers=tracked_tickers,
+            knowledge_time_mode="observed_at",
+            observed_at=as_of,
         )
+        if frame.empty:
+            skipped_tickers = sorted(tracked_ticker_set)
+        else:
+            updated_ticker_set = {str(ticker).upper() for ticker in frame["ticker"].tolist()}
+            updated_tickers = sorted(updated_ticker_set)
+            skipped_tickers = sorted(tracked_ticker_set - updated_ticker_set)
+            price_rows_written = int(len(frame))
+            fetched_trade_dates.update(
+                trade_date.date() if hasattr(trade_date, "date") else trade_date
+                for trade_date in frame["trade_date"].tolist()
+            )
+            if skipped_tickers:
+                for ticker in list(skipped_tickers):
+                    try:
+                        fallback_frame = polygon_source.fetch_historical(
+                            [ticker],
+                            request_start,
+                            market_data_end,
+                            knowledge_time_mode="observed_at",
+                            observed_at=as_of,
+                        )
+                    except Exception:
+                        LOGGER.exception(
+                            "daily_data_pipeline failed to backfill missing grouped-daily ticker %s",
+                            ticker,
+                        )
+                        failed_tickers.append(ticker)
+                        continue
+
+                    if fallback_frame.empty:
+                        continue
+
+                    updated_tickers.append(ticker)
+                    price_rows_written += int(len(fallback_frame))
+                    fetched_trade_dates.update(
+                        trade_date.date() if hasattr(trade_date, "date") else trade_date
+                        for trade_date in fallback_frame["trade_date"].tolist()
+                    )
+                updated_ticker_set = {ticker.upper() for ticker in updated_tickers}
+                updated_tickers = sorted(updated_ticker_set)
+                skipped_tickers = sorted(tracked_ticker_set - updated_ticker_set)
+    except Exception as exc:
+        LOGGER.exception(
+            "daily_data_pipeline grouped Polygon price ingestion failed; falling back to per-ticker fetch",
+        )
+        fetch_mode = "per_ticker_fallback"
+        fallback_reason = str(exc)
+        for ticker in tracked_tickers:
+            try:
+                frame = polygon_source.fetch_historical(
+                    [ticker],
+                    request_start,
+                    market_data_end,
+                    knowledge_time_mode="observed_at",
+                    observed_at=as_of,
+                )
+            except Exception:
+                LOGGER.exception("daily_data_pipeline failed to fetch incremental Polygon bars for %s", ticker)
+                failed_tickers.append(ticker)
+                continue
+
+            if frame.empty:
+                skipped_tickers.append(ticker)
+                continue
+
+            updated_tickers.append(ticker)
+            price_rows_written += int(len(frame))
+            fetched_trade_dates.update(
+                trade_date.date() if hasattr(trade_date, "date") else trade_date
+                for trade_date in frame["trade_date"].tolist()
+            )
 
     if failed_tickers:
         preview = ", ".join(failed_tickers[:10])
@@ -365,20 +453,16 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
             f"Polygon incremental price ingestion failed for {len(failed_tickers)} tickers: {preview}",
         )
 
-    macro_since = macro_state_before["latest_knowledge_time"] or (market_data_end - timedelta(days=30))
-    macro_frame = fred_source.fetch_incremental(list(DEFAULT_MACRO_SERIES), macro_since)
-    macro_rows_written = int(len(macro_frame))
-
     with get_engine().connect() as conn:
         price_state_after = _load_price_state(conn)
-        macro_state_after = _load_macro_state(conn)
 
     return _result(
         "fetch_prices",
         "ok",
         market_data_end=market_data_end.isoformat(),
         datasource=polygon_source.source_name,
-        macro_datasource=fred_source.source_name,
+        fetch_mode=fetch_mode,
+        fallback_reason=fallback_reason,
         tracked_ticker_count=len(tracked_tickers),
         updated_ticker_count=len(updated_tickers),
         skipped_ticker_count=len(skipped_tickers),
@@ -387,21 +471,161 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
         request_start=request_start.isoformat(),
         latest_trade_date_before=_serialize_date(price_state_before["latest_trade_date"]),
         latest_trade_date_after=_serialize_date(price_state_after["latest_trade_date"]),
+        latest_trade_ticker_count_before=latest_trade_ticker_count_before,
+        previous_trade_ticker_count_before=previous_ticker_count_before,
         latest_trade_ticker_count_after=price_state_after["latest_ticker_count"],
         stock_price_rows_before=price_state_before["row_count"],
         stock_price_rows_after=price_state_after["row_count"],
-        macro_rows_written=macro_rows_written,
-        macro_rows_before=macro_state_before["row_count"],
-        macro_rows_after=macro_state_after["row_count"],
-        macro_latest_observation_date_before=_serialize_date(macro_state_before["latest_observation_date"]),
-        macro_latest_observation_date_after=_serialize_date(macro_state_after["latest_observation_date"]),
-        macro_latest_knowledge_time_before=_serialize_datetime(macro_state_before["latest_knowledge_time"]),
-        macro_latest_knowledge_time_after=_serialize_datetime(macro_state_after["latest_knowledge_time"]),
     )
 
 
 def fetch_prices(**context: Any) -> dict[str, Any]:
     return _run_task("fetch_prices", _fetch_prices_impl, **context)
+
+
+def _fetch_vix_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    from src.config import settings
+    from src.data.db.session import get_engine
+    from src.data.sources.fmp_market import FMPMarketDataSource
+    from src.data.sources.polygon import PolygonDataSource
+
+    live_fetch_enabled = _live_fetch_enabled()
+    with get_engine().connect() as conn:
+        vix_state_before = _load_macro_series_state(conn, series_id="VIXCLS")
+
+    if not live_fetch_enabled:
+        return _result(
+            "fetch_vix",
+            "skipped",
+            reason="live_fetch_disabled",
+            latest_observation_date=_serialize_date(vix_state_before["latest_observation_date"]),
+            latest_knowledge_time=_serialize_datetime(vix_state_before["latest_knowledge_time"]),
+        )
+
+    if not settings.FMP_API_KEY:
+        raise RuntimeError("FMP_API_KEY is required when QUANTEDGE_ENABLE_LIVE_FETCH is enabled.")
+
+    polygon_source = PolygonDataSource(min_request_interval=0.15)
+    if not polygon_source.health_check():
+        raise RuntimeError("Polygon health check failed before fast VIX ingestion.")
+    market_data_end = polygon_source.resolve_latest_available_trade_date(reference_time=datetime.now(timezone.utc))
+
+    source = FMPMarketDataSource(min_request_interval=0.10)
+    if not source.health_check():
+        raise RuntimeError("FMP market health check failed before fast VIX ingestion.")
+
+    latest_observation_date_before = vix_state_before["latest_observation_date"]
+    request_start = market_data_end if latest_observation_date_before is None else latest_observation_date_before + timedelta(days=1)
+    if request_start > market_data_end:
+        return _result(
+            "fetch_vix",
+            "ok",
+            datasource=source.source_name,
+            request_start=request_start.isoformat(),
+            latest_observation_date_before=_serialize_date(latest_observation_date_before),
+            latest_observation_date_after=_serialize_date(latest_observation_date_before),
+            latest_knowledge_time_before=_serialize_datetime(vix_state_before["latest_knowledge_time"]),
+            latest_knowledge_time_after=_serialize_datetime(vix_state_before["latest_knowledge_time"]),
+            rows_written=0,
+        )
+
+    frame = source.fetch_incremental(
+        list(FAST_VIX_SERIES),
+        request_start,
+        end_date=market_data_end,
+    )
+
+    with get_engine().connect() as conn:
+        vix_state_after = _load_macro_series_state(conn, series_id="VIXCLS")
+
+    return _result(
+        "fetch_vix",
+        "ok",
+        datasource=source.source_name,
+        request_start=request_start.isoformat(),
+        latest_observation_date_before=_serialize_date(latest_observation_date_before),
+        latest_observation_date_after=_serialize_date(vix_state_after["latest_observation_date"]),
+        latest_knowledge_time_before=_serialize_datetime(vix_state_before["latest_knowledge_time"]),
+        latest_knowledge_time_after=_serialize_datetime(vix_state_after["latest_knowledge_time"]),
+        rows_written=int(len(frame)),
+    )
+
+
+def fetch_vix(**context: Any) -> dict[str, Any]:
+    return _run_task("fetch_vix", _fetch_vix_impl, **context)
+
+
+def _fetch_macro_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    from src.config import settings
+    from src.data.db.session import get_engine
+    from src.data.sources.fred import FredDataSource
+
+    live_fetch_enabled = _live_fetch_enabled()
+    with get_engine().connect() as conn:
+        macro_state_before = _load_macro_state(conn)
+
+    if not live_fetch_enabled:
+        return _result(
+            "fetch_macro",
+            "skipped",
+            reason="live_fetch_disabled",
+            latest_observation_date=_serialize_date(macro_state_before["latest_observation_date"]),
+            latest_knowledge_time=_serialize_datetime(macro_state_before["latest_knowledge_time"]),
+        )
+
+    if not settings.FRED_API_KEY:
+        return _result(
+            "fetch_macro",
+            "warning",
+            reason="missing_fred_api_key",
+            latest_observation_date_before=_serialize_date(macro_state_before["latest_observation_date"]),
+            latest_knowledge_time_before=_serialize_datetime(macro_state_before["latest_knowledge_time"]),
+        )
+
+    source = FredDataSource(min_request_interval=0.10)
+    if not source.health_check():
+        return _result(
+            "fetch_macro",
+            "warning",
+            reason="fred_health_check_failed",
+            datasource=source.source_name,
+            latest_observation_date_before=_serialize_date(macro_state_before["latest_observation_date"]),
+            latest_knowledge_time_before=_serialize_datetime(macro_state_before["latest_knowledge_time"]),
+        )
+
+    latest_knowledge_time_before = macro_state_before["latest_knowledge_time"]
+    since_date = latest_knowledge_time_before or (datetime.now(timezone.utc) - timedelta(days=30))
+
+    try:
+        frame = source.fetch_incremental(list(SLOW_MACRO_SERIES), since_date)
+        status = "ok"
+        error_reason = None
+        rows_written = int(len(frame))
+    except Exception:
+        LOGGER.exception("daily_data_pipeline slow FRED macro ingestion failed")
+        status = "warning"
+        error_reason = "fred_incremental_fetch_failed"
+        rows_written = 0
+
+    with get_engine().connect() as conn:
+        macro_state_after = _load_macro_state(conn)
+
+    return _result(
+        "fetch_macro",
+        status,
+        reason=error_reason,
+        datasource=source.source_name,
+        requested_series=list(SLOW_MACRO_SERIES),
+        rows_written=rows_written,
+        latest_observation_date_before=_serialize_date(macro_state_before["latest_observation_date"]),
+        latest_observation_date_after=_serialize_date(macro_state_after["latest_observation_date"]),
+        latest_knowledge_time_before=_serialize_datetime(latest_knowledge_time_before),
+        latest_knowledge_time_after=_serialize_datetime(macro_state_after["latest_knowledge_time"]),
+    )
+
+
+def fetch_macro(**context: Any) -> dict[str, Any]:
+    return _run_task("fetch_macro", _fetch_macro_impl, **context)
 
 
 def _fetch_fundamentals_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
@@ -674,7 +898,6 @@ def _store_to_db_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, 
 
     with get_engine().connect() as conn:
         price_state = _load_price_state(conn)
-        macro_state = _load_macro_state(conn)
 
     latest_trade_date = price_state["latest_trade_date"]
     if latest_trade_date is None:
@@ -725,15 +948,6 @@ def _store_to_db_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, 
             for trade_date in fetched_trade_dates
         }
 
-    expected_macro_knowledge_time = upstream.get("macro_latest_knowledge_time_after")
-    if expected_macro_knowledge_time:
-        expected_macro_ts = datetime.fromisoformat(expected_macro_knowledge_time)
-        actual_macro_ts = macro_state["latest_knowledge_time"]
-        if actual_macro_ts is None or actual_macro_ts < expected_macro_ts:
-            raise RuntimeError(
-                "macro_series_pit latest_knowledge_time is older than the fetch_prices post-ingestion state.",
-            )
-
     return _result(
         "store_to_db",
         "ok",
@@ -742,9 +956,6 @@ def _store_to_db_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, 
         latest_trade_ticker_count=price_state["latest_ticker_count"],
         stock_price_rows=price_state["row_count"],
         validated_trade_dates=validated_trade_dates,
-        macro_rows=macro_state["row_count"],
-        macro_latest_observation_date=_serialize_date(macro_state["latest_observation_date"]),
-        macro_latest_knowledge_time=_serialize_datetime(macro_state["latest_knowledge_time"]),
     )
 
 
@@ -914,14 +1125,17 @@ def update_features_cache(**context: Any) -> dict[str, Any]:
 
 with DAG(
     dag_id="daily_data_pipeline",
-    description="Daily market data ingestion and cache refresh.",
+    description="Overnight slow market, macro, and fundamental refresh.",
     schedule="0 2 * * 1-5",
     start_date=pendulum.datetime(2026, 1, 1, tz="America/New_York"),
     catchup=False,
+    max_active_runs=1,
     tags=["quantedge", "data", "daily"],
     default_args={"owner": "quantedge"},
 ) as dag:
     fetch_prices_task = PythonOperator(task_id="fetch_prices", python_callable=fetch_prices)
+    fetch_vix_task = PythonOperator(task_id="fetch_vix", python_callable=fetch_vix)
+    fetch_macro_task = PythonOperator(task_id="fetch_macro", python_callable=fetch_macro)
     fetch_fundamentals_task = PythonOperator(
         task_id="fetch_fundamentals",
         python_callable=fetch_fundamentals,
@@ -934,5 +1148,32 @@ with DAG(
     )
 
     fetch_prices_task >> store_to_db_task
-    [store_to_db_task, fetch_fundamentals_task] >> update_features_cache_task
+    [store_to_db_task, fetch_vix_task] >> update_features_cache_task
     update_features_cache_task >> check_quality_task
+
+
+with DAG(
+    dag_id="market_close_fast_pipeline",
+    description="Repeated post-close price and VIX refresh until same-day market data is visible.",
+    schedule="10,20,30,40,50 16-20 * * 1-5",
+    start_date=pendulum.datetime(2026, 1, 1, tz="America/New_York"),
+    catchup=False,
+    max_active_runs=1,
+    tags=["quantedge", "data", "market-close", "fast"],
+    default_args={"owner": "quantedge"},
+) as market_close_fast_dag:
+    fast_fetch_prices_task = PythonOperator(task_id="fetch_prices", python_callable=fetch_prices)
+    fast_fetch_vix_task = PythonOperator(task_id="fetch_vix", python_callable=fetch_vix)
+    fast_store_to_db_task = PythonOperator(task_id="store_to_db", python_callable=store_to_db)
+    fast_update_features_cache_task = PythonOperator(
+        task_id="update_features_cache",
+        python_callable=update_features_cache,
+    )
+    fast_check_quality_task = PythonOperator(
+        task_id="check_quality",
+        python_callable=check_quality,
+    )
+
+    fast_fetch_prices_task >> fast_store_to_db_task
+    [fast_store_to_db_task, fast_fetch_vix_task] >> fast_update_features_cache_task
+    fast_update_features_cache_task >> fast_check_quality_task

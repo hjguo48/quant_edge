@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -24,7 +24,6 @@ from src.data.db.models import (
     FundamentalsPIT,
     Stock,
     StockPrice,
-    UniverseMembership,
 )
 from src.data.db.session import get_engine, get_session_factory
 from src.data.quality import DataQualityChecker, QualityReport, QualityStatus
@@ -104,8 +103,19 @@ def check_http_endpoint(url: str, *, timeout: float = 2.0) -> bool:
 
 
 def current_market_data_end_date() -> date:
-    market_date = datetime.now(ZoneInfo("America/New_York")).date()
-    return market_date - timedelta(days=1)
+    market_now = datetime.now(ZoneInfo("America/New_York"))
+    fallback = market_now.date() - timedelta(days=1)
+    if not settings.POLYGON_API_KEY:
+        return fallback
+
+    try:
+        from src.data.sources.polygon import PolygonDataSource
+
+        source = PolygonDataSource(min_request_interval=0.0)
+        return source.resolve_latest_available_trade_date(reference_time=market_now)
+    except Exception as exc:
+        logger.warning("Polygon latest trade date probe failed; falling back to prior market day: {}", exc)
+        return fallback
 
 
 def fetch_sp500_constituents() -> pd.DataFrame:
