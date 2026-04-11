@@ -2,7 +2,7 @@
 
 **基于 QuantEdge.md v3.0 生成**
 **生成日期：** 2026-03-28
-**项目当前状态：** Phase 3 W19 进行中 — API 19.2+19.3 完成，灰度 v2 观察中 (2026-04-10)
+**项目当前状态：** Phase 3 W19 进行中 — 19.1-19.6 完成，灰度 v2 Week2 通过，容器依赖已固化 (2026-04-11)
 
 ---
 
@@ -1195,8 +1195,8 @@ subject to:
 | 19.2 | 市场概览 API | `/api/market/*` overview+indices+sectors | ✅ 完成 (commit 4f12a0d), Redis 缓存 warm <100ms |
 | 19.3 | 个股行情 API | `/api/stocks/*` detail+prices+fundamentals+technicals | ✅ 完成 (commit 4f12a0d), PIT-safe + 技术指标实时计算 |
 | 19.4 | React 前端项目初始化 | `frontend/` 全部基础代码 | ✅ 完成 (commit fb8d8f8) |
-| 19.5 | 市场概览页面 | `Dashboard.tsx` | ⬜ 待开始 — 指数走势+行业热力图 |
-| 19.6 | 个股详情页面 | `StockDetail.tsx` | ⬜ 待开始 — K线图+技术指标叠加 |
+| 19.5 | 市场概览页面 | `Dashboard.tsx` | ✅ 完成 (commit c0ea35a) — SPY/VIX/Breadth 实时卡片+SPY走势图+行业热力图+K线图 |
+| 19.6 | 个股详情页面 | `StockDetail.tsx` | ✅ 完成 (commit c0ea35a+22d55dc) — 个股K线+技术指标面板+基本面图表+交互修复 |
 | 19.7 | Celery 异步任务队列 | Redis + Celery Worker | ⬜ 待开始 — 回测等耗时任务异步执行 |
 
 ### 5.2 第 22-23 周：AI 预测中心 + SHAP 解释层 + 组合构建器
