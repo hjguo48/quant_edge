@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -16,5 +17,20 @@ class BacktestRequest(BaseModel):
 class BacktestResponse(BaseModel):
     message: str
     status: str
+    task_id: str
     strategy_name: str | None = None
     run_id: str | None = None
+
+
+class BacktestStatusResponse(BaseModel):
+    task_id: str
+    status: str
+    progress: int | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+
+
+class BacktestResultResponse(BaseModel):
+    task_id: str
+    status: str
+    result: dict[str, Any] | None = None

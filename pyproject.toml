@@ -74,6 +74,7 @@ phase3 = [
     "uvicorn>=0.29",
     "httpx>=0.27",
     "redis>=5.0",
+    "celery>=5.3",
     "shap>=0.45",
 ]
 

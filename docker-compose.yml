@@ -131,6 +131,44 @@ services:
     networks:
       - quantedge_net
 
+  celery-worker:
+    build:
+      context: ./docker/airflow
+    image: quantedge-airflow:2.9.3-python3.11
+    working_dir: /opt/quantedge
+    entrypoint: []
+    command:
+      - /home/airflow/.local/bin/celery
+      - -A
+      - src.celery_app
+      - worker
+      - --loglevel=info
+      - --concurrency=2
+    restart: on-failure
+    environment:
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
+      PYTHONPATH: /opt/quantedge
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - .:/opt/quantedge
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "celery -A src.celery_app inspect ping -d celery@$$HOSTNAME | grep -q pong",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 1m
+    networks:
+      - quantedge_net
+
 volumes:
   pgdata:
   redisdata:
