@@ -2,7 +2,7 @@
 
 **基于 QuantEdge.md v3.0 生成**
 **生成日期：** 2026-03-28
-**项目当前状态：** Phase 2 — Batch 8 全部完成，灰度 v2 自动运行中 (2026-04-06)
+**项目当前状态：** Phase 3 W19 全部完成 (19.1-19.7)，灰度 v2 Week2 通过，准备进入 W22 (2026-04-11)
 
 ---
 
@@ -1191,13 +1191,13 @@ subject to:
 
 | 序号 | 任务 | 交付物 | 验收标准 |
 |------|------|--------|----------|
-| 19.1 | FastAPI 后端框架搭建 | `src/api/` 全部基础代码 | API 文档自动生成 |
-| 19.2 | 市场概览 API | `/api/market/*` | 指数/行业/热力图数据 |
-| 19.3 | 个股行情 API | `/api/stocks/*` | OHLCV + 技术指标 |
-| 19.4 | React 前端项目初始化 | `frontend/` 全部基础代码 | 路由+布局+主题 |
-| 19.5 | 市场概览页面 | `Dashboard.tsx` | 指数走势+行业热力图 |
-| 19.6 | 个股详情页面 | `StockDetail.tsx` | K线图+技术指标叠加 |
-| 19.7 | Celery 异步任务队列 | Redis + Celery Worker | 回测等耗时任务异步执行 |
+| 19.1 | FastAPI 后端框架搭建 | `src/api/` 全部基础代码 | ✅ 完成 (commit fb8d8f8) |
+| 19.2 | 市场概览 API | `/api/market/*` overview+indices+sectors | ✅ 完成 (commit 4f12a0d), Redis 缓存 warm <100ms |
+| 19.3 | 个股行情 API | `/api/stocks/*` detail+prices+fundamentals+technicals | ✅ 完成 (commit 4f12a0d), PIT-safe + 技术指标实时计算 |
+| 19.4 | React 前端项目初始化 | `frontend/` 全部基础代码 | ✅ 完成 (commit fb8d8f8) |
+| 19.5 | 市场概览页面 | `Dashboard.tsx` | ✅ 完成 (commit c0ea35a) — SPY/VIX/Breadth 实时卡片+SPY走势图+行业热力图+K线图 |
+| 19.6 | 个股详情页面 | `StockDetail.tsx` | ✅ 完成 (commit c0ea35a+22d55dc) — 个股K线+技术指标面板+基本面图表+交互修复 |
+| 19.7 | Celery 异步任务队列 | Redis + Celery Worker | ✅ 完成 (commit a6a1170) — Celery app + mock backtest task + 3 API 端点 + Worker 容器化 |
 
 ### 5.2 第 22-23 周：AI 预测中心 + SHAP 解释层 + 组合构建器
 

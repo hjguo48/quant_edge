@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 import logging
 import os
@@ -188,6 +188,21 @@ def _latest_signal_snapshot(repo_root: Path) -> dict[str, Any] | None:
     return None
 
 
+def _expected_latest_market_trade_date(as_of: datetime) -> date | None:
+    from src.config import settings
+    from src.data.sources.polygon import PolygonDataSource
+
+    if not settings.POLYGON_API_KEY:
+        return None
+
+    source = PolygonDataSource(min_request_interval=0.05)
+    try:
+        return source.resolve_latest_available_trade_date(reference_time=as_of)
+    except Exception:
+        LOGGER.exception("weekly_rebalance_pipeline failed to resolve latest available Polygon trade date")
+        return None
+
+
 def _resolve_execution_date(execution, signal_date):
     import pandas as pd
 
@@ -205,6 +220,13 @@ def _load_signals_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
     snapshot = _latest_signal_snapshot(repo_root)
     if snapshot is None:
         return _result("load_signals", "skipped", reason="no_fresh_live_signal_snapshot")
+
+    expected_latest_trade_date = _expected_latest_market_trade_date(datetime.now(timezone.utc))
+    if expected_latest_trade_date is not None and snapshot["trade_date"] < expected_latest_trade_date.isoformat():
+        raise RuntimeError(
+            "weekly_rebalance_pipeline is stale: latest signal snapshot date="
+            f"{snapshot['trade_date']} but Polygon exposes {expected_latest_trade_date.isoformat()}",
+        )
 
     top_scores = snapshot["frame"][["ticker", "score"]].head(10).to_dict(orient="records")
     state = dict(snapshot["state"] or {})
@@ -393,7 +415,8 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         return payload
 
     with get_engine().connect() as conn:
-        stocks = pd.read_sql(text("select ticker, sector from stocks"), conn)
+        result = conn.execute(text("select ticker, sector from stocks"))
+        stocks = pd.DataFrame(result.fetchall(), columns=result.keys())
     sector_map = (
         stocks.assign(
             ticker=stocks["ticker"].astype(str).str.upper(),
@@ -663,10 +686,16 @@ with DAG(
     schedule="0 21 * * 5",
     start_date=pendulum.datetime(2026, 1, 2, tz="America/New_York"),
     catchup=False,
+    max_active_runs=1,
     tags=["quantedge", "rebalance", "weekly"],
     default_args={"owner": "quantedge"},
 ) as dag:
-    load_signals_task = PythonOperator(task_id="load_signals", python_callable=load_signals)
+    load_signals_task = PythonOperator(
+        task_id="load_signals",
+        python_callable=load_signals,
+        retries=12,
+        retry_delay=timedelta(minutes=10),
+    )
     portfolio_optimize_task = PythonOperator(
         task_id="portfolio_optimize",
         python_callable=portfolio_optimize,

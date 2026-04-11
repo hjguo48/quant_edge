@@ -1,0 +1,16 @@
+numpy==2.4.4
+pandas==2.3.3
+lightgbm==4.6.0
+xgboost==3.2.0
+scikit-learn==1.8.0
+scipy==1.17.1
+sqlalchemy==1.4.52
+psycopg2-binary==2.9.9
+pydantic==2.12.5
+pydantic-settings==2.13.1
+python-dotenv==1.0.1
+mlflow==3.11.1
+loguru==0.7.3
+polygon-api-client==1.16.3
+pyarrow==16.1.0
+celery[redis]==5.5.3

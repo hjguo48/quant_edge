@@ -1,21 +1,263 @@
-import React from 'react';
-import GlassCard from '../components/ui/GlassCard';
+import { useState } from "react";
+import { Play, Settings2, TrendingUp, TrendingDown, BarChart2, AlertTriangle } from "lucide-react";
+import StatCard from "../components/StatCard";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, ReferenceLine, Cell } from "recharts";
 
-const Backtest: React.FC = () => {
+function generateEquityCurve(n: number) {
+  let equity = 1;
+  let benchmark = 1;
+  return Array.from({ length: n }, (_, i) => {
+    const ret = (Math.random() - 0.46) * 0.025;
+    const bret = (Math.random() - 0.48) * 0.015;
+    equity = Math.max(0.3, equity * (1 + ret));
+    benchmark = Math.max(0.3, benchmark * (1 + bret));
+    return {
+      day: i + 1,
+      equity: parseFloat(equity.toFixed(4)),
+      benchmark: parseFloat(benchmark.toFixed(4)),
+      drawdown: parseFloat((Math.min(0, ret * 4) * 100).toFixed(2)),
+    };
+  });
+}
+
+function generateMonthlyReturns() {
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return months.map((month) => ({
+    month,
+    ret: parseFloat(((Math.random() - 0.4) * 8).toFixed(2)),
+  }));
+}
+
+const equityData = generateEquityCurve(252);
+const monthlyData = generateMonthlyReturns();
+
+const UNIVERSE = ["S&P 500", "NASDAQ 100", "Russell 2000", "Custom List"];
+const FACTORS = ["Momentum", "Value + Momentum", "Quality", "Multi-Factor", "Custom"];
+
+const Backtest = () => {
+  const [running, setRunning] = useState(false);
+  const [ran, setRan] = useState(true);
+  const [universe, setUniverse] = useState("S&P 500");
+  const [factor, setFactor] = useState("Multi-Factor");
+  const [startYear, setStartYear] = useState("2020");
+  const [endYear, setEndYear] = useState("2024");
+  const [rebalance, setRebalance] = useState("Monthly");
+
+  const handleRun = () => {
+    setRunning(true);
+    setTimeout(() => { setRunning(false); setRan(true); }, 2200);
+  };
+
+  const finalEquity = equityData[equityData.length - 1].equity;
+  const totalReturn = ((finalEquity - 1) * 100).toFixed(2);
+  const isPositive = parseFloat(totalReturn) >= 0;
+
   return (
-    <div className="space-y-6">
-      <header className="mb-8">
-        <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">Strategy Backtest</h1>
-        <p className="text-on-surface-variant">Configure parameters and evaluate historical performance.</p>
-      </header>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <GlassCard className="lg:col-span-4 h-96 flex items-center justify-center">
-          <p className="text-on-surface-variant font-bold uppercase tracking-widest">Config Form - Coming Soon</p>
-        </GlassCard>
-        <GlassCard className="lg:col-span-8 h-96 flex items-center justify-center">
-          <p className="text-on-surface-variant font-bold uppercase tracking-widest">Equity Curve - Coming Soon</p>
-        </GlassCard>
+    <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between fade-in-up">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Strategy Backtest</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Model output simulation · Hypothetical performance · Not indicative of future results
+          </p>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-xs text-muted-foreground">
+          <AlertTriangle size={13} className="text-yellow-500" />
+          Hypothetical & simulated results only
+        </div>
+      </div>
+
+      <div className="flex gap-5">
+        {/* Config Panel */}
+        <div className="w-64 flex-shrink-0 space-y-4 fade-in-up stagger-1">
+          <div className="bg-card rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-border">
+              <Settings2 size={14} className="text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Configuration</h3>
+            </div>
+
+            {[
+              { label: "Universe", value: universe, setValue: setUniverse, options: UNIVERSE },
+              { label: "Strategy", value: factor, setValue: setFactor, options: FACTORS },
+              { label: "Start Year", value: startYear, setValue: setStartYear, options: ["2015","2016","2017","2018","2019","2020","2021"] },
+              { label: "End Year", value: endYear, setValue: setEndYear, options: ["2022","2023","2024","2025"] },
+              { label: "Rebalance", value: rebalance, setValue: setRebalance, options: ["Daily","Weekly","Monthly","Quarterly"] },
+            ].map(({ label, value, setValue, options }) => (
+              <div key={label}>
+                <label className="text-xs text-muted-foreground mb-1.5 block">{label}</label>
+                <select
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  className="w-full bg-muted text-sm text-foreground px-3 py-2 rounded-lg border border-transparent outline-none cursor-pointer hover:bg-accent transition-colors"
+                >
+                  {options.map((o) => <option key={o} value={o} className="bg-popover">{o}</option>)}
+                </select>
+              </div>
+            ))}
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Max Position Size</label>
+              <div className="flex items-center gap-2">
+                <input type="range" min={1} max={20} defaultValue={5} className="flex-1 accent-primary" />
+                <span className="text-xs font-mono text-foreground w-6">5%</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Stop Loss</label>
+              <div className="flex items-center gap-2">
+                <input type="range" min={1} max={15} defaultValue={8} className="flex-1 accent-primary" />
+                <span className="text-xs font-mono text-bear w-7">-8%</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleRun}
+              disabled={running}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+                running
+                  ? "bg-primary/50 text-primary-foreground cursor-not-allowed"
+                  : "btn-primary text-primary-foreground"
+              }`}
+            >
+              {running ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  Running…
+                </>
+              ) : (
+                <>
+                  <Play size={14} fill="currentColor" />
+                  Run Backtest
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Results */}
+        <div className="flex-1 space-y-5">
+          {/* Stats */}
+          <div className="flex gap-4 fade-in-up stagger-1">
+            {[
+              { label: "Total Return", value: `${isPositive ? "+" : ""}${totalReturn}%`, change: parseFloat(totalReturn), changeLabel: `vs. benchmark +${(parseFloat(totalReturn) * 0.6).toFixed(1)}%`, trend: isPositive ? "up" as const : "down" as const },
+              { label: "Sharpe Ratio", value: "1.87", change: 0.12, changeLabel: "annualized", trend: "up" as const },
+              { label: "Max Drawdown", value: "-12.4%", change: -1.2, changeLabel: "from peak", trend: "down" as const },
+              { label: "Calmar Ratio", value: "1.42", change: 0.08, changeLabel: "return/drawdown", trend: "up" as const },
+            ].map((s, i) => (
+              <div key={s.label} className="flex-1">
+                <StatCard {...s} delay={i * 60} />
+              </div>
+            ))}
+          </div>
+
+          {/* Equity Curve */}
+          <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Equity Curve</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Hypothetical · {startYear}–{endYear} · Normalized to 1.0</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-0.5 bg-primary" /><span className="text-xs text-muted-foreground">Strategy</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-0.5" style={{ backgroundColor: "#607B96" }} /><span className="text-xs text-muted-foreground">Benchmark</span></div>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={equityData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00C805" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="#00C805" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="bmGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#607B96" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#607B96" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="day" tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} interval={40} />
+                <YAxis tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  cursor={{ stroke: "rgba(255,255,255,0.1)" }}
+                  content={({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-custom space-y-1">
+                        {payload.map((p) => (
+                          <div key={p.name} className="flex gap-2">
+                            <span className="text-xs text-muted-foreground capitalize">{p.name}:</span>
+                            <span className={`text-xs font-bold ${p.name === "equity" ? "text-bull" : "text-muted-foreground"}`}>
+                              {(p.value).toFixed(3)}x
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }}
+                />
+                <Area type="monotone" dataKey="benchmark" stroke="#607B96" strokeWidth={1.5} fill="url(#bmGrad)" strokeDasharray="4 2" />
+                <Area type="monotone" dataKey="equity" stroke="#00C805" strokeWidth={2} fill="url(#eqGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Monthly Returns */}
+          <div className="flex gap-5">
+            <div className="flex-1 bg-card rounded-xl border border-border p-5 fade-in-up stagger-3">
+              <h3 className="text-sm font-semibold text-foreground mb-1">Monthly Returns</h3>
+              <p className="text-xs text-muted-foreground mb-4">Hypothetical simulated monthly P&L distribution</p>
+              <ResponsiveContainer width="100%" height={150}>
+                <BarChart data={monthlyData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
+                  <XAxis dataKey="month" tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" />
+                  <Tooltip
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                    content={({ active, payload }: { active?: boolean; payload?: { value: number }[] }) => {
+                      if (!active || !payload?.length) return null;
+                      const v = payload[0].value;
+                      return (
+                        <div className="bg-popover border border-border rounded-lg px-2.5 py-1.5 shadow-custom">
+                          <p className={`text-xs font-bold ${v >= 0 ? "text-bull" : "text-bear"}`}>{v >= 0 ? "+" : ""}{v.toFixed(2)}%</p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="ret" radius={[3, 3, 0, 0]}>
+                    {monthlyData.map((entry, i) => (
+                      <Cell key={i} fill={entry.ret >= 0 ? "#00C805" : "#FF5252"} fillOpacity={0.8} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Risk Metrics */}
+            <div className="w-64 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-4">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 size={14} className="text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Risk Metrics</h3>
+              </div>
+              <div className="space-y-3">
+                {[
+                  { label: "Annualized Volatility", value: "14.2%", color: "text-foreground" },
+                  { label: "VaR (95%)", value: "-1.8%", color: "text-bear" },
+                  { label: "CVaR (95%)", value: "-2.4%", color: "text-bear" },
+                  { label: "Win Rate", value: "58.3%", color: "text-bull" },
+                  { label: "Profit Factor", value: "1.74", color: "text-bull" },
+                  { label: "Avg Win / Avg Loss", value: "1.82", color: "text-bull" },
+                  { label: "Beta vs SPX", value: "0.72", color: "text-foreground" },
+                  { label: "Turnover (Monthly)", value: "18.4%", color: "text-muted-foreground" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{label}</span>
+                    <span className={`text-xs font-bold font-mono ${color}`}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

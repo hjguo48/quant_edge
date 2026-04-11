@@ -1,0 +1,24 @@
+{
+  "routes": [
+    { "path": "/", "src": "src/pages/Index.tsx" },
+    { "path": "/signals", "src": "src/pages/Index.tsx" },
+    { "path": "/portfolio", "src": "src/pages/Index.tsx" },
+    { "path": "/backtest", "src": "src/pages/Index.tsx" },
+    { "path": "/greyscale", "src": "src/pages/Index.tsx" }
+  ],
+  "components": [
+    { "name": "Sidebar", "src": "src/components/Sidebar.tsx" },
+    { "name": "TopBar", "src": "src/components/TopBar.tsx" },
+    { "name": "StatCard", "src": "src/components/StatCard.tsx" },
+    { "name": "MiniSparkline", "src": "src/components/MiniSparkline.tsx" },
+    { "name": "SignalRow", "src": "src/components/SignalRow.tsx" },
+    { "name": "HeatmapChart", "src": "src/components/HeatmapChart.tsx" },
+    { "name": "KLineChart", "src": "src/components/KLineChart.tsx" },
+    { "name": "Dashboard", "src": "src/pages/Dashboard.tsx" },
+    { "name": "Signals", "src": "src/pages/Signals.tsx" },
+    { "name": "SignalDetail", "src": "src/pages/SignalDetail.tsx" },
+    { "name": "Portfolio", "src": "src/pages/Portfolio.tsx" },
+    { "name": "Backtest", "src": "src/pages/Backtest.tsx" },
+    { "name": "GreyscaleMonitor", "src": "src/pages/GreyscaleMonitor.tsx" }
+  ]
+}

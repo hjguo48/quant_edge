@@ -1,24 +1,34 @@
 {
   "artifacts": {
+    "feature_matrix_path": "/opt/quantedge/data/reports/greyscale/weekly_signal_feature_matrix.parquet",
     "monitor_summary_path": "data/reports/greyscale/g4_gate_summary.json",
+    "prediction_snapshot_path": "/opt/quantedge/data/reports/greyscale/weekly_signal_predictions.parquet",
+    "price_snapshot_path": "/opt/quantedge/data/reports/greyscale/weekly_signal_prices.parquet",
     "report_dir": "data/reports/greyscale"
   },
-  "as_of_utc": "2026-04-06T01:16:01.771198+00:00",
+  "as_of_utc": "2026-04-11T04:03:52.366624+00:00",
   "db_state": {
-    "latest_pit_trade_date": "2026-04-02",
-    "latest_stored_trade_date": "2026-04-02",
+    "latest_pit_trade_date": "2026-04-09",
+    "latest_stored_trade_date": "2026-04-09",
     "universe_membership_live_count": 503
   },
   "feature_pipeline": {
-    "end_date": "2026-04-02",
+    "batch_id": "21d7dfe2-b8c4-4a5b-a96a-99f1ca64d6a3",
+    "end_date": "2026-04-09",
     "expected_feature_count": 29,
-    "mode": "delegated_to_run_greyscale_live",
+    "feature_matrix_shape": {
+      "n_features": 29,
+      "n_stocks": 605
+    },
+    "feature_rows_live_date": 45375,
+    "feature_rows_total": 45375,
+    "mode": "materialized_for_weekly_signal_pipeline",
     "reference_feature_matrix_path": "data/features/walkforward_feature_matrix_60d.parquet",
-    "start_date": "2025-02-26"
+    "start_date": "2025-03-05"
   },
-  "generated_at_utc": "2026-04-06T01:16:03.626103+00:00",
+  "generated_at_utc": "2026-04-11T04:18:20.751107+00:00",
   "greyscale_monitor": {
-    "generated_at_utc": "2026-04-06T01:16:04.174711+00:00",
+    "generated_at_utc": "2026-04-11T04:19:24.314460+00:00",
     "summary": {
       "checks": {
         "live_ic_above_threshold": {
@@ -29,7 +39,7 @@
         "model_consistency_above_threshold": {
           "passed": null,
           "threshold": 0.5,
-          "value": 0.36904489222668974
+          "value": 0.3425051752158164
         },
         "no_layer12_halts": {
           "passed": null,
@@ -44,7 +54,7 @@
         "turnover_below_cap": {
           "passed": null,
           "threshold": 0.45,
-          "value": 0.0
+          "value": 0.2
         }
       },
       "gate_rule": "PASS requires 5/5 checks after 4 matured weekly reports; otherwise PENDING or FAIL.",
@@ -52,19 +62,19 @@
       "layer12_halt_count": 0,
       "matured_weeks": 0,
       "mean_live_ic": null,
-      "mean_pairwise_rank_correlation": 0.36904489222668974,
-      "mean_turnover": 0.0,
+      "mean_pairwise_rank_correlation": 0.3425051752158164,
+      "mean_turnover": 0.2,
       "positive_live_ic_weeks": 0,
-      "reports_seen": 1,
+      "reports_seen": 2,
       "rolling_live_ic_std": null
     },
-    "summary_path": "/home/jiahao/quant_edge/data/reports/greyscale/g4_gate_summary.json"
+    "summary_path": "/opt/quantedge/data/reports/greyscale/g4_gate_summary.json"
   },
   "latest_greyscale_report": {
     "regime": {
       "regime": "mid",
       "scalar": 0.8,
-      "vix": 24.54,
+      "vix": 21.04,
       "weights": {
         "high": 0.8,
         "low": 1.0,
@@ -72,64 +82,84 @@
         "unknown": 1.0
       }
     },
-    "report_path": "/home/jiahao/quant_edge/data/reports/greyscale/week_01.json",
-    "signal_date": "2026-04-02",
+    "report_path": "/opt/quantedge/data/reports/greyscale/week_02.json",
+    "signal_date": "2026-04-09",
     "weight_source": "seed_w11_avg_weights"
   },
   "live_outputs": {
-    "signal_date": "2026-04-02",
-    "ticker_count": 507,
+    "signal_date": "2026-04-09",
+    "ticker_count": 605,
     "top_10_scores": [
       {
-        "score": 4.50971485191672,
-        "ticker": "ARE"
+        "score": 10.536524953778056,
+        "ticker": "BKNG"
       },
       {
-        "score": 3.800802106517766,
-        "ticker": "IBKR"
+        "score": 3.250955859254612,
+        "ticker": "COTY"
       },
       {
-        "score": 2.8339914681696876,
-        "ticker": "PLTR"
+        "score": 2.966674730271543,
+        "ticker": "OGN"
       },
       {
-        "score": 2.7304275960424933,
-        "ticker": "PGR"
-      },
-      {
-        "score": 2.2725612269077455,
+        "score": 2.007285625913839,
         "ticker": "CVNA"
       },
       {
-        "score": 2.2663175751419495,
+        "score": 1.9069756145281636,
+        "ticker": "IBKR"
+      },
+      {
+        "score": 1.6790628212194953,
+        "ticker": "PLTR"
+      },
+      {
+        "score": 1.5112963897532212,
+        "ticker": "FICO"
+      },
+      {
+        "score": 1.415985530471855,
         "ticker": "FIX"
       },
       {
-        "score": 1.7767710166340966,
-        "ticker": "BA"
+        "score": 1.113825607989608,
+        "ticker": "TER"
       },
       {
-        "score": 1.5632744310864235,
-        "ticker": "CCI"
-      },
-      {
-        "score": 1.554370361491757,
-        "ticker": "NVDA"
-      },
-      {
-        "score": 1.4925830886689666,
-        "ticker": "ANET"
+        "score": 0.9762745225640459,
+        "ticker": "XRX"
       }
     ]
+  },
+  "mlflow": {
+    "model_name": "ridge_60d",
+    "run_id": "81ca402814bd4069a4e09e4d37ffe1b0",
+    "tracking_uri": "http://mlflow:5000",
+    "version": 1
+  },
+  "model": {
+    "base_model_name": "ridge_60d",
+    "horizon": "60D",
+    "load_audit": {
+      "source": "weekly_signal_pipeline_runtime_strategy",
+      "tracking_uri": "http://mlflow:5000"
+    },
+    "model_name": "ic_weighted_fusion_60d",
+    "n_features": 58,
+    "run_id": "81ca402814bd4069a4e09e4d37ffe1b0",
+    "signal_label": "equal_weight_fusion (60D + 10D + 20D Ridge)",
+    "stage": "Production",
+    "version": 1
   },
   "model_bundle": {
     "horizon_days": 60,
     "models": {
-      "lightgbm": "/home/jiahao/quant_edge/data/models/fusion_lightgbm_60d.pkl",
-      "ridge": "/home/jiahao/quant_edge/data/models/fusion_ridge_60d.pkl",
-      "xgboost": "/home/jiahao/quant_edge/data/models/fusion_xgboost_60d.pkl"
+      "lightgbm": "/opt/quantedge/data/models/fusion_lightgbm_60d.pkl",
+      "ridge": "/opt/quantedge/data/models/fusion_ridge_60d.pkl",
+      "xgboost": "/opt/quantedge/data/models/fusion_xgboost_60d.pkl"
     },
-    "path": "/home/jiahao/quant_edge/data/models/fusion_model_bundle_60d.json",
+    "path": "/opt/quantedge/data/models/fusion_model_bundle_60d.json",
     "regime_weights": {
       "high": 0.8,
       "low": 1.0,
@@ -176,7 +206,535 @@
     "temperature": 5.0,
     "window_id": "W11"
   },
-  "signal_date": "2026-04-02",
+  "portfolio_state": {
+    "current_weights": {
+      "ADBE": 0.008,
+      "ADM": 0.008,
+      "ADSK": 0.008,
+      "ALB": 0.008,
+      "ALL": 0.008,
+      "AMAT": 0.008,
+      "AMCR": 0.008,
+      "AMD": 0.008,
+      "ANET": 0.008,
+      "APA": 0.008,
+      "APH": 0.008,
+      "APP": 0.008,
+      "ARE": 0.008,
+      "ARES": 0.008,
+      "BA": 0.008,
+      "BG": 0.008,
+      "BKNG": 0.008,
+      "CAH": 0.008,
+      "CCI": 0.008,
+      "CEG": 0.008,
+      "CHTR": 0.008,
+      "CLX": 0.008,
+      "COR": 0.008,
+      "CPRT": 0.008,
+      "CRWD": 0.008,
+      "CSGP": 0.008,
+      "CTAS": 0.008,
+      "CVNA": 0.008,
+      "DECK": 0.008,
+      "DLTR": 0.008,
+      "DPZ": 0.008,
+      "DXCM": 0.008,
+      "EME": 0.008,
+      "EXE": 0.008,
+      "EXPE": 0.008,
+      "FAST": 0.008,
+      "FICO": 0.008,
+      "FIX": 0.008,
+      "FTNT": 0.008,
+      "GDDY": 0.008,
+      "GE": 0.008,
+      "GEN": 0.008,
+      "GEV": 0.008,
+      "GRMN": 0.008,
+      "HCA": 0.008,
+      "HII": 0.008,
+      "HPE": 0.008,
+      "HPQ": 0.008,
+      "IBKR": 0.008,
+      "IDXX": 0.008,
+      "INCY": 0.008,
+      "IR": 0.008,
+      "IRM": 0.008,
+      "ISRG": 0.008,
+      "IT": 0.008,
+      "JBL": 0.008,
+      "JKHY": 0.008,
+      "LEN": 0.008,
+      "LLY": 0.008,
+      "LOW": 0.008,
+      "LULU": 0.008,
+      "LUV": 0.008,
+      "LVS": 0.008,
+      "META": 0.008,
+      "MKC": 0.008,
+      "MNST": 0.008,
+      "MPWR": 0.008,
+      "MSCI": 0.008,
+      "MTCH": 0.008,
+      "MTD": 0.008,
+      "MU": 0.008,
+      "NCLH": 0.008,
+      "NVDA": 0.008,
+      "ORLY": 0.008,
+      "OTIS": 0.008,
+      "PANW": 0.008,
+      "PAYC": 0.008,
+      "PGR": 0.008,
+      "PLTR": 0.008,
+      "PPG": 0.008,
+      "PTC": 0.008,
+      "PYPL": 0.008,
+      "RL": 0.008,
+      "SNDK": 0.008,
+      "SNPS": 0.008,
+      "TEL": 0.008,
+      "TER": 0.008,
+      "TPL": 0.008,
+      "TPR": 0.008,
+      "TTD": 0.008,
+      "TXT": 0.008,
+      "ULTA": 0.008,
+      "VRT": 0.008,
+      "VRTX": 0.008,
+      "VST": 0.008,
+      "WBD": 0.008,
+      "WSM": 0.008,
+      "WTW": 0.008,
+      "WYNN": 0.008,
+      "YUM": 0.008
+    },
+    "execution_mode": "same_day_indicative",
+    "holding_count": 100,
+    "holding_period": "4W",
+    "last_execution_date": "2026-04-02",
+    "last_rebalance_signal_date": "2026-04-02",
+    "last_reviewed_signal_date": "2026-04-09",
+    "previous_weights": {},
+    "rebalance_due_last_run": false,
+    "selection_pct": 0.2,
+    "sell_buffer_pct": 0.25
+  },
+  "rebalance_pipeline": {
+    "audit_log": {
+      "audit_entries": 5,
+      "critical_alerts": [],
+      "fail_safe_mode": false,
+      "inserted_count": 5,
+      "inserted_ids": [
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "latest_signal_date": "2026-04-09",
+      "overall_severity": "green",
+      "report": {
+        "audit_log": [
+          {
+            "action": "load_signals_completed",
+            "actor": "weekly_rebalance_pipeline",
+            "details": {
+              "latest_signal_date": "2026-04-09",
+              "status": "ok",
+              "step": "load_signals"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-11T05:58:13.119428+00:00"
+          },
+          {
+            "action": "portfolio_optimize_completed",
+            "actor": "weekly_rebalance_pipeline",
+            "details": {
+              "latest_signal_date": "2026-04-09",
+              "status": "ok",
+              "step": "portfolio_optimize"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-11T05:58:13.134517+00:00"
+          },
+          {
+            "action": "portfolio_risk_check_completed",
+            "actor": "weekly_rebalance_pipeline",
+            "details": {
+              "latest_signal_date": "2026-04-09",
+              "status": "ok",
+              "step": "portfolio_risk_check"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-11T05:58:13.149618+00:00"
+          },
+          {
+            "action": "generate_orders_completed",
+            "actor": "weekly_rebalance_pipeline",
+            "details": {
+              "latest_signal_date": "2026-04-09",
+              "status": "skipped",
+              "step": "generate_orders"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-11T05:58:13.153931+00:00"
+          },
+          {
+            "action": "operational_risk_evaluated",
+            "actor": "risk_engine",
+            "details": {
+              "fail_safe": false,
+              "runtime_seconds": 0.0,
+              "timeout_severity": "green"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-11T05:58:13.154074+00:00"
+          }
+        ],
+        "fail_safe_alert": {
+          "check_name": "fail_safe_mode",
+          "fail_safe_mode": false,
+          "halt_pipeline": false,
+          "message": "Fail-safe mode not required.",
+          "severity": "green"
+        },
+        "fail_safe_mode": false,
+        "halt_pipeline": false,
+        "overall_severity": "green",
+        "timeout_alert": {
+          "check_name": "timeout",
+          "fail_safe_mode": false,
+          "halt_pipeline": false,
+          "message": "Pipeline runtime 0.0s is within the allowed limit.",
+          "severity": "green"
+        }
+      },
+      "status": "ok",
+      "step": "audit_log",
+      "timestamp_utc": "2026-04-11T05:58:13.329233+00:00"
+    },
+    "generate_orders": {
+      "estimated_total_cost": 0.0,
+      "execution_date": null,
+      "execution_mode": "holding_period_gate",
+      "latest_signal_date": "2026-04-09",
+      "order_count": 0,
+      "orders": [],
+      "reason": "holding_period_active",
+      "rebalance_due": false,
+      "status": "skipped",
+      "step": "generate_orders",
+      "timestamp_utc": "2026-04-11T05:57:45.254452+00:00"
+    },
+    "load_signals": {
+      "current_portfolio_holdings": 100,
+      "feature_batch_id": "21d7dfe2-b8c4-4a5b-a96a-99f1ca64d6a3",
+      "holding_period": "4W",
+      "last_rebalance_signal_date": "2026-04-02",
+      "latest_signal_date": "2026-04-09",
+      "mlflow_run_id": "81ca402814bd4069a4e09e4d37ffe1b0",
+      "model_name": "ic_weighted_fusion_60d",
+      "signal_method": "equal_weight",
+      "signal_source": "fresh_live_snapshot",
+      "status": "ok",
+      "step": "load_signals",
+      "ticker_count": 605,
+      "timestamp_utc": "2026-04-11T05:56:19.909486+00:00",
+      "top_scores": [
+        {
+          "score": 10.536524953778056,
+          "ticker": "BKNG"
+        },
+        {
+          "score": 3.250955859254612,
+          "ticker": "COTY"
+        },
+        {
+          "score": 2.966674730271543,
+          "ticker": "OGN"
+        },
+        {
+          "score": 2.007285625913839,
+          "ticker": "CVNA"
+        },
+        {
+          "score": 1.9069756145281636,
+          "ticker": "IBKR"
+        },
+        {
+          "score": 1.6790628212194953,
+          "ticker": "PLTR"
+        },
+        {
+          "score": 1.5112963897532212,
+          "ticker": "FICO"
+        },
+        {
+          "score": 1.415985530471855,
+          "ticker": "FIX"
+        },
+        {
+          "score": 1.113825607989608,
+          "ticker": "TER"
+        },
+        {
+          "score": 0.9762745225640459,
+          "ticker": "XRX"
+        }
+      ]
+    },
+    "portfolio_optimize": {
+      "fallback_used": false,
+      "gross_exposure": 0.8000000000000006,
+      "holding_count": 100,
+      "holding_period": "4W",
+      "last_rebalance_signal_date": "2026-04-02",
+      "latest_signal_date": "2026-04-09",
+      "optimizer_name": "hold_previous_portfolio",
+      "rebalance_due": false,
+      "status": "ok",
+      "step": "portfolio_optimize",
+      "target_weights": {
+        "ADBE": 0.008,
+        "ADM": 0.008,
+        "ADSK": 0.008,
+        "ALB": 0.008,
+        "ALL": 0.008,
+        "AMAT": 0.008,
+        "AMCR": 0.008,
+        "AMD": 0.008,
+        "ANET": 0.008,
+        "APA": 0.008,
+        "APH": 0.008,
+        "APP": 0.008,
+        "ARE": 0.008,
+        "ARES": 0.008,
+        "BA": 0.008,
+        "BG": 0.008,
+        "BKNG": 0.008,
+        "CAH": 0.008,
+        "CCI": 0.008,
+        "CEG": 0.008,
+        "CHTR": 0.008,
+        "CLX": 0.008,
+        "COR": 0.008,
+        "CPRT": 0.008,
+        "CRWD": 0.008,
+        "CSGP": 0.008,
+        "CTAS": 0.008,
+        "CVNA": 0.008,
+        "DECK": 0.008,
+        "DLTR": 0.008,
+        "DPZ": 0.008,
+        "DXCM": 0.008,
+        "EME": 0.008,
+        "EXE": 0.008,
+        "EXPE": 0.008,
+        "FAST": 0.008,
+        "FICO": 0.008,
+        "FIX": 0.008,
+        "FTNT": 0.008,
+        "GDDY": 0.008,
+        "GE": 0.008,
+        "GEN": 0.008,
+        "GEV": 0.008,
+        "GRMN": 0.008,
+        "HCA": 0.008,
+        "HII": 0.008,
+        "HPE": 0.008,
+        "HPQ": 0.008,
+        "IBKR": 0.008,
+        "IDXX": 0.008,
+        "INCY": 0.008,
+        "IR": 0.008,
+        "IRM": 0.008,
+        "ISRG": 0.008,
+        "IT": 0.008,
+        "JBL": 0.008,
+        "JKHY": 0.008,
+        "LEN": 0.008,
+        "LLY": 0.008,
+        "LOW": 0.008,
+        "LULU": 0.008,
+        "LUV": 0.008,
+        "LVS": 0.008,
+        "META": 0.008,
+        "MKC": 0.008,
+        "MNST": 0.008,
+        "MPWR": 0.008,
+        "MSCI": 0.008,
+        "MTCH": 0.008,
+        "MTD": 0.008,
+        "MU": 0.008,
+        "NCLH": 0.008,
+        "NVDA": 0.008,
+        "ORLY": 0.008,
+        "OTIS": 0.008,
+        "PANW": 0.008,
+        "PAYC": 0.008,
+        "PGR": 0.008,
+        "PLTR": 0.008,
+        "PPG": 0.008,
+        "PTC": 0.008,
+        "PYPL": 0.008,
+        "RL": 0.008,
+        "SNDK": 0.008,
+        "SNPS": 0.008,
+        "TEL": 0.008,
+        "TER": 0.008,
+        "TPL": 0.008,
+        "TPR": 0.008,
+        "TTD": 0.008,
+        "TXT": 0.008,
+        "ULTA": 0.008,
+        "VRT": 0.008,
+        "VRTX": 0.008,
+        "VST": 0.008,
+        "WBD": 0.008,
+        "WSM": 0.008,
+        "WTW": 0.008,
+        "WYNN": 0.008,
+        "YUM": 0.008
+      },
+      "timestamp_utc": "2026-04-11T05:56:49.998913+00:00",
+      "top_weights": {
+        "ADBE": 0.008,
+        "ADM": 0.008,
+        "ADSK": 0.008,
+        "ALB": 0.008,
+        "ALL": 0.008,
+        "AMAT": 0.008,
+        "AMCR": 0.008,
+        "AMD": 0.008,
+        "ANET": 0.008,
+        "APA": 0.008
+      }
+    },
+    "portfolio_risk_check": {
+      "approved_weights": {
+        "ADBE": 0.008,
+        "ADM": 0.008,
+        "ADSK": 0.008,
+        "ALB": 0.008,
+        "ALL": 0.008,
+        "AMAT": 0.008,
+        "AMCR": 0.008,
+        "AMD": 0.008,
+        "ANET": 0.008,
+        "APA": 0.008,
+        "APH": 0.008,
+        "APP": 0.008,
+        "ARE": 0.008,
+        "ARES": 0.008,
+        "BA": 0.008,
+        "BG": 0.008,
+        "BKNG": 0.008,
+        "CAH": 0.008,
+        "CCI": 0.008,
+        "CEG": 0.008,
+        "CHTR": 0.008,
+        "CLX": 0.008,
+        "COR": 0.008,
+        "CPRT": 0.008,
+        "CRWD": 0.008,
+        "CSGP": 0.008,
+        "CTAS": 0.008,
+        "CVNA": 0.008,
+        "DECK": 0.008,
+        "DLTR": 0.008,
+        "DPZ": 0.008,
+        "DXCM": 0.008,
+        "EME": 0.008,
+        "EXE": 0.008,
+        "EXPE": 0.008,
+        "FAST": 0.008,
+        "FICO": 0.008,
+        "FIX": 0.008,
+        "FTNT": 0.008,
+        "GDDY": 0.008,
+        "GE": 0.008,
+        "GEN": 0.008,
+        "GEV": 0.008,
+        "GRMN": 0.008,
+        "HCA": 0.008,
+        "HII": 0.008,
+        "HPE": 0.008,
+        "HPQ": 0.008,
+        "IBKR": 0.008,
+        "IDXX": 0.008,
+        "INCY": 0.008,
+        "IR": 0.008,
+        "IRM": 0.008,
+        "ISRG": 0.008,
+        "IT": 0.008,
+        "JBL": 0.008,
+        "JKHY": 0.008,
+        "LEN": 0.008,
+        "LLY": 0.008,
+        "LOW": 0.008,
+        "LULU": 0.008,
+        "LUV": 0.008,
+        "LVS": 0.008,
+        "META": 0.008,
+        "MKC": 0.008,
+        "MNST": 0.008,
+        "MPWR": 0.008,
+        "MSCI": 0.008,
+        "MTCH": 0.008,
+        "MTD": 0.008,
+        "MU": 0.008,
+        "NCLH": 0.008,
+        "NVDA": 0.008,
+        "ORLY": 0.008,
+        "OTIS": 0.008,
+        "PANW": 0.008,
+        "PAYC": 0.008,
+        "PGR": 0.008,
+        "PLTR": 0.008,
+        "PPG": 0.008,
+        "PTC": 0.008,
+        "PYPL": 0.008,
+        "RL": 0.008,
+        "SNDK": 0.008,
+        "SNPS": 0.008,
+        "TEL": 0.008,
+        "TER": 0.008,
+        "TPL": 0.008,
+        "TPR": 0.008,
+        "TTD": 0.008,
+        "TXT": 0.008,
+        "ULTA": 0.008,
+        "VRT": 0.008,
+        "VRTX": 0.008,
+        "VST": 0.008,
+        "WBD": 0.008,
+        "WSM": 0.008,
+        "WTW": 0.008,
+        "WYNN": 0.008,
+        "YUM": 0.008
+      },
+      "audit_entries": 0,
+      "execution_date": null,
+      "execution_mode": "holding_period_gate",
+      "holding_count": 100,
+      "latest_signal_date": "2026-04-09",
+      "portfolio_beta": null,
+      "rebalance_due": false,
+      "sector_weights": {},
+      "status": "ok",
+      "step": "portfolio_risk_check",
+      "timestamp_utc": "2026-04-11T05:57:14.427824+00:00",
+      "triggered_rules": [],
+      "turnover": 0.0,
+      "warnings": [
+        "holding_period_active"
+      ]
+    },
+    "updated_at_utc": "2026-04-11T05:58:13.329295+00:00"
+  },
+  "signal_date": "2026-04-09",
   "signal_risk": {
     "challenger_ic": 0.0,
     "fusion_ic": null,
@@ -192,8 +750,204 @@
     },
     "severity": "green"
   },
+  "strategy": {
+    "all_features": [
+      "atr_14",
+      "vol_60d",
+      "gk_vol",
+      "vol_20d",
+      "vol_rank",
+      "bb_width",
+      "low_52w_ratio",
+      "revenue_growth_yoy",
+      "trend_confirmation",
+      "high_52w_ratio",
+      "macd_histogram",
+      "mean_reversion_combo",
+      "current_ratio",
+      "ret_vol_interaction_60d",
+      "momentum_rank_60d",
+      "ret_60d",
+      "ret_5d",
+      "amihud",
+      "earnings_growth_yoy",
+      "value_mom_pb",
+      "cci_20",
+      "bb_position",
+      "macd_signal",
+      "stoch_d",
+      "pb_ratio",
+      "stoch_k",
+      "quality_value_roe_pb",
+      "turnover_rate",
+      "operating_margin",
+      "mom_vol_adj_60d",
+      "ev_ebitda",
+      "fcf_mom_20d",
+      "vwap_deviation",
+      "liquidity_momentum",
+      "ret_vol_interaction_20d",
+      "mom_vol_adj_20d",
+      "rsi_14",
+      "ret_10d",
+      "obv_slope",
+      "momentum_rank_20d",
+      "ret_20d",
+      "rsi_28",
+      "breadth_momentum",
+      "credit_spread",
+      "credit_spread_change",
+      "dividend_yield",
+      "eps_surprise",
+      "ffr",
+      "macro_risk_on",
+      "market_ret_20d",
+      "risk_sentiment",
+      "sp500_breadth",
+      "spread_stress",
+      "vix",
+      "vix_change_5d",
+      "vix_rank",
+      "yield_10y",
+      "yield_spread_10y2y"
+    ],
+    "components": {
+      "10D": {
+        "aggregate_mean_ic": 0.033890336432306094,
+        "best_hyperparams": 100.0,
+        "experiment_name": "ridge_10D_20260402_115911",
+        "features": [
+          "atr_14",
+          "vol_60d",
+          "vol_20d",
+          "vol_rank",
+          "gk_vol",
+          "pb_ratio"
+        ],
+        "horizon": "10D",
+        "model_name": "ridge_10d",
+        "run_id": "dc3defb72d164fd7aa412c0c1a9e58fd",
+        "selected_feature_count": 6,
+        "source": "short_horizon_latest_walkforward_run",
+        "test_period": "2025-01-01 -> 2025-06-30",
+        "tracking_uri": "sqlite:////opt/quantedge/mlflow.db"
+      },
+      "20D": {
+        "aggregate_mean_ic": 0.047485347280593754,
+        "best_hyperparams": 100.0,
+        "experiment_name": "ridge_20D_20260402_120000",
+        "features": [
+          "vol_60d",
+          "atr_14",
+          "vol_20d",
+          "vol_rank",
+          "gk_vol",
+          "pb_ratio",
+          "amihud"
+        ],
+        "horizon": "20D",
+        "model_name": "ridge_20d",
+        "run_id": "8b241cba026c4637a9745efc5e328eff",
+        "selected_feature_count": 7,
+        "source": "short_horizon_latest_walkforward_run",
+        "test_period": "2025-01-01 -> 2025-06-30",
+        "tracking_uri": "sqlite:////opt/quantedge/mlflow.db"
+      },
+      "60D": {
+        "aggregate_mean_ic": 0.0718846301185171,
+        "features": [
+          "atr_14",
+          "vol_60d",
+          "gk_vol",
+          "vol_20d",
+          "vol_rank",
+          "bb_width",
+          "low_52w_ratio",
+          "revenue_growth_yoy",
+          "trend_confirmation",
+          "high_52w_ratio",
+          "macd_histogram",
+          "mean_reversion_combo",
+          "current_ratio",
+          "ret_vol_interaction_60d",
+          "momentum_rank_60d",
+          "ret_60d",
+          "ret_5d",
+          "amihud",
+          "earnings_growth_yoy",
+          "value_mom_pb",
+          "cci_20",
+          "bb_position",
+          "macd_signal",
+          "stoch_d",
+          "pb_ratio",
+          "stoch_k",
+          "quality_value_roe_pb",
+          "turnover_rate",
+          "operating_margin",
+          "mom_vol_adj_60d",
+          "ev_ebitda",
+          "fcf_mom_20d",
+          "vwap_deviation",
+          "liquidity_momentum",
+          "ret_vol_interaction_20d",
+          "mom_vol_adj_20d",
+          "rsi_14",
+          "ret_10d",
+          "obv_slope",
+          "momentum_rank_20d",
+          "ret_20d",
+          "rsi_28",
+          "breadth_momentum",
+          "credit_spread",
+          "credit_spread_change",
+          "dividend_yield",
+          "eps_surprise",
+          "ffr",
+          "macro_risk_on",
+          "market_ret_20d",
+          "risk_sentiment",
+          "sp500_breadth",
+          "spread_stress",
+          "vix",
+          "vix_change_5d",
+          "vix_rank",
+          "yield_10y",
+          "yield_spread_10y2y"
+        ],
+        "horizon": "60D",
+        "model_name": "ridge_60d",
+        "run_id": "81ca402814bd4069a4e09e4d37ffe1b0",
+        "selected_feature_count": 58,
+        "source": "registry_champion",
+        "stage": "Production",
+        "tracking_uri": "http://mlflow:5000",
+        "version": 1
+      }
+    },
+    "holding_period": "4W",
+    "max_weight": 0.05,
+    "method": "equal_weight",
+    "method_weights": {
+      "10D": 0.3333333333333333,
+      "20D": 0.3333333333333333,
+      "60D": 0.3333333333333333
+    },
+    "min_holdings": 20,
+    "min_trade_weight": 0.01,
+    "rebalance_schedule": "monthly_first_signal",
+    "report_paths": {
+      "holding_period": "data/reports/holding_period_experiment.json",
+      "short_horizon_models": "data/reports/short_horizon_models.json",
+      "signal_fusion": "data/reports/signal_fusion_experiment.json"
+    },
+    "selection_pct": 0.2,
+    "sell_buffer_pct": 0.25,
+    "signal_label": "equal_weight_fusion (60D + 10D + 20D Ridge)",
+    "strategy_name": "equal_weight_fusion"
+  },
   "universe": {
-    "size": 507,
+    "size": 605,
     "source": "stock_prices_pit"
   }
 }
