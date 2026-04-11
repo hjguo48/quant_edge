@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert
 
 from src.config import settings
-from src.data.db.models import StockPrice
+from src.data.db.models import Stock, StockPrice
 from src.data.db.session import get_session_factory
 from src.data.sources.base import DataSource, DataSourceAuthError, DataSourceError, DataSourceTransientError
 
@@ -384,6 +384,10 @@ class PolygonDataSource(DataSource):
         if frame.empty:
             return 0
 
+        frame = self._filter_pre_ipo_rows(frame)
+        if frame.empty:
+            return 0
+
         records = [self._frame_row_to_record(row) for row in frame.itertuples(index=False)]
         session_factory = get_session_factory()
 
@@ -419,6 +423,41 @@ class PolygonDataSource(DataSource):
                 raise DataSourceError("Failed to persist Polygon price data.") from exc
 
         return len(records)
+
+    def _filter_pre_ipo_rows(self, frame: pd.DataFrame) -> pd.DataFrame:
+        if frame.empty:
+            return frame
+
+        tickers = tuple(
+            dict.fromkeys(
+                str(ticker).upper()
+                for ticker in frame["ticker"].dropna().astype(str)
+            ),
+        )
+        if not tickers:
+            return frame
+
+        session_factory = get_session_factory()
+        with session_factory() as session:
+            rows = session.execute(
+                sa.select(Stock.ticker, Stock.ipo_date).where(Stock.ticker.in_(tickers)),
+            ).all()
+
+        ipo_dates = {
+            str(raw_ticker).upper(): ipo_date
+            for raw_ticker, ipo_date in rows
+            if ipo_date is not None
+        }
+        if not ipo_dates:
+            return frame
+
+        trade_dates = pd.to_datetime(frame["trade_date"]).dt.date
+        ipo_series = frame["ticker"].astype(str).str.upper().map(ipo_dates)
+        keep_mask = ipo_series.isna() | (trade_dates >= ipo_series)
+        filtered_count = int((~keep_mask).sum())
+        if filtered_count > 0:
+            logger.warning("polygon filtered {} pre-IPO price rows before persistence", filtered_count)
+        return frame.loc[keep_mask].copy()
 
     def _get_client(self) -> Any:
         if self._client is not None:

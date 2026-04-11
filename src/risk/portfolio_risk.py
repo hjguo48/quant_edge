@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy.stats import mstats
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,8 @@ class ConstrainedPortfolio:
     sector_weights: dict[str, float]
     warnings: list[str]
     audit_trail: list[ConstraintAuditEntry]
+    beta_contributions: dict[str, float] = field(default_factory=dict)
+    top_beta_contributors: list[dict[str, float | str]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -47,6 +50,8 @@ class ConstrainedPortfolio:
             "sector_weights": dict(self.sector_weights),
             "warnings": list(self.warnings),
             "audit_trail": [entry.to_dict() for entry in self.audit_trail],
+            "beta_contributions": dict(self.beta_contributions),
+            "top_beta_contributors": [dict(item) for item in self.top_beta_contributors],
         }
 
 
@@ -152,21 +157,45 @@ class PortfolioRiskEngine:
         cvar_before = compute_portfolio_cvar(target, return_history=return_history, confidence=cvar_confidence)
         cvar_adjusted = target.copy()
         cvar_triggered = cvar_before is not None and cvar_before < cvar_floor
+        cvar_iterations = 0
         if cvar_triggered:
-            cvar_adjusted = target * 0.8
+            cvar_after = cvar_before
+            while cvar_after is not None and cvar_after < cvar_floor and cvar_iterations < 3:
+                cvar_adjusted = cvar_adjusted * 0.8
+                cvar_iterations += 1
+                cvar_after = compute_portfolio_cvar(
+                    cvar_adjusted,
+                    return_history=return_history,
+                    confidence=cvar_confidence,
+                )
             warnings.append(
-                f"CVaR {cvar_before:.4f} breached the floor {cvar_floor:.4f}; applied a 20% gross haircut."
+                f"CVaR {cvar_before:.4f} breached the floor {cvar_floor:.4f}; "
+                f"applied {cvar_iterations} 20% gross haircut round(s)."
             )
-        cvar_after = compute_portfolio_cvar(cvar_adjusted, return_history=return_history, confidence=cvar_confidence)
+            if cvar_after is not None and cvar_after < cvar_floor and cvar_iterations >= 3:
+                warnings.append(
+                    f"CVaR {cvar_after:.4f} remained below the floor {cvar_floor:.4f} after "
+                    f"{cvar_iterations} haircut rounds; no further scaling was applied."
+                )
+        else:
+            cvar_after = compute_portfolio_cvar(
+                cvar_adjusted,
+                return_history=return_history,
+                confidence=cvar_confidence,
+            )
         audit.append(
             ConstraintAuditEntry(
                 priority="P0",
                 rule_name="cvar_haircut",
                 triggered=cvar_triggered,
                 action="scale_down_gross",
-                message="Reduce gross exposure by 20% if 99% CVaR breaches the floor.",
+                message="Reduce gross exposure by 20% per round for up to three rounds if 99% CVaR breaches the floor.",
                 before={"cvar_99": cvar_before, "floor": float(cvar_floor), "gross_exposure": float(target.sum())},
-                after={"cvar_99": cvar_after, "gross_exposure": float(cvar_adjusted.sum())},
+                after={
+                    "cvar_99": cvar_after,
+                    "gross_exposure": float(cvar_adjusted.sum()),
+                    "iterations": int(cvar_iterations),
+                },
             ),
         )
         target = cvar_adjusted
@@ -304,6 +333,8 @@ class PortfolioRiskEngine:
 
         final_weights = _clip_negative(target)
         cash_weight = max(0.0, 1.0 - float(final_weights.sum()))
+        beta_contributions = compute_beta_contributions(final_weights, beta_lookup)
+        top_beta_contributors = build_top_beta_contributors(final_weights, beta_lookup, limit=10)
         return ConstrainedPortfolio(
             weights={str(ticker): float(weight) for ticker, weight in final_weights.items() if weight > 0.0},
             cash_weight=float(cash_weight),
@@ -315,6 +346,8 @@ class PortfolioRiskEngine:
             sector_weights=compute_sector_weights(final_weights, sectors),
             warnings=warnings,
             audit_trail=audit,
+            beta_contributions=beta_contributions,
+            top_beta_contributors=top_beta_contributors,
         )
 
     @staticmethod
@@ -378,6 +411,53 @@ def compute_portfolio_beta(
     if aligned.empty:
         return None
     return float(series.reindex(aligned.index).fillna(0.0).dot(aligned))
+
+
+def compute_beta_contributions(
+    weights: Mapping[str, float] | pd.Series,
+    beta_lookup: Mapping[str, float] | None,
+) -> dict[str, float]:
+    if not beta_lookup:
+        return {}
+    series = _coerce_weights(weights, normalize_to=None)
+    if series.empty:
+        return {}
+    beta_series = pd.Series(beta_lookup, dtype=float).reindex(series.index)
+    contributions = series.mul(beta_series).replace([np.inf, -np.inf], np.nan).dropna()
+    return {
+        str(ticker): float(value)
+        for ticker, value in contributions.items()
+        if np.isfinite(value)
+    }
+
+
+def build_top_beta_contributors(
+    weights: Mapping[str, float] | pd.Series,
+    beta_lookup: Mapping[str, float] | None,
+    *,
+    limit: int = 10,
+) -> list[dict[str, float | str]]:
+    if not beta_lookup:
+        return []
+    series = _coerce_weights(weights, normalize_to=None)
+    if series.empty:
+        return []
+    beta_series = pd.Series(beta_lookup, dtype=float).reindex(series.index)
+    frame = pd.DataFrame({"weight": series, "beta": beta_series}).replace([np.inf, -np.inf], np.nan).dropna()
+    if frame.empty:
+        return []
+    frame["contribution"] = frame["weight"] * frame["beta"]
+    frame["abs_contribution"] = frame["contribution"].abs()
+    ranked = frame.sort_values(["abs_contribution", "contribution"], ascending=[False, False]).head(int(limit))
+    return [
+        {
+            "ticker": str(ticker),
+            "weight": float(row.weight),
+            "beta": float(row.beta),
+            "contribution": float(row.contribution),
+        }
+        for ticker, row in ranked.iterrows()
+    ]
 
 
 def compute_portfolio_cvar(
@@ -705,18 +785,31 @@ def _resolve_beta_map(
         return None
 
     joined = history.join(benchmark, how="inner")
+    joined = joined.tail(252)
     if joined.empty or joined["SPY"].var() <= 1e-12:
         return None
 
     beta_lookup: dict[str, float] = {}
-    benchmark_values = joined["SPY"]
-    benchmark_var = float(benchmark_values.var())
     for ticker in history.columns:
         aligned = joined[[ticker, "SPY"]].dropna()
-        if len(aligned) < 20:
+        if len(aligned) < 60:
             continue
-        covariance = float(aligned[ticker].cov(aligned["SPY"]))
-        beta_lookup[ticker] = covariance / benchmark_var if benchmark_var > 1e-12 else np.nan
+        clipped_ticker = np.asarray(
+            mstats.winsorize(aligned[ticker].to_numpy(dtype=float), limits=[0.01, 0.01]),
+            dtype=float,
+        )
+        clipped_spy = np.asarray(
+            mstats.winsorize(aligned["SPY"].to_numpy(dtype=float), limits=[0.01, 0.01]),
+            dtype=float,
+        )
+        benchmark_var = float(np.var(clipped_spy, ddof=1)) if len(clipped_spy) > 1 else float("nan")
+        if not np.isfinite(benchmark_var) or benchmark_var <= 1e-12:
+            continue
+        covariance = float(np.cov(clipped_ticker, clipped_spy)[0, 1])
+        beta = covariance / benchmark_var if benchmark_var > 1e-12 else np.nan
+        if np.isfinite(beta) and abs(beta) > 5.0:
+            continue
+        beta_lookup[ticker] = beta
 
     clean = {
         ticker: float(beta)

@@ -112,6 +112,8 @@ def prepare_execution_price_frame(prices_df: pd.DataFrame) -> pd.DataFrame:
         0.0,
     )
     frame["daily_return"] = grouped["close_px"].pct_change()
+    frame.loc[frame["prev_close"] <= 0.01, "daily_return"] = np.nan
+    frame.loc[frame["daily_return"].abs() > 3.0, "daily_return"] = np.nan
     frame["sigma_20d"] = (
         grouped["daily_return"]
         .transform(lambda series: series.shift(1).rolling(20, min_periods=5).std())

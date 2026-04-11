@@ -363,6 +363,8 @@ def main(argv: list[str] | None = None) -> int:
             "layer3_portfolio": {
                 "pass": bool(portfolio_checks["overall_pass"]),
                 "checks": portfolio_checks,
+                "beta_contributions": constrained.beta_contributions,
+                "top_beta_contributors": constrained.top_beta_contributors,
                 "report": constrained.to_dict(),
             },
             "layer4_operational": {
