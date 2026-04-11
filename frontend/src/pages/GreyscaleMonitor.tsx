@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Eye, Activity, AlertOctagon, RefreshCw, TrendingUp, TrendingDown, Clock } from "lucide-react";
+import { Eye, AlertOctagon, RefreshCw, TrendingUp, TrendingDown, Clock } from "lucide-react";
 import MiniSparkline from "../components/MiniSparkline";
 
 interface GrayAsset {
@@ -141,7 +141,7 @@ const GreyscaleMonitor = () => {
       {/* Filter Controls */}
       <div className="flex items-center justify-between fade-in-up stagger-2">
         <div className="flex items-center gap-2">
-          <Activity size={13} className="text-muted-foreground" />
+          <TrendingUp size={13} className="text-muted-foreground" />
           <span className="text-xs text-muted-foreground">Sort by:</span>
           {(["premium", "change", "aum"] as const).map((s) => (
             <button

@@ -408,7 +408,8 @@ def load_live_universe(*, exclude_ticker: str) -> list[str]:
 def load_sector_map() -> dict[str, str]:
     engine = get_engine()
     with engine.connect() as conn:
-        frame = pd.read_sql(text("select ticker, sector from stocks"), conn)
+        result = conn.execute(text("select ticker, sector from stocks"))
+        frame = pd.DataFrame(result.fetchall(), columns=result.keys())
     frame["ticker"] = frame["ticker"].astype(str).str.upper()
     frame["sector"] = frame["sector"].fillna("Unknown").astype(str)
     return frame.set_index("ticker")["sector"].to_dict()

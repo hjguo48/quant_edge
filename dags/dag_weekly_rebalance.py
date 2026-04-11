@@ -393,7 +393,8 @@ def _portfolio_risk_check_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         return payload
 
     with get_engine().connect() as conn:
-        stocks = pd.read_sql(text("select ticker, sector from stocks"), conn)
+        result = conn.execute(text("select ticker, sector from stocks"))
+        stocks = pd.DataFrame(result.fetchall(), columns=result.keys())
     sector_map = (
         stocks.assign(
             ticker=stocks["ticker"].astype(str).str.upper(),

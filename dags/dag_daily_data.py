@@ -568,8 +568,9 @@ def _check_quality_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str
             {"as_of": as_of},
         ).mappings().one()
         latest_trade_date = row["latest_pit_trade_date"] or row["latest_trade_date"]
-        latest_prices = (
-            pd.read_sql(
+        latest_prices = pd.DataFrame(columns=["ticker", "trade_date"])
+        if latest_trade_date is not None:
+            result = conn.execute(
                 text(
                     """
                     select ticker, trade_date
@@ -578,12 +579,9 @@ def _check_quality_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str
                       and knowledge_time <= :as_of
                     """,
                 ),
-                conn,
-                params={"trade_date": latest_trade_date, "as_of": as_of},
+                {"trade_date": latest_trade_date, "as_of": as_of},
             )
-            if latest_trade_date is not None
-            else pd.DataFrame(columns=["ticker", "trade_date"])
-        )
+            latest_prices = pd.DataFrame(result.fetchall(), columns=result.keys())
     universe_size = len(get_tracked_tickers())
 
     if latest_trade_date is None or latest_prices.empty or feature_path is None or not feature_path.exists():

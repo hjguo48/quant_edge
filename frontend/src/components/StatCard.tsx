@@ -13,6 +13,15 @@ interface StatCardProps {
   delay?: number;
 }
 
+interface ParsedAnimatedValue {
+  currencySymbol: string;
+  decimals: number;
+  scale: number;
+  showPositiveSign: boolean;
+  unitSuffix: string;
+  value: number;
+}
+
 function useCountUp(target: number, duration: number, start: boolean) {
   const [current, setCurrent] = useState(0);
   useEffect(() => {
@@ -30,6 +39,48 @@ function useCountUp(target: number, duration: number, start: boolean) {
   return current;
 }
 
+function parseAnimatedValue(value: string): ParsedAnimatedValue | null {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\$)?([+-]?\d[\d,]*(?:\.\d+)?)(%|[KMBTkmbt])?$/);
+
+  if (!match) return null;
+
+  const [, currencySymbol = "", numericToken, rawSuffix = ""] = match;
+  const numericValue = Number(numericToken.replace(/,/g, ""));
+  if (!Number.isFinite(numericValue)) return null;
+
+  const normalizedSuffix = rawSuffix.toUpperCase();
+  const scaleMap: Record<string, number> = {
+    "": 1,
+    "%": 1,
+    K: 1_000,
+    M: 1_000_000,
+    B: 1_000_000_000,
+    T: 1_000_000_000_000,
+  };
+
+  return {
+    currencySymbol,
+    decimals: numericToken.includes(".") ? numericToken.split(".")[1].length : 0,
+    scale: scaleMap[normalizedSuffix] ?? 1,
+    showPositiveSign: trimmed.startsWith("+"),
+    unitSuffix: normalizedSuffix,
+    value: numericValue * (scaleMap[normalizedSuffix] ?? 1),
+  };
+}
+
+function formatAnimatedValue(value: number, parsed: ParsedAnimatedValue): string {
+  const scaledValue = value / parsed.scale;
+  const absoluteValue = Math.abs(scaledValue);
+  const sign = scaledValue < 0 ? "-" : parsed.showPositiveSign ? "+" : "";
+  const formattedNumber = absoluteValue.toLocaleString("en-US", {
+    minimumFractionDigits: parsed.decimals,
+    maximumFractionDigits: parsed.decimals,
+  });
+
+  return `${sign}${parsed.currencySymbol}${formattedNumber}${parsed.unitSuffix}`;
+}
+
 const StatCard = ({
   label = "Total P&L",
   value = "$0",
@@ -43,9 +94,10 @@ const StatCard = ({
 }: StatCardProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const parsedValue = parseAnimatedValue(value);
+  const shouldAnimateValue = animateValue && parsedValue !== null;
 
-  const numericValue = parseFloat(value.replace(/[^0-9.-]/g, "")) || 0;
-  const animated = useCountUp(numericValue, 1200, visible && animateValue);
+  const animated = useCountUp(parsedValue?.value ?? 0, 1200, visible && shouldAnimateValue);
 
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), delay);
@@ -53,16 +105,8 @@ const StatCard = ({
   }, [delay]);
 
   const formatDisplay = () => {
-    if (!animateValue || !visible) return value;
-    const hasDollar = value.includes("$");
-    const hasPercent = value.includes("%");
-    const hasK = value.includes("K") || value.includes("k");
-    const hasM = value.includes("M");
-    if (hasK) return `${hasDollar ? "$" : ""}${(animated / 1000).toFixed(1)}K`;
-    if (hasM) return `${hasDollar ? "$" : ""}${(animated / 1000000).toFixed(2)}M`;
-    if (hasDollar) return `$${animated.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
-    if (hasPercent) return `${animated.toFixed(2)}%`;
-    return `${animated.toFixed(0)}`;
+    if (!visible || !shouldAnimateValue || parsedValue === null) return value;
+    return formatAnimatedValue(animated, parsedValue);
   };
 
   const trendColor =

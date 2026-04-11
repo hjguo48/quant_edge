@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Brain, BarChart3, Activity as ActivityIcon, Info } from "lucide-react";
+import { ArrowLeft, Brain, BarChart3, Info } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -39,24 +39,6 @@ interface StockDetailResponse {
   ipo_date?: string | null;
   market_cap?: number | null;
   latest_price?: StockQuote | null;
-}
-
-interface StockPriceBar {
-  trade_date: string;
-  open?: number | null;
-  high?: number | null;
-  low?: number | null;
-  close?: number | null;
-  adj_close?: number | null;
-  volume?: number | null;
-}
-
-interface StockPricesResponse {
-  ticker: string;
-  days: number;
-  start_date?: string | null;
-  end_date?: string | null;
-  prices: StockPriceBar[];
 }
 
 interface StockFundamentalsResponse {
@@ -247,12 +229,6 @@ const SignalDetail = ({
     enabled: Boolean(normalizedTicker),
   });
 
-  const pricesQuery = useQuery<StockPricesResponse>({
-    queryKey: ["stockPrices", normalizedTicker, 60],
-    queryFn: () => fetchJson(`/api/stocks/${normalizedTicker}/prices?days=60`),
-    enabled: Boolean(normalizedTicker),
-  });
-
   const fundamentalsQuery = useQuery<StockFundamentalsResponse>({
     queryKey: ["stockFundamentals", normalizedTicker],
     queryFn: () => fetchJson(`/api/stocks/${normalizedTicker}/fundamentals`),
@@ -269,23 +245,6 @@ const SignalDetail = ({
   const latestPrice = detail?.latest_price;
   const fundamentals = fundamentalsQuery.data;
   const technicals = technicalsQuery.data;
-
-  const candles = (pricesQuery.data?.prices ?? [])
-    .filter((price) => {
-      const open = price.open ?? price.close;
-      const high = price.high ?? price.close;
-      const low = price.low ?? price.close;
-      const close = price.close ?? price.adj_close;
-      return [open, high, low, close].every((value) => typeof value === "number" && Number.isFinite(value));
-    })
-    .map((price) => ({
-      time: price.trade_date,
-      open: Number(price.open ?? price.close ?? 0),
-      high: Number(price.high ?? price.close ?? 0),
-      low: Number(price.low ?? price.close ?? 0),
-      close: Number(price.close ?? price.adj_close ?? 0),
-      volume: Number(price.volume ?? 0),
-    }));
 
   const metricEntries = Object.entries(fundamentals?.metrics ?? {}).sort(([left], [right]) =>
     left.localeCompare(right),
@@ -304,8 +263,7 @@ const SignalDetail = ({
     .slice(0, 10)
     .reverse();
 
-  const hasSectionError =
-    pricesQuery.isError || fundamentalsQuery.isError || technicalsQuery.isError;
+  const hasSectionError = fundamentalsQuery.isError || technicalsQuery.isError;
 
   if (detailQuery.isError) {
     return (
@@ -403,23 +361,9 @@ const SignalDetail = ({
 
       <div className="flex flex-col gap-5 xl:flex-row">
         <div className="flex-1 min-w-0">
-          {pricesQuery.isLoading ? (
-            <LoadingCard className="h-[340px] fade-in-up stagger-3" lines={8} />
-          ) : pricesQuery.isError ? (
-            <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-3">
-              <h3 className="text-sm font-semibold text-foreground mb-1">Price History</h3>
-              <p className="text-xs text-bear">{getErrorMessage(pricesQuery.error)}</p>
-            </div>
-          ) : candles.length > 0 ? (
-            <div className="fade-in-up stagger-3">
-              <KLineChart ticker={normalizedTicker} candles={candles} height={260} />
-            </div>
-          ) : (
-            <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-3">
-              <h3 className="text-sm font-semibold text-foreground mb-1">Price History</h3>
-              <p className="text-xs text-muted-foreground">No recent price history is available.</p>
-            </div>
-          )}
+          <div className="fade-in-up stagger-3">
+            <KLineChart key={normalizedTicker} ticker={normalizedTicker} height={260} defaultRange="3M" />
+          </div>
         </div>
 
         <div className="w-full xl:w-80 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3">
@@ -584,7 +528,7 @@ const SignalDetail = ({
 
         <div className="w-full xl:w-80 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-5">
           <div className="flex items-center gap-2 mb-1">
-            <ActivityIcon size={14} className="text-primary" />
+            <BarChart3 size={14} className="text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Fundamental Metrics</h3>
           </div>
           <p className="text-xs text-muted-foreground mb-4">

@@ -10,6 +10,7 @@ const App = () => (
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/signals" element={<Index />} />
+        <Route path="/signals/:ticker" element={<Index />} />
         <Route path="/portfolio" element={<Index />} />
         <Route path="/backtest" element={<Index />} />
         <Route path="/greyscale" element={<Index />} />

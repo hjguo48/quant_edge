@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Activity, Layers, Target, BarChart2 } from "lucide-react";
+import { Info, Layers } from "lucide-react";
 import StatCard from "../components/StatCard";
 import KLineChart from "../components/KLineChart";
 import HeatmapChart from "../components/HeatmapChart";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 
 const factorData = [
@@ -24,6 +24,76 @@ const recentSignals = [
   { ticker: "AMZN", direction: "short", confidence: 58, alpha: -0.9, time: "45m ago" },
 ];
 
+interface MarketSector {
+  sector: string;
+  avg_change_pct: number;
+  total_volume: number;
+  ticker_count: number;
+}
+
+interface MarketOverviewResponse {
+  as_of: string;
+  latest_trade_date: string;
+  spy: {
+    ticker: string;
+    trade_date: string;
+    price: number;
+    previous_close: number;
+    change: number;
+    change_pct: number;
+    volume: number;
+  };
+  breadth: {
+    advancing: number;
+    declining: number;
+    unchanged: number;
+    total: number;
+    advance_decline_ratio: number;
+    advance_pct: number;
+  };
+  sectors: MarketSector[];
+  vix: {
+    series_id: string;
+    observation_date: string;
+    value: number;
+    knowledge_time: string;
+  };
+}
+
+interface MarketIndicesResponse {
+  ticker: string;
+  as_of: string;
+  days: number;
+  start_date: string;
+  end_date: string;
+  prices: Array<{
+    trade_date: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    adj_close: number;
+    volume: number;
+  }>;
+}
+
+interface MarketSectorsResponse {
+  as_of: string;
+  days: number;
+  start_date: string;
+  end_date: string;
+  sectors: MarketSector[];
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -36,79 +106,102 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] 
   );
 };
 
-const Dashboard = () => {
+interface DashboardProps {
+  onSelectSignal?: (ticker: string) => void;
+}
+
+const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
   const [timeRange, setTimeRange] = useState("30");
 
-  const { data: overview, isLoading: isOverviewLoading } = useQuery({
+  const {
+    data: overview,
+    isLoading: isOverviewLoading,
+    isError: isOverviewError,
+  } = useQuery<MarketOverviewResponse>({
     queryKey: ["marketOverview"],
-    queryFn: async () => {
-      const res = await fetch("/api/market/overview");
-      if (!res.ok) throw new Error("Failed to fetch overview");
-      return res.json();
-    },
+    queryFn: () => fetchJson("/api/market/overview"),
   });
 
-  const { data: indices, isLoading: isIndicesLoading } = useQuery({
+  const {
+    data: indices,
+    isLoading: isIndicesLoading,
+    isError: isIndicesError,
+  } = useQuery<MarketIndicesResponse>({
     queryKey: ["marketIndices", timeRange],
-    queryFn: async () => {
-      const res = await fetch(`/api/market/indices?days=${timeRange}`);
-      if (!res.ok) throw new Error("Failed to fetch indices");
-      return res.json();
-    },
+    queryFn: () => fetchJson(`/api/market/indices?days=${timeRange}`),
   });
 
-  const { data: sectorsData, isLoading: isSectorsLoading } = useQuery({
-    queryKey: ["marketSectors"],
-    queryFn: async () => {
-      const res = await fetch("/api/market/sectors?days=1");
-      if (!res.ok) throw new Error("Failed to fetch sectors");
-      return res.json();
-    },
+  const {
+    data: sectorsData,
+    isLoading: isSectorsLoading,
+    isError: isSectorsError,
+  } = useQuery<MarketSectorsResponse>({
+    queryKey: ["marketSectors", 1],
+    queryFn: () => fetchJson("/api/market/sectors?days=1"),
   });
 
   const spyPrice = overview?.spy?.price || 0;
   const spyChangePct = overview?.spy?.change_pct || 0;
   const vixValue = overview?.vix?.value || 0;
-  const breadth = overview?.breadth || { advancing: 0, declining: 0 };
-  const sectors = sectorsData?.sectors || [];
+  const breadth = overview?.breadth || { advancing: 0, declining: 0, advance_pct: 0 };
+  const sectors = sectorsData?.sectors || overview?.sectors || [];
 
-  const chartData = indices?.prices?.map((p: any) => ({
-    day: p.trade_date,
-    pnl: p.adj_close || p.close,
-  })) || [];
+  const chartData =
+    indices?.prices?.map((price) => ({
+      day: new Date(price.trade_date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+      pnl: price.adj_close || price.close,
+    })) || [];
+
+  const sectorHeatmapCols = sectors.map((sector) => sector.sector);
+  const sectorHeatmapValues = sectors.length > 0 ? [sectors.map((sector) => sector.avg_change_pct)] : undefined;
+  const hasError = isOverviewError || isIndicesError || isSectorsError;
+  const breadthTrend =
+    breadth.advancing === breadth.declining ? "neutral" : breadth.advancing > breadth.declining ? "up" : "down";
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       {/* SEC Banner */}
       <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent border border-border">
-        <Activity size={14} className="text-muted-foreground flex-shrink-0" />
+        <Info size={14} className="text-muted-foreground flex-shrink-0" />
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-foreground">Model Output Only</span>
           {` — All signals are generated by quantitative models and do not constitute investment advice. Past model performance does not guarantee future results. For institutional use only.`}
         </p>
       </div>
 
+      {hasError && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent border border-border">
+          <Info size={14} className="text-bear flex-shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Some market widgets could not be loaded. Available live data is still shown where possible.
+          </p>
+        </div>
+      )}
+
       {/* Stat Cards */}
-      <div className="flex gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard
           label="SPY Price"
-          value={`$${spyPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+          value={isOverviewLoading ? "—" : `$${spyPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           change={spyChangePct}
-          changeLabel="24h Change"
-          trend={spyChangePct >= 0 ? "up" : "down"}
+          changeLabel="1D Change"
+          trend={isOverviewLoading ? "neutral" : spyChangePct >= 0 ? "up" : "down"}
           delay={50}
         />
         <StatCard
           label="Market Breadth"
-          value={`${breadth.advancing}/${breadth.declining}`}
-          change={breadth.advancing > breadth.declining ? 1 : -1}
-          changeLabel="Adv/Decl"
-          trend={breadth.advancing >= breadth.declining ? "up" : "down"}
+          value={isOverviewLoading ? "—" : `${breadth.advancing}/${breadth.declining}`}
+          change={breadth.advance_pct || 0}
+          changeLabel="Advancing share"
+          trend={isOverviewLoading ? "neutral" : breadthTrend}
           delay={100}
         />
         <StatCard
           label="VIX Index"
-          value={vixValue.toFixed(2)}
+          value={isOverviewLoading ? "—" : vixValue.toFixed(2)}
           change={0}
           changeLabel="Volatility"
           trend="neutral"
@@ -116,15 +209,23 @@ const Dashboard = () => {
         />
         <StatCard
           label="Top Sector"
-          value={sectors[0]?.sector || "N/A"}
+          value={isSectorsLoading ? "—" : sectors[0]?.sector || "N/A"}
           change={sectors[0]?.avg_change_pct || 0}
           changeLabel="Avg Return"
-          trend={(sectors[0]?.avg_change_pct || 0) >= 0 ? "up" : "down"}
+          trend={
+            isSectorsLoading
+              ? "neutral"
+              : (sectors[0]?.avg_change_pct || 0) === 0
+                ? "neutral"
+                : (sectors[0]?.avg_change_pct || 0) > 0
+                  ? "up"
+                  : "down"
+          }
           delay={200}
         />
         <StatCard
           label="Sector Count"
-          value={sectors.length.toString()}
+          value={isSectorsLoading ? "—" : sectors.length.toString()}
           change={0}
           changeLabel="Active Sectors"
           trend="neutral"
@@ -133,13 +234,16 @@ const Dashboard = () => {
       </div>
 
       {/* Main Charts Row */}
-      <div className="flex gap-5">
+      <div className="flex flex-col gap-5 xl:flex-row">
         {/* Portfolio PnL (Using SPY indices history) */}
         <div className="flex-1 bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Cumulative P&L (SPY Ref)</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Model output · {timeRange}-day window</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Model output · {timeRange}-day window
+                {indices?.end_date ? ` · through ${indices.end_date}` : ""}
+              </p>
             </div>
             <div className="flex items-center gap-1 bg-accent/50 p-1 rounded-lg">
               {["7", "30", "90"].map((r) => (
@@ -155,20 +259,28 @@ const Dashboard = () => {
               ))}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="pnlGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00C805" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#00C805" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="day" tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis hide domain={['auto', 'auto']} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="pnl" stroke="#00C805" strokeWidth={2} fill="url(#pnlGrad)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {isIndicesLoading ? (
+            <div className="h-[180px] rounded-lg bg-muted animate-pulse" />
+          ) : chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="pnlGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00C805" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#00C805" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="day" tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis hide domain={["auto", "auto"]} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="pnl" stroke="#00C805" strokeWidth={2} fill="url(#pnlGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[180px] items-center justify-center rounded-lg border border-dashed border-border bg-surface text-sm text-muted-foreground">
+              No index history available.
+            </div>
+          )}
         </div>
 
         {/* Factor IC */}
@@ -193,7 +305,7 @@ const Dashboard = () => {
               />
               <Bar dataKey="ic" radius={[0, 3, 3, 0]}>
                 {factorData.map((entry, i) => (
-                  <rect key={i} fill={entry.ic >= 0 ? "#00C805" : "#FF5252"} />
+                  <Cell key={i} fill={entry.ic >= 0 ? "#00C805" : "#FF5252"} />
                 ))}
               </Bar>
             </BarChart>
@@ -202,9 +314,9 @@ const Dashboard = () => {
       </div>
 
       {/* KLine + Recent Signals */}
-      <div className="flex gap-5">
+      <div className="flex flex-col gap-5 xl:flex-row">
         <div className="flex-1 min-w-0">
-          <KLineChart ticker="NVDA" height={240} />
+          <KLineChart ticker="NVDA" height={240} defaultRange="1M" />
         </div>
         <div className="w-72 bg-card rounded-xl border border-border flex-shrink-0 fade-in-up stagger-4">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -213,7 +325,11 @@ const Dashboard = () => {
           </div>
           <div className="divide-y divide-border">
             {recentSignals.map((s) => (
-              <div key={s.ticker} className="flex items-center justify-between px-5 py-3 hover:bg-accent/40 transition-colors cursor-pointer">
+              <button
+                key={s.ticker}
+                onClick={() => onSelectSignal(s.ticker)}
+                className="flex w-full items-center justify-between px-5 py-3 hover:bg-accent/40 transition-colors cursor-pointer text-left"
+              >
                 <div>
                   <div className="text-sm font-bold text-foreground">{s.ticker}</div>
                   <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-sm ${s.direction === "long" ? "tag-bull" : "tag-bear"}`}>
@@ -226,7 +342,7 @@ const Dashboard = () => {
                     {s.alpha > 0 ? "+" : ""}{s.alpha.toFixed(2)}%
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -234,7 +350,15 @@ const Dashboard = () => {
 
       {/* Heatmap */}
       <div className="fade-in-up stagger-5">
-        <HeatmapChart />
+        <HeatmapChart
+          title="Sector Performance Heatmap"
+          subtitle={sectorsData?.end_date ? `Latest close · ${sectorsData.end_date}` : "Latest close"}
+          rows={["1D %"]}
+          cols={sectorHeatmapCols}
+          values={sectorHeatmapValues}
+          valueFormatter={(value) => `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`}
+          tooltipFormatter={(value) => `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`}
+        />
       </div>
     </div>
   );

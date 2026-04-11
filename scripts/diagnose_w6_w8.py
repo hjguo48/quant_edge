@@ -114,10 +114,10 @@ def load_json(path: Path) -> dict[str, Any]:
 def load_stock_metadata() -> pd.DataFrame:
     engine = get_engine()
     with engine.connect() as conn:
-        stocks = pd.read_sql(
+        result = conn.execute(
             text("select ticker, company_name, sector, industry from stocks"),
-            conn,
         )
+        stocks = pd.DataFrame(result.fetchall(), columns=result.keys())
     stocks["ticker"] = stocks["ticker"].astype(str).str.upper()
     stocks["sector"] = stocks["sector"].fillna("Unknown").astype(str)
     stocks["industry"] = stocks["industry"].fillna("Unknown").astype(str)

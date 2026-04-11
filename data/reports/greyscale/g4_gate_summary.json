@@ -1,8 +1,8 @@
 {
-  "as_of_utc": "2026-04-06T01:16:03.633599+00:00",
-  "generated_at_utc": "2026-04-06T01:16:04.174711+00:00",
+  "as_of_utc": "2026-04-11T04:19:22.174909+00:00",
+  "generated_at_utc": "2026-04-11T04:19:24.314460+00:00",
   "horizon_days": 60,
-  "latest_pit_trade_date": "2026-04-02",
+  "latest_pit_trade_date": "2026-04-09",
   "per_week": [
     {
       "generated_at_utc": "2026-04-05T23:56:34.514753+00:00",
@@ -23,6 +23,26 @@
       "turnover_vs_previous": 0.0,
       "week_number": 1,
       "weight_source": "seed_w11_avg_weights"
+    },
+    {
+      "generated_at_utc": "2026-04-11T04:18:20.341271+00:00",
+      "holding_count_after_risk": 79,
+      "pairwise_rank_correlation": {
+        "ridge__lightgbm": 0.38784966881514066,
+        "ridge__xgboost": 0.1469043352258164,
+        "xgboost__lightgbm": 0.4131423705738724
+      },
+      "realized_ics": {},
+      "risk_status": {
+        "layer1_pass": true,
+        "layer2_pass": true,
+        "layer3_pass": false,
+        "layer4_pass": false
+      },
+      "signal_date": "2026-04-09",
+      "turnover_vs_previous": 0.4,
+      "week_number": 2,
+      "weight_source": "seed_w11_avg_weights"
     }
   ],
   "required_weeks": 4,
@@ -36,7 +56,7 @@
       "model_consistency_above_threshold": {
         "passed": null,
         "threshold": 0.5,
-        "value": 0.36904489222668974
+        "value": 0.3425051752158164
       },
       "no_layer12_halts": {
         "passed": null,
@@ -51,7 +71,7 @@
       "turnover_below_cap": {
         "passed": null,
         "threshold": 0.45,
-        "value": 0.0
+        "value": 0.2
       }
     },
     "gate_rule": "PASS requires 5/5 checks after 4 matured weekly reports; otherwise PENDING or FAIL.",
@@ -59,10 +79,10 @@
     "layer12_halt_count": 0,
     "matured_weeks": 0,
     "mean_live_ic": null,
-    "mean_pairwise_rank_correlation": 0.36904489222668974,
-    "mean_turnover": 0.0,
+    "mean_pairwise_rank_correlation": 0.3425051752158164,
+    "mean_turnover": 0.2,
     "positive_live_ic_weeks": 0,
-    "reports_seen": 1,
+    "reports_seen": 2,
     "rolling_live_ic_std": null
   }
 }

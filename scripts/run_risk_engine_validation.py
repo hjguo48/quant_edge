@@ -178,7 +178,8 @@ def load_json(path: Path) -> dict[str, Any]:
 def load_sector_map() -> dict[str, str]:
     engine = get_engine()
     with engine.connect() as conn:
-        stocks = pd.read_sql(text("select ticker, sector from stocks"), conn)
+        result = conn.execute(text("select ticker, sector from stocks"))
+        stocks = pd.DataFrame(result.fetchall(), columns=result.keys())
     stocks["ticker"] = stocks["ticker"].astype(str).str.upper()
     stocks["sector"] = stocks["sector"].fillna("Unknown").astype(str)
     return stocks.set_index("ticker")["sector"].to_dict()

@@ -6,7 +6,7 @@
 // biome-ignore lint: disable
 export {}
 declare global {
-  const Activity: typeof import('lucide-react').Activity
+  const Activity: typeof import('react').Activity
   const ActivityIcon: typeof import('lucide-react').ActivityIcon
   const AlertCircle: typeof import('lucide-react').AlertCircle
   const AlertOctagon: typeof import('lucide-react').AlertOctagon

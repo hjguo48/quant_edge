@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
 import Dashboard from "./Dashboard";
@@ -17,19 +17,47 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   greyscale: { title: "Greyscale Monitor", subtitle: "Trust Premium/Discount Tracker · Model Output" },
 };
 
+function getPageFromPath(pathname: string): string {
+  if (pathname === "/" || pathname === "") return "dashboard";
+  if (pathname === "/signals") return "signals";
+  if (pathname.startsWith("/signals/")) return "signal-detail";
+  if (pathname === "/portfolio") return "portfolio";
+  if (pathname === "/backtest") return "backtest";
+  if (pathname === "/greyscale") return "greyscale";
+  return "dashboard";
+}
+
 const Index = () => {
-  const [activePage, setActivePage] = useState("dashboard");
-  const [selectedTicker, setSelectedTicker] = useState("NVDA");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { ticker } = useParams<{ ticker?: string }>();
+  const activePage = getPageFromPath(location.pathname);
+  const selectedTicker = (ticker || "NVDA").toUpperCase();
 
   const handleNavigate = (page: string) => {
-    setActivePage(page);
-    console.log("Navigating to:", page);
+    switch (page) {
+      case "dashboard":
+        navigate("/");
+        return;
+      case "signals":
+        navigate("/signals");
+        return;
+      case "portfolio":
+        navigate("/portfolio");
+        return;
+      case "backtest":
+        navigate("/backtest");
+        return;
+      case "greyscale":
+        navigate("/greyscale");
+        return;
+      default:
+        navigate("/");
+    }
   };
 
   const handleSelectSignal = (ticker: string) => {
-    setSelectedTicker(ticker);
-    setActivePage("signal-detail");
-    console.log("Selected signal for ticker:", ticker);
+    navigate(`/signals/${ticker.toUpperCase()}`);
   };
 
   const meta = PAGE_TITLES[activePage] ?? PAGE_TITLES["dashboard"];
@@ -37,11 +65,11 @@ const Index = () => {
   const renderPage = () => {
     switch (activePage) {
       case "dashboard":
-        return <Dashboard />;
+        return <Dashboard onSelectSignal={handleSelectSignal} />;
       case "signals":
         return <Signals onSelectSignal={handleSelectSignal} />;
       case "signal-detail":
-        return <SignalDetail ticker={selectedTicker} onBack={() => setActivePage("signals")} />;
+        return <SignalDetail ticker={selectedTicker} onBack={() => navigate("/signals")} />;
       case "portfolio":
         return <Portfolio />;
       case "backtest":
@@ -54,7 +82,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background" style={{ minWidth: "1440px" }}>
+    <div className="flex h-screen w-full overflow-hidden bg-background">
       <Sidebar activePage={activePage} onNavigate={handleNavigate} />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar title={meta.title} subtitle={meta.subtitle} />

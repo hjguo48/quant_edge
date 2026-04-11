@@ -2,8 +2,12 @@ import { useMemo } from "react";
 
 interface HeatmapChartProps {
   title?: string;
+  subtitle?: string;
   rows?: string[];
   cols?: string[];
+  values?: number[][];
+  valueFormatter?: (value: number) => string;
+  tooltipFormatter?: (value: number) => string;
 }
 
 const SECTORS = ["Tech", "Finance", "Healthcare", "Energy", "Consumer", "Utilities", "Materials"];
@@ -34,16 +38,33 @@ function valueToColor(v: number): string {
 
 const HeatmapChart = ({
   title = "Factor × Sector IC Heatmap",
+  subtitle = "Rolling 20-day IC",
   rows = FACTORS,
   cols = SECTORS,
+  values,
+  valueFormatter = (value) => value.toFixed(2),
+  tooltipFormatter = (value) => value.toFixed(3),
 }: HeatmapChartProps) => {
-  const data = useMemo(() => generateHeatmap(rows.length, cols.length), [rows.length, cols.length]);
+  const data = useMemo(() => {
+    const hasValidShape =
+      Array.isArray(values) &&
+      values.length === rows.length &&
+      values.every((row) => Array.isArray(row) && row.length === cols.length);
+
+    return hasValidShape ? values : generateHeatmap(rows.length, cols.length);
+  }, [cols, rows, values]);
+
+  const maxAbsValue = useMemo(() => {
+    const flattened = data.flat();
+    const maxAbs = flattened.reduce((current, value) => Math.max(current, Math.abs(value)), 0);
+    return maxAbs || 1;
+  }, [data]);
 
   return (
     <div data-cmp="HeatmapChart" className="bg-card rounded-xl border border-border p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <span className="text-xs text-muted-foreground">Rolling 20-day IC</span>
+        <span className="text-xs text-muted-foreground">{subtitle}</span>
       </div>
 
       <div className="overflow-x-auto">
@@ -66,13 +87,14 @@ const HeatmapChart = ({
                 </td>
                 {cols.map((col, ci) => {
                   const v = data[ri][ci];
+                  const normalizedValue = v / maxAbsValue;
                   return (
                     <td key={col} className="h-9 rounded text-center transition-all duration-200 hover:opacity-80 cursor-default"
-                      style={{ backgroundColor: valueToColor(v) }}
-                      title={`${row} × ${col}: ${v.toFixed(3)}`}
+                      style={{ backgroundColor: valueToColor(normalizedValue) }}
+                      title={`${row} × ${col}: ${tooltipFormatter(v)}`}
                     >
                       <span className="text-xs font-mono font-semibold text-foreground">
-                        {v.toFixed(2)}
+                        {valueFormatter(v)}
                       </span>
                     </td>
                   );
