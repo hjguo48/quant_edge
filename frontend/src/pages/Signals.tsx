@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Filter, Search, SortDesc, Download, RefreshCw, AlertCircle } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Filter, Search, SortDesc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import SignalRow from "../components/SignalRow";
 import { fetchApi } from "../hooks/useApi";
@@ -18,51 +18,60 @@ interface LatestPredictionsResponse {
   predictions: Prediction[];
 }
 
-const SECTORS = ["All Sectors"];
 const DIRECTIONS = ["All", "Long Signals", "Short Signals"];
+const PAGE_SIZE = 10;
 
 const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?: (ticker: string) => void }) => {
   const [search, setSearch] = useState("");
-  const [sector, setSector] = useState("All Sectors");
   const [direction, setDirection] = useState("All");
   const [minConf, setMinConf] = useState(0);
   const [sort, setSort] = useState<"confidence" | "alpha" | "rank">("confidence");
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<LatestPredictionsResponse>({
     queryKey: ["latestPredictions"],
-    queryFn: () => fetchApi<LatestPredictionsResponse>("/api/predictions/latest?top_n=100"),
+    queryFn: () => fetchApi<LatestPredictionsResponse>("/api/predictions/latest"),
   });
 
   const predictions = data?.predictions || [];
 
-  const filtered = predictions
-    .map(p => ({
-      ticker: p.ticker,
-      name: p.ticker, // API doesn't provide name yet
-      direction: p.score > 0 ? "long" as const : "short" as const,
-      confidence: Math.round(p.percentile),
-      alpha: p.score,
-      rank: p.rank,
-      time: data?.signal_date || "Current",
-      sector: "N/A",
-      sparkData: [] as number[],
-    }))
-    .filter((s) => {
-      const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase());
-      const matchSector = sector === "All Sectors" || s.sector === sector;
-      const matchDir =
-        direction === "All" ||
-        (direction === "Long Signals" && s.direction === "long") ||
-        (direction === "Short Signals" && s.direction === "short");
-      const matchConf = s.confidence >= minConf;
-      return matchSearch && matchSector && matchDir && matchConf;
-    })
-    .sort((a, b) => {
-      if (sort === "confidence") return b.confidence - a.confidence;
-      if (sort === "alpha") return Math.abs(b.alpha) - Math.abs(a.alpha);
-      if (sort === "rank") return a.rank - b.rank;
-      return 0;
-    });
+  const filtered = useMemo(() => {
+    return predictions
+      .map(p => ({
+        ticker: p.ticker,
+        name: p.ticker, 
+        direction: p.score > 0 ? "long" as const : "short" as const,
+        confidence: Math.round(p.percentile),
+        alpha: p.score,
+        rank: p.rank,
+        time: data?.signal_date || "Current",
+        sector: "N/A",
+        sparkData: [] as number[],
+      }))
+      .filter((s) => {
+        const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase());
+        const matchDir =
+          direction === "All" ||
+          (direction === "Long Signals" && s.direction === "long") ||
+          (direction === "Short Signals" && s.direction === "short");
+        const matchConf = s.confidence >= minConf;
+        return matchSearch && matchDir && matchConf;
+      })
+      .sort((a, b) => {
+        if (sort === "confidence") return b.confidence - a.confidence;
+        if (sort === "alpha") return Math.abs(b.alpha) - Math.abs(a.alpha);
+        if (sort === "rank") return a.rank - b.rank;
+        return 0;
+      });
+  }, [predictions, search, direction, minConf, sort, data?.signal_date]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, direction, minConf, sort]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const longCount = predictions.filter((p) => p.score > 0).length;
   const shortCount = predictions.filter((p) => p.score <= 0).length;
@@ -125,18 +134,6 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           </div>
 
           <div className="w-px h-5 bg-border" />
-
-          {/* Sector */}
-          <select
-            value={sector}
-            onChange={(e) => setSector(e.target.value)}
-            disabled={true}
-            className="bg-muted text-sm text-foreground px-3 py-2 rounded-lg border border-transparent outline-none cursor-pointer hover:bg-accent transition-colors opacity-50"
-          >
-            {SECTORS.map((s) => (
-              <option key={s} value={s} className="bg-popover">{s}</option>
-            ))}
-          </select>
 
           {/* Min Confidence */}
           <div className="flex items-center gap-2">
@@ -201,8 +198,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             <p className="text-sm">Failed to load signals: {(error as Error).message}</p>
             <button onClick={() => refetch()} className="mt-4 text-xs text-primary hover:underline">Try again</button>
           </div>
-        ) : filtered.length > 0 ? (
-          filtered.map((s, i) => (
+        ) : paginated.length > 0 ? (
+          paginated.map((s, i) => (
             <div key={s.ticker} className="fade-in-up" style={{ animationDelay: `${i * 40}ms` }}>
               <SignalRow
                 {...s}
@@ -218,8 +215,58 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         )}
       </div>
 
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-4 fade-in-up">
+          <p className="text-xs text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{(page - 1) * PAGE_SIZE + 1}</span> to <span className="font-semibold text-foreground">{Math.min(page * PAGE_SIZE, filtered.length)}</span> of <span className="font-semibold text-foreground">{filtered.length}</span> signals
+          </p>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                let pageNum = page;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (page <= 3) {
+                  pageNum = i + 1;
+                } else if (page >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = page - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
+                      page === pageNum ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-accent text-muted-foreground"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <p className="text-xs text-muted-foreground text-center pb-2">
-        Showing {filtered.length} of {predictions.length} model outputs · SEC compliant disclosure · For informational purposes only
+        SEC compliant disclosure · For informational purposes only
       </p>
     </div>
   );

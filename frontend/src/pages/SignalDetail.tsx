@@ -252,18 +252,21 @@ const SignalDetail = ({
     queryKey: ["prediction", normalizedTicker],
     queryFn: () => fetchApi<PredictionDetail>(`/api/predictions/${normalizedTicker}`),
     enabled: Boolean(normalizedTicker),
+    retry: false,
   });
 
   const shapQuery = useQuery<ShapResponse>({
     queryKey: ["shap", normalizedTicker],
     queryFn: () => fetchApi<ShapResponse>(`/api/predictions/${normalizedTicker}/shap`),
     enabled: Boolean(normalizedTicker),
+    retry: false,
   });
 
   const historyQuery = useQuery<HistoryResponse>({
     queryKey: ["history", normalizedTicker],
     queryFn: () => fetchApi<HistoryResponse>(`/api/predictions/${normalizedTicker}/history`),
     enabled: Boolean(normalizedTicker),
+    retry: false,
   });
 
   const fundamentalsQuery = useQuery<StockFundamentalsResponse>({
@@ -285,6 +288,9 @@ const SignalDetail = ({
   const prediction = predictionQuery.data;
   const shap = shapQuery.data;
   const history = historyQuery.data?.history || [];
+
+  const isPrediction404 = predictionQuery.error instanceof Error && predictionQuery.error.message.includes("404");
+  const isShap404 = shapQuery.error instanceof Error && shapQuery.error.message.includes("404");
 
   const metricEntries = Object.entries(fundamentals?.metrics ?? {}).sort(([left], [right]) =>
     left.localeCompare(right),
@@ -654,6 +660,14 @@ const SignalDetail = ({
                     </span>
                   </div>
                 )}
+                {predictionQuery.isLoading && (
+                  <div className="h-6 w-32 bg-muted animate-pulse rounded-full" />
+                )}
+                {isPrediction404 && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-muted/30 border-border text-muted-foreground">
+                    <span className="text-[10px] font-bold uppercase">No Active Signal</span>
+                  </div>
+                )}
                 {detail?.sector && (
                   <span className="text-xs text-muted-foreground px-2 py-1 rounded-lg bg-muted">
                     {detail.sector}
@@ -735,116 +749,125 @@ const SignalDetail = ({
         renderOverview()
       ) : activeTab === "factors" ? (
         <div className="space-y-5">
-          <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Feature Contribution (SHAP)</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Top 15 features impacting this week's signal</p>
-              </div>
-              {prediction?.signal_date && (
-                <div className="text-[10px] font-mono text-muted-foreground px-2 py-1 rounded bg-muted">
-                  REF: {prediction.signal_date}
-                </div>
-              )}
-            </div>
-            
-            {shapQuery.isLoading ? (
-              <div className="h-[400px] flex items-center justify-center animate-pulse bg-muted/20 rounded-lg">
-                <p className="text-sm text-muted-foreground">Analyzing feature importance...</p>
-              </div>
-            ) : shapQuery.isError ? (
-              <div className="h-[200px] flex flex-col items-center justify-center border border-dashed border-border rounded-xl">
-                <Info size={24} className="text-muted-foreground mb-2 opacity-20" />
-                <p className="text-xs text-muted-foreground">
-                  {shapQuery.error instanceof Error && shapQuery.error.message.includes("404") 
-                    ? "SHAP values not yet available for this ticker." 
-                    : "Failed to load factor analysis."}
-                </p>
-              </div>
-            ) : shap && shap.features.length > 0 ? (
-              <ShapWaterfall features={shap.features} height={450} />
-            ) : (
-              <div className="h-[200px] flex flex-col items-center justify-center border border-dashed border-border rounded-xl">
-                <Info size={24} className="text-muted-foreground mb-2 opacity-20" />
-                <p className="text-xs text-muted-foreground">No feature data available for this signal.</p>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 fade-in-up stagger-3">
-            <div className="md:col-span-2 bg-card rounded-xl border border-border p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Layers size={14} className="text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Model Consensus</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Model Architecture</th>
-                      <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Raw Score</th>
-                      <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Weight</th>
-                      <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Contribution</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {prediction && Object.entries(prediction.model_scores).map(([model, score]) => (
-                      <tr key={model}>
-                        <td className="py-3 text-xs font-medium text-foreground capitalize">{model}</td>
-                        <td className={`py-3 text-xs font-mono font-bold text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
-                          {score.toFixed(4)}
-                        </td>
-                        <td className="py-3 text-xs text-muted-foreground text-right">
-                          {(100 / Object.keys(prediction.model_scores).length).toFixed(1)}%
-                        </td>
-                        <td className={`py-3 text-xs font-mono font-bold text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
-                          {(score / Object.keys(prediction.model_scores).length).toFixed(4)}
-                        </td>
-                      </tr>
-                    ))}
-                    <tr className="bg-muted/30">
-                      <td className="py-3 px-2 text-xs font-bold text-foreground">Fusion Score (Ensemble)</td>
-                      <td className="py-3 text-right" />
-                      <td className="py-3 text-right" />
-                      <td className={`py-3 pr-2 text-xs font-mono font-black text-right border-t border-primary/20 ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
-                        {prediction?.fusion_score.toFixed(4)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            
-            <div className="bg-card rounded-xl border border-border p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Analysis Note</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                The current signal for <span className="text-foreground font-semibold">{normalizedTicker}</span> is primarily driven by 
-                the <span className="text-foreground font-semibold">{(shap?.features[0]?.feature || "underlying").replace(/_/g, " ")}</span> factor.
-                Consensus across model architectures is <span className="text-foreground font-semibold">{prediction && prediction.fusion_score > 0 ? "strongly positive" : "negative"}</span>.
+          {isPrediction404 ? (
+            <div className="bg-card rounded-xl border border-border p-12 flex flex-col items-center justify-center text-center fade-in-up stagger-2">
+              <Brain size={48} className="text-muted-foreground mb-4 opacity-20" />
+              <h3 className="text-lg font-bold text-foreground mb-2">No Factor Analysis Available</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                This ticker is not currently part of the active signal universe. Factor-level attribution is only calculated for tickers with active model predictions.
               </p>
-              <div className="mt-4 p-3 rounded-lg bg-surface border border-border">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-2">Signal Strength</p>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full ${prediction && prediction.fusion_score > 0 ? "bg-bull" : "bg-bear"}`} 
-                    style={{ width: `${prediction ? Math.min(Math.abs(prediction.fusion_score) * 20, 100) : 0}%` }}
-                  />
+            </div>
+          ) : (
+            <>
+              <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Feature Contribution (SHAP)</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Top 15 features impacting this week's signal</p>
+                  </div>
+                  {prediction?.signal_date && (
+                    <div className="text-[10px] font-mono text-muted-foreground px-2 py-1 rounded bg-muted">
+                      REF: {prediction.signal_date}
+                    </div>
+                  )}
+                </div>
+                
+                {shapQuery.isLoading ? (
+                  <div className="h-[400px] flex items-center justify-center animate-pulse bg-muted/20 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Analyzing feature importance...</p>
+                  </div>
+                ) : (isShap404 || (shap && shap.features.length === 0)) ? (
+                  <div className="h-[300px] flex flex-col items-center justify-center border border-dashed border-border rounded-xl">
+                    <Info size={24} className="text-muted-foreground mb-2 opacity-20" />
+                    <p className="text-xs text-muted-foreground">
+                      SHAP data not yet available for this ticker.
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Detailed attribution is updated periodically.</p>
+                  </div>
+                ) : shapQuery.isError ? (
+                  <div className="h-[300px] flex flex-col items-center justify-center border border-dashed border-border rounded-xl">
+                    <AlertCircle size={24} className="text-bear mb-2 opacity-50" />
+                    <p className="text-xs text-muted-foreground">Failed to load factor analysis.</p>
+                  </div>
+                ) : (
+                  <ShapWaterfall features={shap!.features} height={450} />
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 fade-in-up stagger-3">
+                <div className="md:col-span-2 bg-card rounded-xl border border-border p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Layers size={14} className="text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Model Consensus</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Model Architecture</th>
+                          <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Raw Score</th>
+                          <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Weight</th>
+                          <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Contribution</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {prediction && Object.entries(prediction.model_scores).map(([model, score]) => (
+                          <tr key={model}>
+                            <td className="py-3 text-xs font-medium text-foreground capitalize">{model}</td>
+                            <td className={`py-3 text-xs font-mono font-bold text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                              {score.toFixed(4)}
+                            </td>
+                            <td className="py-3 text-xs text-muted-foreground text-right">
+                              {(100 / Object.keys(prediction.model_scores).length).toFixed(1)}%
+                            </td>
+                            <td className={`py-3 text-xs font-mono font-bold text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                              {(score / Object.keys(prediction.model_scores).length).toFixed(4)}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-muted/30">
+                          <td className="py-3 px-2 text-xs font-bold text-foreground">Fusion Score (Ensemble)</td>
+                          <td className="py-3 text-right" />
+                          <td className="py-3 text-right" />
+                          <td className={`py-3 pr-2 text-xs font-mono font-black text-right border-t border-primary/20 ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
+                            {prediction?.fusion_score.toFixed(4)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                <div className="bg-card rounded-xl border border-border p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Analysis Note</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    The current signal for <span className="text-foreground font-semibold">{normalizedTicker}</span> is primarily driven by 
+                    the <span className="text-foreground font-semibold">{(shap?.features[0]?.feature || "underlying").replace(/_/g, " ")}</span> factor.
+                    Consensus across model architectures is <span className="text-foreground font-semibold">{prediction && prediction.fusion_score > 0 ? "strongly positive" : "negative"}</span>.
+                  </p>
+                  <div className="mt-4 p-3 rounded-lg bg-surface border border-border">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-2">Signal Strength</p>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${prediction && prediction.fusion_score > 0 ? "bg-bull" : "bg-bear"}`} 
+                        style={{ width: `${prediction ? Math.min(Math.abs(prediction.fusion_score) * 20, 100) : 0}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       ) : (
-        <div className="bg-card rounded-xl border border-border p-6 fade-in-up stagger-2">
-          <h3 className="text-sm font-semibold text-foreground mb-1 capitalize">{activeTab}</h3>
-          <p className="text-xs text-muted-foreground mb-4">
-            This panel is reserved for the next Phase 3 frontend slice.
+        <div className="bg-card rounded-xl border border-border p-12 flex flex-col items-center justify-center text-center fade-in-up stagger-2">
+          <Info size={48} className="text-muted-foreground mb-4 opacity-20" />
+          <h3 className="text-lg font-bold text-foreground mb-2 capitalize">{activeTab} Modules</h3>
+          <p className="text-sm text-muted-foreground max-w-md">
+            The {activeTab} engine is currently in the validation phase and will be integrated in the next platform update.
           </p>
-          <div className="rounded-xl border border-dashed border-border bg-surface px-4 py-10 text-center">
-            <p className="text-lg font-semibold text-foreground">Coming Soon</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Overview is live for {normalizedTicker}. Additional tabs will be connected next.
-            </p>
+          <div className="mt-6 px-4 py-2 rounded-lg bg-muted text-xs font-medium text-muted-foreground border border-border">
+            Coming Soon · Phase 4 Milestone
           </div>
         </div>
       )}
