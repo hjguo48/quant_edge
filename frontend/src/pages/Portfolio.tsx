@@ -281,7 +281,7 @@ const Portfolio = () => {
                         <div
                           className="h-full rounded-full transition-all duration-1000"
                           style={{
-                            width: `${Math.min(100, h.weight * 5)}%`,
+                            width: `${Math.min(100, h.weight * 100 * 5)}%`,
                             backgroundColor: isLong ? "#00C805" : "#FF5252",
                           }}
                         />

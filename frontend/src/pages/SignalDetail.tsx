@@ -651,7 +651,7 @@ const SignalDetail = ({
                 {prediction && (
                   <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/20 text-bull" : "bg-bear/10 border-bear/20 text-bear"}`}>
                     <span className="text-xs font-bold uppercase tracking-tight">
-                      Score: {prediction.fusion_score.toFixed(2)}
+                      Score: {prediction.fusion_score.toFixed(4)}
                     </span>
                     <span className="w-1 h-1 rounded-full bg-current opacity-40" />
                     <span className="text-xs font-bold">

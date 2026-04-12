@@ -348,7 +348,7 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
                 <div className="text-right">
                   <div className="text-xs text-muted-foreground">{s.confidence}% conf</div>
                   <div className={`text-sm font-bold font-mono ${s.alpha > 0 ? "text-bull" : "text-bear"}`}>
-                    {s.alpha > 0 ? "+" : ""}{s.alpha.toFixed(2)}%
+                    {s.alpha > 0 ? "+" : ""}{s.alpha.toFixed(4)}
                   </div>
                 </div>
               </button>
