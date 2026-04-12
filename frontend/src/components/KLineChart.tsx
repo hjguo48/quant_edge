@@ -181,7 +181,7 @@ const KLineChart = ({
     queryFn: () => fetchApi<StockPricesResponse>(`/api/stocks/${ticker}/prices?days=${selectedDays}`),
     enabled: Boolean(ticker),
     staleTime: 60_000,
-    retry: 1,
+    retry: false,
     placeholderData: (previousData) => previousData,
   });
 

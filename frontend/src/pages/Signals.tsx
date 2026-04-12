@@ -31,6 +31,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const { data, isLoading, error, refetch, isFetching } = useQuery<LatestPredictionsResponse>({
     queryKey: ["latestPredictions"],
     queryFn: () => fetchApi<LatestPredictionsResponse>("/api/predictions/latest"),
+    retry: false,
   });
 
   const predictions = data?.predictions || [];

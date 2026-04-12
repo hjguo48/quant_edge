@@ -66,21 +66,25 @@ const Portfolio = () => {
   const currentQuery = useQuery<PortfolioCurrentResponse>({
     queryKey: ["portfolioCurrent"],
     queryFn: () => fetchApi<PortfolioCurrentResponse>("/api/portfolio/current"),
+    retry: false,
   });
 
   const summaryQuery = useQuery<PortfolioSummaryResponse>({
     queryKey: ["portfolioSummary"],
     queryFn: () => fetchApi<PortfolioSummaryResponse>("/api/portfolio/summary"),
+    retry: false,
   });
 
   const budgetQuery = useQuery<BudgetResponse>({
     queryKey: ["portfolioBudget", totalBudget],
     queryFn: () => fetchApi<BudgetResponse>(`/api/portfolio/budget?total_budget=${totalBudget}`),
+    retry: false,
   });
 
   const rebalanceQuery = useQuery<RebalanceResponse>({
     queryKey: ["portfolioRebalance"],
     queryFn: () => fetchApi<RebalanceResponse>("/api/portfolio/rebalance"),
+    retry: false,
   });
 
   const isLoading = currentQuery.isLoading || summaryQuery.isLoading;

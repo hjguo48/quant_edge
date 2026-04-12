@@ -246,6 +246,7 @@ const SignalDetail = ({
     queryKey: ["stockDetail", normalizedTicker],
     queryFn: () => fetchApi<StockDetailResponse>(`/api/stocks/${normalizedTicker}`),
     enabled: Boolean(normalizedTicker),
+    retry: false,
   });
 
   const predictionQuery = useQuery<PredictionDetail>({
@@ -273,12 +274,14 @@ const SignalDetail = ({
     queryKey: ["stockFundamentals", normalizedTicker],
     queryFn: () => fetchApi<StockFundamentalsResponse>(`/api/stocks/${normalizedTicker}/fundamentals`),
     enabled: Boolean(normalizedTicker),
+    retry: false,
   });
 
   const technicalsQuery = useQuery<StockTechnicalsResponse>({
     queryKey: ["stockTechnicals", normalizedTicker],
     queryFn: () => fetchApi<StockTechnicalsResponse>(`/api/stocks/${normalizedTicker}/technicals`),
     enabled: Boolean(normalizedTicker),
+    retry: false,
   });
 
   const detail = detailQuery.data;

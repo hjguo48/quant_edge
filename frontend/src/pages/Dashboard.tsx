@@ -5,6 +5,7 @@ import KLineChart from "../components/KLineChart";
 import HeatmapChart from "../components/HeatmapChart";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { useQuery } from "@tanstack/react-query";
+import { fetchApi } from "../hooks/useApi";
 
 const factorData = [
   { factor: "Momentum", ic: 0.142, positive: true },
@@ -85,15 +86,6 @@ interface MarketSectorsResponse {
   sectors: MarketSector[];
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-
-  return response.json() as Promise<T>;
-}
-
 const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -119,7 +111,8 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     isError: isOverviewError,
   } = useQuery<MarketOverviewResponse>({
     queryKey: ["marketOverview"],
-    queryFn: () => fetchJson("/api/market/overview"),
+    queryFn: () => fetchApi<MarketOverviewResponse>("/api/market/overview"),
+    retry: false,
   });
 
   const {
@@ -128,7 +121,8 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     isError: isIndicesError,
   } = useQuery<MarketIndicesResponse>({
     queryKey: ["marketIndices", timeRange],
-    queryFn: () => fetchJson(`/api/market/indices?days=${timeRange}`),
+    queryFn: () => fetchApi<MarketIndicesResponse>(`/api/market/indices?days=${timeRange}`),
+    retry: false,
   });
 
   const {
@@ -137,7 +131,8 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     isError: isSectorsError,
   } = useQuery<MarketSectorsResponse>({
     queryKey: ["marketSectors", 1],
-    queryFn: () => fetchJson("/api/market/sectors?days=1"),
+    queryFn: () => fetchApi<MarketSectorsResponse>("/api/market/sectors?days=1"),
+    retry: false,
   });
 
   const spyPrice = overview?.spy?.price || 0;
