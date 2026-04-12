@@ -174,8 +174,8 @@ def main(argv: list[str] | None = None) -> int:
         low_threshold=args.low_vix_threshold,
         high_threshold=args.high_vix_threshold,
     )
-    fusion_unscaled = combine_current_predictions(normalized_predictions, live_weights)
-    fusion_scores = (fusion_unscaled * regime_scalar).rename(FUSION_NAME)
+    regime_adjusted_weights = apply_regime_to_model_weights(live_weights, regime_scalar)
+    fusion_scores = combine_current_predictions(normalized_predictions, regime_adjusted_weights).rename(FUSION_NAME)
 
     fused_scores_by_ticker = flatten_score_index(fusion_scores).sort_values(ascending=False)
     model_scores_by_ticker = {
@@ -286,6 +286,7 @@ def main(argv: list[str] | None = None) -> int:
                     "weight_source": weight_source,
                     "regime": regime_name,
                     "regime_scalar": float(regime_scalar),
+                    "regime_adjusted_weights": regime_adjusted_weights,
                 },
             ),
             operational_monitor.audit_decision(
@@ -346,6 +347,7 @@ def main(argv: list[str] | None = None) -> int:
                 "regime": regime_name,
                 "scalar": float(regime_scalar),
                 "weights": regime_weights,
+                "regime_adjusted_model_weights": regime_adjusted_weights,
             },
         },
         "live_outputs": {
@@ -363,7 +365,9 @@ def main(argv: list[str] | None = None) -> int:
         "score_vectors": {
             **{name: series_to_float_dict(series) for name, series in model_scores_by_ticker.items()},
             "fusion": series_to_float_dict(fused_scores_by_ticker),
-            "fusion_unscaled": series_to_float_dict(flatten_score_index(fusion_unscaled)),
+            "fusion_pre_regime": series_to_float_dict(
+                flatten_score_index(combine_current_predictions(normalized_predictions, live_weights))
+            ),
         },
         "shap_values": json_safe(shap_data),
         "risk_checks": {
@@ -394,7 +398,7 @@ def main(argv: list[str] | None = None) -> int:
         },
         "notes": [
             "Fusion ranking uses cross-sectional z-scored model outputs with rolling-IC weights.",
-            "Positive regime scalars do not change cross-sectional ranks; they are preserved for auditability.",
+            "Regime adjusts per-model fusion weights (blend toward equal-weight) to change cross-sectional rankings.",
             "Dry-run mode writes a report but does not place trades or persist audit rows.",
         ],
     }
@@ -609,6 +613,39 @@ def resolve_current_regime(
     )
     regime_scalar = float(regime_weights.get(regime_name, regime_weights.get("unknown", 1.0)))
     return current_vix, regime_name, regime_scalar
+
+
+def apply_regime_to_model_weights(
+    model_weights: dict[str, float],
+    regime_scalar: float,
+) -> dict[str, float]:
+    """Adjust per-model fusion weights based on regime.
+
+    Instead of multiplying the final fusion score by a scalar (which does NOT
+    change cross-sectional rankings), blend model weights toward equal weights.
+    Higher regime stress (lower scalar) means less trust in IC-based model
+    selection — blend more toward 1/N equal model weighting.
+
+    blend_factor = 1.0 - regime_scalar:
+      - regime_scalar=1.0 (low VIX): blend=0.0, use IC weights as-is
+      - regime_scalar=0.8 (mid/high VIX): blend=0.2, 80% IC + 20% equal weights
+
+    This changes cross-sectional rankings because different models produce
+    different stock orderings.
+    """
+    n_models = len(model_weights)
+    if n_models == 0:
+        return model_weights
+    blend_factor = max(0.0, min(1.0, 1.0 - float(regime_scalar)))
+    equal_weight = 1.0 / n_models
+    adjusted = {
+        name: (1.0 - blend_factor) * w + blend_factor * equal_weight
+        for name, w in model_weights.items()
+    }
+    total = sum(adjusted.values())
+    if total > 0:
+        adjusted = {name: w / total for name, w in adjusted.items()}
+    return adjusted
 
 
 def combine_current_predictions(
