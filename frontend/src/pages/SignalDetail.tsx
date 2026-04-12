@@ -857,10 +857,10 @@ const SignalDetail = ({
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2.5 rounded-xl text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300 relative ${
+            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 relative ${
               activeTab === tab
                 ? "bg-card text-primary shadow-2xl border border-white/10 scale-[1.02]"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {tab}
