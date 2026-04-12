@@ -9,6 +9,7 @@ class PredictionItem(BaseModel):
     rank: int
     percentile: float
     sector: str | None = None
+    company_name: str | None = None
 
 
 class PredictionResponse(BaseModel):

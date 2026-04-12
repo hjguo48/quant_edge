@@ -35,15 +35,23 @@ def _get_reader() -> GreyscaleReader:
     return _READER
 
 
-async def _get_sector_map(db: AsyncSession, tickers: list[str]) -> dict[str, str | None]:
+async def _get_stock_info(
+    db: AsyncSession, tickers: list[str],
+) -> dict[str, dict[str, str | None]]:
+    """Return {TICKER: {"sector": ..., "company_name": ...}} for the given tickers."""
     if not tickers:
         return {}
 
     normalized_tickers = [ticker.upper() for ticker in tickers]
     result = await db.execute(
-        sa.select(Stock.ticker, Stock.sector).where(Stock.ticker.in_(normalized_tickers))
+        sa.select(Stock.ticker, Stock.sector, Stock.company_name).where(
+            Stock.ticker.in_(normalized_tickers)
+        )
     )
-    return {ticker.upper(): sector for ticker, sector in result.all()}
+    return {
+        ticker.upper(): {"sector": sector, "company_name": company_name}
+        for ticker, sector, company_name in result.all()
+    }
 
 
 @router.get("/latest", response_model=PredictionResponse)
@@ -58,7 +66,7 @@ async def get_latest_predictions(
     if top_n is not None:
         predictions = predictions[:top_n]
 
-    sector_map = await _get_sector_map(
+    stock_info = await _get_stock_info(
         db,
         [item["ticker"] for item in predictions],
     )
@@ -70,7 +78,8 @@ async def get_latest_predictions(
         predictions=[
             PredictionItem(
                 **item,
-                sector=sector_map.get(item["ticker"].upper()),
+                sector=(stock_info.get(item["ticker"].upper()) or {}).get("sector"),
+                company_name=(stock_info.get(item["ticker"].upper()) or {}).get("company_name"),
             )
             for item in predictions
         ],
@@ -88,10 +97,11 @@ async def get_ticker_prediction(
     if detail is None:
         raise HTTPException(status_code=404, detail=f"No prediction found for ticker '{normalized_ticker}'")
 
-    sector_map = await _get_sector_map(db, [normalized_ticker])
+    stock_info = await _get_stock_info(db, [normalized_ticker])
+    info = stock_info.get(normalized_ticker) or {}
     return TickerPredictionResponse(
         **detail,
-        sector=sector_map.get(normalized_ticker),
+        sector=info.get("sector"),
     )
 
 
