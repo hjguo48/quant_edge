@@ -552,7 +552,7 @@ async def get_market_overview(
     summary="SPY index history",
 )
 async def get_market_indices(
-    days: int = Query(default=30, ge=1, le=365, description="Number of trading days to return."),
+    days: int = Query(default=30, ge=1, le=2520, description="Number of trading days to return."),
     as_of: datetime | None = Query(
         default=None,
         description="Point-in-time cutoff in UTC. Defaults to the current UTC timestamp.",
@@ -580,7 +580,7 @@ async def get_market_indices(
     summary="Sector performance",
 )
 async def get_market_sectors(
-    days: int = Query(default=1, ge=1, le=365, description="Number of trading days to aggregate."),
+    days: int = Query(default=1, ge=1, le=2520, description="Number of trading days to aggregate."),
     as_of: datetime | None = Query(
         default=None,
         description="Point-in-time cutoff in UTC. Defaults to the current UTC timestamp.",

@@ -103,9 +103,19 @@ interface FlyingTickerState {
 
 const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
   if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload;
+  const rawDate = point?.date ? new Date(point.date) : null;
+  const formattedDate =
+    rawDate && !Number.isNaN(rawDate.getTime())
+      ? rawDate.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : point?.date;
   return (
     <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-custom">
-      <p className="text-xs text-muted-foreground font-medium">Price</p>
+      <p className="text-xs text-muted-foreground font-medium">{formattedDate}</p>
       <p className="text-sm font-bold text-bull font-mono">
         ${payload[0].value.toLocaleString("en-US", { maximumFractionDigits: 2 })}
       </p>
@@ -188,10 +198,7 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
 
   const chartData =
     indices?.prices?.map((price) => ({
-      day: new Date(price.trade_date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
+      date: price.trade_date,
       pnl: price.adj_close || price.close,
     })) || [];
 
@@ -359,7 +366,21 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
                     <stop offset="95%" stopColor="#00C805" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="day" tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "#607B96", fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                  minTickGap={40}
+                  tickFormatter={(value: string) => {
+                    const parsed = new Date(value);
+                    if (Number.isNaN(parsed.getTime())) return value;
+                    return parsed.toLocaleDateString("en-US", chartData.length > 252
+                      ? { month: "short", year: "numeric" }
+                      : { month: "short", day: "numeric" });
+                  }}
+                />
                 <YAxis hide domain={["auto", "auto"]} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="pnl" stroke="#00C805" strokeWidth={2} fill="url(#pnlGrad)" />

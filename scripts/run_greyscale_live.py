@@ -872,6 +872,51 @@ def compute_pairwise_rank_correlations(model_scores_by_ticker: dict[str, pd.Seri
     return correlations
 
 
+def _patch_shap_xgb_loader() -> None:
+    """Monkey-patch SHAP's XGBTreeModelLoader to handle XGBoost 3.x base_score format.
+
+    XGBoost >= 3.0 serialises ``base_score`` as ``"[-1.23E-3]"`` (bracket-
+    wrapped string).  SHAP <= 0.49 does ``float(base_score)`` which raises
+    ``ValueError``.  This one-time patch strips the brackets before conversion.
+    """
+    try:
+        from shap.explainers._tree import XGBTreeModelLoader
+    except ImportError:
+        return
+
+    if getattr(XGBTreeModelLoader, "_patched_for_xgb3", False):
+        return
+
+    _orig_init = XGBTreeModelLoader.__init__
+
+    def _patched_init(self, xgb_model):  # type: ignore[no-untyped-def]
+        try:
+            _orig_init(self, xgb_model)
+        except ValueError as exc:
+            if "could not convert string to float" not in str(exc):
+                raise
+            # Re-run with patched float() that strips brackets
+            import builtins
+            _orig_float = builtins.float
+
+            def _tolerant_float(v):  # type: ignore[no-untyped-def]
+                if isinstance(v, str) and v.startswith("[") and v.endswith("]"):
+                    return _orig_float(v.strip("[]"))
+                return _orig_float(v)
+
+            builtins.float = _tolerant_float  # type: ignore[assignment]
+            try:
+                _orig_init(self, xgb_model)
+            finally:
+                builtins.float = _orig_float  # type: ignore[assignment]
+
+    XGBTreeModelLoader.__init__ = _patched_init
+    XGBTreeModelLoader._patched_for_xgb3 = True  # type: ignore[attr-defined]
+
+
+_patch_shap_xgb_loader()
+
+
 def compute_shap_for_top_tickers(
     models: dict[str, Any],
     feature_matrix: pd.DataFrame,

@@ -30,6 +30,9 @@ class TickerPredictionResponse(BaseModel):
     weight: float | None = None
     signal_date: str | None = None
     sector: str | None = None
+    confidence: str | None = None
+    model_spread: float | None = None
+    model_agreement: float | None = None
 
 
 class SignalHistoryPoint(BaseModel):
@@ -54,3 +57,40 @@ class TickerShapResponse(BaseModel):
     ticker: str
     signal_date: str | None = None
     features: list[ShapFeature] = Field(default_factory=list)
+
+
+class ConfidenceStatsResponse(BaseModel):
+    annualized_excess_ci_lower: float | None = None
+    annualized_excess_ci_upper: float | None = None
+    annualized_excess_estimate: float | None = None
+    sharpe_ci_lower: float | None = None
+    sharpe_ci_upper: float | None = None
+    sharpe_estimate: float | None = None
+    n_bootstrap: int | None = None
+    ci_level: float | None = None
+
+
+class ExpectedReturnBand(BaseModel):
+    estimate: float
+    ci_lower: float
+    ci_upper: float
+
+
+class ExpectedReturnsResponse(BaseModel):
+    data_source: str = "g3_gate_bootstrap"
+    ci_level: float
+    n_observations: int
+    annualized_excess: ExpectedReturnBand
+    sharpe: ExpectedReturnBand
+
+
+class TickerExpectedReturnResponse(BaseModel):
+    ticker: str
+    signal_date: str | None = None
+    percentile: float | None = None
+    quintile: int | None = None
+    data_source: str = "g3_gate_bootstrap"
+    ci_level: float
+    n_observations: int
+    annualized_excess: ExpectedReturnBand
+    sharpe: ExpectedReturnBand

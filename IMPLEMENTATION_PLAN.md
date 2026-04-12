@@ -2,7 +2,7 @@
 
 **基于 QuantEdge.md v3.0 生成**
 **生成日期：** 2026-03-28
-**项目当前状态：** Phase 3 W19 全部完成 (19.1-19.7)，灰度 v2 Week2 通过，准备进入 W22 (2026-04-11)
+**项目当前状态：** Phase 3 W22 前端修复进行中，灰度 Week3 PASS (beta=0.908)，W15-16 SPA 对比补完 (equal_weight confirmed)，支线任务 S1 信号质量提升已规划 (2026-04-12)
 
 ---
 
@@ -1609,6 +1609,178 @@ CREATE INDEX idx_audit_log_time ON audit_log (timestamp DESC);
 | G5 | 产品发布 | 第 28 周末 | 是否可上线 | 联调通过？合规审查通过？安全审计通过？ |
 
 **G3 是整个项目的命运决定点。** 如果 Alpha 不成立，应立即停止后续投入，而非"带着侥幸心理继续做产品"。
+
+---
+
+## 支线任务
+
+### S1：Alpha 全链路优化 — IC 提升 + 换手控制 + 成本优化 + Live 一致性
+
+**启动条件：** W22 前端修复完成后启动，与灰度并行
+**优先级：** P0 — 比 Phase 3 W24+ 优先
+**预计周期：** 5 周
+**总目标：** 净超额从 2.64% → 3.5-4.0%（base），5%+（stretch），通过 DSR/SPA 检验后替换生产模型
+**Codex 评审：** 2026-04-12 通过，已整合全部评审建议
+
+**当前瓶颈诊断（2026-04-12）：**
+
+| 问题 | 现状 | 影响 |
+|------|------|------|
+| OOS 衰减 | XGB val→test 衰减 40.5%, LGB 衰减 47.4% | 回测 IC 虚高，实际预测力打折 |
+| Live 衰减 | 回测 IC=0.072 vs Live IC=0.041, 衰减 42.5%（⚠️ 不可信，见下文） | 回测表现无法在 live 复现 |
+| 特征冗余 | 29 特征中多对 corr > 0.92 (vol_20d/vol_rank=1.0) | 树模型过拟合，OOS 衰减加剧 |
+| Sector 缺失 | 模型不含 sector 信息，学习绝对 PE/PB；stocks 表无历史 sector 快照 | 信号受 sector rotation 干扰；sector 特征有 PIT 风险 |
+| 换手成本 | equal_weight_buffered 换手 4.84% 已最低; score_weighted 17.8% → 成本 5% | 更积极的组合方案因成本不可行 |
+| Alpha 转化率 | 理论 IR≈2.03, 实际 Sharpe=0.341, 转化率仅 17% | 83% 的理论 alpha 被浪费 |
+| Purge/Embargo 缺失 | 60D 标签有重叠，walk-forward 用纯时间切割无 gap | 小幅 IC 提升可能被标签泄漏解释 |
+| Live IC 评估不对齐 | `run_live_ic_validation.py` 评估 ridge_60d (58 特征)，灰度用 fusion bundle (29 特征) | 42.5% 衰减是 apples-to-oranges，真实衰减未知 |
+
+**量化目标：**
+- Fusion OOS IC: 0.091 → **≥ 0.10（门控）/ 0.11（stretch）** (信号层)
+- 树模型 OOS 衰减: 40-47% → **<30%** (过拟合控制)
+- Live/回测 IC 误差: 不可信 → **先确立真实基线，再降至 <20%** (一致性)
+- 净超额年化: 2.64% → **≥ 3.5%（门控）/ 4.0-5.0%（stretch）** (执行层)
+- score_weighted 换手率: 17.8% → **≤ 10%**，成本拖累 ≤ 2.5%
+- Sharpe: 0.341 → **≥ 0.45（门控）/ 0.5+（stretch）** (综合)
+
+---
+
+#### Phase A：基础修复 + Live 审计 + 信号质量提升（Week 1-2）
+
+**设计原则：** Live 对齐审计 (S1.14) 和 purge/embargo 修复 (S1.0) 前置到 Week 1，因为它们是验证所有后续改进有效性的基础。
+
+| 序号 | 任务 | 交付物 | 验收标准 |
+|------|------|--------|----------|
+| S1.0 | Walk-forward Purge/Embargo 修复 | 修改 `run_walkforward_comparison.py`，60D 标签加 purge gap | 训练集末尾与测试集起始之间有 ≥ 60 交易日 embargo；对比修复前后 IC 差异 |
+| S1.1 | 特征稳定性筛选重建 | 新 IC 报告 (signed IC + RankIC + ICIR + **sign-consistency**) | 每特征有跨窗口稳定性指标，使用**符号一致性**而非 raw hit-rate（负 IC 但稳定的反向信号不被错误剔除） |
+| S1.2 | 特征去冗余 | 聚类后的精简特征集（**模型级，非全局统一**） | 无 \|corr\| > 0.85 的特征对；Ridge 可保留更多特征（耐共线性），树模型 15-20 特征 |
+| S1.3 | 缺失值标记恢复 | `is_missing_*` 标记进入训练 panel | 研究 pipeline 保留 preprocessing 生成的标记 |
+| S1.14 | Live/回测特征对齐审计（**前置**） | 逐特征对比 live fusion bundle vs backtest 的均值/分位数/fill-rate | 确认 58 vs 29 特征不一致问题；修复 `run_live_ic_validation.py` 使其评估当前 fusion bundle；**确立真实 live 衰减基线** |
+| S1.4 | Sector-relative 特征 | sector-relative value/quality/momentum 特征 | 新特征 IC > 0.01；**前置条件：确认 sector 历史 PIT 安全性**（如 stocks 表无历史 sector，则仅用 FMP 行业分类且标注为 point-in-time-approximate） |
+| S1.5 | Sector-neutral 标签实验 | sector-demean 标签 vs SPY-excess 标签对比 | 记录 IC 差异；**同样受 sector 历史 PIT 约束** |
+| S1.6 | 模型级特征集 | Ridge/XGB/LGB 各自独立最优特征集 | 各模型 OOS IC 不低于当前；Ridge 可用完整特征集，树模型用去冗余后的精简集 |
+| S1.7 | 自适应融合门控 | validation IC 为负的模型权重归零/减半 | 融合 IC ≥ 当前 0.091，Window 5/6 负 IC 模型被抑制；**positive windows ≥ 10/11** |
+
+**Week 1（基础修复 + Live 审计 + 特征治理）：** S1.14 → S1.0 → S1.3 → S1.1 → S1.2
+- **首先修复 live 评估脚本**，确立真实 live 衰减基线
+- 加入 purge/embargo，量化其对现有 IC 的影响
+- 恢复缺失值标记
+- 重建 IC 报告，使用 sign-consistency + redundancy 双重筛选
+
+**Week 2（Sector 引入 + 模型重训 + 融合）：** S1.4 → S1.5 → S1.6 → S1.7 + 首轮缩减重跑
+- Sector-relative 特征（需先确认 PIT 安全性）
+- 各模型独立特征集训练
+- 自适应融合替代固定 IC 权重
+- 在 3-4 个窗口上做快速验证重跑
+
+**Phase A 验收门控：**
+- Fusion OOS IC ≥ 0.10
+- Positive windows ≥ 10/11
+- 树模型 OOS 衰减 < 35%
+- 无模型存在持续性负 validation IC
+- Live 评估脚本已修复并产出真实基线数字
+
+---
+
+#### Phase B：换手控制 + 组合执行优化（Week 3）
+
+**动机：** score_weighted 毛超额 6.21% 是所有方案中最高的，但 17.8% 换手率产生 5% 成本拖累，净超额仅 1.18%。目标是保留 score_weighted 的毛超额优势，同时将成本拖累控制在 2.5% 以下。
+
+**执行顺序（Codex 建议优化）：** 先调现有 hysteresis 参数 → 再加权重层控制 → 最后才试信号层平滑。直接在权重层控制比在信号层平滑更精确，不会磨掉 alpha。
+
+| 序号 | 任务 | 交付物 | 验收标准 |
+|------|------|--------|----------|
+| S1.8 | Hysteresis 参数调优 | 调优 `sell_buffer_pct`, `min_trade_weight`, entry/exit rank bands | score_weighted 换手率显著降低，记录换手/超额 Pareto 曲线 |
+| S1.9 | 权重收缩 + No-trade zone | 目标权重向前期持仓收缩 (shrinkage)，变动 < X% 不交易 | 参数扫描 shrinkage ∈ {0.1, 0.3, 0.5}, X ∈ {0.1%, 0.2%, 0.5%} |
+| S1.10 | 换手率惩罚优化 | 目标函数加入 lambda_turnover * \|w_new - w_old\| | score_weighted 换手率 ≤ 10%，成本拖累 ≤ 2.5% |
+| S1.11 | 权重层 EMA 平滑（**备选**） | 对目标权重做 EMA（非 raw scores），alpha=0.3~0.7 | 仅在 S1.8-S1.10 未达门控时启用 |
+| S1.12 | 组合方案 SPA 复测 | 5 方案在新信号 + 新换手控制下 SPA 重测 | score_weighted_controlled 是否能 SPA 通过 vs equal_weight |
+
+**Week 3 执行要点：**
+- **优先调现有参数**（S1.8），这是最低风险的改进
+- 权重收缩是第二优先级，直接在组合层操作不影响信号质量
+- EMA 平滑降级为备选方案，仅在前两步不够时使用
+- 所有实验使用 Phase A 产出的新模型和新特征集
+- ~~Rebalance 频率实验~~（原 S1.11）推迟：仅在 hysteresis 控制失败后再做
+
+**Phase B 验收门控：**
+- 存在至少一个方案净超额 ≥ 3.5%（base）或 ≥ 4.0%（stretch）
+- score_weighted 换手率 ≤ 10%，成本拖累 ≤ 2.5%
+- 或 equal_weight_buffered 净超额 ≥ 3.5%
+
+---
+
+#### Phase C：Live 一致性保障 + 监控体系（Week 4）
+
+**动机：** Phase A 的 S1.14 已修复 live 评估脚本并确立真实衰减基线。Phase C 在此基础上建立持续监控体系，确保 live 与回测的一致性在模型更新后持续保持。
+
+| 序号 | 任务 | 交付物 | 验收标准 |
+|------|------|--------|----------|
+| S1.13 | 特征分布监控（**raw 特征层**） | PSI 在 raw pre-rank 输入 + fill-rate 上每周计算（非 rank-normalized 后） | PSI > 0.25 的特征自动告警；fill-rate 变化 > 5% 告警 |
+| S1.15 | 模型漂移检测 | 滚动 IC 监控 + CUSUM 变点检测 | 连续 3 周 IC 低于 0.03 自动告警 |
+| S1.16 | 预测校准检查 | calibration plot — **decile monotonicity**（非 Spearman） | top-decile > bottom-decile return in ≥ 80% of test periods |
+| S1.23 | Regime 逻辑修复 | regime scalar 改为调整模型融合权重（而非乘最终 score） | regime 切换时实际改变横截面排名 |
+
+**Week 4 执行要点：**
+- PSI 必须在 raw pre-rank 特征上计算，rank normalization 后的 PSI 被压平（Codex 发现）
+- 校准指标改用 decile monotonicity（Codex 建议），Spearman 对 ranker 不是最佳度量
+- Regime scalar 当前不改变排名（正标量乘法不影响横截面排序），需要改为调整模型权重
+- 监控嵌入 Airflow DAG，灰度每周自动运行
+
+**Phase C 验收门控：**
+- Live/回测 IC 误差 < 20%（基于 S1.14 修复后的真实基线）
+- PSI + CUSUM 监控正常运行并嵌入 DAG
+- Regime 切换实际影响排名
+
+---
+
+#### Phase D：全量验证 + 上线（Week 5）
+
+| 序号 | 任务 | 交付物 | 验收标准 |
+|------|------|--------|----------|
+| S1.17 | 11 窗口 Walk-forward 全量重跑 | 完整回测报告 (新特征 + 新模型 + 新融合 + purge/embargo + 新换手控制) | 全窗口 IC 记录，净超额年化计算 |
+| S1.18 | 有限超参精调 | 在清理后特征集上的最优超参（范围收窄，非全网格搜索） | IC 提升有统计显著性，不过度拟合 |
+| S1.19 | 轻量 Stacker 实验（**stretch，仅在基础改进已显著超越时尝试**） | out-of-fold stacking vs 自适应融合对比 | SPA p < 0.05 才采用；Phase A/B 未明显超越 baseline 则跳过 |
+| S1.20 | DSR/SPA 最终检验 | 新 fusion+execution vs 旧 fusion 的 SPA 报告 | p < 0.05 才替换生产模型 |
+| S1.21 | G3 Gate 重测 | 6 项统计检验全量重跑 | 6/6 PASS，成本后年化超额 ≥ 3.5%（base）/ ≥ 5%（stretch） |
+| S1.22 | 生产模型替换 + 灰度切换 | 更新 fusion_model_bundle_60d + PSI 监控入 DAG | 灰度下周自动使用新模型；首周 canary release 双模型并行出信号对比 |
+
+**Week 5 执行要点：**
+- 这一周以验证为主，不做新的改进
+- S1.17 全量重跑必须包含 purge/embargo
+- DSR 重新计算（新实验增加了 trial count）
+- S1.19 仅在 Phase A/B 已明显超越时尝试，否则跳过（Codex 建议：当前 IC-weighted 融合仅比 equal-weight 融合高 +0.0041，stacking 不太可能是首要收益点）
+- 替换后第一周灰度作为 canary release，双模型并行出信号对比
+
+**关键约束（全局）：**
+- 灰度不受影响，研究线使用独立的 walk-forward 数据
+- 每个改进必须单独记录 IC 增量贡献（ablation study）
+- 最终替换必须通过 SPA p < 0.05
+- **Purge/embargo 从 Week 1 开始强制执行**（S1.0），保证训练/验证/测试无标签泄漏
+- Phase A/B/C 之间有门控检查，不通过则停止并评估
+- **Sector-relative 特征需先确认 PIT 安全性**（stocks 表无历史 sector 快照是已知风险）
+
+**预期收益 vs 风险：**
+
+| 阶段 | IC 预期 | 净超额预期 | 风险 |
+|------|---------|-----------|------|
+| Phase A (基础修复+信号) | 0.091 → 0.10（门控）/ 0.11（stretch） | 2.64% → 3.0-3.5% | 低 — 特征清理 + purge 修复是确定性改进 |
+| Phase B (换手控制) | 不变 | 3.0-3.5% → 3.5-4.0%（base）/ 4.0-5.0%（stretch） | 中 — 换手控制可能损失部分毛超额 |
+| Phase C (一致性+监控) | Live IC 误差 < 20% | live 与回测对齐，监控体系运行 | 中 — 可能发现数据源层面问题需额外修复 |
+| Phase D (验证+上线) | 最终确认 | ≥ 3.5%（base）/ 5%+（stretch） | 低 — 纯验证不引入新风险 |
+
+---
+
+### Phase 3 主线暂停说明
+
+W22 前端修复完成后，Phase 3 主线（W24-28）暂停。恢复条件：
+1. S1 Alpha 全链路优化完成（或 5 周到期）
+2. 灰度累计 4 周以上运行记录
+3. 用户决定恢复
+
+暂停期间持续运行：
+- 灰度每周正常出信号 + 风控检查
+- S1 支线任务推进
 
 ---
 

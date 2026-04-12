@@ -241,7 +241,7 @@ def _build_technicals_response(
 )
 async def get_stock_prices(
     ticker: str,
-    days: int = Query(default=90, ge=1, le=1095, description="Number of trading days to return."),
+    days: int = Query(default=90, ge=1, le=2520, description="Number of trading days to return."),
     as_of: datetime | None = Query(
         default=None,
         description="Point-in-time cutoff in UTC. Defaults to the current UTC timestamp.",

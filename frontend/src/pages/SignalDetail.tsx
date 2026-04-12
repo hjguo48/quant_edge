@@ -595,7 +595,7 @@ const SignalDetail = ({
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 xl:flex-row items-stretch xl:h-[480px]">
+      <div className="flex flex-col gap-6 xl:flex-row items-stretch xl:h-[420px]">
         <div className="flex-1 bg-card rounded-2xl border border-border p-6 shadow-xl fade-in-up stagger-4 flex flex-col min-h-[400px] xl:min-h-0">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 rounded-xl bg-primary/10">
@@ -962,7 +962,7 @@ const SignalDetail = ({
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="border-t-2 border-primary/10">
+                        <tr className="border-t border-white/10">
                           <td className="px-6 py-5 text-xs font-black text-primary uppercase tracking-[0.2em]">Integrated Fusion</td>
                           <td className="px-6 py-5 text-right" />
                           <td className="px-6 py-5 text-right" />

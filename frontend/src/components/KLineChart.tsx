@@ -142,6 +142,7 @@ const KLineChart = ({
   const [chartMode, setChartMode] = useState<ChartMode>("candlestick");
   const [chartWidth, setChartWidth] = useState(0);
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     setSelectedRange(defaultRange);
@@ -490,8 +491,13 @@ const KLineChart = ({
             {RANGE_OPTIONS.map((option) => (
               <button
                 key={option.key}
-                onClick={() => setSelectedRange(option.key)}
-                className={`text-xs px-2 py-1 rounded-md transition-all duration-200 ${
+                onClick={() => {
+                  if (option.key === selectedRange) return;
+                  setIsTransitioning(true);
+                  setSelectedRange(option.key);
+                  setTimeout(() => setIsTransitioning(false), 350);
+                }}
+                className={`min-w-[2rem] text-center text-xs px-2 py-1 rounded-md transition-all duration-200 ${
                   selectedRange === option.key
                     ? "bg-primary text-primary-foreground font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -504,7 +510,7 @@ const KLineChart = ({
         </div>
       </div>
 
-      <div ref={chartAreaRef} className="relative">
+      <div ref={chartAreaRef} className={`relative transition-all duration-500 ease-out origin-center ${isTransitioning ? "opacity-60 scale-[0.985]" : "opacity-100 scale-100"}`}>
         {isInitialLoading ? (
           <div className="flex items-center justify-center rounded-lg bg-surface animate-pulse" style={{ height }}>
             <span className="text-sm text-muted-foreground">Loading price history…</span>
