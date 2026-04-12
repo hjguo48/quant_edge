@@ -71,6 +71,9 @@ class GreyscaleReader:
             return None
         return reports[max(reports)]
 
+    def get_reports(self) -> dict[int, dict[str, Any]]:
+        return dict(self._load_all())
+
     def get_all_fusion_scores(self) -> list[dict[str, Any]]:
         report = self.get_latest_report()
         if report is None:
