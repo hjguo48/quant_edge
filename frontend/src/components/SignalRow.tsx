@@ -38,9 +38,7 @@ const SignalRow = ({
     <div
       data-cmp="SignalRow"
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className={`flex items-center gap-4 px-5 py-3.5 border-b border-border cursor-pointer transition-all duration-200 ${hovered ? "bg-accent/50" : ""}`}
+      className="flex items-center gap-4 px-5 py-3.5 border-b border-border last:border-0 cursor-pointer transition-all duration-200"
     >
       {/* Ticker */}
       <div className="w-24 flex-shrink-0">

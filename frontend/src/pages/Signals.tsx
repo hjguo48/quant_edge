@@ -227,131 +227,41 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-card rounded-xl border border-border p-4 fade-in-up stagger-1">
-        <div className="flex items-center gap-2 flex-nowrap overflow-x-auto no-scrollbar">
-          <Filter size={14} className="text-muted-foreground flex-shrink-0" />
+      {/* Filters Panel */}
+      <div className="bg-card rounded-xl border border-border p-4 space-y-4 fade-in-up stagger-1">
+        {/* Row 1: Search, Watchlist, and Sort */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Search */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent focus-within:border-primary/40 transition-all flex-1 max-w-sm">
+              <Search size={13} className="text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search ticker or name…"
+                className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
+              />
+            </div>
 
-          {/* Watchlist Toggle */}
-          <button
-            onClick={() => setShowWatchlist(!showWatchlist)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all flex-shrink-0 ${
-              showWatchlist ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            <Star size={14} className={showWatchlist ? "fill-current" : ""} />
-            Watchlist
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${showWatchlist ? "bg-white/20" : "bg-muted-foreground/20"}`}>
-              {watchlist.length}
-            </span>
-          </button>
-
-          <div className="w-px h-5 bg-border flex-shrink-0" />
-
-          {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent focus-within:border-primary/40 transition-all flex-shrink-0">
-            <Search size={13} className="text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search ticker…"
-              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-24"
-            />
-          </div>
-
-          {/* Direction */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {DIRECTIONS.map((d) => (
-              <button
-                key={d}
-                onClick={() => setDirection(d)}
-                className={`text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 ${
-                  direction === d ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-
-          <div className="w-px h-5 bg-border flex-shrink-0" />
-
-          {/* Sector Dropdown */}
-          <div className="flex-shrink-0">
+            {/* Watchlist Toggle */}
             <button
-              ref={sectorBtnRef}
-              onClick={toggleSectorDropdown}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-transparent hover:border-white/10 hover:bg-accent transition-all text-sm min-w-[140px] group"
+              onClick={() => setShowWatchlist(!showWatchlist)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all flex-shrink-0 ${
+                showWatchlist ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
             >
-              <span className={`truncate ${sectorFilter === "All Sectors" ? "text-muted-foreground/70" : "text-muted-foreground font-medium"}`}>
-                {sectorFilter}
+              <Star size={14} className={showWatchlist ? "fill-current" : ""} />
+              Watchlist
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${showWatchlist ? "bg-white/20" : "bg-muted-foreground/20"}`}>
+                {watchlist.length}
               </span>
-              <ChevronDown size={14} className={`ml-auto text-muted-foreground transition-transform duration-300 ${sectorOpen ? "rotate-180 text-primary" : "group-hover:text-foreground"}`} />
             </button>
-
-            {sectorOpen && createPortal(
-              <>
-                <div className="fixed inset-0 z-[9998]" onClick={() => setSectorOpen(false)} />
-                <div
-                  className="fixed z-[9999] bg-[#1A2540] backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-2 min-w-[220px] max-h-[400px] overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
-                  style={{ top: dropdownPos.top, left: dropdownPos.left }}
-                >
-                  <button
-                    onClick={() => { setSectorFilter("All Sectors"); setSectorOpen(false); }}
-                    className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
-                      sectorFilter === "All Sectors" 
-                        ? "text-primary font-bold bg-primary/5" 
-                        : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                    }`}
-                  >
-                    <span>All Sectors</span>
-                    {sectorFilter === "All Sectors" && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_#00C805]" />}
-                  </button>
-
-                  <div className="h-px bg-white/5 my-1 mx-2" />
-
-                  {PRIMARY_SECTORS.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => { setSectorFilter(s); setSectorOpen(false); }}
-                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
-                        sectorFilter === s 
-                          ? "text-primary font-bold bg-primary/5" 
-                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                      }`}
-                    >
-                      <span>{s}</span>
-                      {sectorFilter === s && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_#00C805]" />}
-                    </button>
-                  ))}
-                </div>
-              </>,
-              document.body
-            )}
           </div>
 
-          <div className="w-px h-5 bg-border flex-shrink-0" />
-
-          {/* Min Confidence */}
+          {/* Sort Controls */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Min conf:</span>
-            <input
-              type="range"
-              min={0}
-              max={90}
-              step={5}
-              value={minConf}
-              onChange={(e) => setMinConf(Number(e.target.value))}
-              className="signal-confidence-slider"
-              style={sliderStyle}
-              aria-label="Minimum confidence"
-            />
-            <span className="w-10 text-right text-xs font-mono font-semibold text-foreground">{minConf}%</span>
-          </div>
-
-          <div className="ml-auto flex items-center gap-1 flex-shrink-0">
             <SortDesc
-              size={13}
+              size={14}
               className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors mr-1"
               onClick={() => {
                 const keys = SORT_OPTIONS.map((o) => o.key);
@@ -359,18 +269,115 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 setSort(keys[(idx + 1) % keys.length] as SortMode);
               }}
             />
-            <span className="text-xs text-muted-foreground">Sort:</span>
-            {SORT_OPTIONS.map((option) => (
+            <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
+              {SORT_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  onClick={() => setSort(option.key)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                    sort === option.key ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-border/50" />
+
+        {/* Row 2: Direction, Sector, and Confidence */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Direction</span>
+            <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
+              {DIRECTIONS.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDirection(d)}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                    direction === d ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Sector</span>
+            <div className="flex-shrink-0">
               <button
-                key={option.key}
-                onClick={() => setSort(option.key)}
-                className={`text-xs px-2 py-1 rounded-md transition-colors ${
-                  sort === option.key ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
-                }`}
+                ref={sectorBtnRef}
+                onClick={toggleSectorDropdown}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-transparent hover:border-white/10 hover:bg-accent transition-all text-xs min-w-[140px] group"
               >
-                {option.label}
+                <span className={`truncate font-medium ${sectorFilter === "All Sectors" ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
+                  {sectorFilter}
+                </span>
+                <ChevronDown size={14} className={`ml-auto text-muted-foreground transition-transform duration-300 ${sectorOpen ? "rotate-180 text-primary" : "group-hover:text-foreground"}`} />
               </button>
-            ))}
+
+              {sectorOpen && createPortal(
+                <>
+                  <div className="fixed inset-0 z-[9998]" onClick={() => setSectorOpen(false)} />
+                  <div
+                    className="fixed z-[9999] bg-[#1A2540] backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-2 min-w-[220px] max-h-[400px] overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
+                    style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                  >
+                    <button
+                      onClick={() => { setSectorFilter("All Sectors"); setSectorOpen(false); }}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
+                        sectorFilter === "All Sectors" 
+                          ? "text-primary font-bold bg-primary/5" 
+                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                      }`}
+                    >
+                      <span>All Sectors</span>
+                      {sectorFilter === "All Sectors" && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_#00C805]" />}
+                    </button>
+
+                    <div className="h-px bg-white/5 my-1 mx-2" />
+
+                    {PRIMARY_SECTORS.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => { setSectorFilter(s); setSectorOpen(false); }}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
+                          sectorFilter === s 
+                            ? "text-primary font-bold bg-primary/5" 
+                            : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                        }`}
+                      >
+                        <span>{s}</span>
+                        {sectorFilter === s && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_#00C805]" />}
+                      </button>
+                    ))}
+                  </div>
+                </>,
+                document.body
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 ml-auto">
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Confidence</span>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={0}
+                max={90}
+                step={5}
+                value={minConf}
+                onChange={(e) => setMinConf(Number(e.target.value))}
+                className="signal-confidence-slider"
+                style={sliderStyle}
+                aria-label="Minimum confidence"
+              />
+              <span className="w-10 text-right text-xs font-mono font-black text-primary">{minConf}%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -414,11 +421,11 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             <div key={s.ticker} className="flex items-center group/row border-b border-border hover:bg-accent/30 transition-colors">
               <button
                 onClick={(e) => { e.stopPropagation(); toggleWatchlist(s.ticker); }}
-                className={`ml-5 transition-colors ${watchlist.includes(s.ticker) ? "text-primary" : "text-muted-foreground hover:text-foreground opacity-20 group-hover/row:opacity-100"}`}
+                className={`ml-5 transition-colors ${watchlist.includes(s.ticker) ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground opacity-20 group-hover/row:opacity-100"}`}
               >
                 <Star size={14} className={watchlist.includes(s.ticker) ? "fill-current" : ""} />
               </button>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <SignalRow
                   ticker={s.ticker}
                   name={s.name}
@@ -437,7 +444,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             {showWatchlist ? (
               <>
                 <Star size={32} className="mb-3 opacity-20" />
-                <p className="text-sm">Your watchlist is empty</p>
+                <p className="text-sm font-bold text-foreground">Watchlist is empty</p>
                 <p className="text-xs mt-1">Star symbols to track them here</p>
               </>
             ) : (
@@ -453,8 +460,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       {/* Pagination Controls */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-4 fade-in-up">
-          <p className="text-xs text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">{(page - 1) * PAGE_SIZE + 1}</span> to <span className="font-semibold text-foreground">{Math.min(page * PAGE_SIZE, filtered.length)}</span> of <span className="font-semibold text-foreground">{filtered.length}</span> signals
+          <p className="text-xs text-muted-foreground font-medium">
+            Showing <span className="font-black text-foreground">{(page - 1) * PAGE_SIZE + 1}</span> to <span className="font-black text-foreground">{Math.min(page * PAGE_SIZE, filtered.length)}</span> of <span className="font-black text-foreground">{filtered.length}</span> signals
           </p>
           <div className="flex items-center gap-1.5">
             <button
@@ -480,8 +487,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                   <button
                     key={pageNum}
                     onClick={() => setPage(pageNum)}
-                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
-                      page === pageNum ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-accent text-muted-foreground"
+                    className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
+                      page === pageNum ? "bg-primary text-primary-foreground shadow-lg scale-105" : "hover:bg-accent text-muted-foreground"
                     }`}
                   >
                     {pageNum}

@@ -269,18 +269,18 @@ const ExpectedReturnCard = ({ data }: { data: ExpectedReturnResponse }) => {
       <div className="space-y-2">
         <div className="flex justify-between items-center text-xs">
           <span className="text-muted-foreground font-medium">{label}</span>
-          <span className="text-foreground font-mono font-bold">{format(estimate)}</span>
+          <span className="text-foreground font-mono font-black">{format(estimate)}</span>
         </div>
         <div className="relative h-6 flex items-center">
-          <div className="absolute w-full h-1 bg-muted rounded-full" />
+          <div className="absolute w-full h-1 bg-muted/50 rounded-full" />
           {/* CI Bar */}
           <div 
-            className="absolute h-1.5 bg-primary/30 rounded-full"
+            className="absolute h-1 bg-primary/40 rounded-full"
             style={{ left: `${getPos(lower)}%`, width: `${getPos(upper) - getPos(lower)}%` }}
           />
           {/* Estimate Dot */}
           <div 
-            className="absolute w-2.5 h-2.5 bg-primary rounded-full border-2 border-card shadow-[0_0_8px_#00C805]"
+            className="absolute w-2.5 h-2.5 bg-primary rounded-full border-2 border-card shadow-[0_0_10px_#00C805]"
             style={{ left: `${getPos(estimate)}%`, transform: 'translateX(-50%)' }}
           />
           {/* Labels */}
@@ -294,34 +294,35 @@ const ExpectedReturnCard = ({ data }: { data: ExpectedReturnResponse }) => {
   };
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-5 space-y-6 shadow-xl relative overflow-hidden group hover:border-primary/20 transition-colors">
+    <div className="bg-card rounded-2xl border border-border p-5 space-y-6 shadow-xl relative overflow-hidden group hover:border-primary/20 transition-all duration-300">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-primary/10">
-            <Target size={16} className="text-primary" />
+          <div className="p-2 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+            <Target size={18} className="text-primary" />
           </div>
-          <h3 className="text-sm font-bold text-foreground">Expected Performance</h3>
+          <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Expected Performance</h3>
         </div>
-        <div className="bg-muted px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest text-primary border border-primary/10">
-          Q{data.quintile} - Top {(data.quintile - 1) * 20}-{data.quintile * 20}%
+        <div className="bg-muted px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] text-primary border border-primary/10 shadow-inner">
+          Quintile {data.quintile}
         </div>
       </div>
 
-      <div className="space-y-8 pt-2">
+      <div className="space-y-10 pt-2 pb-4 px-1">
         {renderRange("Annualized Excess Return", data.annualized_excess.estimate, data.annualized_excess.ci_lower, data.annualized_excess.ci_upper)}
         {renderRange("Sharpe Ratio", data.sharpe.estimate, data.sharpe.ci_lower, data.sharpe.ci_upper, false)}
       </div>
 
-      <div className="pt-4 space-y-3 border-t border-white/5">
-        <div className="flex items-start gap-2">
-          <ShieldCheck size={12} className="text-muted-foreground mt-0.5 opacity-50" />
-          <p className="text-[9px] text-muted-foreground leading-relaxed italic uppercase tracking-wider">
+      <div className="pt-5 space-y-4 border-t border-white/5">
+        <div className="flex items-start gap-3">
+          <ShieldCheck size={14} className="text-primary mt-0.5 opacity-40" />
+          <p className="text-[9px] text-muted-foreground leading-relaxed font-medium uppercase tracking-wider opacity-70">
             Based on historical model backtest performance. Past results do not guarantee future returns. Not investment advice.
           </p>
         </div>
-        <p className="text-[9px] text-muted-foreground/40 font-mono text-center">
-          Source: 10,000-sample block bootstrap · {data.n_observations} test observations
-        </p>
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[8px] text-muted-foreground/40 font-black uppercase tracking-widest">Statistical Source</span>
+          <span className="text-[9px] text-muted-foreground/60 font-mono">10K block bootstrap · {data.n_observations} obs</span>
+        </div>
       </div>
     </div>
   );
@@ -486,7 +487,7 @@ const SignalDetail = ({
   ] as const;
 
   const renderOverview = () => (
-    <>
+    <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 fade-in-up stagger-2">
         {detailQuery.isLoading || technicalsQuery.isLoading ? (
           Array.from({ length: 4 }, (_, index) => (
@@ -508,105 +509,84 @@ const SignalDetail = ({
         )}
       </div>
 
-      <div className="flex flex-col gap-5 xl:flex-row">
-        <div className="flex-1 min-w-0">
+      <div className="flex flex-col gap-6 xl:flex-row items-start">
+        <div className="flex-1 min-w-0 space-y-6 w-full">
           <div className="fade-in-up stagger-3">
-            <KLineChart key={normalizedTicker} ticker={normalizedTicker} height={260} defaultRange="3M" />
+            <KLineChart key={normalizedTicker} ticker={normalizedTicker} height={320} defaultRange="3M" />
           </div>
           {history.length > 0 && (
-            <div className="mt-5 bg-card rounded-xl border border-border p-5 fade-in-up stagger-3">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp size={14} className="text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Model Signal History</h3>
+            <div className="bg-card rounded-2xl border border-border p-6 fade-in-up stagger-3 shadow-xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <TrendingUp size={18} className="text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Model Signal History</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Historical fusion scores across previous signal cycles</p>
+                </div>
               </div>
-              <SignalHistory history={history} height={200} />
+              <SignalHistory history={history} height={220} />
             </div>
           )}
         </div>
 
-        <div className="w-full xl:w-80 space-y-5 flex-shrink-0 fade-in-up stagger-3">
+        <div className="w-full xl:w-[340px] space-y-6 flex-shrink-0 fade-in-up stagger-3">
           {expectedReturn && <ExpectedReturnCard data={expectedReturn} />}
           
-          <div className="bg-card rounded-xl border border-border p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Brain size={14} className="text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">Technical Indicators</h3>
+          <div className="bg-card rounded-2xl border border-border p-6 shadow-xl space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <Brain size={18} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Technical Snapshot</h3>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Momentum and trend indicators</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Latest snapshot{technicals?.trade_date ? ` · ${formatDate(technicals.trade_date)}` : ""}
-            </p>
 
             {technicalsQuery.isLoading ? (
-              <div className="space-y-3 animate-pulse">
-                {Array.from({ length: 10 }, (_, index) => (
+              <div className="space-y-4 animate-pulse">
+                {Array.from({ length: 8 }, (_, index) => (
                   <div key={index} className="h-4 rounded-md bg-muted" style={{ width: `${92 - index * 4}%` }} />
                 ))}
               </div>
             ) : technicalsQuery.isError ? (
               <p className="text-xs text-bear">{getErrorMessage(technicalsQuery.error)}</p>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <div className="space-y-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Momentum</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 border-b border-white/5 pb-1.5">Momentum</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">RSI 14</span>
-                    <span className={`text-xs font-bold font-mono ${getRsiColor(technicals?.rsi_14)}`}>
+                    <span className="text-xs text-muted-foreground font-medium">RSI (14)</span>
+                    <span className={`text-xs font-black font-mono px-2 py-0.5 rounded ${getRsiColor(technicals?.rsi_14)} bg-white/5`}>
                       {formatNumber(technicals?.rsi_14, 2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">MACD</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.macd, 4)}</span>
+                    <span className="text-xs text-muted-foreground font-medium">MACD</span>
+                    <span className="text-xs font-black font-mono text-foreground">{formatNumber(technicals?.macd, 4)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Signal</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.macd_signal, 4)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Histogram</span>
-                    <span className={`text-xs font-bold font-mono ${getTrend(technicals?.macd_histogram) === "down" ? "text-bear" : "text-bull"}`}>
+                    <span className="text-xs text-muted-foreground font-medium">Histogram</span>
+                    <span className={`text-xs font-black font-mono ${getTrend(technicals?.macd_histogram) === "down" ? "text-bear" : "text-bull"}`}>
                       {formatNumber(technicals?.macd_histogram, 4)}
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Bollinger Bands</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 border-b border-white/5 pb-1.5">Volatility</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Upper</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.bb_upper)}</span>
+                    <span className="text-xs text-muted-foreground font-medium">BB Position</span>
+                    <span className="text-xs font-black font-mono text-foreground bg-white/5 px-2 py-0.5 rounded">{formatNumber(technicals?.bb_position, 4)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Middle</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.bb_middle)}</span>
+                    <span className="text-xs text-muted-foreground font-medium">SMA 20</span>
+                    <span className="text-xs font-black font-mono text-foreground">{formatCurrency(technicals?.sma_20)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Lower</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.bb_lower)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Width</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.bb_width, 4)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Position</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.bb_position, 4)}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Moving Averages</div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">SMA 20</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.sma_20)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">SMA 50</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.sma_50)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">SMA 200</span>
-                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.sma_200)}</span>
+                    <span className="text-xs text-muted-foreground font-medium">SMA 200</span>
+                    <span className="text-xs font-black font-mono text-foreground">{formatCurrency(technicals?.sma_200)}</span>
                   </div>
                 </div>
               </div>
@@ -615,35 +595,36 @@ const SignalDetail = ({
         </div>
       </div>
 
-      <div className="flex flex-col gap-5 xl:flex-row">
-        <div className="flex-1 bg-card rounded-xl border border-border p-5 fade-in-up stagger-4">
-          <div className="flex items-center gap-2 mb-1">
-            <BarChart3 size={14} className="text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Fundamental Snapshot</h3>
+      <div className="flex flex-col gap-6 xl:flex-row items-start">
+        <div className="flex-1 bg-card rounded-2xl border border-border p-6 shadow-xl fade-in-up stagger-4 w-full">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <BarChart3 size={18} className="text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Fundamental Composition</h3>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Top financial metrics ranked by absolute magnitude</p>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            {fundamentals?.fiscal_period ? `${fundamentals.fiscal_period}` : "Latest filing"}
-            {fundamentals?.event_time ? ` · ${formatDate(fundamentals.event_time)}` : ""}
-          </p>
 
           {fundamentalsQuery.isLoading ? (
-            <div className="animate-pulse space-y-3">
-              {Array.from({ length: 8 }, (_, index) => (
-                <div key={index} className="h-5 rounded-md bg-muted" style={{ width: `${94 - index * 6}%` }} />
+            <div className="animate-pulse space-y-4">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div key={index} className="h-6 rounded-md bg-muted" style={{ width: `${94 - index * 6}%` }} />
               ))}
             </div>
           ) : fundamentalsQuery.isError ? (
             <p className="text-xs text-bear">{getErrorMessage(fundamentalsQuery.error)}</p>
           ) : topMetricData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={300}>
               <BarChart
                 data={topMetricData}
                 layout="vertical"
-                margin={{ left: 8, right: 16, top: 0, bottom: 0 }}
+                margin={{ left: 12, right: 32, top: 0, bottom: 0 }}
               >
                 <XAxis
                   type="number"
-                  tick={{ fill: "#607B96", fontSize: 10 }}
+                  tick={{ fill: "#607B96", fontSize: 10, fontWeight: 700 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(value: number) => formatCompactNumber(value)}
@@ -651,10 +632,10 @@ const SignalDetail = ({
                 <YAxis
                   type="category"
                   dataKey="label"
-                  tick={{ fill: "#607B96", fontSize: 10 }}
+                  tick={{ fill: "#F5F7FA", fontSize: 10, fontWeight: 800 }}
                   axisLine={false}
                   tickLine={false}
-                  width={110}
+                  width={120}
                 />
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,0.03)" }}
@@ -662,9 +643,9 @@ const SignalDetail = ({
                     if (!active || !payload?.length) return null;
                     const point = payload[0].payload;
                     return (
-                      <div className="bg-popover border border-border rounded-lg px-2.5 py-1.5 shadow-custom">
-                        <p className="text-xs text-muted-foreground">{point.fullLabel}</p>
-                        <p className={`text-xs font-bold ${point.positive ? "text-bull" : "text-bear"}`}>
+                      <div className="bg-[#131C2E] border border-white/10 rounded-xl px-3 py-2 shadow-2xl backdrop-blur-xl">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">{point.fullLabel}</p>
+                        <p className={`text-sm font-black font-mono ${point.positive ? "text-bull" : "text-bear"}`}>
                           {point.value >= 0 ? "+" : ""}
                           {formatCompactNumber(point.value)}
                         </p>
@@ -672,7 +653,7 @@ const SignalDetail = ({
                     );
                   }}
                 />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={16}>
                   {topMetricData.map((entry) => (
                     <Cell
                       key={entry.metric}
@@ -688,29 +669,31 @@ const SignalDetail = ({
           )}
         </div>
 
-        <div className="w-full xl:w-80 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-5">
-          <div className="flex items-center gap-2 mb-1">
-            <BarChart3 size={14} className="text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Fundamental Metrics</h3>
+        <div className="w-full xl:w-[340px] bg-card rounded-2xl border border-border p-6 shadow-xl fade-in-up stagger-5 flex-shrink-0">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <Layers size={18} className="text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Financial Matrix</h3>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Complete metric inventory</p>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            {fundamentals?.knowledge_time ? `Visible ${formatDate(fundamentals.knowledge_time)}` : "Latest reported metrics"}
-          </p>
 
           {fundamentalsQuery.isLoading ? (
-            <div className="space-y-3 animate-pulse">
-              {Array.from({ length: 10 }, (_, index) => (
-                <div key={index} className="h-4 rounded-md bg-muted" style={{ width: `${90 - index * 4}%` }} />
+            <div className="space-y-4 animate-pulse">
+              {Array.from({ length: 12 }, (_, index) => (
+                <div key={index} className="h-4 rounded-md bg-muted" style={{ width: `${90 - index * 3}%` }} />
               ))}
             </div>
           ) : fundamentalsQuery.isError ? (
             <p className="text-xs text-bear">{getErrorMessage(fundamentalsQuery.error)}</p>
           ) : metricEntries.length > 0 ? (
-            <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+            <div className="space-y-3.5 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
               {metricEntries.map(([metric, value]) => (
-                <div key={metric} className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-muted-foreground">{formatMetricLabel(metric)}</span>
-                  <span className={`text-xs font-bold font-mono ${typeof value === "number" && value < 0 ? "text-bear" : "text-foreground"}`}>
+                <div key={metric} className="flex items-center justify-between gap-4 py-1 border-b border-white/[0.03] last:border-0 group">
+                  <span className="text-[11px] font-bold text-muted-foreground group-hover:text-foreground transition-colors">{formatMetricLabel(metric)}</span>
+                  <span className={`text-[11px] font-black font-mono px-2 py-0.5 rounded bg-white/5 ${typeof value === "number" && value < 0 ? "text-bear" : "text-foreground"}`}>
                     {typeof value === "number" ? formatCompactNumber(value) : "—"}
                   </span>
                 </div>
@@ -721,55 +704,55 @@ const SignalDetail = ({
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-5">
+    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#0D1421]">
       <div className="flex items-start gap-4 fade-in-up">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group mt-0.5"
+          className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all group mt-0.5"
         >
-          <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
-          Back to Signals
+          <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
+          Return to Signals
         </button>
       </div>
 
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-center fade-in-up stagger-1">
-        <div className="flex items-start gap-5 min-w-0">
-          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center flex-shrink-0">
-            <span className="text-xl font-black text-foreground">{normalizedTicker[0]}</span>
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-center fade-in-up stagger-1">
+        <div className="flex items-start gap-6 min-w-0">
+          <div className="w-16 h-16 rounded-[24px] bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-2xl">
+            <span className="text-2xl font-black text-primary">{normalizedTicker[0]}</span>
           </div>
 
           {detailQuery.isLoading && !detail ? (
-            <div className="space-y-3 animate-pulse min-w-[260px]">
-              <div className="h-7 w-44 rounded-md bg-muted" />
-              <div className="h-5 w-64 rounded-md bg-muted" />
-              <div className="h-4 w-56 rounded-md bg-muted" />
+            <div className="space-y-3 animate-pulse min-w-[300px]">
+              <div className="h-8 w-48 rounded-lg bg-muted" />
+              <div className="h-5 w-72 rounded-lg bg-muted" />
+              <div className="h-4 w-64 rounded-lg bg-muted" />
             </div>
           ) : (
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-2xl font-bold text-foreground">{detail?.ticker ?? normalizedTicker}</h2>
+                <h2 className="text-3xl font-black text-foreground tracking-tight">{detail?.ticker ?? normalizedTicker}</h2>
                 {prediction && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/20 text-bull" : "bg-bear/10 border-bear/20 text-bear"}`}>
-                      <span className="text-xs font-bold uppercase tracking-tight">
+                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full border shadow-xl ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/30 text-bull" : "bg-bear/10 border-bear/30 text-bear"}`}>
+                      <span className="text-xs font-black uppercase tracking-tighter">
                         Score: {prediction.fusion_score.toFixed(4)}
                       </span>
-                      <span className="w-1 h-1 rounded-full bg-current opacity-40" />
-                      <span className="text-xs font-bold">
+                      <div className="w-1 h-1 rounded-full bg-current opacity-40" />
+                      <span className="text-xs font-black">
                         Rank #{prediction.rank}
                       </span>
-                      <span className="w-1 h-1 rounded-full bg-current opacity-40" />
-                      <span className="text-xs font-bold">
+                      <div className="w-1 h-1 rounded-full bg-current opacity-40" />
+                      <span className="text-xs font-black">
                         Top {prediction.percentile.toFixed(1)}%
                       </span>
                     </div>
                     
                     {/* Confidence Badge */}
-                    <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${
+                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] border shadow-sm ${
                       prediction.confidence === "high" ? "bg-bull/10 border-bull/30 text-bull" :
                       prediction.confidence === "medium" ? "bg-amber-500/10 border-amber-500/30 text-amber-500" :
                       "bg-bear/10 border-bear/30 text-bear"
@@ -777,94 +760,99 @@ const SignalDetail = ({
                       {prediction.confidence} confidence
                     </div>
 
-                    <div className="text-[10px] font-bold text-muted-foreground bg-muted/50 px-2 py-1 rounded border border-border/50">
-                      {Math.round(prediction.model_agreement * 100)}% Model Agreement
+                    <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 bg-muted/30 px-2.5 py-1 rounded-lg border border-white/5 shadow-inner">
+                      {Math.round(prediction.model_agreement * 100)}% Consensus
                     </div>
                   </div>
                 )}
                 {predictionQuery.isLoading && (
-                  <div className="h-6 w-32 bg-muted animate-pulse rounded-full" />
+                  <div className="h-7 w-48 bg-muted animate-pulse rounded-full" />
                 )}
                 {isPrediction404 && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-muted/30 border-border text-muted-foreground">
-                    <span className="text-[10px] font-bold uppercase">No Active Signal</span>
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full border bg-muted/30 border-white/5 text-muted-foreground/50 shadow-inner">
+                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">No Active Signal</span>
                   </div>
                 )}
+              </div>
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                <p className="text-sm font-bold text-muted-foreground tracking-wide">
+                  {detail?.company_name || "Loading entity information..."}
+                </p>
                 {detail?.sector && (
-                  <span
-                    className="text-xs font-semibold px-2 py-0.5 rounded-md border"
-                    style={{
-                      backgroundColor: getSectorColor(detail.sector).bg,
-                      color: getSectorColor(detail.sector).text,
-                      borderColor: getSectorColor(detail.sector).border,
-                    }}
-                  >
-                    {detail.sector}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                    <span
+                      className="text-[10px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded border shadow-sm"
+                      style={{
+                        backgroundColor: getSectorColor(detail.sector).bg,
+                        color: getSectorColor(detail.sector).text,
+                        borderColor: getSectorColor(detail.sector).border,
+                      }}
+                    >
+                      {detail.sector}
+                    </span>
+                  </div>
                 )}
                 {detail?.industry && (
-                  <span className="text-xs text-muted-foreground px-2 py-1 rounded-lg bg-muted/50 border border-border/50">
-                    {detail.industry}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                    <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                      {detail.industry}
+                    </span>
+                  </div>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {detail?.company_name || "Loading company details"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                {detail?.ipo_date ? `IPO ${formatDate(detail.ipo_date)} · ` : ""}
-                {latestPrice?.trade_date ? `Updated ${formatDate(latestPrice.trade_date)}` : "Waiting for latest quote"}
+              <p className="text-[10px] font-bold text-muted-foreground/40 mt-2 uppercase tracking-[0.2em]">
+                {detail?.ipo_date ? `Established ${formatDate(detail.ipo_date)} · ` : ""}
+                {latestPrice?.trade_date ? `Latest Update ${formatDate(latestPrice.trade_date)}` : "Awaiting exchange feed"}
               </p>
             </div>
           )}
         </div>
 
-        <div className="xl:ml-auto flex flex-col gap-3 xl:items-end">
+        <div className="xl:ml-auto flex flex-col gap-4 xl:items-end">
           {detailQuery.isLoading && !detail ? (
             <div className="space-y-2 animate-pulse xl:text-right">
-              <div className="h-9 w-40 rounded-md bg-muted" />
-              <div className="h-5 w-28 rounded-md bg-muted" />
+              <div className="h-10 w-48 rounded-lg bg-muted" />
+              <div className="h-6 w-32 rounded-lg bg-muted" />
             </div>
           ) : (
             <div className="xl:text-right">
-              <div className="text-3xl font-bold text-foreground font-mono number-animate">
+              <div className="text-4xl font-black text-foreground font-mono tracking-tighter number-animate drop-shadow-2xl">
                 {formatCurrency(latestPrice?.close)}
               </div>
               <div
-                className={`text-sm font-semibold font-mono ${
+                className={`text-sm font-black font-mono mt-1 flex items-center justify-end gap-2 ${
                   getTrend(latestPrice?.change_pct) === "down" ? "text-bear" : "text-bull"
                 }`}
               >
+                {getTrend(latestPrice?.change_pct) === "up" ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                 {formatCurrency(latestPrice?.change)} · {formatPercent(latestPrice?.change_pct)}
               </div>
             </div>
           )}
 
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-primary/20">
-            <Info size={14} className="text-primary flex-shrink-0" />
-            <span className="text-xs text-muted-foreground">
-              Model output only. Not investment advice.
+          <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-primary/5 border border-primary/20 shadow-inner">
+            <ShieldCheck size={14} className="text-primary opacity-60" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">
+              Model Verified Outcome
             </span>
           </div>
         </div>
       </div>
 
-      {hasSectionError && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent border border-border fade-in-up stagger-1">
-          <Info size={14} className="text-bear flex-shrink-0" />
-          <p className="text-xs text-muted-foreground">
-            Some sections could not be loaded. Available data is still shown where possible.
-          </p>
-        </div>
-      )}
+      <div className="h-px bg-white/5" />
 
-      <div className="glass-tab-container w-fit fade-in-up stagger-1">
+      <div className="flex gap-1 bg-muted/30 backdrop-blur-md rounded-2xl p-1.5 w-fit fade-in-up stagger-1 border border-white/5 shadow-inner">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`glass-tab capitalize ${
-              activeTab === tab ? "glass-tab-active" : "glass-tab-inactive"
+            className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+              activeTab === tab
+                ? "bg-card text-primary shadow-2xl border border-white/10 scale-[1.02]"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
             }`}
           >
             {tab}
@@ -875,88 +863,98 @@ const SignalDetail = ({
       {activeTab === "overview" ? (
         renderOverview()
       ) : activeTab === "factors" ? (
-        <div className="space-y-5">
+        <div className="space-y-6 animate-in fade-in duration-500">
           {isPrediction404 ? (
-            <div className="bg-card rounded-xl border border-border p-12 flex flex-col items-center justify-center text-center fade-in-up stagger-2">
-              <Brain size={48} className="text-muted-foreground mb-4 opacity-20" />
-              <h3 className="text-lg font-bold text-foreground mb-2">No Factor Analysis Available</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                This ticker is not currently part of the active signal universe. Factor-level attribution is only calculated for tickers with active model predictions.
+            <div className="bg-card rounded-2xl border border-border p-20 flex flex-col items-center justify-center text-center fade-in-up stagger-2 shadow-2xl">
+              <div className="p-4 rounded-3xl bg-muted/50 mb-6">
+                <Brain size={64} className="text-muted-foreground opacity-20" />
+              </div>
+              <h3 className="text-xl font-black text-foreground mb-3 uppercase tracking-widest">No Factor Attribution</h3>
+              <p className="text-sm text-muted-foreground max-w-md leading-relaxed font-medium">
+                Factor-level decomposition is currently only available for tickers within the high-conviction signal universe.
               </p>
             </div>
           ) : (
             <>
-              <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">Feature Contribution (SHAP)</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Top 15 features impacting this week's signal</p>
+              <div className="bg-card rounded-2xl border border-border p-6 fade-in-up stagger-2 shadow-xl">
+                <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-primary/10">
+                      <Layers size={18} className="text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Feature Contribution (SHAP)</h3>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Top 15 attributes impacting the current model cycle</p>
+                    </div>
                   </div>
                   {prediction?.signal_date && (
-                    <div className="text-[10px] font-mono text-muted-foreground px-2 py-1 rounded bg-muted">
-                      REF: {prediction.signal_date}
+                    <div className="text-[10px] font-mono font-black text-muted-foreground/50 px-3 py-1.5 rounded-full bg-muted/50 border border-white/5 shadow-inner">
+                      REFERENCE: {prediction.signal_date}
                     </div>
                   )}
                 </div>
                 
                 {shapQuery.isLoading ? (
-                  <div className="h-[400px] flex items-center justify-center animate-pulse bg-muted/20 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Analyzing feature importance...</p>
+                  <div className="h-[450px] flex items-center justify-center animate-pulse bg-muted/20 rounded-2xl">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Running attribution engine...</p>
                   </div>
                 ) : (isShap404 || (shap && shap.features.length === 0)) ? (
-                  <div className="h-[300px] flex flex-col items-center justify-center border border-dashed border-border rounded-xl">
-                    <Info size={24} className="text-muted-foreground mb-2 opacity-20" />
-                    <p className="text-xs text-muted-foreground">
-                      SHAP data not yet available for this ticker.
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">Detailed attribution is updated periodically.</p>
+                  <div className="h-[350px] flex flex-col items-center justify-center border border-dashed border-border rounded-2xl bg-muted/5">
+                    <Info size={32} className="text-muted-foreground mb-4 opacity-20" />
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">SHAP attribution pending</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-2 uppercase tracking-tighter">Detailed factor weights are updated periodically</p>
                   </div>
                 ) : shapQuery.isError ? (
-                  <div className="h-[300px] flex flex-col items-center justify-center border border-dashed border-border rounded-xl">
-                    <AlertCircle size={24} className="text-bear mb-2 opacity-50" />
-                    <p className="text-xs text-muted-foreground">Failed to load factor analysis.</p>
+                  <div className="h-[350px] flex flex-col items-center justify-center border border-dashed border-border rounded-2xl bg-bear/5">
+                    <AlertCircle size={32} className="text-bear mb-4 opacity-50" />
+                    <p className="text-sm font-black text-bear uppercase tracking-widest">Attribution Feed Error</p>
                   </div>
                 ) : (
-                  <ShapWaterfall features={shap!.features} height={450} />
+                  <ShapWaterfall features={shap!.features} height={480} />
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 fade-in-up stagger-3">
-                <div className="md:col-span-2 bg-card rounded-xl border border-border p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Layers size={14} className="text-primary" />
-                    <h3 className="text-sm font-semibold text-foreground">Model Consensus</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in-up stagger-3">
+                <div className="md:col-span-2 bg-card rounded-2xl border border-border p-6 shadow-xl space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-primary/10">
+                      <ShieldCheck size={18} className="text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Architecture Consensus</h3>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Agreement across specialized model learners</p>
+                    </div>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-left">
                       <thead>
-                        <tr className="border-b border-border">
-                          <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Model Architecture</th>
-                          <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Raw Score</th>
-                          <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Weight</th>
-                          <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Contribution</th>
+                        <tr className="border-b border-white/5">
+                          <th className="pb-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Learner</th>
+                          <th className="pb-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Raw Score</th>
+                          <th className="pb-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Influence</th>
+                          <th className="pb-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Contribution</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border/50">
+                      <tbody className="divide-y divide-white/[0.03]">
                         {prediction && Object.entries(prediction.model_scores).map(([model, score]) => (
-                          <tr key={model}>
-                            <td className="py-3 text-xs font-medium text-foreground capitalize">{model}</td>
-                            <td className={`py-3 text-xs font-mono font-bold text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                          <tr key={model} className="group hover:bg-white/[0.01] transition-colors">
+                            <td className="py-4 text-xs font-black text-foreground/80 uppercase tracking-widest">{model}</td>
+                            <td className={`py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
                               {score.toFixed(4)}
                             </td>
-                            <td className="py-3 text-xs text-muted-foreground text-right">
+                            <td className="py-4 text-[10px] font-bold text-muted-foreground text-right uppercase tracking-tighter">
                               {(100 / Object.keys(prediction.model_scores).length).toFixed(1)}%
                             </td>
-                            <td className={`py-3 text-xs font-mono font-bold text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                            <td className={`py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
                               {(score / Object.keys(prediction.model_scores).length).toFixed(4)}
                             </td>
                           </tr>
                         ))}
-                        <tr className="bg-muted/30">
-                          <td className="py-3 px-2 text-xs font-bold text-foreground">Fusion Score (Ensemble)</td>
-                          <td className="py-3 text-right" />
-                          <td className="py-3 text-right" />
-                          <td className={`py-3 pr-2 text-xs font-mono font-black text-right border-t border-primary/20 ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
+                        <tr className="bg-primary/[0.02]">
+                          <td className="py-5 px-3 text-xs font-black text-primary uppercase tracking-widest">Integrated Fusion</td>
+                          <td className="py-5 text-right" />
+                          <td className="py-5 text-right" />
+                          <td className={`py-5 pr-3 text-sm font-black font-mono text-right border-t-2 border-primary/20 ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
                             {prediction?.fusion_score.toFixed(4)}
                           </td>
                         </tr>
@@ -965,20 +963,26 @@ const SignalDetail = ({
                   </div>
                 </div>
                 
-                <div className="bg-card rounded-xl border border-border p-5">
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Analysis Note</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    The current signal for <span className="text-foreground font-semibold">{normalizedTicker}</span> is primarily driven by 
-                    the <span className="text-foreground font-semibold">{(shap?.features[0]?.feature || "underlying").replace(/_/g, " ")}</span> factor.
-                    Consensus across model architectures is <span className="text-foreground font-semibold">{prediction && prediction.fusion_score > 0 ? "strongly positive" : "negative"}</span>.
+                <div className="bg-card rounded-2xl border border-border p-6 shadow-xl space-y-6">
+                  <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Predictive Logic</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                    The current signal for <span className="text-foreground font-black tracking-tight">{normalizedTicker}</span> is primarily driven by 
+                    the <span className="text-primary font-black uppercase tracking-tighter">{(shap?.features[0]?.feature || "core model").replace(/_/g, " ")}</span> factor.
+                    Architecture consensus is <span className="text-foreground font-black">{prediction && prediction.fusion_score > 0 ? "positively biased" : "defensively biased"}</span>.
                   </p>
-                  <div className="mt-4 p-3 rounded-lg bg-surface border border-border">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-2">Signal Strength</p>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full ${prediction && prediction.fusion_score > 0 ? "bg-bull" : "bg-bear"}`} 
-                        style={{ width: `${prediction ? Math.min(Math.abs(prediction.fusion_score) * 20, 100) : 0}%` }}
-                      />
+                  <div className="p-4 rounded-2xl bg-muted/30 border border-white/5 shadow-inner space-y-4">
+                    <div>
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-[0.2em] font-black mb-3">Model Conviction</p>
+                      <div className="h-3 bg-muted rounded-full overflow-hidden border border-white/5 p-0.5">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-1000 ${prediction && prediction.fusion_score > 0 ? "bg-bull shadow-[0_0_10px_#00C805]" : "bg-bear shadow-[0_0_10px_#FF5252]"}`} 
+                          style={{ width: `${prediction ? Math.min(Math.abs(prediction.fusion_score) * 20, 100) : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Stability</span>
+                      <span className="text-[10px] font-black font-mono text-foreground">{(1 - (prediction?.model_spread || 0)).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -987,14 +991,16 @@ const SignalDetail = ({
           )}
         </div>
       ) : (
-        <div className="bg-card rounded-xl border border-border p-12 flex flex-col items-center justify-center text-center fade-in-up stagger-2">
-          <Info size={48} className="text-muted-foreground mb-4 opacity-20" />
-          <h3 className="text-lg font-bold text-foreground mb-2 capitalize">{activeTab} Modules</h3>
-          <p className="text-sm text-muted-foreground max-w-md">
-            The {activeTab} engine is currently in the validation phase and will be integrated in the next platform update.
+        <div className="bg-card rounded-2xl border border-border p-20 flex flex-col items-center justify-center text-center fade-in-up stagger-2 shadow-2xl">
+          <div className="p-4 rounded-3xl bg-muted/50 mb-6">
+            <Info size={64} className="text-muted-foreground opacity-20" />
+          </div>
+          <h3 className="text-xl font-black text-foreground mb-3 uppercase tracking-widest">{activeTab} Integration</h3>
+          <p className="text-sm text-muted-foreground max-w-md leading-relaxed font-medium">
+            The {activeTab} engine is undergoing final stress testing and will be operational in the Phase 4 production release.
           </p>
-          <div className="mt-6 px-4 py-2 rounded-lg bg-muted text-xs font-medium text-muted-foreground border border-border">
-            Coming Soon · Phase 4 Milestone
+          <div className="mt-8 px-6 py-2 rounded-xl bg-primary/10 text-[10px] font-black uppercase tracking-[0.2em] text-primary border border-primary/20 shadow-lg">
+            Status: Phase 4 Milestone
           </div>
         </div>
       )}
