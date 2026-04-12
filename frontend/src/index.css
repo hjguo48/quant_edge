@@ -399,4 +399,54 @@
     color: var(--muted-foreground);
     border: 1px solid rgba(96, 123, 150, 0.2);
   }
+
+  /* iOS 26 Glass Tabs */
+  .glass-tab-container {
+    @apply flex p-1 rounded-xl bg-muted/30 backdrop-blur-md border border-white/5;
+  }
+  .glass-tab {
+    @apply relative px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300;
+  }
+  .glass-tab-active {
+    @apply bg-white/10 text-primary shadow-lg border border-white/10;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  }
+  .glass-tab-inactive {
+    @apply text-muted-foreground hover:text-foreground hover:bg-white/5;
+  }
+
+  /* Robinhood Input Animations */
+  @keyframes digit-slide-in {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes digit-slide-out {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(100%); opacity: 0; }
+  }
+  .digit-animate-in {
+    animation: digit-slide-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  .digit-animate-out {
+    animation: digit-slide-out 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  /* Progress Bar Glow */
+  .bar-glow-bull {
+    box-shadow: 0 0 8px rgba(0, 200, 5, 0.4);
+  }
+  .bar-glow-bear {
+    box-shadow: 0 0 8px rgba(255, 82, 82, 0.4);
+  }
+
+  /* Hide number input spinners */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
 }

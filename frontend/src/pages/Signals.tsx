@@ -216,13 +216,13 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           </div>
 
           {/* Direction */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="glass-tab-container flex-shrink-0">
             {DIRECTIONS.map((d) => (
               <button
                 key={d}
                 onClick={() => setDirection(d)}
-                className={`text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 ${
-                  direction === d ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                className={`glass-tab ${
+                  direction === d ? "glass-tab-active" : "glass-tab-inactive"
                 }`}
               >
                 {d}
@@ -315,25 +315,26 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="ml-auto flex items-center gap-1 flex-shrink-0">
             <SortDesc
               size={13}
-              className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+              className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors mr-1"
               onClick={() => {
                 const keys = SORT_OPTIONS.map((o) => o.key);
                 const idx = keys.indexOf(sort);
                 setSort(keys[(idx + 1) % keys.length] as SortMode);
               }}
             />
-            <span className="text-xs text-muted-foreground">Sort:</span>
-            {SORT_OPTIONS.map((option) => (
-              <button
-                key={option.key}
-                onClick={() => setSort(option.key)}
-                className={`text-xs px-2 py-1 rounded-md transition-colors ${
-                  sort === option.key ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
+            <div className="glass-tab-container">
+              {SORT_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  onClick={() => setSort(option.key)}
+                  className={`glass-tab !px-2.5 !py-1 text-[11px] ${
+                    sort === option.key ? "glass-tab-active" : "glass-tab-inactive"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

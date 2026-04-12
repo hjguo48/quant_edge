@@ -23,6 +23,7 @@ declare global {
   const Bitcoin: typeof import('lucide-react').Bitcoin
   const Brain: typeof import('lucide-react').Brain
   const Briefcase: typeof import('lucide-react').Briefcase
+  const Calculator: typeof import('lucide-react').Calculator
   const Calendar: typeof import('lucide-react').Calendar
   const CheckIcon: typeof import('lucide-react').CheckIcon
   const ChevronDownIcon: typeof import('lucide-react').ChevronDownIcon
@@ -50,6 +51,7 @@ declare global {
   const InfoIcon: typeof import('lucide-react').InfoIcon
   const Layers: typeof import('lucide-react').Layers
   const LayoutDashboard: typeof import('lucide-react').LayoutDashboard
+  const LineChart: typeof import('lucide-react').LineChart
   const Loader2Icon: typeof import('lucide-react').Loader2Icon
   const Minus: typeof import('lucide-react').Minus
   const MinusIcon: typeof import('lucide-react').MinusIcon
@@ -67,7 +69,10 @@ declare global {
   const Settings: typeof import('lucide-react').Settings
   const Settings2: typeof import('lucide-react').Settings2
   const Sheet: typeof import('lucide-react').Sheet
+  const ShieldCheck: typeof import('lucide-react').ShieldCheck
+  const ShoppingCart: typeof import('lucide-react').ShoppingCart
   const Sidebar: typeof import('lucide-react').Sidebar
+  const Signal: typeof import('lucide-react').Signal
   const SortDesc: typeof import('lucide-react').SortDesc
   const Suspense: typeof import('react').Suspense
   const Table: typeof import('lucide-react').Table

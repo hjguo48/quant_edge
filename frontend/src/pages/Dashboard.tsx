@@ -280,15 +280,13 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
                 {indices?.end_date ? ` · through ${indices.end_date}` : ""}
               </p>
             </div>
-            <div className="flex items-center gap-1 bg-accent/50 p-1 rounded-lg">
+            <div className="glass-tab-container">
               {DASHBOARD_RANGES.map((range) => (
                 <button
                   key={range.key}
                   onClick={() => setSelectedRangeKey(range.key)}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
-                    selectedRangeKey === range.key
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                  className={`glass-tab !px-3 !py-1 text-[10px] ${
+                    selectedRangeKey === range.key ? "glass-tab-active" : "glass-tab-inactive"
                   }`}
                 >
                   {range.label}
