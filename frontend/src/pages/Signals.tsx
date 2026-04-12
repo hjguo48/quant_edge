@@ -27,6 +27,13 @@ const SORT_OPTIONS = [
 ] as const;
 type SortMode = (typeof SORT_OPTIONS)[number]["key"];
 
+const formatDateShort = (dateStr: string) => {
+  if (!dateStr || dateStr === "Current") return "Current";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
 function hashTickerSeed(value: string): number {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -65,7 +72,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const sliderStyle = useMemo(
     () =>
       ({
-        "--slider-progress": (minConf / 90) * 100 + "%",
+        "--slider-progress": `${(minConf / 90) * 100}%`,
       }) as CSSProperties,
     [minConf],
   );
@@ -76,13 +83,12 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       name: prediction.ticker,
       direction: prediction.score > 0 ? ("long" as const) : ("short" as const),
       confidence: Math.round(prediction.percentile),
-      alpha: prediction.score,
+      score: prediction.score,
       rank: prediction.rank,
-      time: data?.signal_date || "Current",
-      sector: "N/A",
+      time: formatDateShort(data?.signal_date || "Current"),
       sparkData: generateDirectionalSparkData(
         prediction.score,
-        prediction.ticker + ":" + prediction.rank + ":" + prediction.score.toFixed(6),
+        `${prediction.ticker}:${prediction.rank}:${prediction.score.toFixed(6)}`,
       ),
     }));
   }, [predictions, data?.signal_date]);
@@ -99,8 +105,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         return matchSearch && matchDir && matchConf;
       })
       .sort((a, b) => {
-        if (sort === "score") return b.alpha - a.alpha;
-        if (sort === "magnitude") return Math.abs(b.alpha) - Math.abs(a.alpha);
+        if (sort === "score") return b.score - a.score;
+        if (sort === "magnitude") return Math.abs(b.score) - Math.abs(a.score);
         if (sort === "rank") return a.rank - b.rank;
         return 0;
       });

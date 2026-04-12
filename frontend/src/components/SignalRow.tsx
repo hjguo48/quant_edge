@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, ChevronRight, Clock } from "lucide-react";
+import { ChevronRight, Clock } from "lucide-react";
 import MiniSparkline from "./MiniSparkline";
 
 interface SignalRowProps {
@@ -7,10 +7,9 @@ interface SignalRowProps {
   name?: string;
   direction?: "long" | "short" | "neutral";
   confidence?: number;
-  alpha?: number;
-  time?: string;
-  sector?: string;
+  score?: number;
   sparkData?: number[];
+  time?: string;
   onClick?: () => void;
 }
 
@@ -19,10 +18,9 @@ const SignalRow = ({
   name = "Apple Inc.",
   direction = "long",
   confidence = 78,
-  alpha = 2.4,
+  score = 2.4,
+  sparkData,
   time = "2m ago",
-  sector = "Technology",
-  sparkData = [10, 12, 11, 15, 14, 18, 16, 20, 19, 24],
   onClick = () => {},
 }: SignalRowProps) => {
   const [hovered, setHovered] = useState(false);
@@ -76,13 +74,13 @@ const SignalRow = ({
       {/* Score (Formerly Alpha) */}
       <div className="w-20 text-right flex-shrink-0">
         <div className={`text-sm font-bold ${isPositive ? "text-bull" : "text-bear"}`}>
-          {alpha > 0 ? "+" : ""}{alpha.toFixed(4)}
+          {score > 0 ? "+" : ""}{score.toFixed(4)}
         </div>
         <div className="text-xs text-muted-foreground">Score</div>
       </div>
 
       {/* Trend */}
-      <div className="w-24 flex-shrink-0 flex justify-center">
+      <div className="w-24 flex justify-center flex-shrink-0">
         <MiniSparkline
           data={sparkData}
           positive={isPositive}
@@ -94,11 +92,10 @@ const SignalRow = ({
 
       {/* Meta */}
       <div className="w-28 text-right flex-shrink-0">
-        <div className="flex items-center gap-1 justify-end text-xs text-muted-foreground">
+        <div className="flex items-center gap-1 justify-end text-xs text-muted-foreground mt-1">
           <Clock size={11} />
           <span>{time}</span>
         </div>
-        <div className="text-xs text-muted-foreground mt-0.5">{sector}</div>
       </div>
 
       {/* Arrow */}
