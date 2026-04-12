@@ -102,18 +102,19 @@ interface DashboardProps {
   onSelectSignal?: (ticker: string) => void;
 }
 
-const DASHBOARD_RANGES = ["7", "30", "90", "365"] as const;
-type DashboardRange = (typeof DASHBOARD_RANGES)[number];
+const DASHBOARD_RANGES = [
+  { key: "7D", label: "7D", days: 5 },
+  { key: "30D", label: "30D", days: 21 },
+  { key: "90D", label: "90D", days: 63 },
+  { key: "1Y", label: "1Y", days: 252 },
+] as const;
 
-const RANGE_LABELS: Record<DashboardRange, string> = {
-  "7": "7D",
-  "30": "30D",
-  "90": "90D",
-  "365": "1Y",
-};
+type DashboardRangeKey = (typeof DASHBOARD_RANGES)[number]["key"];
 
 const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
-  const [timeRange, setTimeRange] = useState<DashboardRange>("30");
+  const [selectedRangeKey, setSelectedRangeKey] = useState<DashboardRangeKey>("30D");
+  const selectedRange =
+    DASHBOARD_RANGES.find((range) => range.key === selectedRangeKey) ?? DASHBOARD_RANGES[1];
 
   const {
     data: overview,
@@ -130,8 +131,8 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     isLoading: isIndicesLoading,
     isError: isIndicesError,
   } = useQuery<MarketIndicesResponse>({
-    queryKey: ["marketIndices", timeRange],
-    queryFn: () => fetchApi<MarketIndicesResponse>(`/api/market/indices?days=${timeRange}`),
+    queryKey: ["marketIndices", selectedRange.key, selectedRange.days],
+    queryFn: () => fetchApi<MarketIndicesResponse>(`/api/market/indices?days=${selectedRange.days}`),
     retry: false,
     placeholderData: (previousData) => previousData,
   });
@@ -247,20 +248,22 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
             <div>
               <h3 className="text-sm font-semibold text-foreground">Cumulative P&L (SPY Ref)</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Model output · {RANGE_LABELS[timeRange]} window
+                Model output · {selectedRange.label} window
                 {indices?.end_date ? ` · through ${indices.end_date}` : ""}
               </p>
             </div>
             <div className="flex items-center gap-1 bg-accent/50 p-1 rounded-lg">
-              {DASHBOARD_RANGES.map((r) => (
+              {DASHBOARD_RANGES.map((range) => (
                 <button
-                  key={r}
-                  onClick={() => setTimeRange(r)}
+                  key={range.key}
+                  onClick={() => setSelectedRangeKey(range.key)}
                   className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
-                    timeRange === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    selectedRangeKey === range.key
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {RANGE_LABELS[r]}
+                  {range.label}
                 </button>
               ))}
             </div>

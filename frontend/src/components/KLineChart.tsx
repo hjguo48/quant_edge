@@ -50,10 +50,10 @@ interface KLineChartProps {
 
 const RANGE_OPTIONS: RangeOption[] = [
   { key: "1D", label: "1D", days: 1 },
-  { key: "1W", label: "1W", days: 7 },
-  { key: "1M", label: "1M", days: 30 },
-  { key: "3M", label: "3M", days: 90 },
-  { key: "1Y", label: "1Y", days: 365 },
+  { key: "1W", label: "1W", days: 5 },
+  { key: "1M", label: "1M", days: 21 },
+  { key: "3M", label: "3M", days: 63 },
+  { key: "1Y", label: "1Y", days: 252 },
 ];
 
 function generateCandles(n: number): Candle[] {
