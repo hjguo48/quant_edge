@@ -40,6 +40,33 @@ const formatDateShort = (dateStr?: string) => {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
+const interpolateColor = (progress: number) => {
+  const colors = [
+    { p: 0, r: 255, g: 82, b: 82, a: 0.85 },
+    { p: 25, r: 255, g: 82, b: 82, a: 0.4 },
+    { p: 50, r: 96, g: 123, b: 150, a: 0.3 },
+    { p: 75, r: 0, g: 200, b: 5, a: 0.4 },
+    { p: 100, r: 0, g: 200, b: 5, a: 0.85 },
+  ];
+
+  let i = 0;
+  while (i < colors.length - 2 && progress > colors[i + 1].p) {
+    i++;
+  }
+
+  const c1 = colors[i];
+  const c2 = colors[i + 1];
+  const range = c2.p - c1.p;
+  const t = (progress - c1.p) / (range || 1);
+
+  const r = Math.round(c1.r + (c2.r - c1.r) * t);
+  const g = Math.round(c1.g + (c2.g - c1.g) * t);
+  const b = Math.round(c1.b + (c2.b - c1.b) * t);
+  const a = (c1.a + (c2.a - c1.a) * t).toFixed(2);
+
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+};
+
 function hashTickerSeed(value: string): number {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -91,6 +118,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
     () =>
       ({
         "--slider-progress": `${(minConf / 90) * 100}%`,
+        "--slider-fill-color": interpolateColor((minConf / 90) * 100),
       }) as CSSProperties,
     [minConf],
   );
@@ -173,22 +201,22 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
 
       {/* Filters */}
       <div className="bg-card rounded-xl border border-border p-4 fade-in-up stagger-1">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Filter size={14} className="text-muted-foreground" />
+        <div className="flex items-center gap-2 flex-nowrap overflow-x-auto no-scrollbar">
+          <Filter size={14} className="text-muted-foreground flex-shrink-0" />
 
           {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent focus-within:border-primary/40 transition-all">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent focus-within:border-primary/40 transition-all flex-shrink-0">
             <Search size={13} className="text-muted-foreground" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search ticker…"
-              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-32"
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-24"
             />
           </div>
 
           {/* Direction */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             {DIRECTIONS.map((d) => (
               <button
                 key={d}
@@ -202,20 +230,20 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             ))}
           </div>
 
-          <div className="w-px h-5 bg-border" />
+          <div className="w-px h-5 bg-border flex-shrink-0" />
 
           {/* Sector Dropdown */}
-          <div>
+          <div className="flex-shrink-0">
             <button
               ref={sectorBtnRef}
               onClick={toggleSectorDropdown}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent hover:bg-accent transition-all text-sm w-[160px]"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent hover:bg-accent transition-all text-sm w-[140px]"
             >
               {sectorFilter === "All Sectors" ? (
                 <span className="text-foreground">All Sectors</span>
               ) : (
                 <span
-                  className="text-xs font-semibold px-2 py-0.5 rounded-md border truncate max-w-[120px]"
+                  className="text-xs font-semibold px-2 py-0.5 rounded-md border truncate max-w-[100px]"
                   style={{
                     backgroundColor: getSectorColor(sectorFilter).bg,
                     color: getSectorColor(sectorFilter).text,
@@ -265,10 +293,10 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             )}
           </div>
 
-          <div className="w-px h-5 bg-border" />
+          <div className="w-px h-5 bg-border flex-shrink-0" />
 
           {/* Min Confidence */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-xs text-muted-foreground whitespace-nowrap">Min conf:</span>
             <input
               type="range"
@@ -284,7 +312,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             <span className="w-10 text-right text-xs font-mono font-semibold text-foreground">{minConf}%</span>
           </div>
 
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1 flex-shrink-0">
             <SortDesc
               size={13}
               className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
