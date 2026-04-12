@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { ChevronRight, Clock } from "lucide-react";
-import MiniSparkline from "./MiniSparkline";
 
 interface SignalRowProps {
   ticker?: string;
   name?: string;
   direction?: "long" | "short" | "neutral";
   confidence?: number;
-  score?: number;
-  sparkData?: number[];
+  alpha?: number;
   time?: string;
   onClick?: () => void;
 }
@@ -18,8 +16,7 @@ const SignalRow = ({
   name = "Apple Inc.",
   direction = "long",
   confidence = 78,
-  score = 2.4,
-  sparkData,
+  alpha = 2.4,
   time = "2m ago",
   onClick = () => {},
 }: SignalRowProps) => {
@@ -74,20 +71,9 @@ const SignalRow = ({
       {/* Score (Formerly Alpha) */}
       <div className="w-20 text-right flex-shrink-0">
         <div className={`text-sm font-bold ${isPositive ? "text-bull" : "text-bear"}`}>
-          {score > 0 ? "+" : ""}{score.toFixed(4)}
+          {alpha > 0 ? "+" : ""}{alpha.toFixed(4)}
         </div>
         <div className="text-xs text-muted-foreground">Score</div>
-      </div>
-
-      {/* Trend */}
-      <div className="w-24 flex justify-center flex-shrink-0">
-        <MiniSparkline
-          data={sparkData}
-          positive={isPositive}
-          width={60}
-          height={26}
-          animated={false}
-        />
       </div>
 
       {/* Meta */}

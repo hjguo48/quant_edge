@@ -34,27 +34,6 @@ const formatDateShort = (dateStr: string) => {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
-function hashTickerSeed(value: string): number {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-  }
-  return hash;
-}
-
-function generateDirectionalSparkData(score: number, seedKey: string): number[] {
-  const base = 50;
-  const direction = score > 0 ? 1 : -1;
-  const magnitude = Math.max(8, Math.min(Math.abs(score) * 5, 30));
-  const seed = hashTickerSeed(seedKey);
-
-  return Array.from({ length: 10 }, (_, index) => {
-    const normalizedNoise = Math.sin(seed + (index + 1) * 12.9898) * 43758.5453;
-    const noise = ((normalizedNoise - Math.floor(normalizedNoise)) - 0.5) * 4;
-    return base + direction * (index / 9) * magnitude + noise;
-  });
-}
-
 const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?: (ticker: string) => void }) => {
   const [search, setSearch] = useState("");
   const [direction, setDirection] = useState("All");
@@ -86,10 +65,6 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       score: prediction.score,
       rank: prediction.rank,
       time: formatDateShort(data?.signal_date || "Current"),
-      sparkData: generateDirectionalSparkData(
-        prediction.score,
-        `${prediction.ticker}:${prediction.rank}:${prediction.score.toFixed(6)}`,
-      ),
     }));
   }, [predictions, data?.signal_date]);
 
@@ -227,7 +202,6 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Signal</div>
           <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confidence</div>
           <div className="w-20 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Score</div>
-          <div className="w-24 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">Trend</div>
           <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Date</div>
           <div className="w-4" />
         </div>
@@ -240,7 +214,6 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 <div className="h-10 bg-muted rounded w-28" />
                 <div className="h-4 bg-muted rounded flex-1" />
                 <div className="h-10 bg-muted rounded w-20" />
-                <div className="h-10 bg-muted rounded w-24" />
                 <div className="h-10 bg-muted rounded w-28" />
               </div>
             ))}
@@ -255,7 +228,12 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           paginated.map((s, i) => (
             <div key={s.ticker} className="fade-in-up" style={{ animationDelay: `${i * 40}ms` }}>
               <SignalRow
-                {...s}
+                ticker={s.ticker}
+                name={s.name}
+                direction={s.direction}
+                confidence={s.confidence}
+                alpha={s.score}
+                time={s.time}
                 onClick={() => onSelectSignal(s.ticker)}
               />
             </div>
