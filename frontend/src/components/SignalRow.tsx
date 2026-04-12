@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, Clock } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 interface SignalRowProps {
   ticker?: string;
@@ -7,7 +7,7 @@ interface SignalRowProps {
   direction?: "long" | "short" | "neutral";
   confidence?: number;
   alpha?: number;
-  time?: string;
+  sector?: string;
   onClick?: () => void;
 }
 
@@ -17,7 +17,7 @@ const SignalRow = ({
   direction = "long",
   confidence = 78,
   alpha = 2.4,
-  time = "2m ago",
+  sector = "Technology",
   onClick = () => {},
 }: SignalRowProps) => {
   const [hovered, setHovered] = useState(false);
@@ -68,7 +68,7 @@ const SignalRow = ({
         </div>
       </div>
 
-      {/* Score (Formerly Alpha) */}
+      {/* Score */}
       <div className="w-20 text-right flex-shrink-0">
         <div className={`text-sm font-bold ${isPositive ? "text-bull" : "text-bear"}`}>
           {alpha > 0 ? "+" : ""}{alpha.toFixed(4)}
@@ -76,12 +76,11 @@ const SignalRow = ({
         <div className="text-xs text-muted-foreground">Score</div>
       </div>
 
-      {/* Meta */}
+      {/* Sector */}
       <div className="w-28 text-right flex-shrink-0">
-        <div className="flex items-center gap-1 justify-end text-xs text-muted-foreground mt-1">
-          <Clock size={11} />
-          <span>{time}</span>
-        </div>
+        <span className="sector-tag">
+          {sector || "—"}
+        </span>
       </div>
 
       {/* Arrow */}

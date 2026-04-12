@@ -9,6 +9,7 @@ interface Prediction {
   score: number;
   rank: number;
   percentile: number;
+  sector?: string | null;
 }
 
 interface LatestPredictionsResponse {
@@ -21,13 +22,13 @@ interface LatestPredictionsResponse {
 const DIRECTIONS = ["All", "Long Signals", "Short Signals"];
 const PAGE_SIZE = 10;
 const SORT_OPTIONS = [
+  { key: "confidence", label: "Confidence" },
   { key: "score", label: "Score" },
-  { key: "magnitude", label: "|Score|" },
-  { key: "rank", label: "Rank" },
+  { key: "strength", label: "Strength" },
 ] as const;
 type SortMode = (typeof SORT_OPTIONS)[number]["key"];
 
-const formatDateShort = (dateStr: string) => {
+const formatDateShort = (dateStr?: string) => {
   if (!dateStr || dateStr === "Current") return "Current";
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return dateStr;
@@ -38,7 +39,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const [search, setSearch] = useState("");
   const [direction, setDirection] = useState("All");
   const [minConf, setMinConf] = useState(0);
-  const [sort, setSort] = useState<SortMode>("score");
+  const [sort, setSort] = useState<SortMode>("confidence");
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<LatestPredictionsResponse>({
@@ -64,9 +65,9 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       confidence: Math.round(prediction.percentile),
       score: prediction.score,
       rank: prediction.rank,
-      time: formatDateShort(data?.signal_date || "Current"),
+      sector: prediction.sector || "—",
     }));
-  }, [predictions, data?.signal_date]);
+  }, [predictions]);
 
   const filtered = useMemo(() => {
     return signalRows
@@ -80,9 +81,9 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         return matchSearch && matchDir && matchConf;
       })
       .sort((a, b) => {
+        if (sort === "confidence") return b.confidence - a.confidence;
         if (sort === "score") return b.score - a.score;
-        if (sort === "magnitude") return Math.abs(b.score) - Math.abs(a.score);
-        if (sort === "rank") return a.rank - b.rank;
+        if (sort === "strength") return Math.abs(b.score) - Math.abs(a.score);
         return 0;
       });
   }, [signalRows, search, direction, minConf, sort]);
@@ -105,7 +106,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         <div>
           <h2 className="text-xl font-bold text-foreground">Signal Feed</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Model-generated signals · <span className="text-bull">{longCount} long</span> · <span className="text-bear">{shortCount} short</span> · Not investment advice
+            Week {data?.week_number || "—"} · {formatDateShort(data?.signal_date)} · <span className="text-bull">{longCount} long</span> · <span className="text-bear">{shortCount} short</span> · Not investment advice
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -202,7 +203,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Signal</div>
           <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confidence</div>
           <div className="w-20 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Score</div>
-          <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Date</div>
+          <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Sector</div>
           <div className="w-4" />
         </div>
 
@@ -233,7 +234,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 direction={s.direction}
                 confidence={s.confidence}
                 alpha={s.score}
-                time={s.time}
+                sector={s.sector}
                 onClick={() => onSelectSignal(s.ticker)}
               />
             </div>

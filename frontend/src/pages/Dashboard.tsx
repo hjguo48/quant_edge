@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Info, Layers } from "lucide-react";
 import StatCard from "../components/StatCard";
 import KLineChart from "../components/KLineChart";
@@ -15,14 +15,6 @@ const factorData = [
   { factor: "Growth", ic: 0.156, positive: true },
   { factor: "Carry", ic: -0.021, positive: false },
   { factor: "Reversal", ic: -0.063, positive: false },
-];
-
-const recentSignals = [
-  { ticker: "NVDA", direction: "long", confidence: 91, alpha: 3.2, time: "5m ago" },
-  { ticker: "TSLA", direction: "short", confidence: 74, alpha: -1.8, time: "12m ago" },
-  { ticker: "MSFT", direction: "long", confidence: 83, alpha: 2.1, time: "18m ago" },
-  { ticker: "META", direction: "long", confidence: 67, alpha: 1.4, time: "31m ago" },
-  { ticker: "AMZN", direction: "short", confidence: 58, alpha: -0.9, time: "45m ago" },
 ];
 
 interface MarketSector {
@@ -86,6 +78,20 @@ interface MarketSectorsResponse {
   sectors: MarketSector[];
 }
 
+interface Prediction {
+  ticker: string;
+  score: number;
+  rank: number;
+  percentile: number;
+}
+
+interface LatestPredictionsResponse {
+  signal_date: string;
+  week_number: number;
+  universe_size: number;
+  predictions: Prediction[];
+}
+
 const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -147,6 +153,15 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     retry: false,
   });
 
+  const {
+    data: predictionsData,
+    isLoading: isPredictionsLoading,
+  } = useQuery<LatestPredictionsResponse>({
+    queryKey: ["latestPredictions"],
+    queryFn: () => fetchApi<LatestPredictionsResponse>("/api/predictions/latest"),
+    retry: false,
+  });
+
   const spyPrice = overview?.spy?.price || 0;
   const spyChangePct = overview?.spy?.change_pct || 0;
   const vixValue = overview?.vix?.value || 0;
@@ -161,6 +176,19 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
       }),
       pnl: price.adj_close || price.close,
     })) || [];
+
+  const topSignals = useMemo(() => {
+    if (!predictionsData?.predictions) return [];
+    return [...predictionsData.predictions]
+      .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+      .slice(0, 5)
+      .map(p => ({
+        ticker: p.ticker,
+        direction: p.score > 0 ? "long" : "short",
+        confidence: Math.round(p.percentile),
+        score: p.score
+      }));
+  }, [predictionsData]);
 
   const sectorHeatmapCols = sectors.map((sector) => sector.sector);
   const sectorHeatmapValues = sectors.length > 0 ? [sectors.map((sector) => sector.avg_change_pct)] : undefined;
@@ -333,26 +361,39 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
             <Layers size={14} className="text-muted-foreground" />
           </div>
           <div className="divide-y divide-border">
-            {recentSignals.map((s) => (
-              <button
-                key={s.ticker}
-                onClick={() => onSelectSignal(s.ticker)}
-                className="flex w-full items-center justify-between px-5 py-3 hover:bg-accent/40 transition-colors cursor-pointer text-left"
-              >
-                <div>
-                  <div className="text-sm font-bold text-foreground">{s.ticker}</div>
-                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-sm ${s.direction === "long" ? "tag-bull" : "tag-bear"}`}>
-                    {s.direction === "long" ? "LONG" : "SHORT"}
-                  </span>
+            {isPredictionsLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="px-5 py-4 animate-pulse space-y-2">
+                  <div className="h-4 bg-muted rounded w-1/2" />
+                  <div className="h-3 bg-muted rounded w-3/4" />
                 </div>
-                <div className="text-right">
-                  <div className="text-xs text-muted-foreground">{s.confidence}% conf</div>
-                  <div className={`text-sm font-bold font-mono ${s.alpha > 0 ? "text-bull" : "text-bear"}`}>
-                    {s.alpha > 0 ? "+" : ""}{s.alpha.toFixed(4)}
+              ))
+            ) : topSignals.length > 0 ? (
+              topSignals.map((s) => (
+                <button
+                  key={s.ticker}
+                  onClick={() => onSelectSignal(s.ticker)}
+                  className="flex w-full items-center justify-between px-5 py-3 hover:bg-accent/40 transition-colors cursor-pointer text-left"
+                >
+                  <div>
+                    <div className="text-sm font-bold text-foreground">{s.ticker}</div>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${s.direction === "long" ? "tag-bull" : "tag-bear"}`}>
+                      {s.direction === "long" ? "LONG" : "SHORT"}
+                    </span>
                   </div>
-                </div>
-              </button>
-            ))}
+                  <div className="text-right">
+                    <div className="text-[10px] text-muted-foreground">{s.confidence}% conf</div>
+                    <div className={`text-sm font-bold font-mono ${s.direction === "long" ? "text-bull" : "text-bear"}`}>
+                      {s.score > 0 ? "+" : ""}{s.score.toFixed(4)}
+                    </div>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="p-10 text-center text-xs text-muted-foreground">
+                No active signals available
+              </div>
+            )}
           </div>
         </div>
       </div>

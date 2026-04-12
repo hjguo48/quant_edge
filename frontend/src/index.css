@@ -132,7 +132,7 @@
 @layer utilities {
   .signal-confidence-slider {
     --slider-progress: 0%;
-    --signal-slider-primary: #3b82f6;
+    --signal-slider-primary: #00C805;
     -webkit-appearance: none;
     appearance: none;
     width: 7rem;
@@ -167,7 +167,7 @@
     border-radius: 9999px;
     border: 2px solid rgba(255, 255, 255, 0.9);
     background: var(--signal-slider-primary);
-    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.35);
+    box-shadow: 0 4px 10px rgba(0, 200, 5, 0.35);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
@@ -190,7 +190,7 @@
     border: 2px solid rgba(255, 255, 255, 0.9);
     border-radius: 9999px;
     background: var(--signal-slider-primary);
-    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.35);
+    box-shadow: 0 4px 10px rgba(0, 200, 5, 0.35);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
@@ -199,12 +199,12 @@
   .signal-confidence-slider:hover::-moz-range-thumb,
   .signal-confidence-slider:active::-moz-range-thumb {
     transform: scale(1.1);
-    box-shadow: 0 6px 14px rgba(59, 130, 246, 0.45), 0 0 0 4px rgba(59, 130, 246, 0.14);
+    box-shadow: 0 6px 14px rgba(0, 200, 5, 0.45), 0 0 0 4px rgba(0, 200, 5, 0.14);
   }
 
   .signal-confidence-slider:focus-visible::-webkit-slider-thumb,
   .signal-confidence-slider:focus-visible::-moz-range-thumb {
-    box-shadow: 0 6px 14px rgba(59, 130, 246, 0.45), 0 0 0 4px rgba(59, 130, 246, 0.18);
+    box-shadow: 0 6px 14px rgba(0, 200, 5, 0.45), 0 0 0 4px rgba(0, 200, 5, 0.18);
   }
 
   .shadow-custom {
@@ -347,5 +347,15 @@
     background: rgba(96, 123, 150, 0.12);
     color: var(--muted-foreground);
     border: 1px solid rgba(96, 123, 150, 0.2);
+  }
+
+  .sector-tag {
+    background: rgba(30, 45, 71, 0.6);
+    color: var(--muted-foreground);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    @apply text-[10px] font-bold uppercase tracking-tighter px-1.5 py-0.5 rounded transition-colors;
+  }
+  .sector-tag:hover {
+    @apply bg-accent text-foreground border-border;
   }
 }
