@@ -22,7 +22,7 @@ interface LatestPredictionsResponse {
   predictions: Prediction[];
 }
 
-const DIRECTIONS = ["All", "Long Signals", "Short Signals"];
+const DIRECTIONS = ["All", "Long", "Short"];
 const PAGE_SIZE = 10;
 const SORT_OPTIONS = [
   { key: "none", label: "Default" },
@@ -171,11 +171,11 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const filtered = useMemo(() => {
     return signalRows
       .filter((s) => {
-        const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase()) || s.name.toLowerCase().includes(search.toLowerCase());
         const matchDir =
           direction === "All" ||
-          (direction === "Long Signals" && s.direction === "long") ||
-          (direction === "Short Signals" && s.direction === "short");
+          (direction === "Long" && s.direction === "long") ||
+          (direction === "Short" && s.direction === "short");
         const matchConf = s.confidence >= minConf;
         const matchSector = sectorFilter === "All Sectors" || s.sector === sectorFilter;
         return matchSearch && matchDir && matchConf && matchSector;
@@ -206,8 +206,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       {/* Header */}
       <div className="flex items-center justify-between fade-in-up">
         <div>
-          <h2 className="text-xl font-bold text-foreground">Signal Feed</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h2 className="text-xl font-bold text-foreground font-black uppercase tracking-widest">Signal Feed</h2>
+          <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-[0.2em]">
             Week {data?.week_number || "—"} · {formatDateShort(data?.signal_date)} · <span className="text-bull">{longCount} long</span> · <span className="text-bear">{shortCount} short</span> · Not investment advice
           </p>
         </div>
@@ -227,76 +227,100 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         </div>
       </div>
 
-      {/* Filters Panel */}
-      <div className="bg-card rounded-xl border border-border p-4 space-y-4 fade-in-up stagger-1">
-        {/* Row 1: Search, Watchlist, and Sort */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            {/* Search */}
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent focus-within:border-primary/40 transition-all flex-1 max-w-sm">
-              <Search size={13} className="text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search ticker or name…"
-                className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
-              />
-            </div>
+      {/* Unified Filter Bar */}
+      <div className="bg-card rounded-2xl border border-border p-3 fade-in-up stagger-1 shadow-xl">
+        <div className="flex items-center gap-2 flex-nowrap overflow-x-auto no-scrollbar">
+          {/* Watchlist Toggle */}
+          <button
+            onClick={() => setShowWatchlist(!showWatchlist)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 border flex-shrink-0 ${
+              showWatchlist ? "bg-primary/10 border-primary/30 text-primary shadow-[0_0_15px_rgba(0,200,5,0.1)]" : "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            <Star size={14} className={showWatchlist ? "fill-current" : ""} />
+            Watchlist
+            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${showWatchlist ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"}`}>
+              {watchlist.length}
+            </span>
+          </button>
 
-            {/* Watchlist Toggle */}
+          <div className="w-px h-6 bg-white/5 mx-1 flex-shrink-0" />
+
+          {/* Search */}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 border border-transparent focus-within:border-primary/30 transition-all flex-1 min-w-[180px] max-w-xs group">
+            <Search size={14} className="text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Filter by ticker or company..."
+              className="bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none w-full font-medium"
+            />
+          </div>
+
+          <div className="w-px h-6 bg-white/5 mx-1 flex-shrink-0" />
+
+          {/* Sector Dropdown (Clean Text) */}
+          <div className="flex-shrink-0">
             <button
-              onClick={() => setShowWatchlist(!showWatchlist)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all flex-shrink-0 ${
-                showWatchlist ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+              ref={sectorBtnRef}
+              onClick={toggleSectorDropdown}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-xs font-bold border min-w-[160px] group ${
+                sectorFilter === "All Sectors" ? "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent" : "bg-primary/5 border-primary/20 text-foreground"
               }`}
             >
-              <Star size={14} className={showWatchlist ? "fill-current" : ""} />
-              Watchlist
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${showWatchlist ? "bg-white/20" : "bg-muted-foreground/20"}`}>
-                {watchlist.length}
-              </span>
+              <span className="truncate">{sectorFilter}</span>
+              <ChevronDown size={14} className={`ml-auto text-muted-foreground transition-transform duration-300 ${sectorOpen ? "rotate-180 text-primary" : "group-hover:text-foreground"}`} />
             </button>
-          </div>
 
-          {/* Sort Controls */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <SortDesc
-              size={14}
-              className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors mr-1"
-              onClick={() => {
-                const keys = SORT_OPTIONS.map((o) => o.key);
-                const idx = keys.indexOf(sort);
-                setSort(keys[(idx + 1) % keys.length] as SortMode);
-              }}
-            />
-            <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
-              {SORT_OPTIONS.map((option) => (
-                <button
-                  key={option.key}
-                  onClick={() => setSort(option.key)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
-                    sort === option.key ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  }`}
+            {sectorOpen && createPortal(
+              <>
+                <div className="fixed inset-0 z-[9998]" onClick={() => setSectorOpen(false)} />
+                <div
+                  className="fixed z-[9999] bg-[#1A2540] backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.6)] py-2 min-w-[240px] max-h-[450px] overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 slide-in-from-top-3 duration-200"
+                  style={{ top: dropdownPos.top, left: dropdownPos.left }}
                 >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+                  <button
+                    onClick={() => { setSectorFilter("All Sectors"); setSectorOpen(false); }}
+                    className={`w-full flex items-center px-5 py-3 text-xs font-black uppercase tracking-widest transition-all duration-200 ${
+                      sectorFilter === "All Sectors" 
+                        ? "bg-primary/10 text-primary" 
+                        : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                    }`}
+                  >
+                    All Sectors
+                  </button>
+
+                  <div className="h-px bg-white/5 my-1 mx-3" />
+
+                  {PRIMARY_SECTORS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => { setSectorFilter(s); setSectorOpen(false); }}
+                      className={`w-full flex items-center px-5 py-3 text-xs font-black uppercase tracking-widest transition-all duration-200 ${
+                        sectorFilter === s 
+                          ? "bg-primary/10 text-primary" 
+                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                      }`}
+                    >
+                      <span>{s}</span>
+                    </button>
+                  ))}
+                </div>
+              </>,
+              document.body
+            )}
           </div>
-        </div>
 
-        <div className="h-px bg-border/50" />
+          <div className="w-px h-6 bg-white/5 mx-1 flex-shrink-0" />
 
-        {/* Row 2: Direction, Sector, and Confidence */}
-        <div className="flex items-center gap-8">
-          {/* Direction Toggle Group */}
-          <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border border-border/50 flex-shrink-0">
+          {/* Direction Toggle */}
+          <div className="flex gap-1 bg-muted/50 p-1 rounded-xl border border-white/5 flex-shrink-0">
             {DIRECTIONS.map((d) => (
               <button
                 key={d}
                 onClick={() => setDirection(d)}
-                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  direction === d ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  direction === d ? "bg-card text-primary shadow-xl border border-white/5 scale-[1.02]" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {d}
@@ -304,28 +328,11 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             ))}
           </div>
 
-          <div className="w-px h-4 bg-border/50 flex-shrink-0" />
+          <div className="w-px h-6 bg-white/5 mx-1 flex-shrink-0" />
 
-          {/* Sector Filter Group */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Sector</span>
-            <button
-              ref={sectorBtnRef}
-              onClick={toggleSectorDropdown}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-transparent hover:border-white/10 hover:bg-accent transition-all text-xs min-w-[140px] group"
-            >
-              <span className={`truncate font-medium ${sectorFilter === "All Sectors" ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
-                {sectorFilter}
-              </span>
-              <ChevronDown size={14} className={`ml-auto text-muted-foreground transition-transform duration-300 ${sectorOpen ? "rotate-180 text-primary" : "group-hover:text-foreground"}`} />
-            </button>
-          </div>
-
-          <div className="w-px h-4 bg-border/50 flex-shrink-0" />
-
-          {/* Confidence Slider Group */}
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Min Confidence</span>
+          {/* Confidence Slider */}
+          <div className="flex items-center gap-4 px-4 py-1 flex-shrink-0">
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 whitespace-nowrap">Min Conf</span>
             <div className="flex items-center gap-3">
               <input
                 type="range"
@@ -334,34 +341,60 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 step={5}
                 value={minConf}
                 onChange={(e) => setMinConf(Number(e.target.value))}
-                className="signal-confidence-slider"
+                className="signal-confidence-slider !w-[100px]"
                 style={sliderStyle}
                 aria-label="Minimum confidence"
               />
               <span className="w-10 text-right text-xs font-mono font-black text-primary">{minConf}%</span>
             </div>
           </div>
+
+          {/* Sort Control */}
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            <SortDesc
+              size={14}
+              className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+              onClick={() => {
+                const keys = SORT_OPTIONS.map((o) => o.key);
+                const idx = keys.indexOf(sort);
+                setSort(keys[(idx + 1) % keys.length] as SortMode);
+              }}
+            />
+            <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border border-white/5">
+              {SORT_OPTIONS.slice(0, 1).concat(SORT_OPTIONS.slice(3)).map((option) => (
+                <button
+                  key={option.key}
+                  onClick={() => setSort(option.key)}
+                  className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${
+                    sort === option.key ? "bg-card text-primary shadow-lg border border-white/5" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden fade-in-up stagger-2">
+      <div className="bg-card rounded-2xl border border-border overflow-hidden fade-in-up stagger-2 shadow-2xl">
         {/* Header Row */}
-        <div className="flex items-center gap-4 px-5 py-3 border-b border-border bg-muted/30">
+        <div className="flex items-center gap-4 px-6 py-4 border-b border-border bg-muted/20">
           <div className="w-8" />
-          <div className="w-24 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ticker</div>
-          <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Signal</div>
-          <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confidence</div>
-          <div className="w-20 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Score</div>
-          <div className="w-24 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">Trend</div>
-          <div className="w-32 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Sector</div>
+          <div className="w-24 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Security</div>
+          <div className="w-28 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Signal</div>
+          <div className="flex-1 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Model Confidence</div>
+          <div className="w-20 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Raw Score</div>
+          <div className="w-24 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-center">Trend</div>
+          <div className="w-32 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Sector</div>
           <div className="w-4" />
         </div>
 
         {isLoading ? (
           <div className="p-8 space-y-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 animate-pulse">
+              <div key={i} className="flex items-center gap-4 animate-pulse px-6 py-4">
                 <div className="w-8 h-4 bg-muted rounded" />
                 <div className="h-10 bg-muted rounded w-24" />
                 <div className="h-10 bg-muted rounded w-28" />
@@ -373,17 +406,18 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             ))}
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <AlertCircle size={32} className="mb-3 text-bear opacity-80" />
-            <p className="text-sm">Failed to load signals: {(error as Error).message}</p>
-            <button onClick={() => refetch()} className="mt-4 text-xs text-primary hover:underline">Try again</button>
+          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+            <AlertCircle size={48} className="mb-4 text-bear opacity-50" />
+            <p className="text-sm font-bold">Failed to load signals</p>
+            <p className="text-xs mt-1">{(error as Error).message}</p>
+            <button onClick={() => refetch()} className="mt-6 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest">Retry Connection</button>
           </div>
         ) : paginated.length > 0 ? (
           paginated.map((s, i) => (
-            <div key={s.ticker} className="flex items-center group/row border-b border-border hover:bg-accent/30 transition-colors">
+            <div key={s.ticker} className="flex items-center group/row border-b border-white/[0.03] last:border-0 hover:bg-primary/[0.02] transition-colors">
               <button
                 onClick={(e) => { e.stopPropagation(); toggleWatchlist(s.ticker); }}
-                className={`ml-5 transition-colors ${watchlist.includes(s.ticker) ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground opacity-20 group-hover/row:opacity-100"}`}
+                className={`ml-6 transition-all duration-300 ${watchlist.includes(s.ticker) ? "text-primary scale-125 drop-shadow-[0_0_8px_rgba(0,200,5,0.4)]" : "text-muted-foreground/30 hover:text-foreground opacity-100 group-hover/row:opacity-100"}`}
               >
                 <Star size={14} className={watchlist.includes(s.ticker) ? "fill-current" : ""} />
               </button>
@@ -402,17 +436,18 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             </div>
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground bg-muted/5">
             {showWatchlist ? (
               <>
-                <Star size={32} className="mb-3 opacity-20" />
-                <p className="text-sm font-bold text-foreground">Watchlist is empty</p>
-                <p className="text-xs mt-1">Star symbols to track them here</p>
+                <Star size={48} className="mb-4 opacity-10" />
+                <p className="text-sm font-black uppercase tracking-widest text-foreground">Watchlist Empty</p>
+                <p className="text-[10px] mt-2 font-bold uppercase tracking-tighter opacity-50">Star securities to track them here</p>
               </>
             ) : (
               <>
-                <Search size={32} className="mb-3 opacity-30" />
-                <p className="text-sm">No signals match your filters</p>
+                <Search size={48} className="mb-4 opacity-10" />
+                <p className="text-sm font-black uppercase tracking-widest text-foreground">No matches found</p>
+                <p className="text-[10px] mt-2 font-bold uppercase tracking-tighter opacity-50">Adjust filters to broaden search</p>
               </>
             )}
           </div>
@@ -421,36 +456,31 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-2 py-4 fade-in-up">
-          <p className="text-xs text-muted-foreground font-medium">
-            Showing <span className="font-black text-foreground">{(page - 1) * PAGE_SIZE + 1}</span> to <span className="font-black text-foreground">{Math.min(page * PAGE_SIZE, filtered.length)}</span> of <span className="font-black text-foreground">{filtered.length}</span> signals
+        <div className="flex items-center justify-between px-4 py-6 fade-in-up">
+          <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+            Showing <span className="text-foreground">{(page - 1) * PAGE_SIZE + 1}</span> to <span className="text-foreground">{Math.min(page * PAGE_SIZE, filtered.length)}</span> of <span className="text-foreground">{filtered.length}</span>
           </p>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
             >
               <ChevronLeft size={16} />
             </button>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
                 let pageNum = page;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (page <= 3) {
-                  pageNum = i + 1;
-                } else if (page >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = page - 2 + i;
-                }
+                if (totalPages <= 5) pageNum = i + 1;
+                else if (page <= 3) pageNum = i + 1;
+                else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                else pageNum = page - 2 + i;
                 return (
                   <button
                     key={pageNum}
                     onClick={() => setPage(pageNum)}
-                    className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
-                      page === pageNum ? "bg-primary text-primary-foreground shadow-lg scale-105" : "hover:bg-accent text-muted-foreground"
+                    className={`w-9 h-9 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                      page === pageNum ? "bg-primary text-primary-foreground border-primary shadow-xl scale-110" : "bg-muted/30 text-muted-foreground border-white/5 hover:text-foreground"
                     }`}
                   >
                     {pageNum}
@@ -461,7 +491,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="p-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
             >
               <ChevronRight size={16} />
             </button>
@@ -469,8 +499,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground text-center pb-2">
-        SEC compliant disclosure · For informational purposes only
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30 text-center pb-4">
+        SEC Compliant Model Logic · Informational Dataset Alpha-22
       </p>
     </div>
   );
