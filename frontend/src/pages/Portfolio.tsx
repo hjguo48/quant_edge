@@ -319,6 +319,16 @@ const Portfolio = () => {
             </div>
             {rebalanceQuery.isLoading ? (
               <div className="p-8 text-center text-xs text-muted-foreground animate-pulse">Calculating rebalance orders...</div>
+            ) : rebalanceQuery.isError ? (
+              <div className="py-12 text-center">
+                <p className="text-sm text-muted-foreground">Unable to load rebalance orders right now.</p>
+                <button
+                  onClick={() => rebalanceQuery.refetch()}
+                  className="mt-3 text-xs text-primary hover:underline"
+                >
+                  Try again
+                </button>
+              </div>
             ) : rebalanceQuery.data?.orders.map((order, i) => (
               <div key={order.ticker} className="flex items-center px-5 py-3.5 border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
                 <div className="w-28 text-sm font-bold text-foreground">{order.ticker}</div>
@@ -373,6 +383,16 @@ const Portfolio = () => {
               </div>
               {budgetQuery.isLoading ? (
                 <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">Calculating dollar amounts...</div>
+              ) : budgetQuery.isError ? (
+                <div className="py-12 text-center">
+                  <p className="text-sm text-muted-foreground">Unable to calculate budget allocations.</p>
+                  <button
+                    onClick={() => budgetQuery.refetch()}
+                    className="mt-3 text-xs text-primary hover:underline"
+                  >
+                    Try again
+                  </button>
+                </div>
               ) : budgetQuery.data?.allocations.map((alloc) => (
                 <div key={alloc.ticker} className="flex items-center px-4 py-3 rounded-lg border border-border bg-card hover:border-primary/30 transition-colors">
                   <div className="w-24 text-sm font-bold text-foreground">{alloc.ticker}</div>

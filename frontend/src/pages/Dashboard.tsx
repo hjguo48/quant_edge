@@ -102,8 +102,18 @@ interface DashboardProps {
   onSelectSignal?: (ticker: string) => void;
 }
 
+const DASHBOARD_RANGES = ["7", "30", "90", "365"] as const;
+type DashboardRange = (typeof DASHBOARD_RANGES)[number];
+
+const RANGE_LABELS: Record<DashboardRange, string> = {
+  "7": "7D",
+  "30": "30D",
+  "90": "90D",
+  "365": "1Y",
+};
+
 const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
-  const [timeRange, setTimeRange] = useState("30");
+  const [timeRange, setTimeRange] = useState<DashboardRange>("30");
 
   const {
     data: overview,
@@ -123,6 +133,7 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     queryKey: ["marketIndices", timeRange],
     queryFn: () => fetchApi<MarketIndicesResponse>(`/api/market/indices?days=${timeRange}`),
     retry: false,
+    placeholderData: (previousData) => previousData,
   });
 
   const {
@@ -236,12 +247,12 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
             <div>
               <h3 className="text-sm font-semibold text-foreground">Cumulative P&L (SPY Ref)</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Model output · {timeRange}-day window
+                Model output · {RANGE_LABELS[timeRange]} window
                 {indices?.end_date ? ` · through ${indices.end_date}` : ""}
               </p>
             </div>
             <div className="flex items-center gap-1 bg-accent/50 p-1 rounded-lg">
-              {["7", "30", "90"].map((r) => (
+              {DASHBOARD_RANGES.map((r) => (
                 <button
                   key={r}
                   onClick={() => setTimeRange(r)}
@@ -249,7 +260,7 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
                     timeRange === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {r}D
+                  {RANGE_LABELS[r]}
                 </button>
               ))}
             </div>

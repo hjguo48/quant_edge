@@ -428,6 +428,7 @@ const KLineChart = ({
   const totalChange =
     lastCandle && firstCandle ? ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100 : 0;
   const isPositive = totalChange >= 0;
+  const chartModeTranslate = chartMode === "candlestick" ? "translateX(0%)" : "translateX(100%)";
   const tooltipLeft =
     hoverState && metrics ? Math.max(12, Math.min(hoverState.x + 14, metrics.width - 176)) : 0;
   const tooltipTop = hoverState ? Math.max(12, Math.min(hoverState.y + 14, height - 126)) : 0;
@@ -452,18 +453,29 @@ const KLineChart = ({
 
         <div className="flex items-center gap-3 flex-wrap">
           {/* Chart Type Toggle */}
-          <div className="flex items-center bg-muted rounded-md p-0.5">
+          <div className="relative grid grid-cols-2 items-center rounded-lg bg-muted p-1">
+            <div
+              aria-hidden="true"
+              className="absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-[10px] bg-card shadow-sm transition-transform duration-300 ease-out"
+              style={{ transform: chartModeTranslate }}
+            />
             <button
               onClick={() => setChartMode("candlestick")}
-              className={`p-1 rounded transition-all ${chartMode === "candlestick" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              className={`relative z-10 flex h-8 w-9 items-center justify-center rounded-[10px] transition-colors duration-300 ${
+                chartMode === "candlestick" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
               title="Candlestick"
+              aria-label="Candlestick chart"
             >
               <CandlestickChart size={14} />
             </button>
             <button
               onClick={() => setChartMode("line")}
-              className={`p-1 rounded transition-all ${chartMode === "line" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              className={`relative z-10 flex h-8 w-9 items-center justify-center rounded-[10px] transition-colors duration-300 ${
+                chartMode === "line" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
               title="Line Chart"
+              aria-label="Line chart"
             >
               <TrendingUp size={14} />
             </button>
