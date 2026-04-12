@@ -206,7 +206,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       {/* Header */}
       <div className="flex items-center justify-between fade-in-up">
         <div>
-          <h2 className="text-xl font-black text-foreground uppercase tracking-widest">Signal Feed</h2>
+          <h2 className="text-xl font-bold text-foreground font-black uppercase tracking-widest">Signal Feed</h2>
           <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-[0.2em]">
             Week {data?.week_number || "—"} · {formatDateShort(data?.signal_date)} · <span className="text-bull">{longCount} long</span> · <span className="text-bear">{shortCount} short</span> · Not investment advice
           </p>
@@ -227,19 +227,19 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         </div>
       </div>
 
-      {/* Simplified Filter Bar */}
+      {/* Unified Filter Bar - Single Row */}
       <div className="bg-card rounded-2xl border border-border p-2.5 fade-in-up stagger-1 shadow-xl">
         <div className="flex items-center gap-2 flex-nowrap overflow-x-auto no-scrollbar">
           {/* Watchlist Toggle */}
           <button
             onClick={() => setShowWatchlist(!showWatchlist)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all duration-300 border flex-shrink-0 ${
-              showWatchlist ? "bg-primary/10 border-primary/20 text-primary shadow-inner" : "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
+              showWatchlist ? "bg-primary/10 border-primary/30 text-primary shadow-inner" : "bg-muted/50 border-white/5 text-muted-foreground hover:bg-accent hover:text-foreground"
             }`}
           >
             <Star size={14} className={showWatchlist ? "fill-current" : ""} />
             Watchlist
-            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${showWatchlist ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"}`}>
+            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${showWatchlist ? "bg-primary text-primary-foreground font-bold" : "bg-muted-foreground/20 text-muted-foreground font-medium"}`}>
               {watchlist.length}
             </span>
           </button>
@@ -265,7 +265,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
               ref={sectorBtnRef}
               onClick={toggleSectorDropdown}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-xs font-medium border min-w-[140px] group ${
-                sectorFilter === "All Sectors" ? "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent" : "bg-primary/5 border-primary/20 text-foreground font-bold"
+                sectorFilter === "All Sectors" ? "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent" : "bg-primary/5 border-primary/20 text-foreground"
               }`}
             >
               <span className="truncate">{sectorFilter}</span>
@@ -276,7 +276,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
               <>
                 <div className="fixed inset-0 z-[9998]" onClick={() => setSectorOpen(false)} />
                 <div
-                  className="fixed z-[9999] bg-[#1A2540] backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.6)] py-2 min-w-[220px] max-h-[450px] overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 slide-in-from-top-3 duration-200"
+                  className="fixed z-[9999] bg-[#1A2540] backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.6)] py-2 min-w-[240px] max-h-[450px] overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 slide-in-from-top-3 duration-200"
                   style={{ top: dropdownPos.top, left: dropdownPos.left }}
                 >
                   <button
@@ -319,8 +319,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
               <button
                 key={d}
                 onClick={() => setDirection(d)}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
-                  direction === d ? "bg-card text-primary shadow-xl border border-white/10 scale-[1.02] font-bold" : "text-muted-foreground hover:text-foreground"
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
+                  direction === d ? "bg-card text-primary shadow-xl border-white/5" : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
                 {d}
@@ -349,8 +349,6 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             </div>
           </div>
 
-          <div className="w-px h-6 bg-white/5 mx-1 flex-shrink-0" />
-
           {/* Sort Controls */}
           <div className="ml-auto flex items-center gap-2 flex-shrink-0 pr-1">
             <button
@@ -366,8 +364,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 <button
                   key={option.key}
                   onClick={() => setSort(option.key)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[9px] font-medium transition-all ${
-                    sort === option.key ? "bg-card text-primary shadow-lg border border-white/10 font-bold" : "text-muted-foreground hover:text-foreground"
+                  className={`px-2.5 py-1.5 rounded-lg text-[9px] font-medium transition-all border ${
+                    sort === option.key ? "bg-card text-primary shadow-lg border-white/10" : "text-muted-foreground hover:text-foreground border-transparent"
                   }`}
                 >
                   {option.label}
@@ -441,7 +439,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             {showWatchlist ? (
               <>
                 <Star size={48} className="mb-4 opacity-10" />
-                <p className="text-sm font-black uppercase tracking-widest text-foreground">Watchlist Empty</p>
+                <p className="text-sm font-bold text-foreground">Watchlist Empty</p>
                 <p className="text-[10px] mt-2 font-bold uppercase tracking-tighter opacity-50">Star securities to track them here</p>
               </>
             ) : (
