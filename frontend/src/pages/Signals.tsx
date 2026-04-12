@@ -260,31 +260,41 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
               <>
                 <div className="fixed inset-0 z-[9998]" onClick={() => setSectorOpen(false)} />
                 <div
-                  className="fixed z-[9999] bg-card border border-border rounded-xl shadow-lg py-1.5 min-w-[200px] max-h-[320px] overflow-y-auto"
+                  className="fixed z-[9999] bg-card/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-2 min-w-[220px] max-h-[400px] overflow-y-auto no-scrollbar"
                   style={{ top: dropdownPos.top, left: dropdownPos.left }}
                 >
+                  <div className="px-3 pb-1.5 mb-1.5 border-b border-white/5">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-1">Filter by Sector</p>
+                  </div>
+                  
                   <button
                     onClick={() => { setSectorFilter("All Sectors"); setSectorOpen(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm transition-colors ${sectorFilter === "All Sectors" ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"}`}
+                    className={`w-full relative flex items-center px-4 py-2 text-sm transition-all duration-200 group ${
+                      sectorFilter === "All Sectors" 
+                        ? "bg-primary/10 text-primary font-bold" 
+                        : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                    }`}
                   >
+                    {sectorFilter === "All Sectors" && (
+                      <div className="absolute left-0 w-1 h-4 bg-primary rounded-r-full" />
+                    )}
                     All Sectors
                   </button>
+
                   {PRIMARY_SECTORS.map((s) => (
                     <button
                       key={s}
                       onClick={() => { setSectorFilter(s); setSectorOpen(false); }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${sectorFilter === s ? "bg-accent/70" : "hover:bg-accent/30"}`}
+                      className={`w-full relative flex items-center px-4 py-2 text-sm transition-all duration-200 group ${
+                        sectorFilter === s 
+                          ? "bg-primary/10 text-primary font-bold" 
+                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                      }`}
                     >
-                      <span
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md border"
-                        style={{
-                          backgroundColor: getSectorColor(s).bg,
-                          color: getSectorColor(s).text,
-                          borderColor: getSectorColor(s).border,
-                        }}
-                      >
-                        {s}
-                      </span>
+                      {sectorFilter === s && (
+                        <div className="absolute left-0 w-1 h-4 bg-primary rounded-r-full" />
+                      )}
+                      <span>{s}</span>
                     </button>
                   ))}
                 </div>
