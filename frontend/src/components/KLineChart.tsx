@@ -528,11 +528,12 @@ const KLineChart = ({
         ) : (
           <>
             <canvas
+              key={chartMode}
               ref={canvasRef}
               onMouseMove={handleMouseMove}
               onMouseLeave={() => setHoverState(null)}
               style={{ width: "100%", height, cursor: "crosshair" }}
-              className="block w-full"
+              className="block w-full animate-in fade-in duration-500"
             />
 
             {activeCandle && (

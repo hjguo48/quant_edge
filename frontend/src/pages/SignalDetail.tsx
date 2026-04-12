@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Brain, BarChart3, Info, TrendingUp, Layers, ShieldCheck, Target, AlertCircle } from "lucide-react";
+import { ArrowLeft, Brain, BarChart3, Info, TrendingUp, Layers, ShieldCheck, Target, AlertCircle, TrendingDown } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -302,7 +302,7 @@ const ExpectedReturnCard = ({ data }: { data: ExpectedReturnResponse }) => {
           </div>
           <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Expected Performance</h3>
         </div>
-        <div className="bg-muted px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] text-primary border border-primary/10 shadow-inner">
+        <div className="bg-muted px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] text-primary border border-primary/10 shadow-inner flex items-center gap-1 whitespace-nowrap">
           Quintile {data.quintile}
         </div>
       </div>
@@ -417,23 +417,23 @@ const SignalDetail = ({
 
   if (detailQuery.isError) {
     return (
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-[#0D1421]">
         <div className="flex items-start gap-4 fade-in-up">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group mt-0.5"
+            className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all group mt-0.5"
           >
-            <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
-            Back to Signals
+            <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
+            Return to Signals
           </button>
         </div>
 
-        <div className="bg-card rounded-xl border border-border p-6 fade-in-up stagger-1">
-          <div className="flex items-center gap-2 mb-3">
-            <Info size={16} className="text-bear" />
-            <h2 className="text-lg font-semibold text-foreground">Unable to load {normalizedTicker}</h2>
+        <div className="bg-card rounded-2xl border border-border p-8 fade-in-up stagger-1 shadow-2xl">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertCircle size={24} className="text-bear" />
+            <h2 className="text-xl font-black text-foreground uppercase tracking-widest">Load Error</h2>
           </div>
-          <p className="text-sm text-muted-foreground">{getErrorMessage(detailQuery.error)}</p>
+          <p className="text-sm text-muted-foreground font-medium">{getErrorMessage(detailQuery.error)}</p>
         </div>
       </div>
     );
@@ -509,8 +509,8 @@ const SignalDetail = ({
         )}
       </div>
 
-      <div className="flex flex-col gap-6 xl:flex-row items-start">
-        <div className="flex-1 min-w-0 space-y-6 w-full">
+      <div className="flex flex-col gap-6 xl:flex-row items-stretch">
+        <div className="flex-1 min-w-0 space-y-6">
           <div className="fade-in-up stagger-3">
             <KLineChart key={normalizedTicker} ticker={normalizedTicker} height={320} defaultRange="3M" />
           </div>
@@ -530,10 +530,10 @@ const SignalDetail = ({
           )}
         </div>
 
-        <div className="w-full xl:w-[340px] space-y-6 flex-shrink-0 fade-in-up stagger-3">
+        <div className="w-full xl:w-[340px] space-y-6 flex-shrink-0 flex flex-col fade-in-up stagger-3">
           {expectedReturn && <ExpectedReturnCard data={expectedReturn} />}
           
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-xl space-y-6">
+          <div className="bg-card rounded-2xl border border-border p-6 shadow-xl space-y-6 flex-1">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-primary/10">
                 <Brain size={18} className="text-primary" />
@@ -595,8 +595,8 @@ const SignalDetail = ({
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 xl:flex-row items-start">
-        <div className="flex-1 bg-card rounded-2xl border border-border p-6 shadow-xl fade-in-up stagger-4 w-full">
+      <div className="flex flex-col gap-6 xl:flex-row items-stretch">
+        <div className="flex-1 bg-card rounded-2xl border border-border p-6 shadow-xl fade-in-up stagger-4 min-h-[400px] flex flex-col">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 rounded-xl bg-primary/10">
               <BarChart3 size={18} className="text-primary" />
@@ -608,7 +608,7 @@ const SignalDetail = ({
           </div>
 
           {fundamentalsQuery.isLoading ? (
-            <div className="animate-pulse space-y-4">
+            <div className="animate-pulse space-y-4 flex-1">
               {Array.from({ length: 6 }, (_, index) => (
                 <div key={index} className="h-6 rounded-md bg-muted" style={{ width: `${94 - index * 6}%` }} />
               ))}
@@ -616,92 +616,98 @@ const SignalDetail = ({
           ) : fundamentalsQuery.isError ? (
             <p className="text-xs text-bear">{getErrorMessage(fundamentalsQuery.error)}</p>
           ) : topMetricData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={topMetricData}
-                layout="vertical"
-                margin={{ left: 12, right: 32, top: 0, bottom: 0 }}
-              >
-                <XAxis
-                  type="number"
-                  tick={{ fill: "#607B96", fontSize: 10, fontWeight: 700 }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(value: number) => formatCompactNumber(value)}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="label"
-                  tick={{ fill: "#F5F7FA", fontSize: 10, fontWeight: 800 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={120}
-                />
-                <Tooltip
-                  cursor={{ fill: "rgba(255,255,255,0.03)" }}
-                  content={({ active, payload }: { active?: boolean; payload?: Array<{ payload: { fullLabel: string; value: number; positive: boolean } }> }) => {
-                    if (!active || !payload?.length) return null;
-                    const point = payload[0].payload;
-                    return (
-                      <div className="bg-[#131C2E] border border-white/10 rounded-xl px-3 py-2 shadow-2xl backdrop-blur-xl">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">{point.fullLabel}</p>
-                        <p className={`text-sm font-black font-mono ${point.positive ? "text-bull" : "text-bear"}`}>
-                          {point.value >= 0 ? "+" : ""}
-                          {formatCompactNumber(point.value)}
-                        </p>
-                      </div>
-                    );
-                  }}
-                />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={16}>
-                  {topMetricData.map((entry) => (
-                    <Cell
-                      key={entry.metric}
-                      fill={entry.positive ? "#00C805" : "#FF5252"}
-                      fillOpacity={0.85}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={topMetricData}
+                  layout="vertical"
+                  margin={{ left: 12, right: 32, top: 0, bottom: 0 }}
+                >
+                  <XAxis
+                    type="number"
+                    tick={{ fill: "#607B96", fontSize: 10, fontWeight: 700 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value: number) => formatCompactNumber(value)}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    tick={{ fill: "#F5F7FA", fontSize: 10, fontWeight: 800 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={120}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                    content={({ active, payload }: { active?: boolean; payload?: Array<{ payload: { fullLabel: string; value: number; positive: boolean } }> }) => {
+                      if (!active || !payload?.length) return null;
+                      const point = payload[0].payload;
+                      return (
+                        <div className="bg-[#131C2E] border border-white/10 rounded-xl px-3 py-2 shadow-2xl backdrop-blur-xl">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">{point.fullLabel}</p>
+                          <p className={`text-sm font-black font-mono ${point.positive ? "text-bull" : "text-bear"}`}>
+                            {point.value >= 0 ? "+" : ""}
+                            {formatCompactNumber(point.value)}
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={16}>
+                    {topMetricData.map((entry) => (
+                      <Cell
+                        key={entry.metric}
+                        fill={entry.positive ? "#00C805" : "#FF5252"}
+                        fillOpacity={0.85}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <p className="text-xs text-muted-foreground">No fundamental metrics are available.</p>
           )}
         </div>
 
-        <div className="w-full xl:w-[340px] bg-card rounded-2xl border border-border p-6 shadow-xl fade-in-up stagger-5 flex-shrink-0">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <Layers size={18} className="text-primary" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Financial Matrix</h3>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Complete metric inventory</p>
+        <div className="w-full xl:w-[340px] bg-card rounded-2xl border border-border shadow-xl fade-in-up stagger-5 flex-shrink-0 flex flex-col min-h-[400px]">
+          <div className="p-6 border-b border-white/5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <Layers size={18} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Financial Matrix</h3>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Complete metric inventory</p>
+              </div>
             </div>
           </div>
 
-          {fundamentalsQuery.isLoading ? (
-            <div className="space-y-4 animate-pulse">
-              {Array.from({ length: 12 }, (_, index) => (
-                <div key={index} className="h-4 rounded-md bg-muted" style={{ width: `${90 - index * 3}%` }} />
-              ))}
-            </div>
-          ) : fundamentalsQuery.isError ? (
-            <p className="text-xs text-bear">{getErrorMessage(fundamentalsQuery.error)}</p>
-          ) : metricEntries.length > 0 ? (
-            <div className="space-y-3.5 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
-              {metricEntries.map(([metric, value]) => (
-                <div key={metric} className="flex items-center justify-between gap-4 py-1 border-b border-white/[0.03] last:border-0 group">
-                  <span className="text-[11px] font-bold text-muted-foreground group-hover:text-foreground transition-colors">{formatMetricLabel(metric)}</span>
-                  <span className={`text-[11px] font-black font-mono px-2 py-0.5 rounded bg-white/5 ${typeof value === "number" && value < 0 ? "text-bear" : "text-foreground"}`}>
-                    {typeof value === "number" ? formatCompactNumber(value) : "—"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">No fundamental metrics are available.</p>
-          )}
+          <div className="flex-1 overflow-y-auto no-scrollbar p-6 pt-2">
+            {fundamentalsQuery.isLoading ? (
+              <div className="space-y-4 animate-pulse">
+                {Array.from({ length: 12 }, (_, index) => (
+                  <div key={index} className="h-4 rounded-md bg-muted" style={{ width: `${90 - index * 3}%` }} />
+                ))}
+              </div>
+            ) : fundamentalsQuery.isError ? (
+              <p className="text-xs text-bear">{getErrorMessage(fundamentalsQuery.error)}</p>
+            ) : metricEntries.length > 0 ? (
+              <div className="space-y-3.5">
+                {metricEntries.map(([metric, value]) => (
+                  <div key={metric} className="flex items-center justify-between gap-4 py-1 border-b border-white/[0.03] last:border-0 group transition-all duration-300">
+                    <span className="text-[11px] font-bold text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all">{formatMetricLabel(metric)}</span>
+                    <span className={`text-[11px] font-black font-mono px-2 py-0.5 rounded bg-white/5 group-hover:bg-white/10 transition-colors ${typeof value === "number" && value < 0 ? "text-bear" : "text-foreground"}`}>
+                      {typeof value === "number" ? formatCompactNumber(value) : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No fundamental metrics are available.</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -737,7 +743,7 @@ const SignalDetail = ({
                 <h2 className="text-3xl font-black text-foreground tracking-tight">{detail?.ticker ?? normalizedTicker}</h2>
                 {prediction && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full border shadow-xl ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/30 text-bull" : "bg-bear/10 border-bear/30 text-bear"}`}>
+                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full border shadow-xl ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/30 text-bull" : "bg-bear/10 border-bear/20 text-bear"}`}>
                       <span className="text-xs font-black uppercase tracking-tighter">
                         Score: {prediction.fusion_score.toFixed(4)}
                       </span>
@@ -844,15 +850,15 @@ const SignalDetail = ({
 
       <div className="h-px bg-white/5" />
 
-      <div className="flex gap-1 bg-muted/30 backdrop-blur-md rounded-2xl p-1.5 w-fit fade-in-up stagger-1 border border-white/5 shadow-inner">
+      <div className="flex gap-1.5 bg-muted/20 backdrop-blur-md rounded-2xl p-1.5 w-fit fade-in-up stagger-1 border border-white/5 shadow-inner">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 group relative ${
               activeTab === tab
                 ? "bg-card text-primary shadow-2xl border border-white/10 scale-[1.02]"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/[0.03] hover:shadow-lg"
             }`}
           >
             {tab}
@@ -915,50 +921,54 @@ const SignalDetail = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in-up stagger-3">
-                <div className="md:col-span-2 bg-card rounded-2xl border border-border p-6 shadow-xl space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-primary/10">
-                      <ShieldCheck size={18} className="text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Architecture Consensus</h3>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Agreement across specialized model learners</p>
+                <div className="md:col-span-2 bg-card rounded-2xl border border-border overflow-hidden shadow-xl flex flex-col">
+                  <div className="p-6 border-b border-white/5 bg-muted/10">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-primary/10">
+                        <ShieldCheck size={18} className="text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Architecture Consensus</h3>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Agreement across specialized model learners</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="overflow-x-auto no-scrollbar">
+                  <div className="flex-1 overflow-x-auto no-scrollbar">
                     <table className="w-full text-left">
                       <thead>
-                        <tr className="border-b border-white/5">
-                          <th className="pb-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Learner</th>
-                          <th className="pb-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Raw Score</th>
-                          <th className="pb-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Influence</th>
-                          <th className="pb-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Contribution</th>
+                        <tr className="border-b border-white/5 bg-muted/5">
+                          <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Learner</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Raw Score</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Influence</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Contribution</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.03]">
                         {prediction && Object.entries(prediction.model_scores).map(([model, score]) => (
                           <tr key={model} className="group hover:bg-white/[0.01] transition-colors">
-                            <td className="py-4 text-xs font-black text-foreground/80 uppercase tracking-widest">{model}</td>
-                            <td className={`py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                            <td className="px-6 py-4 text-xs font-black text-foreground/80 uppercase tracking-widest">{model}</td>
+                            <td className={`px-6 py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
                               {score.toFixed(4)}
                             </td>
-                            <td className="py-4 text-[10px] font-bold text-muted-foreground text-right uppercase tracking-tighter">
+                            <td className="px-6 py-4 text-[10px] font-bold text-muted-foreground text-right uppercase tracking-tighter">
                               {(100 / Object.keys(prediction.model_scores).length).toFixed(1)}%
                             </td>
-                            <td className={`py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                            <td className={`px-6 py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
                               {(score / Object.keys(prediction.model_scores).length).toFixed(4)}
                             </td>
                           </tr>
                         ))}
-                        <tr className="bg-primary/[0.02]">
-                          <td className="py-5 px-3 text-xs font-black text-primary uppercase tracking-widest">Integrated Fusion</td>
-                          <td className="py-5 text-right" />
-                          <td className="py-5 text-right" />
-                          <td className={`py-5 pr-3 text-sm font-black font-mono text-right border-t-2 border-primary/20 ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-primary/[0.03] border-t-2 border-primary/10">
+                          <td className="px-6 py-5 text-xs font-black text-primary uppercase tracking-[0.2em]">Integrated Fusion</td>
+                          <td className="px-6 py-5 text-right" />
+                          <td className="px-6 py-5 text-right" />
+                          <td className={`px-6 py-5 text-sm font-black font-mono text-right ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
                             {prediction?.fusion_score.toFixed(4)}
                           </td>
                         </tr>
-                      </tbody>
+                      </tfoot>
                     </table>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { Filter, Search, SortDesc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronDown, Star } from "lucide-react";
+import { Filter, Search, SortDesc, SortAsc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronDown, Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import SignalRow from "../components/SignalRow";
 import { fetchApi } from "../hooks/useApi";
@@ -206,7 +206,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       {/* Header */}
       <div className="flex items-center justify-between fade-in-up">
         <div>
-          <h2 className="text-xl font-bold text-foreground font-black uppercase tracking-widest">Signal Feed</h2>
+          <h2 className="text-xl font-black text-foreground uppercase tracking-widest">Signal Feed</h2>
           <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-[0.2em]">
             Week {data?.week_number || "—"} · {formatDateShort(data?.signal_date)} · <span className="text-bull">{longCount} long</span> · <span className="text-bear">{shortCount} short</span> · Not investment advice
           </p>
@@ -227,14 +227,14 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         </div>
       </div>
 
-      {/* Unified Filter Bar */}
-      <div className="bg-card rounded-2xl border border-border p-3 fade-in-up stagger-1 shadow-xl">
+      {/* Simplified Filter Bar */}
+      <div className="bg-card rounded-2xl border border-border p-2.5 fade-in-up stagger-1 shadow-xl">
         <div className="flex items-center gap-2 flex-nowrap overflow-x-auto no-scrollbar">
           {/* Watchlist Toggle */}
           <button
             onClick={() => setShowWatchlist(!showWatchlist)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 border flex-shrink-0 ${
-              showWatchlist ? "bg-primary/10 border-primary/30 text-primary shadow-[0_0_15px_rgba(0,200,5,0.1)]" : "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all duration-300 border flex-shrink-0 ${
+              showWatchlist ? "bg-primary/10 border-primary/20 text-primary shadow-inner" : "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
             }`}
           >
             <Star size={14} className={showWatchlist ? "fill-current" : ""} />
@@ -252,20 +252,20 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filter by ticker or company..."
+              placeholder="Search ticker or company..."
               className="bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none w-full font-medium"
             />
           </div>
 
           <div className="w-px h-6 bg-white/5 mx-1 flex-shrink-0" />
 
-          {/* Sector Dropdown (Clean Text) */}
+          {/* Sector Dropdown */}
           <div className="flex-shrink-0">
             <button
               ref={sectorBtnRef}
               onClick={toggleSectorDropdown}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-xs font-bold border min-w-[160px] group ${
-                sectorFilter === "All Sectors" ? "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent" : "bg-primary/5 border-primary/20 text-foreground"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-xs font-medium border min-w-[140px] group ${
+                sectorFilter === "All Sectors" ? "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent" : "bg-primary/5 border-primary/20 text-foreground font-bold"
               }`}
             >
               <span className="truncate">{sectorFilter}</span>
@@ -276,14 +276,14 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
               <>
                 <div className="fixed inset-0 z-[9998]" onClick={() => setSectorOpen(false)} />
                 <div
-                  className="fixed z-[9999] bg-[#1A2540] backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.6)] py-2 min-w-[240px] max-h-[450px] overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 slide-in-from-top-3 duration-200"
+                  className="fixed z-[9999] bg-[#1A2540] backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.6)] py-2 min-w-[220px] max-h-[450px] overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 slide-in-from-top-3 duration-200"
                   style={{ top: dropdownPos.top, left: dropdownPos.left }}
                 >
                   <button
                     onClick={() => { setSectorFilter("All Sectors"); setSectorOpen(false); }}
-                    className={`w-full flex items-center px-5 py-3 text-xs font-black uppercase tracking-widest transition-all duration-200 ${
+                    className={`w-full flex items-center px-5 py-3 text-xs font-medium transition-all duration-200 ${
                       sectorFilter === "All Sectors" 
-                        ? "bg-primary/10 text-primary" 
+                        ? "text-primary bg-primary/5 font-bold" 
                         : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                     }`}
                   >
@@ -296,9 +296,9 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                     <button
                       key={s}
                       onClick={() => { setSectorFilter(s); setSectorOpen(false); }}
-                      className={`w-full flex items-center px-5 py-3 text-xs font-black uppercase tracking-widest transition-all duration-200 ${
+                      className={`w-full flex items-center px-5 py-3 text-xs font-medium transition-all duration-200 ${
                         sectorFilter === s 
-                          ? "bg-primary/10 text-primary" 
+                          ? "text-primary bg-primary/5 font-bold" 
                           : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                       }`}
                     >
@@ -319,8 +319,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
               <button
                 key={d}
                 onClick={() => setDirection(d)}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  direction === d ? "bg-card text-primary shadow-xl border border-white/5 scale-[1.02]" : "text-muted-foreground hover:text-foreground"
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                  direction === d ? "bg-card text-primary shadow-xl border border-white/10 scale-[1.02] font-bold" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {d}
@@ -341,7 +341,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 step={5}
                 value={minConf}
                 onChange={(e) => setMinConf(Number(e.target.value))}
-                className="signal-confidence-slider !w-[100px]"
+                className="signal-confidence-slider !w-[80px]"
                 style={sliderStyle}
                 aria-label="Minimum confidence"
               />
@@ -349,24 +349,25 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             </div>
           </div>
 
-          {/* Sort Control */}
-          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-            <SortDesc
-              size={14}
-              className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-              onClick={() => {
-                const keys = SORT_OPTIONS.map((o) => o.key);
-                const idx = keys.indexOf(sort);
-                setSort(keys[(idx + 1) % keys.length] as SortMode);
-              }}
-            />
-            <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border border-white/5">
-              {SORT_OPTIONS.slice(0, 1).concat(SORT_OPTIONS.slice(3)).map((option) => (
+          <div className="w-px h-6 bg-white/5 mx-1 flex-shrink-0" />
+
+          {/* Sort Controls */}
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0 pr-1">
+            <button
+              onClick={() => setSort(sort === "conf_desc" ? "conf_asc" : "conf_desc")}
+              className={`p-2 rounded-xl transition-all ${sort.startsWith("conf") ? "bg-primary/10 text-primary border border-primary/20" : "text-muted-foreground hover:text-foreground bg-muted/50 border border-transparent"}`}
+              title="Toggle Confidence Sort"
+            >
+              {sort === "conf_asc" ? <SortAsc size={14} /> : <SortDesc size={14} />}
+            </button>
+            
+            <div className="flex gap-1 bg-muted/50 p-1 rounded-xl border border-white/5">
+              {SORT_OPTIONS.filter(o => !o.key.startsWith("conf")).map((option) => (
                 <button
                   key={option.key}
                   onClick={() => setSort(option.key)}
-                  className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${
-                    sort === option.key ? "bg-card text-primary shadow-lg border border-white/5" : "text-muted-foreground hover:text-foreground"
+                  className={`px-2.5 py-1.5 rounded-lg text-[9px] font-medium transition-all ${
+                    sort === option.key ? "bg-card text-primary shadow-lg border border-white/10 font-bold" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {option.label}
