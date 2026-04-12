@@ -348,14 +348,4 @@
     color: var(--muted-foreground);
     border: 1px solid rgba(96, 123, 150, 0.2);
   }
-
-  .sector-tag {
-    background: rgba(30, 45, 71, 0.6);
-    color: var(--muted-foreground);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    @apply text-[10px] font-bold uppercase tracking-tighter px-1.5 py-0.5 rounded transition-colors;
-  }
-  .sector-tag:hover {
-    @apply bg-accent text-foreground border-border;
-  }
 }

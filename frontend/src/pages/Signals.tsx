@@ -22,7 +22,7 @@ interface LatestPredictionsResponse {
 const DIRECTIONS = ["All", "Long Signals", "Short Signals"];
 const PAGE_SIZE = 10;
 const SORT_OPTIONS = [
-  { key: "confidence", label: "Confidence" },
+  { key: "none", label: "Default" },
   { key: "score", label: "Score" },
   { key: "strength", label: "Strength" },
 ] as const;
@@ -35,11 +35,32 @@ const formatDateShort = (dateStr?: string) => {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
+function hashTickerSeed(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+function generateDirectionalSparkData(score: number, seedKey: string): number[] {
+  const base = 50;
+  const direction = score > 0 ? 1 : -1;
+  const magnitude = Math.max(8, Math.min(Math.abs(score) * 5, 30));
+  const seed = hashTickerSeed(seedKey);
+
+  return Array.from({ length: 10 }, (_, index) => {
+    const normalizedNoise = Math.sin(seed + (index + 1) * 12.9898) * 43758.5453;
+    const noise = ((normalizedNoise - Math.floor(normalizedNoise)) - 0.5) * 4;
+    return base + direction * (index / 9) * magnitude + noise;
+  });
+}
+
 const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?: (ticker: string) => void }) => {
   const [search, setSearch] = useState("");
   const [direction, setDirection] = useState("All");
   const [minConf, setMinConf] = useState(0);
-  const [sort, setSort] = useState<SortMode>("confidence");
+  const [sort, setSort] = useState<SortMode>("none");
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<LatestPredictionsResponse>({
@@ -66,6 +87,10 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       score: prediction.score,
       rank: prediction.rank,
       sector: prediction.sector || "—",
+      sparkData: generateDirectionalSparkData(
+        prediction.score,
+        `${prediction.ticker}:${prediction.rank}:${prediction.score.toFixed(6)}`,
+      ),
     }));
   }, [predictions]);
 
@@ -81,7 +106,6 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         return matchSearch && matchDir && matchConf;
       })
       .sort((a, b) => {
-        if (sort === "confidence") return b.confidence - a.confidence;
         if (sort === "score") return b.score - a.score;
         if (sort === "strength") return Math.abs(b.score) - Math.abs(a.score);
         return 0;
@@ -203,7 +227,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Signal</div>
           <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confidence</div>
           <div className="w-20 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Score</div>
-          <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Sector</div>
+          <div className="w-24 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">Trend</div>
+          <div className="w-32 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Sector</div>
           <div className="w-4" />
         </div>
 
@@ -215,7 +240,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 <div className="h-10 bg-muted rounded w-28" />
                 <div className="h-4 bg-muted rounded flex-1" />
                 <div className="h-10 bg-muted rounded w-20" />
-                <div className="h-10 bg-muted rounded w-28" />
+                <div className="h-10 bg-muted rounded w-24" />
+                <div className="h-10 bg-muted rounded w-32" />
               </div>
             ))}
           </div>
@@ -233,7 +259,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 name={s.name}
                 direction={s.direction}
                 confidence={s.confidence}
-                alpha={s.score}
+                score={s.score}
+                sparkData={s.sparkData}
                 sector={s.sector}
                 onClick={() => onSelectSignal(s.ticker)}
               />
