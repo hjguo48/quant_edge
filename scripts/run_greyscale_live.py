@@ -14,6 +14,7 @@ from loguru import logger
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
+import shap
 from sqlalchemy import text
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -244,6 +245,17 @@ def main(argv: list[str] | None = None) -> int:
         sector_map=sector_map,
     )
 
+    top_tickers_for_shap = list(fused_scores_by_ticker.head(100).index.astype(str))
+    try:
+        shap_data = compute_shap_for_top_tickers(
+            models=models,
+            feature_matrix=current_feature_matrix,
+            top_tickers=top_tickers_for_shap,
+        )
+    except Exception as exc:
+        logger.warning("failed to compute SHAP values for greyscale live report: {}", exc)
+        shap_data = {}
+
     critical_alerts: list[str] = []
     if data_report.halt_pipeline:
         critical_alerts.append("layer1_data_halt")
@@ -353,6 +365,7 @@ def main(argv: list[str] | None = None) -> int:
             "fusion": series_to_float_dict(fused_scores_by_ticker),
             "fusion_unscaled": series_to_float_dict(flatten_score_index(fusion_unscaled)),
         },
+        "shap_values": json_safe(shap_data),
         "risk_checks": {
             "layer1_data": {
                 "pass": bool(not data_report.halt_pipeline),
@@ -857,6 +870,99 @@ def compute_pairwise_rank_correlations(model_scores_by_ticker: dict[str, pd.Seri
                 spearmanr(aligned["left"], aligned["right"], nan_policy="omit").statistic,
             )
     return correlations
+
+
+def compute_shap_for_top_tickers(
+    models: dict[str, Any],
+    feature_matrix: pd.DataFrame,
+    top_tickers: list[str],
+    max_tickers: int = 100,
+) -> dict[str, dict[str, Any]]:
+    """Compute SHAP values for tree models on the top-ranked live tickers."""
+
+    if feature_matrix.empty:
+        return {}
+
+    available_tickers = set(feature_matrix.index.get_level_values("ticker").astype(str))
+    tickers_to_explain = list(dict.fromkeys(str(ticker).upper() for ticker in top_tickers if str(ticker)))[:max_tickers]
+    shap_payload: dict[str, dict[str, Any]] = {}
+
+    for model_name, model in models.items():
+        if model_name == "ridge":
+            continue
+
+        estimator = getattr(model, "estimator_", None) or model
+        feature_names = list(getattr(model, "feature_names_", []) or list(feature_matrix.columns))
+        try:
+            explainer = shap.TreeExplainer(estimator)
+        except Exception as exc:
+            logger.warning("failed to initialize TreeExplainer for {}: {}", model_name, exc)
+            continue
+
+        ticker_payload: dict[str, Any] = {}
+        for ticker in tickers_to_explain:
+            if ticker not in available_tickers:
+                continue
+
+            row = feature_matrix.xs(ticker, level="ticker").tail(1)
+            if row.empty:
+                continue
+
+            ordered_row = row.reindex(columns=feature_names)
+            try:
+                shap_values, base_value = _compute_row_shap(explainer, ordered_row)
+            except Exception as exc:
+                logger.warning("failed to compute SHAP for {} {}: {}", model_name, ticker, exc)
+                continue
+
+            if len(shap_values) != len(feature_names):
+                logger.warning(
+                    "skipping SHAP payload for {} {} because feature lengths mismatch ({} != {})",
+                    model_name,
+                    ticker,
+                    len(shap_values),
+                    len(feature_names),
+                )
+                continue
+
+            ticker_payload[ticker] = {
+                "base_value": round(base_value, 6),
+                "features": {
+                    feature: round(float(value), 6)
+                    for feature, value in zip(feature_names, shap_values, strict=True)
+                },
+            }
+
+        if ticker_payload:
+            shap_payload[model_name] = ticker_payload
+
+    return shap_payload
+
+
+def _compute_row_shap(explainer: shap.TreeExplainer, row: pd.DataFrame) -> tuple[np.ndarray, float]:
+    try:
+        explanation = explainer(row)
+        values = getattr(explanation, "values", explanation)
+        base_values = getattr(explanation, "base_values", getattr(explainer, "expected_value", 0.0))
+    except Exception:
+        values = explainer.shap_values(row)
+        base_values = getattr(explainer, "expected_value", 0.0)
+
+    return _flatten_shap_values(values), _flatten_base_value(base_values)
+
+
+def _flatten_shap_values(values: Any) -> np.ndarray:
+    array = np.asarray(values, dtype=float)
+    while array.ndim > 1:
+        array = array[0]
+    return array.astype(float)
+
+
+def _flatten_base_value(base_values: Any) -> float:
+    array = np.asarray(base_values, dtype=float)
+    if array.size == 0:
+        return 0.0
+    return float(array.reshape(-1)[0])
 
 
 def series_to_ranked_records(series: pd.Series) -> list[dict[str, float]]:

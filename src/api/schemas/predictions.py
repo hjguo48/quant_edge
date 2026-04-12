@@ -40,3 +40,14 @@ class SignalHistoryPoint(BaseModel):
 class SignalHistoryResponse(BaseModel):
     ticker: str
     history: list[SignalHistoryPoint] = Field(default_factory=list)
+
+
+class ShapFeature(BaseModel):
+    feature: str
+    shap_value: float
+
+
+class TickerShapResponse(BaseModel):
+    ticker: str
+    signal_date: str | None = None
+    features: list[ShapFeature] = Field(default_factory=list)

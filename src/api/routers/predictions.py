@@ -7,11 +7,14 @@ from fastapi import APIRouter, HTTPException, Query
 from src.api.schemas.predictions import (
     PredictionItem,
     PredictionResponse,
+    ShapFeature,
     SignalHistoryPoint,
     SignalHistoryResponse,
     TickerPredictionResponse,
+    TickerShapResponse,
 )
 from src.api.services.greyscale_reader import GreyscaleReader
+from src.api.services.shap_service import get_shap_for_ticker
 
 router = APIRouter(prefix="/api/predictions", tags=["Predictions"])
 GREYSCALE_REPORT_DIR = Path("data/reports/greyscale")
@@ -63,4 +66,19 @@ async def get_signal_history(ticker: str) -> SignalHistoryResponse:
     return SignalHistoryResponse(
         ticker=ticker.upper(),
         history=[SignalHistoryPoint(**point) for point in history],
+    )
+
+
+@router.get("/{ticker}/shap", response_model=TickerShapResponse)
+async def get_ticker_shap(
+    ticker: str,
+    top_n: int = Query(default=15, ge=1, le=50, description="Number of top SHAP features to return"),
+) -> TickerShapResponse:
+    shap_result = get_shap_for_ticker(ticker.upper(), report_dir=GREYSCALE_REPORT_DIR, top_n=top_n)
+    if shap_result is None:
+        raise HTTPException(status_code=404, detail=f"No SHAP data for ticker '{ticker.upper()}'")
+    return TickerShapResponse(
+        ticker=shap_result["ticker"],
+        signal_date=shap_result.get("signal_date"),
+        features=[ShapFeature(**feature) for feature in shap_result.get("features", [])],
     )

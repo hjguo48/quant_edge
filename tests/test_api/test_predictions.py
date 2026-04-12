@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
@@ -75,13 +76,16 @@ def report_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
-def client(report_dir: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setattr(predictions_router, "GREYSCALE_REPORT_DIR", report_dir)
-    monkeypatch.setattr(predictions_router, "_READER", None)
-    monkeypatch.setattr(predictions_router, "_READER_DIR", None)
+def client(report_dir: Path) -> TestClient:
     app = FastAPI()
     app.include_router(predictions_router.router)
-    return TestClient(app)
+    with (
+        patch.object(predictions_router, "GREYSCALE_REPORT_DIR", report_dir),
+        patch.object(predictions_router, "_READER", None),
+        patch.object(predictions_router, "_READER_DIR", None),
+        TestClient(app) as client,
+    ):
+        yield client
 
 
 def test_get_latest_predictions(client: TestClient) -> None:
