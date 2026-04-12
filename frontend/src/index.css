@@ -132,8 +132,6 @@
 @layer utilities {
   .signal-confidence-slider {
     --slider-progress: 0%;
-    --slider-green: #00C805;
-    --slider-green-dark: #006B03;
     --slider-track-bg: rgba(30, 45, 71, 0.8);
     -webkit-appearance: none;
     appearance: none;
@@ -151,13 +149,9 @@
   .signal-confidence-slider::-webkit-slider-runnable-track {
     height: 6px;
     border-radius: 9999px;
-    background: linear-gradient(
-      90deg,
-      var(--slider-green-dark) 0%,
-      var(--slider-green) var(--slider-progress),
-      var(--slider-track-bg) var(--slider-progress),
-      var(--slider-track-bg) 100%
-    );
+    background:
+      linear-gradient(90deg, #FF5252, #FACC15 50%, #00C805) left / var(--slider-progress) 100% no-repeat,
+      var(--slider-track-bg);
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
     transition: box-shadow 0.3s ease;
   }
@@ -170,16 +164,17 @@
     height: 16px;
     margin-top: -5px;
     border-radius: 9999px;
-    background: radial-gradient(circle at 35% 35%, #ffffff, #e0e0e0);
-    border: 1.5px solid rgba(0, 200, 5, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow:
-      0 0 6px rgba(0, 200, 5, 0.3),
-      0 0 12px rgba(0, 200, 5, 0.1),
-      0 2px 4px rgba(0, 0, 0, 0.4);
+      inset 0 1px 1px rgba(255, 255, 255, 0.1),
+      0 0 8px rgba(255, 255, 255, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.3);
     transition:
       transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
-      box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-      border-color 0.2s ease;
+      box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   /* Firefox track */
@@ -193,71 +188,70 @@
   .signal-confidence-slider::-moz-range-progress {
     height: 6px;
     border-radius: 9999px;
-    background: linear-gradient(90deg, var(--slider-green-dark), var(--slider-green));
+    background: linear-gradient(90deg, #FF5252, #FACC15 50%, #00C805);
   }
 
   .signal-confidence-slider::-moz-range-thumb {
     width: 16px;
     height: 16px;
     border-radius: 9999px;
-    background: radial-gradient(circle at 35% 35%, #ffffff, #e0e0e0);
-    border: 1.5px solid rgba(0, 200, 5, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow:
-      0 0 6px rgba(0, 200, 5, 0.3),
-      0 0 12px rgba(0, 200, 5, 0.1),
-      0 2px 4px rgba(0, 0, 0, 0.4);
+      inset 0 1px 1px rgba(255, 255, 255, 0.1),
+      0 0 8px rgba(255, 255, 255, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.3);
     transition:
       transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
-      box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-      border-color 0.2s ease;
+      box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  /* Hover - glow intensifies */
+  /* Hover - glass and glow intensifies */
   .signal-confidence-slider:hover::-webkit-slider-thumb {
     transform: scale(1.15);
-    border-color: rgba(0, 200, 5, 0.5);
+    background: rgba(255, 255, 255, 0.18);
     box-shadow:
-      0 0 10px rgba(0, 200, 5, 0.45),
-      0 0 20px rgba(0, 200, 5, 0.15),
-      0 2px 6px rgba(0, 0, 0, 0.4);
+      inset 0 1px 1px rgba(255, 255, 255, 0.15),
+      0 0 12px rgba(255, 255, 255, 0.18),
+      0 2px 6px rgba(0, 0, 0, 0.35);
   }
 
   .signal-confidence-slider:hover::-moz-range-thumb {
     transform: scale(1.15);
-    border-color: rgba(0, 200, 5, 0.5);
+    background: rgba(255, 255, 255, 0.18);
     box-shadow:
-      0 0 10px rgba(0, 200, 5, 0.45),
-      0 0 20px rgba(0, 200, 5, 0.15),
-      0 2px 6px rgba(0, 0, 0, 0.4);
+      inset 0 1px 1px rgba(255, 255, 255, 0.15),
+      0 0 12px rgba(255, 255, 255, 0.18),
+      0 2px 6px rgba(0, 0, 0, 0.35);
   }
 
-  /* Active - maximum glow + bigger */
+  /* Active - maximum glass clarity + bigger */
   .signal-confidence-slider:active::-webkit-slider-thumb {
-    transform: scale(1.25);
-    border-color: rgba(0, 200, 5, 0.7);
+    transform: scale(1.2);
+    background: rgba(255, 255, 255, 0.22);
     box-shadow:
-      0 0 14px rgba(0, 200, 5, 0.6),
-      0 0 28px rgba(0, 200, 5, 0.2),
-      0 2px 8px rgba(0, 0, 0, 0.5);
+      inset 0 1px 1px rgba(255, 255, 255, 0.2),
+      0 0 16px rgba(255, 255, 255, 0.22),
+      0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
   .signal-confidence-slider:active::-moz-range-thumb {
-    transform: scale(1.25);
-    border-color: rgba(0, 200, 5, 0.7);
+    transform: scale(1.2);
+    background: rgba(255, 255, 255, 0.22);
     box-shadow:
-      0 0 14px rgba(0, 200, 5, 0.6),
-      0 0 28px rgba(0, 200, 5, 0.2),
-      0 2px 8px rgba(0, 0, 0, 0.5);
+      inset 0 1px 1px rgba(255, 255, 255, 0.2),
+      0 0 16px rgba(255, 255, 255, 0.22),
+      0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
   /* Track glow on hover */
   .signal-confidence-slider:hover::-webkit-slider-runnable-track {
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 8px rgba(0, 200, 5, 0.1);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 255, 255, 0.05);
   }
 
   .signal-confidence-slider:focus-visible::-webkit-slider-thumb,
   .signal-confidence-slider:focus-visible::-moz-range-thumb {
-    box-shadow: 0 0 0 4px rgba(0, 200, 5, 0.25);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
   }
 
   .shadow-custom {
