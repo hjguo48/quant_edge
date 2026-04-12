@@ -61,6 +61,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const [search, setSearch] = useState("");
   const [direction, setDirection] = useState("All");
   const [sectorFilter, setSectorFilter] = useState("All Sectors");
+  const [sectorOpen, setSectorOpen] = useState(false);
   const [minConf, setMinConf] = useState(0);
   const [sort, setSort] = useState<SortMode>("none");
   const [page, setPage] = useState(1);
@@ -189,22 +190,58 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
 
           {/* Sector Dropdown */}
           <div className="relative">
-            <select
-              value={sectorFilter}
-              onChange={(e) => setSectorFilter(e.target.value)}
-              className="appearance-none bg-muted text-sm text-foreground pl-3 pr-8 py-2 rounded-lg border border-transparent focus:border-primary/40 outline-none cursor-pointer hover:bg-accent transition-all"
-              style={sectorFilter !== "All Sectors" ? {
-                backgroundColor: getSectorColor(sectorFilter).bg,
-                color: getSectorColor(sectorFilter).text,
-                borderColor: getSectorColor(sectorFilter).border,
-              } : undefined}
+            <button
+              onClick={() => setSectorOpen(!sectorOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent hover:bg-accent transition-all text-sm"
             >
-              <option value="All Sectors">All Sectors</option>
-              {PRIMARY_SECTORS.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
+              {sectorFilter === "All Sectors" ? (
+                <span className="text-foreground">All Sectors</span>
+              ) : (
+                <span
+                  className="text-xs font-semibold px-2 py-0.5 rounded-md border"
+                  style={{
+                    backgroundColor: getSectorColor(sectorFilter).bg,
+                    color: getSectorColor(sectorFilter).text,
+                    borderColor: getSectorColor(sectorFilter).border,
+                  }}
+                >
+                  {sectorFilter}
+                </span>
+              )}
+              <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${sectorOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {sectorOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setSectorOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 z-20 bg-card border border-border rounded-xl shadow-lg py-1.5 min-w-[200px] max-h-[320px] overflow-y-auto">
+                  <button
+                    onClick={() => { setSectorFilter("All Sectors"); setSectorOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-sm transition-colors ${sectorFilter === "All Sectors" ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"}`}
+                  >
+                    All Sectors
+                  </button>
+                  {PRIMARY_SECTORS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => { setSectorFilter(s); setSectorOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${sectorFilter === s ? "bg-accent/70" : "hover:bg-accent/30"}`}
+                    >
+                      <span
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md border"
+                        style={{
+                          backgroundColor: getSectorColor(s).bg,
+                          color: getSectorColor(s).text,
+                          borderColor: getSectorColor(s).border,
+                        }}
+                      >
+                        {s}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="w-px h-5 bg-border" />
