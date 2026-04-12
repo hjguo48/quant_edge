@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { TrendingUp, TrendingDown, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight } from "lucide-react";
+import { TrendingUp, TrendingDown, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import StatCard from "../components/StatCard";
 import { fetchApi } from "../hooks/useApi";
@@ -64,6 +64,20 @@ const Portfolio = () => {
   const [budgetStr, setBudgetStr] = useState("100000");
   const [prevBudgetStr, setBudgetStrPrev] = useState("100000");
   const totalBudget = parseInt(budgetStr) || 0;
+  const [debouncedTotalBudget, setDebouncedTotalBudget] = useState(100000);
+
+  // Debounce budget calculation to avoid excessive API calls and layout flickering
+  useEffect(() => {
+    if (totalBudget < 1000) {
+      setDebouncedTotalBudget(0);
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      setDebouncedTotalBudget(totalBudget);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [totalBudget]);
 
   const currentQuery = useQuery<PortfolioCurrentResponse>({
     queryKey: ["portfolioCurrent"],
@@ -78,9 +92,11 @@ const Portfolio = () => {
   });
 
   const budgetQuery = useQuery<BudgetResponse>({
-    queryKey: ["portfolioBudget", totalBudget],
-    queryFn: () => fetchApi<BudgetResponse>(`/api/portfolio/budget?total_budget=${totalBudget}`),
+    queryKey: ["portfolioBudget", debouncedTotalBudget],
+    queryFn: () => fetchApi<BudgetResponse>(`/api/portfolio/budget?total_budget=${debouncedTotalBudget}`),
     retry: false,
+    enabled: debouncedTotalBudget >= 1000,
+    staleTime: 10000, // Cache for 10 seconds
   });
 
   const rebalanceQuery = useQuery<RebalanceResponse>({
@@ -132,12 +148,13 @@ const Portfolio = () => {
   // Handle Animated Budget Input
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, '');
+    if (val === '') val = '0';
     if (val.length > 9) val = val.slice(0, 9);
-    // Remove leading zeros
+    
+    // Remove leading zeros only if length > 1
     if (val.length > 1 && val.startsWith('0')) {
       val = val.replace(/^0+/, '');
     }
-    if (val === '') val = '0';
     
     setBudgetStrPrev(budgetStr);
     setBudgetStr(val);
@@ -460,27 +477,56 @@ const Portfolio = () => {
                 </div>
               </div>
 
-              <div className="space-y-3 pt-4">
+              <div className="space-y-3 pt-4 min-h-[450px]">
                 <div className="flex items-center px-4 py-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                   <div className="w-24">Ticker</div>
                   <div className="w-32 text-right">Optimal Weight</div>
                   <div className="flex-1 text-right">Cash Allocation</div>
                 </div>
+                
                 {totalBudget < 1000 ? (
-                  <div className="py-12 text-center text-xs text-muted-foreground italic border border-dashed border-border rounded-2xl bg-muted/10">
-                    Please enter a budget of at least $1,000 to see detailed allocations.
+                  <div className="py-16 text-center flex flex-col items-center justify-center border border-dashed border-border rounded-2xl bg-muted/10">
+                    <Calculator size={32} className="text-muted-foreground opacity-20 mb-3" />
+                    <p className="text-xs text-muted-foreground italic">
+                      Please enter a budget of at least $1,000 to see detailed allocations.
+                    </p>
                   </div>
-                ) : budgetQuery.isLoading ? (
-                  <div className="py-12 text-center text-xs text-muted-foreground animate-pulse italic">Calculating allocation matrix...</div>
-                ) : budgetQuery.data?.allocations.map((alloc) => (
-                  <div key={alloc.ticker} className="flex items-center px-5 py-4 rounded-xl border border-white/[0.03] bg-muted/20 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group">
-                    <div className="w-24 text-sm font-black text-foreground group-hover:text-primary transition-colors">{alloc.ticker}</div>
-                    <div className="w-32 text-right text-xs font-mono text-muted-foreground font-bold">{(alloc.weight * 100).toFixed(2)}%</div>
-                    <div className="flex-1 text-right text-base font-mono font-black text-bull group-hover:scale-105 transition-transform origin-right">
-                      ${alloc.dollar_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
+                ) : (debouncedTotalBudget !== totalBudget || budgetQuery.isFetching) ? (
+                  <div className="py-16 text-center flex flex-col items-center justify-center animate-in fade-in">
+                    <RefreshCw size={32} className="text-primary animate-spin opacity-20 mb-3" />
+                    <p className="text-xs text-muted-foreground animate-pulse italic">Calculating allocation matrix...</p>
                   </div>
-                ))}
+                ) : budgetQuery.isError ? (
+                  <div className="py-16 text-center flex flex-col items-center justify-center border border-bear/20 rounded-2xl bg-bear/5 animate-in fade-in">
+                    <AlertCircle size={32} className="text-bear opacity-50 mb-3" />
+                    <p className="text-xs text-bear font-medium">Calculation Failed</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 mb-4">{(budgetQuery.error as Error).message}</p>
+                    <button 
+                      onClick={() => budgetQuery.refetch()}
+                      className="px-3 py-1.5 rounded-lg bg-muted hover:bg-accent text-[10px] font-bold text-foreground transition-colors flex items-center gap-1.5"
+                    >
+                      <RefreshCw size={12} />
+                      Retry Calculation
+                    </button>
+                  </div>
+                ) : budgetQuery.data?.allocations && budgetQuery.data.allocations.length > 0 ? (
+                  <div className="space-y-3 animate-in fade-in duration-500">
+                    {budgetQuery.data.allocations.map((alloc) => (
+                      <div key={alloc.ticker} className="flex items-center px-5 py-4 rounded-xl border border-white/[0.03] bg-muted/20 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group">
+                        <div className="w-24 text-sm font-black text-foreground group-hover:text-primary transition-colors">{alloc.ticker}</div>
+                        <div className="w-32 text-right text-xs font-mono text-muted-foreground font-bold">{(alloc.weight * 100).toFixed(2)}%</div>
+                        <div className="flex-1 text-right text-base font-mono font-black text-bull group-hover:scale-105 transition-transform origin-right">
+                          ${alloc.dollar_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-16 text-center flex flex-col items-center justify-center border border-dashed border-border rounded-2xl bg-muted/10">
+                    <ShieldCheck size={32} className="text-muted-foreground opacity-20 mb-3" />
+                    <p className="text-xs text-muted-foreground">No allocation data returned for this budget.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

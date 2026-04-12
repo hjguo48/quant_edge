@@ -15,6 +15,7 @@ export async function fetchApi<T>(
     const timeoutId = window.setTimeout(() => controller.abort(), timeout);
 
     try {
+      console.log(`[fetchApi] Attempt ${attempt + 1}/${retries + 1} for: ${path}`);
       const response = await fetch(path, {
         signal: controller.signal,
       });
@@ -44,5 +45,8 @@ export async function fetchApi<T>(
     }
   }
 
+  if (lastError) {
+    console.error(`[fetchApi] Failed after ${retries} retries for path: ${path}. Error:`, lastError);
+  }
   throw lastError ?? new Error("Request failed");
 }
