@@ -5,9 +5,13 @@ from collections import Counter
 from dataclasses import asdict
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any
+
+for env_var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+    os.environ.setdefault(env_var, "1")
 
 from loguru import logger
 import numpy as np
@@ -36,14 +40,19 @@ from src.portfolio.black_litterman import (
     black_litterman_portfolio,
     build_black_litterman_posterior,
 )
-from src.portfolio.constraints import CVXPYOptimizer, PortfolioConstraints, apply_turnover_buffer
+from src.portfolio.constraints import (
+    CVXPYOptimizer,
+    PortfolioConstraints,
+    apply_turnover_buffer,
+    apply_weight_constraints,
+)
 from src.portfolio.equal_weight import equal_weight_portfolio
 from src.portfolio.shrinkage import CovarianceResult
 from src.portfolio.vol_weighted import vol_inverse_portfolio
 from src.risk.portfolio_risk import PortfolioRiskEngine, compute_sector_weights
 from src.stats.spa import run_spa_fallback
 
-EXPECTED_BRANCH = "feature/week15-portfolio-optimization"
+EXPECTED_BRANCH = "feature/w22-predictions-shap-portfolio"
 BENCHMARK_TICKER = "SPY"
 DEFAULT_EXTENDED_REPORT_PATH = "data/reports/extended_walkforward.json"
 DEFAULT_PREDICTIONS_PATH = "data/backtest/extended_walkforward_predictions.parquet"
@@ -61,6 +70,14 @@ BASELINE_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "vol_inverse_buffered": {
         "weighting_scheme": "vol_inverse",
+        "selection_pct": 0.20,
+        "sell_buffer_pct": 0.25,
+        "min_trade_weight": 0.01,
+        "max_weight": 0.05,
+        "min_holdings": 20,
+    },
+    "score_weighted_buffered": {
+        "weighting_scheme": "score_weighted",
         "selection_pct": 0.20,
         "sell_buffer_pct": 0.25,
         "min_trade_weight": 0.01,
@@ -147,6 +164,7 @@ def main(argv: list[str] | None = None) -> int:
     shrinkage_records: list[CovarianceResult] = []
 
     for scheme_name, config in BASELINE_CONFIGS.items():
+        logger.info("running baseline scheme {}", scheme_name)
         scheme_reports[scheme_name] = run_baseline_scheme(
             scheme_name=scheme_name,
             scheme_config=config,
@@ -158,6 +176,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     for scheme_name, config in OPTIMIZED_CONFIGS.items():
+        logger.info("running optimized scheme {}", scheme_name)
         scheme_payload = run_optimized_scheme(
             scheme_name=scheme_name,
             scheme_config=config,
@@ -261,19 +280,33 @@ def run_baseline_scheme(
 ) -> dict[str, Any]:
     window_results: list[dict[str, Any]] = []
     for window_id in sorted(predictions_by_window):
-        portfolio = simulate_portfolio(
-            predictions=predictions_by_window[window_id],
-            prices=prices,
-            cost_model=cost_model,
-            weighting_scheme=scheme_config["weighting_scheme"],
-            benchmark_ticker=benchmark_ticker,
-            universe_by_date=None,
-            selection_pct=float(scheme_config["selection_pct"]),
-            sell_buffer_pct=scheme_config["sell_buffer_pct"],
-            min_trade_weight=float(scheme_config["min_trade_weight"]),
-            max_weight=float(scheme_config["max_weight"]),
-            min_holdings=int(scheme_config["min_holdings"]),
-        )
+        logger.info("scheme={} window={} (baseline)", scheme_name, window_id)
+        if scheme_config.get("weighting_scheme") == "score_weighted":
+            portfolio = simulate_score_weighted_portfolio(
+                predictions=predictions_by_window[window_id],
+                prices=prices,
+                cost_model=cost_model,
+                benchmark_ticker=benchmark_ticker,
+                selection_pct=float(scheme_config["selection_pct"]),
+                sell_buffer_pct=scheme_config["sell_buffer_pct"],
+                min_trade_weight=float(scheme_config["min_trade_weight"]),
+                max_weight=float(scheme_config["max_weight"]),
+                min_holdings=int(scheme_config["min_holdings"]),
+            )
+        else:
+            portfolio = simulate_portfolio(
+                predictions=predictions_by_window[window_id],
+                prices=prices,
+                cost_model=cost_model,
+                weighting_scheme=scheme_config["weighting_scheme"],
+                benchmark_ticker=benchmark_ticker,
+                universe_by_date=None,
+                selection_pct=float(scheme_config["selection_pct"]),
+                sell_buffer_pct=scheme_config["sell_buffer_pct"],
+                min_trade_weight=float(scheme_config["min_trade_weight"]),
+                max_weight=float(scheme_config["max_weight"]),
+                min_holdings=int(scheme_config["min_holdings"]),
+            )
         window_results.append(build_window_payload(
             window_id=window_id,
             metadata=window_metadata[window_id],
@@ -287,6 +320,213 @@ def run_baseline_scheme(
         "windows": window_results,
         "series": build_period_series(window_results),
     }
+
+
+def simulate_score_weighted_portfolio(
+    *,
+    predictions: pd.Series,
+    prices: pd.DataFrame,
+    cost_model: AlmgrenChrissCostModel,
+    benchmark_ticker: str = "SPY",
+    initial_capital: float = 1_000_000.0,
+    selection_pct: float = 0.10,
+    sell_buffer_pct: float | None = None,
+    min_trade_weight: float = 0.0,
+    max_weight: float = 0.05,
+    min_holdings: int = 20,
+) -> PortfolioBacktestResult:
+    if predictions.empty:
+        return build_backtest_result(periods=[], cost_totals=empty_cost_breakdown())
+
+    execution = prepare_execution_price_frame(prices)
+    if execution.empty:
+        raise RuntimeError("Execution price frame is empty.")
+
+    benchmark = benchmark_ticker.upper()
+    signal_dates = pd.DatetimeIndex(
+        pd.to_datetime(predictions.index.get_level_values("trade_date")),
+    ).sort_values().unique()
+    trade_dates = execution.index.get_level_values("trade_date").unique().sort_values()
+    schedule = build_execution_schedule(signal_dates, trade_dates)
+
+    constraints = PortfolioConstraints(
+        max_weight=max_weight,
+        min_holdings=min_holdings,
+        turnover_buffer=min_trade_weight,
+    )
+
+    current_weights: dict[str, float] = {}
+    portfolio_value = float(initial_capital)
+    periods: list[PortfolioPeriodResult] = []
+    cost_totals = empty_cost_breakdown()
+
+    for signal_date, next_signal_date in zip(signal_dates[:-1], signal_dates[1:]):
+        execution_date = schedule.get(pd.Timestamp(signal_date))
+        exit_date = schedule.get(pd.Timestamp(next_signal_date))
+        if execution_date is None or exit_date is None or exit_date <= execution_date:
+            continue
+
+        score_frame = predictions.xs(signal_date, level="trade_date").dropna().astype(float).sort_values(ascending=False)
+        if (execution_date, benchmark) not in execution.index or (exit_date, benchmark) not in execution.index:
+            continue
+
+        entry_slice = execution.xs(execution_date, level="trade_date")
+        exit_slice = execution.xs(exit_date, level="trade_date")
+        eligible = (
+            set(score_frame.index.astype(str))
+            & set(entry_slice.index.astype(str))
+            & set(exit_slice.index.astype(str))
+        )
+        eligible.discard(benchmark)
+        if len(eligible) < max(min_holdings, 2):
+            continue
+
+        filtered_scores = score_frame.loc[score_frame.index.astype(str).isin(eligible)].sort_values(ascending=False)
+        if filtered_scores.empty:
+            continue
+
+        ranking = filtered_scores.index.astype(str).tolist()
+        candidate_tickers = select_candidate_tickers(
+            ranking=ranking,
+            current_weights=current_weights,
+            selection_pct=selection_pct,
+            sell_buffer_pct=sell_buffer_pct,
+            min_holdings=min_holdings,
+            max_weight=max_weight,
+        )
+        candidate_scores = filtered_scores.reindex(candidate_tickers).dropna()
+        if candidate_scores.empty:
+            continue
+
+        target_weights = build_score_weighted_weights(
+            candidate_scores=candidate_scores,
+            constraints=constraints,
+        )
+        if min_trade_weight > 0.0:
+            buffer_reference_weights = {
+                ticker: weight
+                for ticker, weight in current_weights.items()
+                if ticker in ranking
+            }
+            target_weights = apply_turnover_buffer(
+                target_weights,
+                current_weights=buffer_reference_weights,
+                min_trade_weight=min_trade_weight,
+                ranking=ranking,
+                constraints=constraints,
+            )
+        else:
+            target_weights = apply_weight_constraints(
+                target_weights,
+                ranking=ranking,
+                constraints=constraints,
+            )
+
+        if not target_weights:
+            continue
+
+        previous_weights = current_weights.copy()
+        period_costs = empty_cost_breakdown()
+        all_trade_tickers = set(previous_weights) | set(target_weights)
+        for ticker in all_trade_tickers:
+            delta_weight = target_weights.get(ticker, 0.0) - previous_weights.get(ticker, 0.0)
+            if np.isclose(delta_weight, 0.0, atol=1e-12):
+                continue
+            bar = entry_slice.loc[ticker]
+            order_notional = abs(delta_weight) * portfolio_value
+            order_shares = order_notional / max(float(bar["execution_price"]), 1e-12)
+            estimate = cost_model.estimate_trade(
+                order_shares=order_shares,
+                execution_price=float(bar["execution_price"]),
+                sigma_20d=float(bar["sigma_20d"]),
+                adv_20d_shares=float(bar["adv_20d_shares"]),
+                open_gap=float(bar["open_gap"]),
+                execution_volume_ratio=float(bar["volume_ratio"]),
+            )
+            period_costs["commission"] += estimate.commission_cost
+            period_costs["spread"] += estimate.spread_cost
+            period_costs["temporary_impact"] += estimate.temporary_cost
+            period_costs["permanent_impact"] += estimate.permanent_cost
+            period_costs["gap_penalty"] += estimate.gap_cost
+            period_costs["total"] += estimate.total_cost
+
+        cost_rate = period_costs["total"] / portfolio_value if portfolio_value else 0.0
+
+        asset_returns: dict[str, float] = {}
+        gross_return = 0.0
+        gaps: list[float] = []
+        for ticker, weight in target_weights.items():
+            entry_bar = entry_slice.loc[ticker]
+            exit_bar = exit_slice.loc[ticker]
+            entry_price = max(float(entry_bar["execution_price"]), 1e-12)
+            exit_price = float(exit_bar["execution_price"])
+            realized = (exit_price / entry_price) - 1.0
+            asset_returns[ticker] = realized
+            gross_return += weight * realized
+            gaps.append(abs(float(entry_bar["open_gap"])))
+
+        bench_entry = entry_slice.loc[benchmark]
+        bench_exit = exit_slice.loc[benchmark]
+        benchmark_return = (
+            float(bench_exit["execution_price"]) / max(float(bench_entry["execution_price"]), 1e-12)
+        ) - 1.0
+        net_return = ((1.0 - cost_rate) * (1.0 + gross_return)) - 1.0
+
+        portfolio_value *= 1.0 + net_return
+        drift_denominator = 1.0 + gross_return
+        if np.isclose(drift_denominator, 0.0, atol=1e-12):
+            current_weights = {}
+        else:
+            current_weights = {
+                ticker: float((weight * (1.0 + asset_returns[ticker])) / drift_denominator)
+                for ticker, weight in target_weights.items()
+                if (weight * (1.0 + asset_returns[ticker])) > 1e-8
+            }
+
+        turnover = 0.5 * sum(
+            abs(target_weights.get(ticker, 0.0) - previous_weights.get(ticker, 0.0))
+            for ticker in set(target_weights) | set(previous_weights)
+        )
+        periods.append(
+            PortfolioPeriodResult(
+                signal_date=pd.Timestamp(signal_date).date().isoformat(),
+                execution_date=pd.Timestamp(execution_date).date().isoformat(),
+                exit_date=pd.Timestamp(exit_date).date().isoformat(),
+                universe_size=int(len(filtered_scores)),
+                selected_count=int(len(target_weights)),
+                turnover=float(turnover),
+                cost_rate=float(cost_rate),
+                gross_return=float(gross_return),
+                net_return=float(net_return),
+                benchmark_return=float(benchmark_return),
+                gross_excess_return=float(gross_return - benchmark_return),
+                net_excess_return=float(net_return - benchmark_return),
+                avg_gap=float(np.mean(gaps)) if gaps else 0.0,
+                cost_breakdown={key: float(value) for key, value in period_costs.items()},
+                selected_tickers=list(target_weights),
+            ),
+        )
+        for key, value in period_costs.items():
+            cost_totals[key] += float(value)
+
+    return build_backtest_result(periods=periods, cost_totals=cost_totals)
+
+
+def build_score_weighted_weights(
+    *,
+    candidate_scores: pd.Series,
+    constraints: PortfolioConstraints,
+) -> dict[str, float]:
+    pos_scores = candidate_scores[candidate_scores > 0.0]
+    if pos_scores.empty:
+        return {}
+
+    raw = pos_scores / pos_scores.sum()
+    raw = raw.clip(upper=float(constraints.max_weight))
+    if float(raw.sum()) <= 0.0:
+        return {}
+    raw = raw / raw.sum()
+    return {str(ticker): float(weight) for ticker, weight in raw.items() if weight > 0.0}
 
 
 def run_optimized_scheme(
@@ -307,6 +547,7 @@ def run_optimized_scheme(
         "risk_rule_triggers": Counter(),
     }
     for window_id in sorted(predictions_by_window):
+        logger.info("scheme={} window={} (optimized)", scheme_name, window_id)
         portfolio, window_diag = simulate_optimized_portfolio(
             predictions=predictions_by_window[window_id],
             prices=prices,
@@ -636,12 +877,16 @@ def build_window_payload(
     portfolio: PortfolioBacktestResult,
     extra_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    best_hyperparams = metadata.get("best_hyperparams")
+    if best_hyperparams is None and metadata.get("best_alpha") is not None:
+        best_hyperparams = {"alpha": metadata["best_alpha"]}
+
     payload = {
         "window_id": window_id,
         "train_period": metadata["train_period"],
         "validation_period": metadata["validation_period"],
         "test_period": metadata["test_period"],
-        "best_hyperparams": metadata["best_hyperparams"],
+        "best_hyperparams": best_hyperparams,
         "test_ic": float(metadata["test_metrics"]["ic"]),
         "test_rank_ic": float(metadata["test_metrics"]["rank_ic"]),
         "test_icir": float(metadata["test_metrics"]["icir"]),
@@ -719,19 +964,23 @@ def build_period_series(window_results: list[dict[str, Any]]) -> dict[str, list[
 
 def build_spa_payload(scheme_reports: dict[str, dict[str, Any]]) -> dict[str, Any]:
     benchmark_series = period_records_to_series(scheme_reports["equal_weight_buffered"]["series"]["net_excess_return"])
-    bl_series = period_records_to_series(scheme_reports["black_litterman_upgraded"]["series"]["net_excess_return"])
-    cvx_series = period_records_to_series(scheme_reports["cvxpy_optimized"]["series"]["net_excess_return"])
+    comparisons = {
+        "vol_inverse_vs_ew": "vol_inverse_buffered",
+        "score_weighted_vs_ew": "score_weighted_buffered",
+        "bl_vs_ew": "black_litterman_upgraded",
+        "cvxpy_vs_ew": "cvxpy_optimized",
+    }
     return {
-        "bl_vs_ew": run_spa_fallback(
+        label: run_spa_fallback(
             benchmark_series=benchmark_series,
-            competitors={"black_litterman_upgraded": bl_series},
+            competitors={
+                scheme_name: period_records_to_series(
+                    scheme_reports[scheme_name]["series"]["net_excess_return"],
+                ),
+            },
             benchmark_name="equal_weight_buffered",
-        ).to_dict(),
-        "cvxpy_vs_ew": run_spa_fallback(
-            benchmark_series=benchmark_series,
-            competitors={"cvxpy_optimized": cvx_series},
-            benchmark_name="equal_weight_buffered",
-        ).to_dict(),
+        ).to_dict()
+        for label, scheme_name in comparisons.items()
     }
 
 
@@ -775,21 +1024,30 @@ def build_recommendation(
         reverse=True,
     )
     best_scheme, best_net_excess = ordered[0]
-    bl_significant = bool(spa_payload["bl_vs_ew"]["significant"])
-    cvx_significant = bool(spa_payload["cvxpy_vs_ew"]["significant"])
+    spa_key_by_scheme = {
+        "vol_inverse_buffered": "vol_inverse_vs_ew",
+        "score_weighted_buffered": "score_weighted_vs_ew",
+        "black_litterman_upgraded": "bl_vs_ew",
+        "cvxpy_optimized": "cvxpy_vs_ew",
+    }
+    best_scheme_spa = spa_payload.get(spa_key_by_scheme.get(best_scheme, ""), {})
+    best_scheme_significant = bool(best_scheme_spa.get("significant"))
 
-    if best_scheme == "cvxpy_optimized" and cvx_significant:
-        decision = "adopt_cvxpy_optimized"
-        rationale = "CVXPY delivered the highest net excess and cleared the SPA significance check versus equal weight."
-    elif best_scheme == "black_litterman_upgraded" and bl_significant:
-        decision = "adopt_black_litterman_upgraded"
-        rationale = "Upgraded Black-Litterman delivered the highest net excess and cleared the SPA significance check."
-    elif best_scheme in {"cvxpy_optimized", "black_litterman_upgraded"}:
-        decision = "keep_equal_weight_buffered"
-        rationale = "The optimized scheme improved the headline metric, but the SPA fallback did not establish significance versus the buffered equal-weight baseline."
-    else:
+    if best_scheme == "equal_weight_buffered":
         decision = "keep_equal_weight_buffered"
         rationale = "Equal-weight buffered remains the strongest post-cost scheme on this comparison."
+    elif best_scheme_significant:
+        decision = f"adopt_{best_scheme}"
+        rationale = (
+            f"{best_scheme} delivered the highest net excess and cleared the SPA significance "
+            "check versus the buffered equal-weight baseline."
+        )
+    else:
+        decision = "keep_equal_weight_buffered"
+        rationale = (
+            f"{best_scheme} led annualized net excess, but the SPA fallback did not establish "
+            "significance versus the buffered equal-weight baseline."
+        )
 
     return {
         "best_scheme": best_scheme,
