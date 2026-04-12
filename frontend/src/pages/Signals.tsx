@@ -12,6 +12,7 @@ interface Prediction {
   rank: number;
   percentile: number;
   sector?: string | null;
+  company_name?: string | null;
 }
 
 interface LatestPredictionsResponse {
@@ -25,6 +26,8 @@ const DIRECTIONS = ["All", "Long Signals", "Short Signals"];
 const PAGE_SIZE = 10;
 const SORT_OPTIONS = [
   { key: "none", label: "Default" },
+  { key: "conf_desc", label: "Conf \u2193" },
+  { key: "conf_asc", label: "Conf \u2191" },
   { key: "score", label: "Score" },
   { key: "strength", label: "Strength" },
 ] as const;
@@ -95,7 +98,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const signalRows = useMemo(() => {
     return predictions.map((prediction) => ({
       ticker: prediction.ticker,
-      name: prediction.ticker,
+      name: prediction.company_name || prediction.ticker,
       direction: prediction.score > 0 ? ("long" as const) : ("short" as const),
       confidence: Math.round(prediction.percentile),
       score: prediction.score,
@@ -122,6 +125,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         return matchSearch && matchDir && matchConf && matchSector;
       })
       .sort((a, b) => {
+        if (sort === "conf_desc") return b.confidence - a.confidence;
+        if (sort === "conf_asc") return a.confidence - b.confidence;
         if (sort === "score") return b.score - a.score;
         if (sort === "strength") return Math.abs(b.score) - Math.abs(a.score);
         if (sort === "none") return a.shuffleKey - b.shuffleKey;
@@ -265,24 +270,30 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           {/* Min Confidence */}
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground whitespace-nowrap">Min conf:</span>
-            <div className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-2">
-              <input
-                type="range"
-                min={0}
-                max={90}
-                step={5}
-                value={minConf}
-                onChange={(e) => setMinConf(Number(e.target.value))}
-                className="signal-confidence-slider"
-                style={sliderStyle}
-                aria-label="Minimum confidence"
-              />
-              <span className="w-10 text-right text-xs font-mono font-semibold text-foreground">{minConf}%</span>
-            </div>
+            <input
+              type="range"
+              min={0}
+              max={90}
+              step={5}
+              value={minConf}
+              onChange={(e) => setMinConf(Number(e.target.value))}
+              className="signal-confidence-slider"
+              style={sliderStyle}
+              aria-label="Minimum confidence"
+            />
+            <span className="w-10 text-right text-xs font-mono font-semibold text-foreground">{minConf}%</span>
           </div>
 
           <div className="ml-auto flex items-center gap-1.5">
-            <SortDesc size={13} className="text-muted-foreground" />
+            <SortDesc
+              size={13}
+              className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+              onClick={() => {
+                const keys = SORT_OPTIONS.map((o) => o.key);
+                const idx = keys.indexOf(sort);
+                setSort(keys[(idx + 1) % keys.length] as SortMode);
+              }}
+            />
             <span className="text-xs text-muted-foreground">Sort:</span>
             {SORT_OPTIONS.map((option) => (
               <button
