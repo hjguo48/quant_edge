@@ -132,95 +132,132 @@
 @layer utilities {
   .signal-confidence-slider {
     --slider-progress: 0%;
-    --slider-accent: #00C805;
+    --slider-green: #00C805;
+    --slider-green-dark: #006B03;
+    --slider-track-bg: rgba(30, 45, 71, 0.8);
     -webkit-appearance: none;
     appearance: none;
     width: 8rem;
-    height: 1.75rem;
+    height: 6px;
     background: transparent;
     cursor: pointer;
-    border-radius: 9999px;
   }
 
   .signal-confidence-slider:focus {
     outline: none;
   }
 
-  /* Track - thick pill shape like iOS */
+  /* Track */
   .signal-confidence-slider::-webkit-slider-runnable-track {
-    height: 1.75rem;
+    height: 6px;
     border-radius: 9999px;
     background: linear-gradient(
       90deg,
-      var(--slider-accent) 0%,
-      var(--slider-accent) var(--slider-progress),
-      rgba(148, 163, 184, 0.15) var(--slider-progress),
-      rgba(148, 163, 184, 0.15) 100%
+      var(--slider-green-dark) 0%,
+      var(--slider-green) var(--slider-progress),
+      var(--slider-track-bg) var(--slider-progress),
+      var(--slider-track-bg) 100%
     );
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: background 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: box-shadow 0.3s ease;
   }
 
-  /* Thumb - small circle embedded in track */
+  /* Thumb */
   .signal-confidence-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 1.25rem;
-    height: 1.25rem;
-    margin-top: 0.25rem;
+    width: 16px;
+    height: 16px;
+    margin-top: -5px;
     border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.95);
-    border: none;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08);
+    background: radial-gradient(circle at 35% 35%, #ffffff, #e0e0e0);
+    border: 1.5px solid rgba(0, 200, 5, 0.3);
+    box-shadow:
+      0 0 6px rgba(0, 200, 5, 0.3),
+      0 0 12px rgba(0, 200, 5, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.4);
     transition:
-      transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-      box-shadow 0.2s ease;
+      transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+      border-color 0.2s ease;
   }
 
   /* Firefox track */
   .signal-confidence-slider::-moz-range-track {
-    height: 1.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    height: 6px;
     border-radius: 9999px;
-    background: rgba(148, 163, 184, 0.15);
-    backdrop-filter: blur(12px);
+    background: var(--slider-track-bg);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
   }
 
   .signal-confidence-slider::-moz-range-progress {
-    height: 1.75rem;
-    border-radius: 9999px 0 0 9999px;
-    background: var(--slider-accent);
+    height: 6px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, var(--slider-green-dark), var(--slider-green));
   }
 
   .signal-confidence-slider::-moz-range-thumb {
-    width: 1.25rem;
-    height: 1.25rem;
-    border: none;
+    width: 16px;
+    height: 16px;
     border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08);
+    background: radial-gradient(circle at 35% 35%, #ffffff, #e0e0e0);
+    border: 1.5px solid rgba(0, 200, 5, 0.3);
+    box-shadow:
+      0 0 6px rgba(0, 200, 5, 0.3),
+      0 0 12px rgba(0, 200, 5, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.4);
     transition:
-      transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-      box-shadow 0.2s ease;
+      transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+      border-color 0.2s ease;
   }
 
-  /* Hover/Active - jelly bounce */
-  .signal-confidence-slider:hover::-webkit-slider-thumb,
+  /* Hover - glow intensifies */
+  .signal-confidence-slider:hover::-webkit-slider-thumb {
+    transform: scale(1.15);
+    border-color: rgba(0, 200, 5, 0.5);
+    box-shadow:
+      0 0 10px rgba(0, 200, 5, 0.45),
+      0 0 20px rgba(0, 200, 5, 0.15),
+      0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  .signal-confidence-slider:hover::-moz-range-thumb {
+    transform: scale(1.15);
+    border-color: rgba(0, 200, 5, 0.5);
+    box-shadow:
+      0 0 10px rgba(0, 200, 5, 0.45),
+      0 0 20px rgba(0, 200, 5, 0.15),
+      0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Active - maximum glow + bigger */
   .signal-confidence-slider:active::-webkit-slider-thumb {
-    transform: scale(1.15);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 3px rgba(0, 200, 5, 0.2);
+    transform: scale(1.25);
+    border-color: rgba(0, 200, 5, 0.7);
+    box-shadow:
+      0 0 14px rgba(0, 200, 5, 0.6),
+      0 0 28px rgba(0, 200, 5, 0.2),
+      0 2px 8px rgba(0, 0, 0, 0.5);
   }
 
-  .signal-confidence-slider:hover::-moz-range-thumb,
   .signal-confidence-slider:active::-moz-range-thumb {
-    transform: scale(1.15);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 3px rgba(0, 200, 5, 0.2);
+    transform: scale(1.25);
+    border-color: rgba(0, 200, 5, 0.7);
+    box-shadow:
+      0 0 14px rgba(0, 200, 5, 0.6),
+      0 0 28px rgba(0, 200, 5, 0.2),
+      0 2px 8px rgba(0, 0, 0, 0.5);
   }
 
-  .signal-confidence-slider:active::-webkit-slider-runnable-track {
-    filter: brightness(1.1);
+  /* Track glow on hover */
+  .signal-confidence-slider:hover::-webkit-slider-runnable-track {
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 8px rgba(0, 200, 5, 0.1);
+  }
+
+  .signal-confidence-slider:focus-visible::-webkit-slider-thumb,
+  .signal-confidence-slider:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 4px rgba(0, 200, 5, 0.25);
   }
 
   .shadow-custom {
