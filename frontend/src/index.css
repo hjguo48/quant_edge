@@ -410,10 +410,10 @@
     to { transform: translateY(100%); opacity: 0; }
   }
   .digit-animate-in {
-    animation: digit-slide-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation: digit-slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
   .digit-animate-out {
-    animation: digit-slide-out 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation: digit-slide-out 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
 
   /* Progress Bar Glow */
@@ -436,44 +436,52 @@
 
   @keyframes fly-to-chart {
     0% {
-      transform: translate(0, 0) scale(1) rotate(0deg);
+      transform: translate3d(0, 0, 0) scale(1);
       opacity: 1;
-      filter: drop-shadow(0 0 0px var(--primary));
     }
-    30% {
-      transform: translate(
-        calc((var(--end-x) - var(--start-x)) * 0.3),
-        calc((var(--end-y) - var(--start-y)) * 0.3 - 60px)
-      ) scale(1.4) rotate(15deg);
-      filter: drop-shadow(0 0 12px var(--primary));
+    40% {
+      transform: translate3d(
+        calc((var(--end-x) - var(--start-x)) * 0.4),
+        calc((var(--end-y) - var(--start-y)) * 0.4 - 50px),
+        0
+      ) scale(1.1);
       opacity: 1;
+    }
+    85% {
+      transform: translate3d(
+        calc((var(--end-x) - var(--start-x)) * 0.92),
+        calc((var(--end-y) - var(--start-y)) * 0.92),
+        0
+      ) scale(1.05);
+      opacity: 0.9;
     }
     100% {
-      transform: translate(
+      transform: translate3d(
         calc(var(--end-x) - var(--start-x)),
-        calc(var(--end-y) - var(--start-y))
-      ) scale(0.4) rotate(-5deg);
+        calc(var(--end-y) - var(--start-y)),
+        0
+      ) scale(0.9);
       opacity: 0;
-      filter: drop-shadow(0 0 4px var(--primary));
     }
   }
 
   .animate-fly-to-chart {
-    animation: fly-to-chart 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation: fly-to-chart 800ms cubic-bezier(0.22, 0.68, 0.35, 1) forwards;
+    will-change: transform, opacity;
   }
 
   @keyframes jelly-bounce {
     0% { transform: scale(1, 1); }
-    15% { transform: scale(0.92, 1.08); }
-    30% { transform: scale(1.08, 0.92); }
-    45% { transform: scale(0.97, 1.03); }
-    60% { transform: scale(1.03, 0.97); }
-    75% { transform: scale(0.99, 1.01); }
+    15% { transform: scale(0.97, 1.03); }
+    30% { transform: scale(1.03, 0.97); }
+    45% { transform: scale(0.99, 1.01); }
+    60% { transform: scale(1.01, 0.99); }
+    75% { transform: scale(1, 1); }
     100% { transform: scale(1, 1); }
   }
 
   .animate-jelly {
-    animation: jelly-bounce 700ms ease-out forwards;
+    animation: jelly-bounce 700ms ease-out;
   }
 
   @keyframes chart-pulse {
