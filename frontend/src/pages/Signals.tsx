@@ -1,36 +1,54 @@
 import { useState } from "react";
-import { Filter, Search, SortDesc, Download, RefreshCw } from "lucide-react";
+import { Filter, Search, SortDesc, Download, RefreshCw, AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import SignalRow from "../components/SignalRow";
+import { fetchApi } from "../hooks/useApi";
 
-const SIGNALS_DATA = [
-  { ticker: "NVDA", name: "NVIDIA Corp.", direction: "long" as const, confidence: 91, alpha: 3.24, time: "5m ago", sector: "Technology", sparkData: [18, 22, 20, 28, 25, 32, 30, 38, 35, 42] },
-  { ticker: "AAPL", name: "Apple Inc.", direction: "long" as const, confidence: 83, alpha: 1.87, time: "8m ago", sector: "Technology", sparkData: [10, 12, 11, 15, 14, 18, 16, 20, 19, 24] },
-  { ticker: "TSLA", name: "Tesla Inc.", direction: "short" as const, confidence: 74, alpha: -1.82, time: "12m ago", sector: "Consumer", sparkData: [32, 28, 30, 25, 27, 22, 24, 19, 21, 16] },
-  { ticker: "MSFT", name: "Microsoft Corp.", direction: "long" as const, confidence: 83, alpha: 2.14, time: "18m ago", sector: "Technology", sparkData: [15, 17, 16, 20, 19, 22, 21, 25, 23, 27] },
-  { ticker: "META", name: "Meta Platforms", direction: "long" as const, confidence: 67, alpha: 1.41, time: "31m ago", sector: "Technology", sparkData: [8, 11, 10, 13, 12, 16, 14, 18, 16, 20] },
-  { ticker: "AMZN", name: "Amazon.com", direction: "short" as const, confidence: 58, alpha: -0.93, time: "45m ago", sector: "Consumer", sparkData: [22, 20, 21, 18, 19, 16, 17, 14, 15, 12] },
-  { ticker: "JPM", name: "JPMorgan Chase", direction: "long" as const, confidence: 76, alpha: 1.56, time: "1h ago", sector: "Finance", sparkData: [12, 14, 13, 16, 15, 18, 17, 20, 19, 22] },
-  { ticker: "XOM", name: "Exxon Mobil", direction: "short" as const, confidence: 62, alpha: -1.12, time: "1h ago", sector: "Energy", sparkData: [28, 25, 26, 22, 24, 20, 22, 18, 20, 16] },
-  { ticker: "UNH", name: "UnitedHealth Group", direction: "long" as const, confidence: 88, alpha: 2.67, time: "2h ago", sector: "Healthcare", sparkData: [14, 16, 15, 19, 17, 22, 20, 24, 22, 27] },
-  { ticker: "V", name: "Visa Inc.", direction: "long" as const, confidence: 71, alpha: 1.23, time: "2h ago", sector: "Finance", sparkData: [10, 12, 11, 14, 13, 16, 15, 18, 17, 20] },
-  { ticker: "HD", name: "Home Depot", direction: "short" as const, confidence: 55, alpha: -0.74, time: "3h ago", sector: "Consumer", sparkData: [20, 18, 19, 16, 17, 14, 15, 12, 13, 10] },
-  { ticker: "GOOGL", name: "Alphabet Inc.", direction: "long" as const, confidence: 79, alpha: 1.98, time: "3h ago", sector: "Technology", sparkData: [15, 17, 16, 20, 18, 23, 21, 25, 23, 28] },
-];
+interface Prediction {
+  ticker: string;
+  score: number;
+  rank: number;
+  percentile: number;
+}
 
-const SECTORS = ["All Sectors", "Technology", "Finance", "Healthcare", "Energy", "Consumer"];
-const DIRECTIONS = ["All", "Long Signals", "Short Signals", "Neutral"];
+interface LatestPredictionsResponse {
+  signal_date: string;
+  week_number: number;
+  universe_size: number;
+  predictions: Prediction[];
+}
+
+const SECTORS = ["All Sectors"];
+const DIRECTIONS = ["All", "Long Signals", "Short Signals"];
 
 const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?: (ticker: string) => void }) => {
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("All Sectors");
   const [direction, setDirection] = useState("All");
   const [minConf, setMinConf] = useState(0);
-  const [sort, setSort] = useState<"confidence" | "alpha" | "time">("confidence");
-  const [refreshing, setRefreshing] = useState(false);
+  const [sort, setSort] = useState<"confidence" | "alpha" | "rank">("confidence");
 
-  const filtered = SIGNALS_DATA
+  const { data, isLoading, error, refetch, isFetching } = useQuery<LatestPredictionsResponse>({
+    queryKey: ["latestPredictions"],
+    queryFn: () => fetchApi<LatestPredictionsResponse>("/api/predictions/latest?top_n=100"),
+  });
+
+  const predictions = data?.predictions || [];
+
+  const filtered = predictions
+    .map(p => ({
+      ticker: p.ticker,
+      name: p.ticker, // API doesn't provide name yet
+      direction: p.score > 0 ? "long" as const : "short" as const,
+      confidence: Math.round(p.percentile),
+      alpha: p.score,
+      rank: p.rank,
+      time: data?.signal_date || "Current",
+      sector: "N/A",
+      sparkData: [] as number[],
+    }))
     .filter((s) => {
-      const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase()) || s.name.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase());
       const matchSector = sector === "All Sectors" || s.sector === sector;
       const matchDir =
         direction === "All" ||
@@ -42,11 +60,12 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
     .sort((a, b) => {
       if (sort === "confidence") return b.confidence - a.confidence;
       if (sort === "alpha") return Math.abs(b.alpha) - Math.abs(a.alpha);
+      if (sort === "rank") return a.rank - b.rank;
       return 0;
     });
 
-  const longCount = SIGNALS_DATA.filter((s) => s.direction === "long").length;
-  const shortCount = SIGNALS_DATA.filter((s) => s.direction === "short").length;
+  const longCount = predictions.filter((p) => p.score > 0).length;
+  const shortCount = predictions.filter((p) => p.score <= 0).length;
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5">
@@ -60,11 +79,12 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1000); }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent border border-border transition-all duration-200"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent border border-border transition-all duration-200 disabled:opacity-50"
           >
-            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-            Refresh
+            <RefreshCw size={14} className={isFetching ? "animate-spin" : ""} />
+            {isFetching ? "Refreshing..." : "Refresh"}
           </button>
           <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-primary text-primary-foreground btn-primary">
             <Download size={14} />
@@ -110,7 +130,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <select
             value={sector}
             onChange={(e) => setSector(e.target.value)}
-            className="bg-muted text-sm text-foreground px-3 py-2 rounded-lg border border-transparent outline-none cursor-pointer hover:bg-accent transition-colors"
+            disabled={true}
+            className="bg-muted text-sm text-foreground px-3 py-2 rounded-lg border border-transparent outline-none cursor-pointer hover:bg-accent transition-colors opacity-50"
           >
             {SECTORS.map((s) => (
               <option key={s} value={s} className="bg-popover">{s}</option>
@@ -135,7 +156,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="ml-auto flex items-center gap-1.5">
             <SortDesc size={13} className="text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Sort:</span>
-            {(["confidence", "alpha", "time"] as const).map((s) => (
+            {(["confidence", "alpha", "rank"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setSort(s)}
@@ -155,13 +176,32 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="w-24 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ticker</div>
           <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Signal</div>
           <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confidence</div>
-          <div className="w-20 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Est. Alpha</div>
+          <div className="w-20 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Score</div>
           <div className="w-20 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">Trend</div>
-          <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Time</div>
+          <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Date</div>
           <div className="w-4" />
         </div>
 
-        {filtered.length > 0 ? (
+        {isLoading ? (
+          <div className="p-8 space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 animate-pulse">
+                <div className="h-10 bg-muted rounded w-24" />
+                <div className="h-10 bg-muted rounded w-28" />
+                <div className="h-4 bg-muted rounded flex-1" />
+                <div className="h-10 bg-muted rounded w-20" />
+                <div className="h-10 bg-muted rounded w-20" />
+                <div className="h-10 bg-muted rounded w-28" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <AlertCircle size={32} className="mb-3 text-bear opacity-80" />
+            <p className="text-sm">Failed to load signals: {(error as Error).message}</p>
+            <button onClick={() => refetch()} className="mt-4 text-xs text-primary hover:underline">Try again</button>
+          </div>
+        ) : filtered.length > 0 ? (
           filtered.map((s, i) => (
             <div key={s.ticker} className="fade-in-up" style={{ animationDelay: `${i * 40}ms` }}>
               <SignalRow
@@ -179,7 +219,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       </div>
 
       <p className="text-xs text-muted-foreground text-center pb-2">
-        Showing {filtered.length} of {SIGNALS_DATA.length} model outputs · SEC compliant disclosure · For informational purposes only
+        Showing {filtered.length} of {predictions.length} model outputs · SEC compliant disclosure · For informational purposes only
       </p>
     </div>
   );
