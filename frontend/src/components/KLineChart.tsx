@@ -26,7 +26,7 @@ interface StockPricesResponse {
   }>;
 }
 
-type RangeKey = "1D" | "1W" | "1M" | "3M" | "1Y";
+type RangeKey = "1D" | "1W" | "1M" | "3M" | "1Y" | "5Y" | "All";
 type ChartMode = "candlestick" | "line";
 
 interface RangeOption {
@@ -54,6 +54,8 @@ const RANGE_OPTIONS: RangeOption[] = [
   { key: "1M", label: "1M", days: 21 },
   { key: "3M", label: "3M", days: 63 },
   { key: "1Y", label: "1Y", days: 252 },
+  { key: "5Y", label: "5Y", days: 1260 },
+  { key: "All", label: "All", days: 2520 },
 ];
 
 function generateCandles(n: number): Candle[] {

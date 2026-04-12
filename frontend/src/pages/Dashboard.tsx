@@ -1,6 +1,6 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { Info, Layers, BarChart2, X } from "lucide-react";
+import { Info, Layers, BarChart2 } from "lucide-react";
 import StatCard from "../components/StatCard";
 import KLineChart from "../components/KLineChart";
 import HeatmapChart from "../components/HeatmapChart";
@@ -122,6 +122,8 @@ const DASHBOARD_RANGES = [
   { key: "30D", label: "30D", days: 21 },
   { key: "90D", label: "90D", days: 63 },
   { key: "1Y", label: "1Y", days: 252 },
+  { key: "5Y", label: "5Y", days: 1260 },
+  { key: "All", label: "All", days: 2520 },
 ] as const;
 
 type DashboardRangeKey = (typeof DASHBOARD_RANGES)[number]["key"];
@@ -206,6 +208,14 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
       }));
   }, [predictionsData]);
 
+  // Default chart to top signal's ticker once loaded
+  useEffect(() => {
+    if (topSignals.length > 0 && chartTicker === "SPY" && !activeTicker) {
+      setChartTicker(topSignals[0].ticker);
+      setActiveTicker(topSignals[0].ticker);
+    }
+  }, [topSignals, chartTicker, activeTicker]);
+
   const handleTickerToChart = useCallback((ticker: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (ticker === chartTicker) return;
@@ -216,10 +226,10 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     if (targetRect) {
       setFlyingTicker({
         ticker,
-        startX: btnRect.left,
-        startY: btnRect.top,
-        endX: targetRect.left + (targetRect.width / 2) - 20,
-        endY: targetRect.top + (targetRect.height / 2) - 10,
+        startX: btnRect.left + btnRect.width / 2 - 24,
+        startY: btnRect.top + btnRect.height / 2 - 16,
+        endX: targetRect.left + 28,
+        endY: targetRect.top + 28,
       });
 
       setTimeout(() => {
@@ -228,16 +238,9 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
         setFlyingTicker(null);
         setIsJelly(true);
         setTimeout(() => setIsJelly(false), 700);
-      }, 600);
+      }, 800);
     }
   }, [chartTicker]);
-
-  const resetChart = () => {
-    setChartTicker("SPY");
-    setActiveTicker(null);
-    setIsJelly(true);
-    setTimeout(() => setIsJelly(false), 700);
-  };
 
   const sectorHeatmapCols = sectors.map((sector) => sector.sector);
   const sectorHeatmapValues = sectors.length > 0 ? [sectors.map((sector) => sector.avg_change_pct)] : undefined;
@@ -405,31 +408,7 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
           ref={chartContainerRef}
           className={`flex-1 min-w-0 bg-card rounded-xl border flex flex-col transition-all duration-500 overflow-hidden relative ${isJelly ? "animate-jelly border-primary/50" : "border-border"}`}
         >
-          {/* Chart Header - Standard document flow to avoid overlap */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-muted/10">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background border border-white/5 shadow-lg">
-                <span className="text-xs font-black text-primary tracking-widest">{chartTicker}</span>
-                {chartTicker !== "SPY" && (
-                  <button 
-                    onClick={resetChart}
-                    className="p-0.5 rounded-full hover:bg-white/10 text-muted-foreground transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-40">Live Analysis</div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              <span className="text-[9px] font-black text-primary/60 uppercase tracking-widest">Real-time Feed</span>
-            </div>
-          </div>
-          
-          <div className="flex-1">
-            <KLineChart key={chartTicker} ticker={chartTicker} height={320} defaultRange="1M" />
-          </div>
+          <KLineChart key={chartTicker} ticker={chartTicker} height={320} defaultRange="1M" />
         </div>
 
         <div className="w-72 bg-card rounded-xl border border-border flex-shrink-0 flex flex-col fade-in-up stagger-4">
@@ -473,7 +452,8 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
                     <button 
                       onClick={(e) => handleTickerToChart(s.ticker, e)}
                       className={`mr-4 p-2 rounded-lg transition-all ${isActive ? "bg-primary/20 text-primary" : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground"}`}
-                      title="View Chart"
+                      title={`View ${s.ticker} chart`}
+                      aria-label={`View ${s.ticker} chart`}
                     >
                       <BarChart2 size={14} />
                     </button>
@@ -505,7 +485,7 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
       {/* Flying Ticker Animation Portal */}
       {flyingTicker && createPortal(
         <div 
-          className="fixed z-[9999] pointer-events-none px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-black shadow-[0_0_20px_rgba(0,200,5,0.5)] animate-fly-to-chart"
+          className="fixed z-[9999] pointer-events-none rounded-xl bg-primary px-4 py-1.5 text-sm font-black text-primary-foreground shadow-[0_0_20px_rgba(0,200,5,0.5)] animate-fly-to-chart"
           style={{
             left: flyingTicker.startX,
             top: flyingTicker.startY,
@@ -513,7 +493,7 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
             "--start-y": `${flyingTicker.startY}px`,
             "--end-x": `${flyingTicker.endX}px`,
             "--end-y": `${flyingTicker.endY}px`,
-          } as any}
+          } as CSSProperties}
         >
           {flyingTicker.ticker}
         </div>,
