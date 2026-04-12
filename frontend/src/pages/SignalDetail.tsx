@@ -595,8 +595,8 @@ const SignalDetail = ({
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 xl:flex-row items-stretch">
-        <div className="flex-1 bg-card rounded-2xl border border-border p-6 shadow-xl fade-in-up stagger-4 min-h-[400px] flex flex-col">
+      <div className="flex flex-col gap-6 xl:flex-row items-stretch xl:h-[480px]">
+        <div className="flex-1 bg-card rounded-2xl border border-border p-6 shadow-xl fade-in-up stagger-4 flex flex-col min-h-[400px] xl:min-h-0">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 rounded-xl bg-primary/10">
               <BarChart3 size={18} className="text-primary" />
@@ -667,11 +667,13 @@ const SignalDetail = ({
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No fundamental metrics are available.</p>
+            <div className="flex-1 flex items-center justify-center border border-dashed border-border rounded-2xl bg-muted/5">
+              <p className="text-xs text-muted-foreground">No fundamental metrics are available.</p>
+            </div>
           )}
         </div>
 
-        <div className="w-full xl:w-[340px] bg-card rounded-2xl border border-border shadow-xl fade-in-up stagger-5 flex-shrink-0 flex flex-col min-h-[400px]">
+        <div className="w-full xl:w-[340px] bg-card rounded-2xl border border-border shadow-xl fade-in-up stagger-5 flex-shrink-0 flex flex-col min-h-[400px] xl:min-h-0">
           <div className="p-6 border-b border-white/5">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-primary/10">
@@ -855,10 +857,10 @@ const SignalDetail = ({
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 group relative ${
+            className={`px-6 py-2.5 rounded-xl text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300 relative ${
               activeTab === tab
                 ? "bg-card text-primary shadow-2xl border border-white/10 scale-[1.02]"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/[0.03] hover:shadow-lg"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/10"
             }`}
           >
             {tab}
@@ -960,7 +962,7 @@ const SignalDetail = ({
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="bg-primary/[0.03] border-t-2 border-primary/10">
+                        <tr className="border-t-2 border-primary/10">
                           <td className="px-6 py-5 text-xs font-black text-primary uppercase tracking-[0.2em]">Integrated Fusion</td>
                           <td className="px-6 py-5 text-right" />
                           <td className="px-6 py-5 text-right" />
