@@ -740,13 +740,15 @@ const SignalDetail = ({
         </div>
       )}
 
-      <div className="glass-tab-container w-fit fade-in-up stagger-1">
+      <div className="flex gap-1 bg-muted rounded-xl p-1 w-fit fade-in-up stagger-1">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`glass-tab capitalize ${
-              activeTab === tab ? "glass-tab-active" : "glass-tab-inactive"
+            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all duration-200 ${
+              activeTab === tab
+                ? "bg-card text-foreground shadow-custom"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {tab}

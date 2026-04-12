@@ -292,7 +292,7 @@ const Portfolio = () => {
               </p>
             </div>
           </div>
-          <div className="glass-tab-container !bg-muted/20">
+          <div className="flex gap-1 bg-muted/50 rounded-xl p-1 border border-border/50">
             {[
               { id: "holdings", label: "Holdings", icon: ShieldCheck },
               { id: "trades", label: "Trades", icon: ShoppingCart },
@@ -301,7 +301,7 @@ const Portfolio = () => {
               <button 
                 key={t.id} 
                 onClick={() => setTab(t.id)} 
-                className={`glass-tab flex items-center gap-2 !px-4 !py-2 ${tab === t.id ? "glass-tab-active" : "glass-tab-inactive"}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all duration-300 ${tab === t.id ? "bg-card text-foreground shadow-xl border border-border scale-[1.02]" : "text-muted-foreground hover:text-foreground"}`}
               >
                 <t.icon size={14} />
                 {t.label}
