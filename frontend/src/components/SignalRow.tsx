@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import MiniSparkline from "./MiniSparkline";
+import { getSectorColor } from "../constants/sectorColors";
 
 interface SignalRowProps {
   ticker?: string;
@@ -12,21 +13,6 @@ interface SignalRowProps {
   sector?: string;
   onClick?: () => void;
 }
-
-const SECTOR_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  "Technology":             { bg: "rgba(59,130,246,0.12)",  text: "#60A5FA",  border: "rgba(59,130,246,0.25)" },
-  "Healthcare":             { bg: "rgba(168,85,247,0.12)",  text: "#C084FC",  border: "rgba(168,85,247,0.25)" },
-  "Financials":             { bg: "rgba(234,179,8,0.12)",   text: "#FACC15",  border: "rgba(234,179,8,0.25)" },
-  "Consumer Discretionary": { bg: "rgba(249,115,22,0.12)",  text: "#FB923C",  border: "rgba(249,115,22,0.25)" },
-  "Consumer Staples":       { bg: "rgba(34,197,94,0.12)",   text: "#4ADE80",  border: "rgba(34,197,94,0.25)" },
-  "Energy":                 { bg: "rgba(239,68,68,0.12)",   text: "#F87171",  border: "rgba(239,68,68,0.25)" },
-  "Industrials":            { bg: "rgba(148,163,184,0.12)", text: "#94A3B8",  border: "rgba(148,163,184,0.25)" },
-  "Materials":              { bg: "rgba(45,212,191,0.12)",   text: "#2DD4BF",  border: "rgba(45,212,191,0.25)" },
-  "Real Estate":            { bg: "rgba(244,114,182,0.12)", text: "#F472B6",  border: "rgba(244,114,182,0.25)" },
-  "Utilities":              { bg: "rgba(163,230,53,0.12)",  text: "#A3E635",  border: "rgba(163,230,53,0.25)" },
-  "Communication Services": { bg: "rgba(56,189,248,0.12)",  text: "#38BDF8",  border: "rgba(56,189,248,0.25)" },
-  "Default":                { bg: "rgba(148,163,184,0.08)", text: "#64748B",  border: "rgba(148,163,184,0.15)" },
-};
 
 const SignalRow = ({
   ticker = "AAPL",
@@ -46,7 +32,7 @@ const SignalRow = ({
     direction === "long" ? "LONG SIGNAL" : direction === "short" ? "SHORT SIGNAL" : "NEUTRAL";
   const isPositive = direction === "long";
 
-  const sColor = (sector && SECTOR_COLORS[sector]) || SECTOR_COLORS["Default"];
+  const sColor = getSectorColor(sector);
 
   return (
     <div

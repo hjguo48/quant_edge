@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, type CSSProperties } from "react";
-import { Filter, Search, SortDesc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Filter, Search, SortDesc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import SignalRow from "../components/SignalRow";
 import { fetchApi } from "../hooks/useApi";
+import { getSectorColor, PRIMARY_SECTORS } from "../constants/sectorColors";
 
 interface Prediction {
   ticker: string;
@@ -59,6 +60,7 @@ function generateDirectionalSparkData(score: number, seedKey: string): number[] 
 const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?: (ticker: string) => void }) => {
   const [search, setSearch] = useState("");
   const [direction, setDirection] = useState("All");
+  const [sectorFilter, setSectorFilter] = useState("All Sectors");
   const [minConf, setMinConf] = useState(0);
   const [sort, setSort] = useState<SortMode>("none");
   const [page, setPage] = useState(1);
@@ -87,6 +89,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       score: prediction.score,
       rank: prediction.rank,
       sector: prediction.sector || "—",
+      shuffleKey: hashTickerSeed(prediction.ticker + ":" + prediction.rank),
       sparkData: generateDirectionalSparkData(
         prediction.score,
         `${prediction.ticker}:${prediction.rank}:${prediction.score.toFixed(6)}`,
@@ -103,19 +106,21 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           (direction === "Long Signals" && s.direction === "long") ||
           (direction === "Short Signals" && s.direction === "short");
         const matchConf = s.confidence >= minConf;
-        return matchSearch && matchDir && matchConf;
+        const matchSector = sectorFilter === "All Sectors" || s.sector === sectorFilter;
+        return matchSearch && matchDir && matchConf && matchSector;
       })
       .sort((a, b) => {
         if (sort === "score") return b.score - a.score;
         if (sort === "strength") return Math.abs(b.score) - Math.abs(a.score);
+        if (sort === "none") return a.shuffleKey - b.shuffleKey;
         return 0;
       });
-  }, [signalRows, search, direction, minConf, sort]);
+  }, [signalRows, search, direction, minConf, sort, sectorFilter]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [search, direction, minConf, sort]);
+  }, [search, direction, minConf, sort, sectorFilter]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -178,6 +183,28 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 {d}
               </button>
             ))}
+          </div>
+
+          <div className="w-px h-5 bg-border" />
+
+          {/* Sector Dropdown */}
+          <div className="relative">
+            <select
+              value={sectorFilter}
+              onChange={(e) => setSectorFilter(e.target.value)}
+              className="appearance-none bg-muted text-sm text-foreground pl-3 pr-8 py-2 rounded-lg border border-transparent focus:border-primary/40 outline-none cursor-pointer hover:bg-accent transition-all"
+              style={sectorFilter !== "All Sectors" ? {
+                backgroundColor: getSectorColor(sectorFilter).bg,
+                color: getSectorColor(sectorFilter).text,
+                borderColor: getSectorColor(sectorFilter).border,
+              } : undefined}
+            >
+              <option value="All Sectors">All Sectors</option>
+              {PRIMARY_SECTORS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
           </div>
 
           <div className="w-px h-5 bg-border" />

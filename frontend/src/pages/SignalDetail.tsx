@@ -15,6 +15,7 @@ import StatCard from "../components/StatCard";
 import ShapWaterfall from "../components/ShapWaterfall";
 import SignalHistory from "../components/SignalHistory";
 import { fetchApi } from "../hooks/useApi";
+import { getSectorColor } from "../constants/sectorColors";
 
 interface SignalDetailProps {
   ticker?: string;
@@ -672,12 +673,19 @@ const SignalDetail = ({
                   </div>
                 )}
                 {detail?.sector && (
-                  <span className="text-xs text-muted-foreground px-2 py-1 rounded-lg bg-muted">
+                  <span
+                    className="text-xs font-semibold px-2 py-0.5 rounded-md border"
+                    style={{
+                      backgroundColor: getSectorColor(detail.sector).bg,
+                      color: getSectorColor(detail.sector).text,
+                      borderColor: getSectorColor(detail.sector).border,
+                    }}
+                  >
                     {detail.sector}
                   </span>
                 )}
                 {detail?.industry && (
-                  <span className="text-xs text-muted-foreground px-2 py-1 rounded-lg bg-muted">
+                  <span className="text-xs text-muted-foreground px-2 py-1 rounded-lg bg-muted/50 border border-border/50">
                     {detail.industry}
                   </span>
                 )}
