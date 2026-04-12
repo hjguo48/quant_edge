@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, type CSSProperties } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Filter, Search, SortDesc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import SignalRow from "../components/SignalRow";
@@ -62,9 +63,19 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const [direction, setDirection] = useState("All");
   const [sectorFilter, setSectorFilter] = useState("All Sectors");
   const [sectorOpen, setSectorOpen] = useState(false);
+  const sectorBtnRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
   const [minConf, setMinConf] = useState(0);
   const [sort, setSort] = useState<SortMode>("none");
   const [page, setPage] = useState(1);
+
+  const toggleSectorDropdown = useCallback(() => {
+    if (!sectorOpen && sectorBtnRef.current) {
+      const rect = sectorBtnRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setSectorOpen((prev) => !prev);
+  }, [sectorOpen]);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<LatestPredictionsResponse>({
     queryKey: ["latestPredictions"],
@@ -189,9 +200,10 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="w-px h-5 bg-border" />
 
           {/* Sector Dropdown */}
-          <div className="relative">
+          <div>
             <button
-              onClick={() => setSectorOpen(!sectorOpen)}
+              ref={sectorBtnRef}
+              onClick={toggleSectorDropdown}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent hover:bg-accent transition-all text-sm"
             >
               {sectorFilter === "All Sectors" ? (
@@ -211,10 +223,13 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
               <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${sectorOpen ? "rotate-180" : ""}`} />
             </button>
 
-            {sectorOpen && (
+            {sectorOpen && createPortal(
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setSectorOpen(false)} />
-                <div className="absolute top-full left-0 mt-1 z-20 bg-card border border-border rounded-xl shadow-lg py-1.5 min-w-[200px] max-h-[320px] overflow-y-auto">
+                <div className="fixed inset-0 z-[9998]" onClick={() => setSectorOpen(false)} />
+                <div
+                  className="fixed z-[9999] bg-card border border-border rounded-xl shadow-lg py-1.5 min-w-[200px] max-h-[320px] overflow-y-auto"
+                  style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                >
                   <button
                     onClick={() => { setSectorFilter("All Sectors"); setSectorOpen(false); }}
                     className={`w-full text-left px-3 py-2 text-sm transition-colors ${sectorFilter === "All Sectors" ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"}`}
@@ -240,7 +255,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                     </button>
                   ))}
                 </div>
-              </>
+              </>,
+              document.body
             )}
           </div>
 
