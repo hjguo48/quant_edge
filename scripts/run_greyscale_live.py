@@ -51,6 +51,13 @@ from src.features.pipeline import FeaturePipeline
 from src.labels.forward_returns import compute_forward_returns
 from src.models.evaluation import information_coefficient, information_coefficient_series
 from src.portfolio.equal_weight import equal_weight_portfolio
+from src.portfolio.constraints import (
+    PortfolioConstraints,
+    apply_turnover_buffer,
+    apply_weight_constraints,
+)
+from src.backtest.execution import select_candidate_tickers
+from src.stats.psi import compute_feature_psi_report
 from src.risk.data_risk import DataRiskMonitor
 from src.risk.operational_risk import OperationalRiskMonitor
 from src.risk.portfolio_risk import PortfolioRiskEngine, compute_turnover
@@ -59,7 +66,7 @@ from src.risk.signal_risk import SignalRiskMonitor
 DEFAULT_BUNDLE_PATH = "data/models/fusion_model_bundle_60d.json"
 DEFAULT_REPORT_DIR = "data/reports/greyscale"
 DEFAULT_REFERENCE_FEATURE_MATRIX_PATH = "data/features/walkforward_feature_matrix_60d.parquet"
-DEFAULT_SELECTION_PCT = 0.10
+DEFAULT_SELECTION_PCT = 0.25
 DEFAULT_HISTORY_LOOKBACK_DAYS = 400
 DEFAULT_FEATURE_DRIFT_LOOKBACK_DAYS = 60
 DEFAULT_MIN_SIGNAL_CROSS_SECTION = 50
@@ -163,6 +170,29 @@ def main(argv: list[str] | None = None) -> int:
         max_dates=max(args.feature_drift_lookback_days, args.signal_lookback_points),
     )
 
+    psi_cfg = bundle.get("psi_monitoring", {})
+    psi_report_data: list[dict] = []
+    if psi_cfg.get("enabled") and not historical_feature_matrix.empty:
+        try:
+            ref_df = historical_feature_matrix.reset_index(level="trade_date", drop=True)
+            cur_df = current_feature_matrix.reset_index(level="trade_date", drop=True)
+            psi_report_data = compute_feature_psi_report(
+                reference_df=ref_df,
+                current_df=cur_df,
+                feature_columns=retained_features,
+                n_bins=int(psi_cfg.get("n_bins", 10)),
+                psi_alert_threshold=float(psi_cfg.get("psi_alert_threshold", 0.25)),
+                fill_rate_change_threshold=float(psi_cfg.get("fill_rate_change_threshold", 0.05)),
+            )
+            psi_alerts = [r for r in psi_report_data if r.get("psi_alert")]
+            if psi_alerts:
+                logger.warning("PSI alerts on {} features: {}", len(psi_alerts),
+                               [r["feature"] for r in psi_alerts])
+            else:
+                logger.info("PSI monitoring: all {} features stable", len(psi_report_data))
+        except Exception as exc:
+            logger.warning("PSI monitoring failed: {}", exc)
+
     raw_predictions, normalized_predictions = score_live_cross_section(
         models=models,
         current_feature_matrix=current_feature_matrix,
@@ -189,9 +219,20 @@ def main(argv: list[str] | None = None) -> int:
     pairwise_rank_correlation = compute_pairwise_rank_correlations(model_scores_by_ticker)
 
     previous_target_weights = extract_previous_target_weights(existing_reports)
-    raw_weights = equal_weight_portfolio(fused_scores_by_ticker, selection_pct=args.selection_pct)
+    turnover_cfg = bundle.get("turnover_controls", {})
+    if turnover_cfg.get("enabled") and turnover_cfg.get("weighting_scheme") == "score_weighted":
+        raw_weights = build_score_weighted_portfolio(
+            scores=fused_scores_by_ticker,
+            previous_weights=previous_target_weights,
+            turnover_cfg=turnover_cfg,
+            selection_pct=args.selection_pct,
+        )
+        portfolio_scheme = "score_weighted"
+    else:
+        raw_weights = equal_weight_portfolio(fused_scores_by_ticker, selection_pct=args.selection_pct)
+        portfolio_scheme = "equal_weight"
     if not raw_weights:
-        raise RuntimeError("Equal-weight portfolio construction returned no candidate weights.")
+        raise RuntimeError("Portfolio construction returned no candidate weights.")
 
     return_history, spy_returns = build_return_history(prices)
     sector_map = load_sector_map()
@@ -391,14 +432,19 @@ def main(argv: list[str] | None = None) -> int:
             },
         },
         "portfolio_metrics": {
+            "portfolio_scheme": portfolio_scheme,
+            "turnover_controls": json_safe(turnover_cfg) if portfolio_scheme == "score_weighted" else None,
             "turnover_vs_previous": float(compute_turnover(constrained.weights, previous_target_weights)),
             "holding_count_after_risk": int(constrained.holding_count),
             "gross_exposure_after_risk": float(constrained.gross_exposure),
             "cash_weight_after_risk": float(constrained.cash_weight),
         },
+        "feature_drift_psi": json_safe(psi_report_data) if psi_report_data else None,
         "notes": [
             "Fusion ranking uses cross-sectional z-scored model outputs with rolling-IC weights.",
             "Regime adjusts per-model fusion weights (blend toward equal-weight) to change cross-sectional rankings.",
+            f"Portfolio scheme: {portfolio_scheme} (Phase B optimal turnover controls)." if portfolio_scheme == "score_weighted" else "Portfolio scheme: equal_weight.",
+            "PSI monitoring checks feature distribution drift against historical reference.",
             "Dry-run mode writes a report but does not place trades or persist audit rows.",
         ],
     }
@@ -646,6 +692,111 @@ def apply_regime_to_model_weights(
     if total > 0:
         adjusted = {name: w / total for name, w in adjusted.items()}
     return adjusted
+
+
+def build_score_weighted_portfolio(
+    *,
+    scores: pd.Series,
+    previous_weights: dict[str, float],
+    turnover_cfg: dict[str, Any],
+    selection_pct: float,
+) -> dict[str, float]:
+    """Build score-weighted portfolio with Phase B turnover controls.
+
+    Applies in order: candidate selection with hysteresis → score weighting →
+    weight shrinkage → no-trade zone → turnover buffer.
+    """
+    sel_pct = float(turnover_cfg.get("selection_pct", selection_pct))
+    sell_buffer_pct = float(turnover_cfg.get("sell_buffer_pct", 0.40))
+    weight_shrinkage = float(turnover_cfg.get("weight_shrinkage", 0.0))
+    no_trade_zone = float(turnover_cfg.get("no_trade_zone", 0.0))
+    min_trade_weight = float(turnover_cfg.get("min_trade_weight", 0.005))
+    max_weight = float(turnover_cfg.get("max_weight", 0.05))
+    min_holdings = int(turnover_cfg.get("min_holdings", 20))
+
+    ranked = scores.dropna().astype(float).sort_values(ascending=False)
+    if ranked.empty:
+        return {}
+
+    ranking = ranked.index.astype(str).tolist()
+    constraints = PortfolioConstraints(
+        max_weight=max_weight,
+        min_holdings=min_holdings,
+        turnover_buffer=min_trade_weight,
+    )
+
+    # Step 1: Candidate selection with hysteresis
+    candidate_tickers = select_candidate_tickers(
+        ranking=ranking,
+        current_weights=previous_weights,
+        selection_pct=sel_pct,
+        sell_buffer_pct=sell_buffer_pct,
+        min_holdings=min_holdings,
+        max_weight=max_weight,
+    )
+    candidate_scores = ranked.reindex(candidate_tickers).dropna()
+    if candidate_scores.empty:
+        return {}
+
+    # Step 2: Score-weighted targets
+    pos_scores = candidate_scores[candidate_scores > 0.0]
+    if pos_scores.empty:
+        return {}
+    raw = pos_scores / pos_scores.sum()
+    raw = raw.clip(upper=max_weight)
+    total = float(raw.sum())
+    if total <= 0.0:
+        return {}
+    raw = raw / total
+    target_weights = {str(t): float(w) for t, w in raw.items() if w > 0.0}
+
+    # Step 3: Weight shrinkage — blend toward previous
+    if weight_shrinkage > 0.0 and previous_weights:
+        all_tickers = set(target_weights) | set(previous_weights)
+        blended: dict[str, float] = {}
+        for ticker in all_tickers:
+            t = target_weights.get(ticker, 0.0)
+            p = previous_weights.get(ticker, 0.0)
+            w = (1.0 - weight_shrinkage) * t + weight_shrinkage * p
+            if w > 1e-8:
+                blended[ticker] = w
+        bl_total = sum(blended.values())
+        if bl_total > 0:
+            target_weights = {t: w / bl_total for t, w in blended.items()}
+
+    # Step 4: No-trade zone — keep previous weight if change is tiny
+    if no_trade_zone > 0.0 and previous_weights:
+        result: dict[str, float] = {}
+        all_tickers_ntz = set(target_weights) | set(previous_weights)
+        for ticker in all_tickers_ntz:
+            t = target_weights.get(ticker, 0.0)
+            p = previous_weights.get(ticker, 0.0)
+            if abs(t - p) < no_trade_zone and p > 0:
+                result[ticker] = p
+            elif t > 0:
+                result[ticker] = t
+        ntz_total = sum(result.values())
+        if ntz_total > 0:
+            target_weights = {t: w / ntz_total for t, w in result.items() if w > 0}
+
+    # Step 5: Turnover buffer (min_trade_weight)
+    if min_trade_weight > 0.0:
+        buffer_ref = {t: w for t, w in previous_weights.items() if t in set(ranking)}
+        target_weights = apply_turnover_buffer(
+            target_weights,
+            current_weights=buffer_ref,
+            min_trade_weight=min_trade_weight,
+            ranking=ranking,
+            constraints=constraints,
+        )
+    else:
+        target_weights = apply_weight_constraints(
+            target_weights,
+            ranking=ranking,
+            constraints=constraints,
+        )
+
+    return target_weights
 
 
 def combine_current_predictions(

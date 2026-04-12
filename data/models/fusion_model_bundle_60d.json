@@ -289,5 +289,32 @@
     "validation_end": "2024-08-31",
     "validation_start": "2024-03-01"
   },
-  "window_id": "W11"
+  "window_id": "W11",
+  "turnover_controls": {
+    "enabled": true,
+    "weighting_scheme": "score_weighted",
+    "selection_pct": 0.25,
+    "sell_buffer_pct": 0.40,
+    "weight_shrinkage": 0.50,
+    "no_trade_zone": 0.005,
+    "min_trade_weight": 0.005,
+    "turnover_penalty_lambda": 0.0,
+    "max_weight": 0.05,
+    "min_holdings": 20,
+    "source": "Phase B sweep (S1.8-S1.10)",
+    "validation": {
+      "net_excess_pct": 5.76,
+      "average_turnover": 0.0268,
+      "cost_drag_pct": 0.79,
+      "sharpe_proxy": 0.613,
+      "spa_p_value": 0.033,
+      "g3_gate": "6/6 PASS"
+    }
+  },
+  "psi_monitoring": {
+    "enabled": true,
+    "n_bins": 10,
+    "psi_alert_threshold": 0.25,
+    "fill_rate_change_threshold": 0.05
+  }
 }
