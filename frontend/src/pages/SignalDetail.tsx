@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Brain, BarChart3, Info } from "lucide-react";
+import { ArrowLeft, Brain, BarChart3, Info, TrendingUp, Layers } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -12,10 +12,48 @@ import {
 } from "recharts";
 import KLineChart from "../components/KLineChart";
 import StatCard from "../components/StatCard";
+import ShapWaterfall from "../components/ShapWaterfall";
+import SignalHistory from "../components/SignalHistory";
+import { fetchApi } from "../hooks/useApi";
 
 interface SignalDetailProps {
   ticker?: string;
   onBack?: () => void;
+}
+
+interface PredictionDetail {
+  ticker: string;
+  fusion_score: number;
+  rank: number;
+  total: number;
+  percentile: number;
+  model_scores: Record<string, number>;
+  weight: number;
+  signal_date: string;
+}
+
+interface ShapFeature {
+  feature: string;
+  shap_value: number;
+}
+
+interface ShapResponse {
+  ticker: string;
+  signal_date: string;
+  features: ShapFeature[];
+}
+
+interface HistoryPoint {
+  week: number;
+  signal_date: string;
+  score: number;
+  rank: number;
+  total: number;
+}
+
+interface HistoryResponse {
+  ticker: string;
+  history: HistoryPoint[];
 }
 
 interface StockQuote {
@@ -99,25 +137,6 @@ const metricTokenMap: Record<string, string> = {
   vix: "VIX",
   yoy: "YoY",
 };
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    try {
-      const payload = await response.json();
-      if (typeof payload?.detail === "string") {
-        throw new Error(payload.detail);
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-    }
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-
-  return response.json() as Promise<T>;
-}
 
 function formatCurrency(value?: number | null, maximumFractionDigits = 2): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
@@ -225,19 +244,37 @@ const SignalDetail = ({
 
   const detailQuery = useQuery<StockDetailResponse>({
     queryKey: ["stockDetail", normalizedTicker],
-    queryFn: () => fetchJson(`/api/stocks/${normalizedTicker}`),
+    queryFn: () => fetchApi<StockDetailResponse>(`/api/stocks/${normalizedTicker}`),
+    enabled: Boolean(normalizedTicker),
+  });
+
+  const predictionQuery = useQuery<PredictionDetail>({
+    queryKey: ["prediction", normalizedTicker],
+    queryFn: () => fetchApi<PredictionDetail>(`/api/predictions/${normalizedTicker}`),
+    enabled: Boolean(normalizedTicker),
+  });
+
+  const shapQuery = useQuery<ShapResponse>({
+    queryKey: ["shap", normalizedTicker],
+    queryFn: () => fetchApi<ShapResponse>(`/api/predictions/${normalizedTicker}/shap`),
+    enabled: Boolean(normalizedTicker),
+  });
+
+  const historyQuery = useQuery<HistoryResponse>({
+    queryKey: ["history", normalizedTicker],
+    queryFn: () => fetchApi<HistoryResponse>(`/api/predictions/${normalizedTicker}/history`),
     enabled: Boolean(normalizedTicker),
   });
 
   const fundamentalsQuery = useQuery<StockFundamentalsResponse>({
     queryKey: ["stockFundamentals", normalizedTicker],
-    queryFn: () => fetchJson(`/api/stocks/${normalizedTicker}/fundamentals`),
+    queryFn: () => fetchApi<StockFundamentalsResponse>(`/api/stocks/${normalizedTicker}/fundamentals`),
     enabled: Boolean(normalizedTicker),
   });
 
   const technicalsQuery = useQuery<StockTechnicalsResponse>({
     queryKey: ["stockTechnicals", normalizedTicker],
-    queryFn: () => fetchJson(`/api/stocks/${normalizedTicker}/technicals`),
+    queryFn: () => fetchApi<StockTechnicalsResponse>(`/api/stocks/${normalizedTicker}/technicals`),
     enabled: Boolean(normalizedTicker),
   });
 
@@ -245,6 +282,9 @@ const SignalDetail = ({
   const latestPrice = detail?.latest_price;
   const fundamentals = fundamentalsQuery.data;
   const technicals = technicalsQuery.data;
+  const prediction = predictionQuery.data;
+  const shap = shapQuery.data;
+  const history = historyQuery.data?.history || [];
 
   const metricEntries = Object.entries(fundamentals?.metrics ?? {}).sort(([left], [right]) =>
     left.localeCompare(right),
@@ -364,6 +404,15 @@ const SignalDetail = ({
           <div className="fade-in-up stagger-3">
             <KLineChart key={normalizedTicker} ticker={normalizedTicker} height={260} defaultRange="3M" />
           </div>
+          {history.length > 0 && (
+            <div className="mt-5 bg-card rounded-xl border border-border p-5 fade-in-up stagger-3">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp size={14} className="text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Model Signal History</h3>
+              </div>
+              <SignalHistory history={history} height={200} />
+            </div>
+          )}
         </div>
 
         <div className="w-full xl:w-80 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3">
@@ -590,6 +639,21 @@ const SignalDetail = ({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-2xl font-bold text-foreground">{detail?.ticker ?? normalizedTicker}</h2>
+                {prediction && (
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/20 text-bull" : "bg-bear/10 border-bear/20 text-bear"}`}>
+                    <span className="text-xs font-bold uppercase tracking-tight">
+                      Score: {prediction.fusion_score.toFixed(2)}
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-current opacity-40" />
+                    <span className="text-xs font-bold">
+                      Rank #{prediction.rank}
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-current opacity-40" />
+                    <span className="text-xs font-bold">
+                      Top {prediction.percentile.toFixed(1)}%
+                    </span>
+                  </div>
+                )}
                 {detail?.sector && (
                   <span className="text-xs text-muted-foreground px-2 py-1 rounded-lg bg-muted">
                     {detail.sector}
@@ -669,6 +733,107 @@ const SignalDetail = ({
 
       {activeTab === "overview" ? (
         renderOverview()
+      ) : activeTab === "factors" ? (
+        <div className="space-y-5">
+          <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Feature Contribution (SHAP)</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Top 15 features impacting this week's signal</p>
+              </div>
+              {prediction?.signal_date && (
+                <div className="text-[10px] font-mono text-muted-foreground px-2 py-1 rounded bg-muted">
+                  REF: {prediction.signal_date}
+                </div>
+              )}
+            </div>
+            
+            {shapQuery.isLoading ? (
+              <div className="h-[400px] flex items-center justify-center animate-pulse bg-muted/20 rounded-lg">
+                <p className="text-sm text-muted-foreground">Analyzing feature importance...</p>
+              </div>
+            ) : shapQuery.isError ? (
+              <div className="h-[200px] flex flex-col items-center justify-center border border-dashed border-border rounded-xl">
+                <Info size={24} className="text-muted-foreground mb-2 opacity-20" />
+                <p className="text-xs text-muted-foreground">
+                  {shapQuery.error instanceof Error && shapQuery.error.message.includes("404") 
+                    ? "SHAP values not yet available for this ticker." 
+                    : "Failed to load factor analysis."}
+                </p>
+              </div>
+            ) : shap && shap.features.length > 0 ? (
+              <ShapWaterfall features={shap.features} height={450} />
+            ) : (
+              <div className="h-[200px] flex flex-col items-center justify-center border border-dashed border-border rounded-xl">
+                <Info size={24} className="text-muted-foreground mb-2 opacity-20" />
+                <p className="text-xs text-muted-foreground">No feature data available for this signal.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 fade-in-up stagger-3">
+            <div className="md:col-span-2 bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Layers size={14} className="text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Model Consensus</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Model Architecture</th>
+                      <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Raw Score</th>
+                      <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Weight</th>
+                      <th className="pb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Contribution</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {prediction && Object.entries(prediction.model_scores).map(([model, score]) => (
+                      <tr key={model}>
+                        <td className="py-3 text-xs font-medium text-foreground capitalize">{model}</td>
+                        <td className={`py-3 text-xs font-mono font-bold text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                          {score.toFixed(4)}
+                        </td>
+                        <td className="py-3 text-xs text-muted-foreground text-right">
+                          {(100 / Object.keys(prediction.model_scores).length).toFixed(1)}%
+                        </td>
+                        <td className={`py-3 text-xs font-mono font-bold text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                          {(score / Object.keys(prediction.model_scores).length).toFixed(4)}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-muted/30">
+                      <td className="py-3 px-2 text-xs font-bold text-foreground">Fusion Score (Ensemble)</td>
+                      <td className="py-3 text-right" />
+                      <td className="py-3 text-right" />
+                      <td className={`py-3 pr-2 text-xs font-mono font-black text-right border-t border-primary/20 ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
+                        {prediction?.fusion_score.toFixed(4)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div className="bg-card rounded-xl border border-border p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Analysis Note</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                The current signal for <span className="text-foreground font-semibold">{normalizedTicker}</span> is primarily driven by 
+                the <span className="text-foreground font-semibold">{(shap?.features[0]?.feature || "underlying").replace(/_/g, " ")}</span> factor.
+                Consensus across model architectures is <span className="text-foreground font-semibold">{prediction && prediction.fusion_score > 0 ? "strongly positive" : "negative"}</span>.
+              </p>
+              <div className="mt-4 p-3 rounded-lg bg-surface border border-border">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-2">Signal Strength</p>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${prediction && prediction.fusion_score > 0 ? "bg-bull" : "bg-bear"}`} 
+                    style={{ width: `${prediction ? Math.min(Math.abs(prediction.fusion_score) * 20, 100) : 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="bg-card rounded-xl border border-border p-6 fade-in-up stagger-2">
           <h3 className="text-sm font-semibold text-foreground mb-1 capitalize">{activeTab}</h3>
