@@ -209,13 +209,13 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             <button
               ref={sectorBtnRef}
               onClick={toggleSectorDropdown}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent hover:bg-accent transition-all text-sm"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-transparent hover:bg-accent transition-all text-sm w-[160px]"
             >
               {sectorFilter === "All Sectors" ? (
                 <span className="text-foreground">All Sectors</span>
               ) : (
                 <span
-                  className="text-xs font-semibold px-2 py-0.5 rounded-md border"
+                  className="text-xs font-semibold px-2 py-0.5 rounded-md border truncate max-w-[120px]"
                   style={{
                     backgroundColor: getSectorColor(sectorFilter).bg,
                     color: getSectorColor(sectorFilter).text,
@@ -225,7 +225,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                   {sectorFilter}
                 </span>
               )}
-              <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${sectorOpen ? "rotate-180" : ""}`} />
+              <ChevronDown size={14} className={`ml-auto text-muted-foreground transition-transform duration-200 ${sectorOpen ? "rotate-180" : ""}`} />
             </button>
 
             {sectorOpen && createPortal(
