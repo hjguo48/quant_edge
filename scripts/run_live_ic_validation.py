@@ -4,11 +4,14 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, time, timedelta, timezone
+import gc
 import os
 from pathlib import Path
 import json
 import pickle
+import resource
 import sys
+import tempfile
 from typing import Any
 from urllib.parse import urlparse
 
@@ -40,6 +43,7 @@ from src.data.db.session import get_engine
 import src.features.pipeline as feature_pipeline_module
 from src.features.pipeline import FeaturePipeline
 from src.features.pipeline import compute_composite_features
+import src.features.preprocessing as preprocessing_module
 from src.features.technical import compute_technical_features
 from src.labels.forward_returns import compute_forward_returns
 from src.models.champion_challenger import ChampionChallengerRunner
@@ -78,6 +82,13 @@ FUSION_MODEL_REGISTRY_NAMES = {
     "lightgbm": "lightgbm_60d",
 }
 MAX_FUNDAMENTAL_WORKERS = min(8, max(1, (os.cpu_count() or 4) // 2))
+FUSION_TICKER_BATCH_SIZE = 100
+MEMORY_LIMIT_GB = 6.0
+CROSS_SECTIONAL_TECHNICAL_FEATURE_NAMES = (
+    "momentum_rank_20d",
+    "momentum_rank_60d",
+    "vol_rank",
+)
 
 
 @dataclass(frozen=True)
@@ -109,6 +120,7 @@ class ValidationConfig:
     fusion_report_path: Path = DEFAULT_FUSION_REPORT_PATH
     feature_audit_output_path: Path = DEFAULT_FEATURE_AUDIT_OUTPUT_PATH
     greyscale_report_dir: Path = DEFAULT_GREYSCALE_REPORT_DIR
+    fusion_batch_size: int = FUSION_TICKER_BATCH_SIZE
 
 
 def _resolve_local_tracking_uri(tracking_uri: str) -> str:
@@ -187,6 +199,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--fusion-report-path", type=Path, default=DEFAULT_FUSION_REPORT_PATH)
     parser.add_argument("--greyscale-report-dir", type=Path, default=DEFAULT_GREYSCALE_REPORT_DIR)
     parser.add_argument(
+        "--fusion-batch-size",
+        type=int,
+        default=FUSION_TICKER_BATCH_SIZE,
+        help="Number of tickers to process per batch in --fusion mode.",
+    )
+    parser.add_argument(
         "--feature-audit-output-path",
         type=Path,
         default=DEFAULT_FEATURE_AUDIT_OUTPUT_PATH,
@@ -208,6 +226,7 @@ def build_validation_config(args: argparse.Namespace) -> ValidationConfig:
         fusion_report_path=args.fusion_report_path,
         feature_audit_output_path=args.feature_audit_output_path,
         greyscale_report_dir=args.greyscale_report_dir,
+        fusion_batch_size=int(args.fusion_batch_size),
     )
 
 
@@ -448,17 +467,15 @@ def run_fusion_validation(config: ValidationConfig) -> tuple[dict[str, Any], int
     write_json_atomic(config.feature_audit_output_path, feature_audit_report)
 
     universe_tickers, greyscale_report_path = load_latest_greyscale_universe(config.greyscale_report_dir)
-    panel = build_live_evaluation_panel(
-        tickers=universe_tickers,
-        retained_features=retained_features,
-        model_features=retained_features,
-    )
+    label_series, label_diagnostics = build_label_series(tickers=universe_tickers)
     registry = ModelRegistry()
 
     component_reports: dict[str, Any] = {}
     component_predictions: dict[str, pd.Series] = {}
+    component_observations: dict[str, dict[str, Any]] = {}
     registry_audit: dict[str, Any] = {}
     unavailable_models: list[str] = []
+    available_model_specs: dict[str, dict[str, Any]] = {}
 
     for model_key in sorted(bundle_models):
         registry_model_name = FUSION_MODEL_REGISTRY_NAMES.get(model_key, f"{model_key}_{HORIZON_DAYS}d")
@@ -492,49 +509,80 @@ def run_fusion_validation(config: ValidationConfig) -> tuple[dict[str, Any], int
             str(feature)
             for feature in bundle_model_payload.get("feature_names", retained_features)
         ] or list(retained_features)
-        model_input = panel["aligned_X"].reindex(columns=model_features).fillna(0.5).copy()
-        if model_input.empty:
+        available_model_specs[model_key] = {
+            "model_object": model_object,
+            "feature_names": model_features,
+            "registry_model_name": registry_model_name,
+            "registry_audit": registry_details,
+            "load_audit": load_audit,
+            "bundle_model_payload": bundle_model_payload,
+        }
+
+    with tempfile.TemporaryDirectory(prefix="live_ic_validation_fusion_") as temp_dir_name:
+        temp_dir = Path(temp_dir_name)
+        trade_dates = materialize_fusion_date_partitions(
+            tickers=universe_tickers,
+            batch_size=config.fusion_batch_size,
+            temp_dir=temp_dir,
+        )
+        component_predictions, feature_diagnostics, sample_size_base, peak_rss_gb = score_fusion_models_batched(
+            temp_dir=temp_dir,
+            trade_dates=trade_dates,
+            tickers=universe_tickers,
+            retained_features=retained_features,
+            model_specs=available_model_specs,
+            label_series=label_series,
+            batch_size=config.fusion_batch_size,
+        )
+
+    for model_key in sorted(bundle_models):
+        if model_key not in available_model_specs:
+            continue
+
+        spec = available_model_specs[model_key]
+        predictions = component_predictions.get(model_key)
+        if predictions is None or predictions.empty:
             unavailable_models.append(model_key)
             component_reports[model_key] = {
                 "status": "unavailable",
-                "registry_model_name": registry_model_name,
-                "registry_audit": registry_details,
+                "registry_model_name": spec["registry_model_name"],
+                "registry_audit": spec["registry_audit"],
                 "load_audit": {
-                    **load_audit,
-                    "reason": "aligned feature matrix is empty after reindex",
+                    **spec["load_audit"],
+                    "reason": "no batched predictions were generated",
                 },
             }
             continue
 
         try:
-            predictions = ChampionChallengerRunner._predict_series(model_object, model_input)
             observation = evaluate_prediction_series(
-                aligned_y=panel["aligned_y"],
+                aligned_y=label_series,
                 predictions=predictions,
-                sample_size_base=panel["sample_size_base"],
+                sample_size_base=sample_size_base,
             )
         except Exception as exc:
             unavailable_models.append(model_key)
             component_reports[model_key] = {
                 "status": "unavailable",
-                "registry_model_name": registry_model_name,
-                "registry_audit": registry_details,
+                "registry_model_name": spec["registry_model_name"],
+                "registry_audit": spec["registry_audit"],
                 "load_audit": {
-                    **load_audit,
+                    **spec["load_audit"],
                     "prediction_error": str(exc),
                 },
             }
             logger.warning("fusion component {} could not be scored: {}", model_key, exc)
             continue
-        component_predictions[model_key] = predictions
+
+        component_observations[model_key] = observation
         component_reports[model_key] = {
             "status": "ok",
-            "registry_model_name": registry_model_name,
+            "registry_model_name": spec["registry_model_name"],
             "bundle_reference_test_ic": optional_float(
-                float(bundle_model_payload.get("reference_test_metrics", {}).get("ic", np.nan)),
+                float(spec["bundle_model_payload"].get("reference_test_metrics", {}).get("ic", np.nan)),
             ),
-            "registry_audit": registry_details,
-            "load_audit": load_audit,
+            "registry_audit": spec["registry_audit"],
+            "load_audit": spec["load_audit"],
             "metrics": {
                 "live_ic": float(observation["live_ic"]),
                 "live_rank_ic": optional_float(float(observation["live_rank_ic"])),
@@ -542,21 +590,24 @@ def run_fusion_validation(config: ValidationConfig) -> tuple[dict[str, Any], int
             },
         }
 
-    if not component_predictions:
+    if not component_observations:
         raise RuntimeError(
             "Unable to score any fusion component model. See registry_audit/load_audit in the report for details.",
         )
 
     requested_weights = {
         model_key: float(bundle.get("seed_weights", {}).get(model_key, 0.0))
-        for model_key in component_predictions
+        for model_key in component_observations
     }
     normalized_weights = normalize_weight_dict_local(requested_weights)
-    fusion_predictions = combine_prediction_series(component_predictions, normalized_weights)
+    fusion_predictions = combine_prediction_series(
+        {model_key: component_predictions[model_key] for model_key in component_observations},
+        normalized_weights,
+    )
     fusion_observation = evaluate_prediction_series(
-        aligned_y=panel["aligned_y"],
+        aligned_y=label_series,
         predictions=fusion_predictions,
-        sample_size_base=panel["sample_size_base"],
+        sample_size_base=sample_size_base,
     )
 
     backtest_reference = load_fusion_reference(config.fusion_report_path)
@@ -569,7 +620,8 @@ def run_fusion_validation(config: ValidationConfig) -> tuple[dict[str, Any], int
     sample_size = fusion_observation["sample_size"]
     live_error_pct = compute_error_pct(live_ic, backtest_reference["backtest_ic"])
     live_decay_pct = compute_decay_pct(live_ic, backtest_reference["backtest_ic"])
-    passed = bool(pd.notna(live_error_pct) and live_error_pct < 0.20)
+    memory_limit_passed = bool(peak_rss_gb < MEMORY_LIMIT_GB)
+    passed = bool(pd.notna(live_error_pct) and live_error_pct < 0.20 and memory_limit_passed)
 
     report = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -592,7 +644,7 @@ def run_fusion_validation(config: ValidationConfig) -> tuple[dict[str, Any], int
             "feature_fill_method": "cross_sectional_median_then_0.5",
             "friday_only": True,
             "min_cross_section_size": MIN_CROSS_SECTION_SIZE,
-            "feature_source": "FeaturePipeline.run",
+            "feature_source": "FeaturePipeline.run (ticker-batched, date-recombined)",
             "retained_feature_source": "fusion_model_bundle_60d.json",
         },
         "greyscale_bundle": {
@@ -611,6 +663,12 @@ def run_fusion_validation(config: ValidationConfig) -> tuple[dict[str, Any], int
         "feature_audit_report_path": str(config.feature_audit_output_path),
         "registry_audit": registry_audit,
         "component_models": component_reports,
+        "runtime_diagnostics": {
+            "fusion_batch_size": int(config.fusion_batch_size),
+            "peak_rss_gb": float(peak_rss_gb),
+            "memory_limit_gb": MEMORY_LIMIT_GB,
+            "memory_limit_passed": memory_limit_passed,
+        },
         "fusion": {
             "weights": normalized_weights,
             "unavailable_models": unavailable_models,
@@ -623,11 +681,13 @@ def run_fusion_validation(config: ValidationConfig) -> tuple[dict[str, Any], int
             "live_vs_backtest_error_pct": live_error_pct,
             "live_decay_pct": live_decay_pct,
             "threshold_pct": 0.20,
+            "memory_limit_gb": MEMORY_LIMIT_GB,
+            "memory_limit_passed": memory_limit_passed,
             "passed": passed,
         },
         "feature_audit": feature_audit_report["comparison"],
-        "feature_diagnostics": panel["feature_diagnostics"],
-        "label_diagnostics": panel["label_diagnostics"],
+        "feature_diagnostics": feature_diagnostics,
+        "label_diagnostics": label_diagnostics,
         "sample_size": sample_size,
         "ic_series": series_with_sizes_to_records(ic_series, cross_section_sizes),
         "rank_ic_series": series_to_records(rank_ic_series),
@@ -875,6 +935,34 @@ def normalize_weight_dict_local(weights: dict[str, float]) -> dict[str, float]:
     return {key: value / total for key, value in positive.items()}
 
 
+def chunked(items: list[str], size: int) -> list[list[str]]:
+    if size <= 0:
+        raise ValueError("chunk size must be positive")
+    return [items[index : index + size] for index in range(0, len(items), size)]
+
+
+def current_peak_rss_gb() -> float:
+    max_rss_kb = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    return max_rss_kb / (1024.0 * 1024.0)
+
+
+def is_missing_indicator_feature(feature_name: str) -> bool:
+    return str(feature_name).startswith("is_missing_")
+
+
+def base_feature_name(feature_name: str) -> str:
+    name = str(feature_name)
+    if is_missing_indicator_feature(name):
+        return name[len("is_missing_") :]
+    return name
+
+
+def expand_requested_feature_names(retained_features: list[str]) -> list[str]:
+    expanded = set(retained_features)
+    expanded.update(base_feature_name(feature_name) for feature_name in retained_features)
+    return sorted(expanded)
+
+
 def load_fusion_reference(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {
@@ -963,6 +1051,268 @@ def load_champion_model(
     }
 
 
+def materialize_fusion_date_partitions(
+    *,
+    tickers: list[str],
+    batch_size: int,
+    temp_dir: Path,
+) -> list[pd.Timestamp]:
+    install_runtime_optimizations()
+    trade_dates: set[pd.Timestamp] = set()
+    ticker_batches = chunked(tickers, batch_size)
+    for batch_number, ticker_batch in enumerate(ticker_batches, start=1):
+        logger.info(
+            "materializing fusion feature batch {}/{} for {} tickers",
+            batch_number,
+            len(ticker_batches),
+            len(ticker_batch),
+        )
+        batch_features = build_forward_filled_base_features_long_fast(
+            tickers=ticker_batch,
+            start_date=EVAL_START - timedelta(days=400),
+            end_date=EVAL_END,
+            as_of=AS_OF,
+        )
+        if batch_features.empty:
+            logger.warning("fusion feature batch {} returned no rows", batch_number)
+            continue
+
+        batch_features["trade_date"] = pd.to_datetime(batch_features["trade_date"])
+        friday_mask = (
+            (batch_features["trade_date"] >= pd.Timestamp(EVAL_START))
+            & (batch_features["trade_date"] <= pd.Timestamp(EVAL_END))
+            & (batch_features["trade_date"].dt.weekday == REBALANCE_WEEKDAY)
+        )
+        friday_features = batch_features.loc[friday_mask].copy()
+        if friday_features.empty:
+            logger.warning("fusion feature batch {} has no Friday rows inside the evaluation window", batch_number)
+            continue
+
+        for trade_date, group in friday_features.groupby("trade_date", sort=True):
+            date_key = pd.Timestamp(trade_date)
+            trade_dates.add(date_key)
+            date_dir = temp_dir / date_key.date().isoformat()
+            date_dir.mkdir(parents=True, exist_ok=True)
+            group.to_parquet(date_dir / f"batch_{batch_number:03d}.parquet", index=False)
+
+        del batch_features
+        del friday_features
+        gc.collect()
+
+    if not trade_dates:
+        raise RuntimeError("No fusion feature partitions were materialized for the evaluation window.")
+    return sorted(trade_dates)
+
+
+def build_forward_filled_base_features_long_fast(
+    *,
+    tickers: list[str],
+    start_date: date,
+    end_date: date,
+    as_of: date,
+) -> pd.DataFrame:
+    base_features = build_raw_base_features_long_fast(
+        tickers=tickers,
+        start_date=start_date,
+        end_date=end_date,
+        as_of=as_of,
+    )
+    if base_features.empty:
+        return pd.DataFrame(
+            columns=["ticker", "trade_date", "feature_name", "feature_value", "is_filled", "_raw_missing"],
+        )
+
+    base_features["_raw_missing"] = base_features["feature_value"].isna()
+    forward_filled = preprocessing_module.forward_fill_features(base_features)
+    return forward_filled.sort_values(["trade_date", "ticker", "feature_name"]).reset_index(drop=True)
+
+
+def build_raw_base_features_long_fast(
+    *,
+    tickers: list[str],
+    start_date: date,
+    end_date: date,
+    as_of: date,
+) -> pd.DataFrame:
+    normalized_tickers = tuple(dict.fromkeys(ticker.strip().upper() for ticker in tickers if ticker))
+    if not normalized_tickers:
+        raise ValueError("At least one ticker is required.")
+
+    as_of_ts = _as_of_datetime(as_of)
+    pipeline = FeaturePipeline()
+    history_start = start_date - timedelta(days=400)
+    prices = get_prices_pit(
+        tickers=normalized_tickers,
+        start_date=history_start,
+        end_date=end_date,
+        as_of=as_of_ts,
+    )
+    if prices.empty:
+        logger.warning("feature pipeline found no PIT prices for requested tickers")
+        return pd.DataFrame(columns=["ticker", "trade_date", "feature_name", "feature_value", "is_filled"])
+
+    prices["trade_date"] = pd.to_datetime(prices["trade_date"]).dt.date
+    prices.sort_values(["ticker", "trade_date"], inplace=True)
+    output_prices = prices.loc[
+        (prices["trade_date"] >= start_date)
+        & (prices["trade_date"] <= end_date)
+    ].copy()
+    if output_prices.empty:
+        logger.warning("feature pipeline has no prices inside the requested output window")
+        return pd.DataFrame(columns=["ticker", "trade_date", "feature_name", "feature_value", "is_filled"])
+
+    technical = compute_technical_features(prices)
+    technical = technical.loc[
+        (technical["trade_date"] >= start_date)
+        & (technical["trade_date"] <= end_date)
+        & (technical["ticker"].isin(normalized_tickers))
+        & (~technical["feature_name"].isin(CROSS_SECTIONAL_TECHNICAL_FEATURE_NAMES))
+    ].copy()
+    technical["is_filled"] = False
+
+    fundamental_frames: list[pd.DataFrame] = []
+    grouped_prices = {
+        str(ticker).upper(): group.copy()
+        for ticker, group in output_prices.groupby("ticker", sort=False)
+        if not group.empty
+    }
+    compute_fundamental = feature_pipeline_module.compute_fundamental_features
+    worker_count = min(MAX_FUNDAMENTAL_WORKERS, max(len(grouped_prices), 1))
+    if worker_count <= 1:
+        for ticker, ticker_prices in grouped_prices.items():
+            fundamental_frames.append(
+                compute_fundamental(
+                    ticker=ticker,
+                    as_of=as_of_ts,
+                    prices_df=ticker_prices,
+                ),
+            )
+    else:
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            future_map = {
+                executor.submit(
+                    compute_fundamental,
+                    ticker=ticker,
+                    as_of=as_of_ts,
+                    prices_df=ticker_prices,
+                ): ticker
+                for ticker, ticker_prices in grouped_prices.items()
+            }
+            for future in as_completed(future_map):
+                fundamental_frames.append(future.result())
+
+    fundamentals = (
+        pd.concat(fundamental_frames, ignore_index=True)
+        if fundamental_frames
+        else pd.DataFrame(columns=["ticker", "trade_date", "feature_name", "feature_value"])
+    )
+    fundamentals["is_filled"] = False
+
+    macro = pipeline._compute_broadcast_macro_features(output_prices, as_of_ts)
+    macro["is_filled"] = False
+
+    base_features = pd.concat([technical, fundamentals, macro], ignore_index=True)
+    base_features["ticker"] = base_features["ticker"].astype(str).str.upper()
+    base_features["trade_date"] = pd.to_datetime(base_features["trade_date"]).dt.date
+    base_features["feature_name"] = base_features["feature_name"].astype(str)
+    base_features["feature_value"] = pd.to_numeric(base_features["feature_value"], errors="coerce")
+    base_features["is_filled"] = base_features["is_filled"].fillna(False).astype(bool)
+    return base_features.sort_values(["trade_date", "ticker", "feature_name"]).reset_index(drop=True)
+
+
+def load_partitioned_base_features_for_date(date_dir: Path) -> pd.DataFrame:
+    partition_paths = sorted(date_dir.glob("batch_*.parquet"))
+    if not partition_paths:
+        raise RuntimeError(f"No fusion feature partitions found in {date_dir}")
+
+    frames = [pd.read_parquet(path) for path in partition_paths]
+    combined = pd.concat(frames, ignore_index=True)
+    combined["ticker"] = combined["ticker"].astype(str).str.upper()
+    combined["trade_date"] = pd.to_datetime(combined["trade_date"])
+    combined["feature_name"] = combined["feature_name"].astype(str)
+    combined["feature_value"] = pd.to_numeric(combined["feature_value"], errors="coerce")
+    combined["is_filled"] = combined["is_filled"].fillna(False).astype(bool)
+    combined["_raw_missing"] = combined["_raw_missing"].fillna(True).astype(bool)
+    return combined.sort_values(["trade_date", "ticker", "feature_name"]).reset_index(drop=True)
+
+
+def build_cross_sectional_technical_features_for_date(base_features: pd.DataFrame) -> pd.DataFrame:
+    wide = (
+        base_features.pivot_table(
+            index=["ticker", "trade_date"],
+            columns="feature_name",
+            values="feature_value",
+            aggfunc="first",
+        )
+        .sort_index()
+    )
+    if wide.empty:
+        return pd.DataFrame(columns=["ticker", "trade_date", "feature_name", "feature_value", "is_filled", "_raw_missing"])
+
+    derived: list[pd.DataFrame] = []
+    for source_name, target_name in (
+        ("ret_20d", "momentum_rank_20d"),
+        ("ret_60d", "momentum_rank_60d"),
+        ("vol_20d", "vol_rank"),
+    ):
+        if source_name not in wide.columns:
+            ranked = pd.Series(np.nan, index=wide.index, dtype=float)
+        else:
+            ranked = rank_series_to_unit_interval(wide[source_name])
+        frame = ranked.rename("feature_value").reset_index()
+        frame["feature_name"] = target_name
+        frame["is_filled"] = False
+        frame["_raw_missing"] = frame["feature_value"].isna()
+        derived.append(frame[["ticker", "trade_date", "feature_name", "feature_value", "is_filled", "_raw_missing"]])
+
+    return pd.concat(derived, ignore_index=True).sort_values(["trade_date", "ticker", "feature_name"]).reset_index(drop=True)
+
+
+def rank_series_to_unit_interval(series: pd.Series) -> pd.Series:
+    non_null = series.dropna()
+    if non_null.empty:
+        return pd.Series(np.nan, index=series.index, dtype=float)
+    if len(non_null) == 1:
+        return pd.Series(np.where(series.notna(), 0.5, np.nan), index=series.index, dtype=float)
+
+    ranked = non_null.rank(method="average")
+    normalized = (ranked - 1) / (len(non_null) - 1)
+    return normalized.reindex(series.index)
+
+
+def finalize_fusion_date_feature_matrix(
+    *,
+    base_features: pd.DataFrame,
+    retained_features: list[str],
+) -> pd.DataFrame:
+    requested_feature_names = expand_requested_feature_names(retained_features)
+    global_technical = build_cross_sectional_technical_features_for_date(base_features)
+    composite_inputs = pd.concat(
+        [
+            base_features[["ticker", "trade_date", "feature_name", "feature_value"]],
+            global_technical[["ticker", "trade_date", "feature_name", "feature_value"]],
+        ],
+        ignore_index=True,
+    )
+    composites = compute_composite_features(composite_inputs)
+    composites["is_filled"] = False
+    composites["_raw_missing"] = composites["feature_value"].isna()
+
+    raw_features = pd.concat([base_features, global_technical, composites], ignore_index=True)
+    raw_features.sort_values(["trade_date", "ticker", "feature_name"], inplace=True)
+    winsorized = preprocessing_module.winsorize_features(raw_features)
+    normalized = preprocessing_module.rank_normalize_features(winsorized)
+    raw_missing = normalized.pop("_raw_missing").astype(bool)
+    finalized = preprocessing_module.add_missing_flags(normalized, raw_missing)
+    filtered_long = finalized.loc[
+        finalized["feature_name"].astype(str).isin(requested_feature_names),
+        ["ticker", "trade_date", "feature_name", "feature_value"],
+    ].copy()
+    matrix = long_to_feature_matrix(filtered_long, retained_features)
+    matrix = matrix.reindex(columns=retained_features)
+    return fill_feature_matrix(matrix)
+
+
 def build_feature_matrix(
     *,
     tickers: list[str],
@@ -970,6 +1320,7 @@ def build_feature_matrix(
     model_features: list[str],
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     install_runtime_optimizations()
+    requested_feature_names = expand_requested_feature_names(retained_features)
     features_long = build_features_long_fast(
         tickers=tickers,
         start_date=EVAL_START - timedelta(days=400),
@@ -980,7 +1331,7 @@ def build_feature_matrix(
         raise RuntimeError("Feature pipeline returned no rows.")
 
     filtered_long = features_long.loc[
-        features_long["feature_name"].astype(str).isin(retained_features),
+        features_long["feature_name"].astype(str).isin(requested_feature_names),
         ["ticker", "trade_date", "feature_name", "feature_value"],
     ].copy()
     matrix = long_to_feature_matrix(filtered_long, retained_features)
@@ -1143,6 +1494,99 @@ def build_label_series(*, tickers: list[str]) -> tuple[pd.Series, dict[str, Any]
         "benchmark_ticker": BENCHMARK_TICKER,
     }
     return series, diagnostics
+
+
+def score_fusion_models_batched(
+    *,
+    temp_dir: Path,
+    trade_dates: list[pd.Timestamp],
+    tickers: list[str],
+    retained_features: list[str],
+    model_specs: dict[str, dict[str, Any]],
+    label_series: pd.Series,
+    batch_size: int,
+) -> tuple[dict[str, pd.Series], dict[str, Any], dict[str, Any], float]:
+    prediction_chunks = {model_key: [] for model_key in model_specs}
+    feature_rows_total = 0
+    aligned_rows_before_filter = 0
+    aligned_dates: set[pd.Timestamp] = set()
+    observed_tickers: set[str] = set()
+    feature_rows_by_date: dict[pd.Timestamp, int] = {}
+    peak_rss_gb = current_peak_rss_gb()
+
+    for position, trade_date in enumerate(trade_dates, start=1):
+        logger.info(
+            "scoring fusion date {}/{} {} from batch partitions",
+            position,
+            len(trade_dates),
+            trade_date.date(),
+        )
+        date_dir = temp_dir / trade_date.date().isoformat()
+        base_features = load_partitioned_base_features_for_date(date_dir)
+        date_matrix = finalize_fusion_date_feature_matrix(
+            base_features=base_features,
+            retained_features=retained_features,
+        )
+        if date_matrix.empty:
+            continue
+
+        feature_rows_total += int(len(date_matrix))
+        feature_rows_by_date[trade_date] = int(len(date_matrix))
+        observed_tickers.update(date_matrix.index.get_level_values("ticker").astype(str).tolist())
+        aligned_index = date_matrix.index.intersection(label_series.index)
+        if len(aligned_index) == 0:
+            del base_features
+            del date_matrix
+            gc.collect()
+            peak_rss_gb = max(peak_rss_gb, current_peak_rss_gb())
+            continue
+
+        aligned_rows_before_filter += int(len(aligned_index))
+        aligned_dates.add(trade_date)
+        aligned_X = date_matrix.loc[aligned_index].sort_index()
+
+        for model_key, spec in model_specs.items():
+            model_input = aligned_X.reindex(columns=spec["feature_names"]).fillna(0.5)
+            if model_input.empty:
+                continue
+            prediction_chunks[model_key].append(
+                ChampionChallengerRunner._predict_series(spec["model_object"], model_input),
+            )
+
+        del base_features
+        del date_matrix
+        del aligned_X
+        gc.collect()
+        peak_rss_gb = max(peak_rss_gb, current_peak_rss_gb())
+
+    predictions = {
+        model_key: pd.concat(chunks).sort_index()
+        for model_key, chunks in prediction_chunks.items()
+        if chunks
+    }
+    if not feature_rows_by_date:
+        raise RuntimeError("Fusion feature batching produced no finalized date slices.")
+
+    feature_counts = pd.Series(feature_rows_by_date).sort_index()
+    feature_diagnostics = {
+        "rows": int(feature_rows_total),
+        "dates": int(len(feature_counts)),
+        "tickers": int(len(observed_tickers) if observed_tickers else len(tickers)),
+        "min_date": pd.Timestamp(feature_counts.index.min()).date().isoformat(),
+        "max_date": pd.Timestamp(feature_counts.index.max()).date().isoformat(),
+        "avg_cross_section_size": float(feature_counts.mean()),
+        "min_cross_section_size": int(feature_counts.min()),
+        "max_cross_section_size": int(feature_counts.max()),
+        "batch_mode": "ticker_batched_date_partitioned",
+        "fusion_batch_size": int(batch_size),
+    }
+    sample_size_base = {
+        "prediction_rows": int(feature_rows_total),
+        "label_rows": int(len(label_series)),
+        "aligned_rows_before_filter": int(aligned_rows_before_filter),
+        "friday_dates_before_filter": int(len(aligned_dates)),
+    }
+    return predictions, feature_diagnostics, sample_size_base, peak_rss_gb
 
 
 def load_live_ic_observation(

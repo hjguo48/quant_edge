@@ -238,6 +238,7 @@ def build_or_load_full_feature_matrix(
         logger.info("loading cached walk-forward feature matrix from {}", output_path)
         return restore_feature_matrix_index(pd.read_parquet(output_path))
 
+    requested_feature_names = expand_requested_feature_names(retained_features)
     prefix = restore_feature_matrix_index(pd.read_parquet(window1_feature_matrix_path))
     prefix = prefix.loc[
         (prefix.index.get_level_values("trade_date") >= pd.Timestamp(start_date))
@@ -258,7 +259,7 @@ def build_or_load_full_feature_matrix(
                 filters=[
                     ("trade_date", ">=", chunk_start),
                     ("trade_date", "<=", chunk_end),
-                    ("feature_name", "in", retained_features),
+                    ("feature_name", "in", requested_feature_names),
                 ],
             )
             if long_slice.empty:
@@ -654,11 +655,13 @@ def long_to_feature_matrix(features_long: pd.DataFrame, retained_features: list[
         index = pd.MultiIndex(levels=[[], []], codes=[[], []], names=["trade_date", "ticker"])
         return pd.DataFrame(index=index, columns=retained_features, dtype=float)
 
+    requested_feature_names = expand_requested_feature_names(retained_features)
     prepared = features_long.copy()
     prepared["ticker"] = prepared["ticker"].astype(str).str.upper()
     prepared["trade_date"] = pd.to_datetime(prepared["trade_date"])
     prepared["feature_name"] = prepared["feature_name"].astype(str)
     prepared["feature_value"] = pd.to_numeric(prepared["feature_value"], errors="coerce")
+    prepared = prepared.loc[prepared["feature_name"].isin(requested_feature_names)].copy()
     prepared.sort_values(["trade_date", "ticker", "feature_name"], inplace=True)
     prepared.drop_duplicates(["trade_date", "ticker", "feature_name"], keep="last", inplace=True)
 
@@ -667,8 +670,39 @@ def long_to_feature_matrix(features_long: pd.DataFrame, retained_features: list[
         .unstack("feature_name")
         .sort_index()
     )
+    matrix = synthesize_missing_indicator_columns(matrix, retained_features)
     matrix.index = matrix.index.set_names(["trade_date", "ticker"])
     return matrix.reindex(columns=retained_features)
+
+
+def expand_requested_feature_names(retained_features: list[str]) -> list[str]:
+    expanded = set(retained_features)
+    expanded.update(base_feature_name(feature_name) for feature_name in retained_features)
+    return sorted(expanded)
+
+
+def synthesize_missing_indicator_columns(matrix: pd.DataFrame, retained_features: list[str]) -> pd.DataFrame:
+    expanded = matrix.copy()
+    for feature_name in retained_features:
+        if not is_missing_indicator_feature(feature_name):
+            continue
+        base_name = base_feature_name(feature_name)
+        if base_name not in expanded.columns:
+            expanded[feature_name] = np.nan
+            continue
+        expanded[feature_name] = expanded[base_name].isna().astype(float)
+    return expanded
+
+
+def is_missing_indicator_feature(feature_name: str) -> bool:
+    return str(feature_name).startswith("is_missing_")
+
+
+def base_feature_name(feature_name: str) -> str:
+    name = str(feature_name)
+    if is_missing_indicator_feature(name):
+        return name[len("is_missing_") :]
+    return name
 
 
 def fill_feature_matrix(matrix: pd.DataFrame) -> pd.DataFrame:

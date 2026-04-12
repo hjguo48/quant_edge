@@ -48,24 +48,48 @@ FEATURE_BATCH_SIZE = 25
 FEATURE_PROGRESS_INTERVAL = 50
 IC_THRESHOLD = 0.01
 HORIZON_DAYS = 5
+SIGN_CONSISTENCY_THRESHOLD = 0.6
+CORRELATION_THRESHOLD = 0.85
+RIDGE_FEATURE_LIMIT = 35
+TREE_FEATURE_LIMIT = 18
+DEDUP_REBALANCE_WEEKDAY = 4
+REPORT_SCHEMA_VERSION = 2
+MISSING_INDICATOR_PREFIX = "is_missing_"
 
 FEATURE_COLUMNS = ["ticker", "trade_date", "feature_name", "feature_value", "is_filled"]
 LABEL_COLUMNS = ["ticker", "trade_date", "horizon", "forward_return", "excess_return"]
 DATE_LEVEL_NAME = "trade_date"
 TICKER_LEVEL_NAME = "ticker"
 
-CANDIDATE_FEATURE_NAMES = (
+BASE_CANDIDATE_FEATURE_NAMES = (
     *TECHNICAL_FEATURE_NAMES,
     *FUNDAMENTAL_FEATURE_NAMES,
     *MACRO_FEATURE_NAMES,
     *COMPOSITE_FEATURE_NAMES,
 )
-FEATURE_DOMAIN_BY_NAME = {
+BASE_FEATURE_DOMAIN_BY_NAME = {
     **{name: "technical" for name in TECHNICAL_FEATURE_NAMES},
     **{name: "fundamental" for name in FUNDAMENTAL_FEATURE_NAMES},
     **{name: "macro" for name in MACRO_FEATURE_NAMES},
     **{name: "composite" for name in COMPOSITE_FEATURE_NAMES},
 }
+CANDIDATE_FEATURE_NAMES = (
+    *BASE_CANDIDATE_FEATURE_NAMES,
+    *(f"{MISSING_INDICATOR_PREFIX}{name}" for name in BASE_CANDIDATE_FEATURE_NAMES),
+)
+FEATURE_DOMAIN_BY_NAME = {
+    **BASE_FEATURE_DOMAIN_BY_NAME,
+    **{
+        f"{MISSING_INDICATOR_PREFIX}{name}": BASE_FEATURE_DOMAIN_BY_NAME[name]
+        for name in BASE_CANDIDATE_FEATURE_NAMES
+    },
+}
+MODEL_FEATURE_LIMITS = {
+    "ridge": RIDGE_FEATURE_LIMIT,
+    "xgboost": TREE_FEATURE_LIMIT,
+    "lightgbm": TREE_FEATURE_LIMIT,
+}
+FEATURE_SERIES_CACHE: dict[tuple[str, tuple[str, ...]], pd.Series] = {}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -123,8 +147,14 @@ def main(argv: list[str] | None = None) -> int:
     report = build_or_load_ic_report(
         labels=labels,
         batch_dir=batch_dir,
+        feature_output_path=feature_output_path,
         report_output_path=report_output_path,
         ic_threshold=args.ic_threshold,
+        sign_consistency_threshold=args.sign_consistency_threshold,
+        correlation_threshold=args.correlation_threshold,
+        rebalance_weekday=args.rebalance_weekday,
+        ridge_feature_limit=args.ridge_feature_limit,
+        tree_feature_limit=args.tree_feature_limit,
     )
 
     log_report_summary(feature_summary=feature_summary, report=report, ic_threshold=args.ic_threshold)
@@ -144,6 +174,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--progress-interval", type=int, default=FEATURE_PROGRESS_INTERVAL)
     parser.add_argument("--horizon", type=int, default=HORIZON_DAYS)
     parser.add_argument("--ic-threshold", type=float, default=IC_THRESHOLD)
+    parser.add_argument("--sign-consistency-threshold", type=float, default=SIGN_CONSISTENCY_THRESHOLD)
+    parser.add_argument("--correlation-threshold", type=float, default=CORRELATION_THRESHOLD)
+    parser.add_argument("--rebalance-weekday", type=int, default=DEDUP_REBALANCE_WEEKDAY)
+    parser.add_argument("--ridge-feature-limit", type=int, default=RIDGE_FEATURE_LIMIT)
+    parser.add_argument("--tree-feature-limit", type=int, default=TREE_FEATURE_LIMIT)
     parser.add_argument("--feature-output", default="data/features/all_features.parquet")
     parser.add_argument("--label-output", default="data/labels/forward_returns_5d.parquet")
     parser.add_argument("--report-output", default="data/features/ic_screening_report.csv")
@@ -189,13 +224,9 @@ def install_runtime_optimizations() -> None:
 
 
 def preprocess_candidate_features(features_df: pd.DataFrame, method: str = "rank") -> pd.DataFrame:
-    prepared = preprocessing_module._prepare_feature_frame(features_df)
-    forward_filled = preprocessing_module.forward_fill_features(prepared, max_days=90)
-    winsorized = preprocessing_module.winsorize_features(forward_filled, z_threshold=5.0)
-    normalized = preprocessing_module.rank_normalize_features(winsorized, method=method)
-    finalized = normalized.sort_values(["trade_date", "ticker", "feature_name"]).reset_index(drop=True)
+    finalized = preprocessing_module.preprocess_features(features_df, method=method)
     logger.info(
-        "preprocessed {} candidate feature rows into {} rows without missing flags",
+        "preprocessed {} candidate feature rows into {} rows with missing indicators preserved",
         len(features_df),
         len(finalized),
     )
@@ -412,6 +443,8 @@ def build_or_load_feature_cache(
     batch_dir.mkdir(parents=True, exist_ok=True)
     feature_output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    manifest_tickers = tickers
+    manifest_batch_size = batch_size
     expected_manifest = build_manifest(
         tickers=tickers,
         feature_start=feature_start,
@@ -419,23 +452,35 @@ def build_or_load_feature_cache(
         as_of=as_of,
         batch_size=batch_size,
     )
+    force_rebuild = not feature_output_path.exists()
     if manifest_path.exists():
         existing_manifest = json.loads(manifest_path.read_text())
         if existing_manifest != expected_manifest:
-            raise RuntimeError(
-                f"Existing manifest at {manifest_path} does not match current parameters. "
-                "Delete the batch directory or rerun with matching settings.",
-            )
+            if feature_output_path.exists():
+                logger.info(
+                    "using existing legacy feature cache at {}; missing indicators will be synthesized downstream",
+                    feature_output_path,
+                )
+                manifest_tickers = [str(ticker).upper() for ticker in existing_manifest.get("tickers", tickers)]
+                manifest_batch_size = int(existing_manifest.get("batch_size", batch_size))
+            else:
+                logger.info("feature cache manifest changed at {}; rebuilding screening batches in place", manifest_path)
+                force_rebuild = True
+                write_json_atomic(manifest_path, expected_manifest)
+        else:
+            manifest_tickers = [str(ticker).upper() for ticker in existing_manifest.get("tickers", tickers)]
+            manifest_batch_size = int(existing_manifest.get("batch_size", batch_size))
     else:
+        force_rebuild = True
         write_json_atomic(manifest_path, expected_manifest)
 
-    batch_specs = build_batch_specs(tickers=tickers, batch_size=batch_size, batch_dir=batch_dir)
+    batch_specs = build_batch_specs(tickers=manifest_tickers, batch_size=manifest_batch_size, batch_dir=batch_dir)
     pipeline = FeaturePipeline()
     completed_tickers = count_completed_tickers(batch_specs=batch_specs)
 
-    if not feature_output_path.exists():
+    if force_rebuild or not feature_output_path.exists():
         for batch_index, batch_spec in enumerate(batch_specs, start=1):
-            if batch_spec["path"].exists():
+            if batch_spec["path"].exists() and not force_rebuild:
                 logger.info(
                     "skipping existing feature batch {}/{} at {}",
                     batch_index,
@@ -472,7 +517,7 @@ def build_or_load_feature_cache(
     else:
         logger.info("using existing feature cache at {}", feature_output_path)
 
-    feature_summary = summarize_feature_batches(batch_specs=batch_specs)
+    feature_summary = summarize_feature_batches(batch_specs=batch_specs, feature_output_path=feature_output_path)
     logger.info(
         "feature cache ready: {} rows across {} tickers and {} feature names",
         feature_summary["row_count"],
@@ -496,6 +541,7 @@ def build_manifest(
         "feature_end_date": feature_end.isoformat(),
         "as_of": as_of.isoformat(),
         "batch_size": batch_size,
+        "report_schema_version": REPORT_SCHEMA_VERSION,
         "candidate_feature_names": list(CANDIDATE_FEATURE_NAMES),
     }
 
@@ -563,7 +609,16 @@ def combine_feature_batches(*, batch_specs: list[dict[str, Any]], output_path: P
             temp_path.unlink(missing_ok=True)
 
 
-def summarize_feature_batches(*, batch_specs: list[dict[str, Any]]) -> dict[str, Any]:
+def summarize_feature_batches(*, batch_specs: list[dict[str, Any]], feature_output_path: Path) -> dict[str, Any]:
+    missing_batch_paths = [batch_spec["path"] for batch_spec in batch_specs if not batch_spec["path"].exists()]
+    if missing_batch_paths and feature_output_path.exists():
+        frame = pd.read_parquet(feature_output_path, columns=["ticker", "feature_name"])
+        return {
+            "row_count": int(len(frame)),
+            "ticker_count": int(frame["ticker"].astype(str).str.upper().nunique()),
+            "feature_count": int(frame["feature_name"].astype(str).nunique()),
+        }
+
     ticker_set: set[str] = set()
     feature_set: set[str] = set()
     row_count = 0
@@ -641,18 +696,27 @@ def build_or_load_ic_report(
     *,
     labels: pd.DataFrame,
     batch_dir: Path,
+    feature_output_path: Path,
     report_output_path: Path,
     ic_threshold: float,
+    sign_consistency_threshold: float,
+    correlation_threshold: float,
+    rebalance_weekday: int,
+    ridge_feature_limit: int,
+    tree_feature_limit: int,
 ) -> pd.DataFrame:
     report_output_path.parent.mkdir(parents=True, exist_ok=True)
     if report_output_path.exists():
-        logger.info("using existing IC report at {}", report_output_path)
-        return pd.read_csv(report_output_path)
+        cached_report = pd.read_csv(report_output_path)
+        if report_matches_current_schema(cached_report):
+            logger.info("using existing IC report at {}", report_output_path)
+            return cached_report
+        logger.info("rebuilding IC report at {} because the schema or feature set changed", report_output_path)
 
     label_series = build_label_series(labels)
-    batch_paths = sorted(batch_dir.glob("*.parquet"))
-    if not batch_paths:
-        raise RuntimeError("No feature batch parquet files found for IC screening.")
+    feature_source_paths = available_feature_source_paths(batch_dir=batch_dir, feature_output_path=feature_output_path)
+    if not feature_source_paths:
+        raise RuntimeError("No feature parquet files found for IC screening.")
 
     records: list[dict[str, Any]] = []
     for feature_index, feature_name in enumerate(CANDIDATE_FEATURE_NAMES, start=1):
@@ -662,48 +726,499 @@ def build_or_load_ic_report(
             len(CANDIDATE_FEATURE_NAMES),
             feature_name,
         )
-        feature_series = load_feature_series(feature_name=feature_name, batch_paths=batch_paths)
+        feature_series = load_feature_series(feature_name=feature_name, batch_paths=feature_source_paths)
         aligned = align_label_and_feature(label_series=label_series, feature_series=feature_series)
-        if aligned.empty:
-            ic_value = float("nan")
-            rank_ic_value = float("nan")
-            icir_value = float("nan")
-            row_count = 0
-            date_count = 0
-            ticker_count = 0
-        else:
-            y_true = aligned["y_true"]
-            y_pred = aligned["y_pred"]
-            ic_value = information_coefficient(y_true=y_true, y_pred=y_pred)
-            rank_ic_value = rank_information_coefficient(y_true=y_true, y_pred=y_pred)
-            icir_value = icir(y_true=y_true, y_pred=y_pred)
-            row_count = len(aligned)
-            date_count = aligned.index.get_level_values(DATE_LEVEL_NAME).nunique()
-            ticker_count = aligned.index.get_level_values(TICKER_LEVEL_NAME).nunique()
-
-        abs_ic = abs(ic_value) if pd.notna(ic_value) else float("nan")
         records.append(
-            {
-                "feature_name": feature_name,
-                "domain": FEATURE_DOMAIN_BY_NAME[feature_name],
-                "ic": ic_value,
-                "rank_ic": rank_ic_value,
-                "icir": icir_value,
-                "abs_ic": abs_ic,
-                "n_obs": row_count,
-                "n_dates": date_count,
-                "n_tickers": ticker_count,
-                "passed": bool(pd.notna(abs_ic) and abs_ic >= ic_threshold),
-            },
+            compute_feature_stability_record(
+                feature_name=feature_name,
+                aligned=aligned,
+                ic_threshold=ic_threshold,
+                sign_consistency_threshold=sign_consistency_threshold,
+            ),
         )
         gc.collect()
 
-    report = pd.DataFrame(records).sort_values(["abs_ic", "feature_name"], ascending=[False, True]).reset_index(
+    report = pd.DataFrame(records)
+    report = annotate_model_feature_sets(
+        report=report,
+        batch_paths=feature_source_paths,
+        rebalance_weekday=rebalance_weekday,
+        correlation_threshold=correlation_threshold,
+        ridge_feature_limit=ridge_feature_limit,
+        tree_feature_limit=tree_feature_limit,
+    )
+    report = report.sort_values(["retained", "stability_score", "feature_name"], ascending=[False, False, True]).reset_index(
         drop=True,
     )
     write_csv_atomic(report, report_output_path)
     logger.info("wrote IC screening report for {} features to {}", len(report), report_output_path)
     return report
+
+
+def report_matches_current_schema(report: pd.DataFrame) -> bool:
+    required_columns = {
+        "feature_name",
+        "domain",
+        "feature_kind",
+        "base_feature_name",
+        "report_schema_version",
+        "signed_ic",
+        "rank_ic",
+        "icir",
+        "sign_consistency",
+        "stability_score",
+        "window_count",
+        "window_signed_ic_mean",
+        "window_rank_ic_mean",
+        "window_icir_mean",
+        "passed",
+        "retained",
+        "retained_ridge",
+        "retained_xgboost",
+        "retained_lightgbm",
+    }
+    if not required_columns.issubset(report.columns):
+        return False
+    return set(report["feature_name"].astype(str)) == set(CANDIDATE_FEATURE_NAMES)
+
+
+def available_feature_source_paths(*, batch_dir: Path, feature_output_path: Path) -> list[Path]:
+    batch_paths = sorted(batch_dir.glob("*.parquet"))
+    if batch_paths:
+        return batch_paths
+    if feature_output_path.exists():
+        return [feature_output_path]
+    return []
+
+
+def compute_feature_stability_record(
+    *,
+    feature_name: str,
+    aligned: pd.DataFrame,
+    ic_threshold: float,
+    sign_consistency_threshold: float,
+) -> dict[str, Any]:
+    if aligned.empty:
+        window_metrics = pd.DataFrame(
+            columns=["window_id", "signed_ic", "rank_ic", "icir", "n_obs", "n_dates", "n_tickers"],
+        )
+        signed_ic = float("nan")
+        rank_ic_value = float("nan")
+        icir_value = float("nan")
+        row_count = 0
+        date_count = 0
+        ticker_count = 0
+    else:
+        y_true = aligned["y_true"]
+        y_pred = aligned["y_pred"]
+        signed_ic = information_coefficient(y_true=y_true, y_pred=y_pred)
+        rank_ic_value = rank_information_coefficient(y_true=y_true, y_pred=y_pred)
+        icir_value = icir(y_true=y_true, y_pred=y_pred)
+        row_count = int(len(aligned))
+        date_count = int(aligned.index.get_level_values(DATE_LEVEL_NAME).nunique())
+        ticker_count = int(aligned.index.get_level_values(TICKER_LEVEL_NAME).nunique())
+        window_metrics = compute_window_metrics(aligned)
+
+    valid_window_ics = window_metrics["signed_ic"].dropna() if "signed_ic" in window_metrics else pd.Series(dtype=float)
+    positive_window_share = float((valid_window_ics > 0).mean()) if not valid_window_ics.empty else float("nan")
+    negative_window_share = float((valid_window_ics < 0).mean()) if not valid_window_ics.empty else float("nan")
+    sign_consistency = (
+        max(positive_window_share, negative_window_share)
+        if not valid_window_ics.empty
+        else float("nan")
+    )
+    dominant_sign = infer_dominant_sign(
+        signed_ic=signed_ic,
+        positive_window_share=positive_window_share,
+        negative_window_share=negative_window_share,
+    )
+    window_signed_ic_mean = nanmean(valid_window_ics.tolist())
+    window_rank_ic_mean = nanmean(window_metrics["rank_ic"].dropna().tolist()) if "rank_ic" in window_metrics else float("nan")
+    window_icir_mean = nanmean(window_metrics["icir"].dropna().tolist()) if "icir" in window_metrics else float("nan")
+    stability_reference_ic = window_signed_ic_mean if pd.notna(window_signed_ic_mean) else signed_ic
+    stability_score = (
+        abs(stability_reference_ic) * sign_consistency
+        if pd.notna(stability_reference_ic) and pd.notna(sign_consistency)
+        else float("nan")
+    )
+    passed = bool(
+        pd.notna(stability_reference_ic)
+        and abs(stability_reference_ic) >= ic_threshold
+        and pd.notna(sign_consistency)
+        and sign_consistency >= sign_consistency_threshold
+    )
+    feature_kind = "missing_indicator" if is_missing_indicator_feature(feature_name) else "base"
+
+    return {
+        "feature_name": feature_name,
+        "base_feature_name": base_feature_name(feature_name),
+        "feature_kind": feature_kind,
+        "domain": FEATURE_DOMAIN_BY_NAME[feature_name],
+        "report_schema_version": REPORT_SCHEMA_VERSION,
+        "ic": signed_ic,
+        "signed_ic": signed_ic,
+        "rank_ic": rank_ic_value,
+        "icir": icir_value,
+        "abs_ic": abs(signed_ic) if pd.notna(signed_ic) else float("nan"),
+        "window_count": int(len(window_metrics)),
+        "window_signed_ic_mean": window_signed_ic_mean,
+        "window_rank_ic_mean": window_rank_ic_mean,
+        "window_icir_mean": window_icir_mean,
+        "window_signed_ic_std": nanstd(valid_window_ics.tolist()),
+        "positive_window_share": positive_window_share,
+        "negative_window_share": negative_window_share,
+        "sign_consistency": sign_consistency,
+        "dominant_sign": dominant_sign,
+        "stability_score": stability_score,
+        "n_obs": int(row_count),
+        "n_dates": int(date_count),
+        "n_tickers": int(ticker_count),
+        "passed": passed,
+        "window_metrics_json": json.dumps(
+            [
+                {key: normalize_json_value(value) for key, value in row.items()}
+                for row in window_metrics.to_dict(orient="records")
+            ],
+            sort_keys=True,
+        ),
+    }
+
+
+def compute_window_metrics(aligned: pd.DataFrame) -> pd.DataFrame:
+    if aligned.empty:
+        return pd.DataFrame(columns=["window_id", "signed_ic", "rank_ic", "icir", "n_obs", "n_dates", "n_tickers"])
+
+    frame = aligned.reset_index().copy()
+    frame[DATE_LEVEL_NAME] = pd.to_datetime(frame[DATE_LEVEL_NAME])
+    frame["window_id"] = frame[DATE_LEVEL_NAME].map(half_year_window_id)
+
+    records: list[dict[str, Any]] = []
+    for window_id, group in frame.groupby("window_id", sort=True):
+        indexed = group.set_index([DATE_LEVEL_NAME, TICKER_LEVEL_NAME]).sort_index()
+        y_true = indexed["y_true"]
+        y_pred = indexed["y_pred"]
+        records.append(
+            {
+                "window_id": str(window_id),
+                "signed_ic": information_coefficient(y_true=y_true, y_pred=y_pred),
+                "rank_ic": rank_information_coefficient(y_true=y_true, y_pred=y_pred),
+                "icir": icir(y_true=y_true, y_pred=y_pred),
+                "n_obs": int(len(indexed)),
+                "n_dates": int(indexed.index.get_level_values(DATE_LEVEL_NAME).nunique()),
+                "n_tickers": int(indexed.index.get_level_values(TICKER_LEVEL_NAME).nunique()),
+            },
+        )
+
+    return pd.DataFrame(records)
+
+
+def half_year_window_id(trade_date: Any) -> str:
+    timestamp = pd.Timestamp(trade_date)
+    half = 1 if timestamp.month <= 6 else 2
+    return f"{timestamp.year}H{half}"
+
+
+def infer_dominant_sign(
+    *,
+    signed_ic: float,
+    positive_window_share: float,
+    negative_window_share: float,
+) -> str:
+    if pd.notna(positive_window_share) and positive_window_share > negative_window_share:
+        return "positive"
+    if pd.notna(negative_window_share) and negative_window_share > positive_window_share:
+        return "negative"
+    if pd.notna(signed_ic) and signed_ic > 0:
+        return "positive"
+    if pd.notna(signed_ic) and signed_ic < 0:
+        return "negative"
+    return "mixed"
+
+
+def annotate_model_feature_sets(
+    *,
+    report: pd.DataFrame,
+    batch_paths: list[Path],
+    rebalance_weekday: int,
+    correlation_threshold: float,
+    ridge_feature_limit: int,
+    tree_feature_limit: int,
+) -> pd.DataFrame:
+    annotated = report.copy()
+    if annotated.empty:
+        return annotated
+
+    available_features = set(annotated["feature_name"].astype(str))
+    stability_passed = annotated.loc[annotated["passed"].astype(bool), "feature_name"].astype(str).tolist()
+    correlation_candidates = sorted(
+        set(stability_passed)
+        | {
+            missing_indicator_name(feature_name)
+            for feature_name in stability_passed
+            if not is_missing_indicator_feature(feature_name)
+            and missing_indicator_name(feature_name) in available_features
+        },
+    )
+    feature_matrix = load_feature_matrix_for_correlation(
+        feature_names=correlation_candidates,
+        batch_paths=batch_paths,
+        rebalance_weekday=rebalance_weekday,
+    )
+    correlation_matrix = compute_feature_correlation_matrix(feature_matrix)
+    selection = build_model_feature_sets(
+        report=annotated,
+        correlation_matrix=correlation_matrix,
+        correlation_threshold=correlation_threshold,
+        model_feature_limits={
+            "ridge": int(ridge_feature_limit),
+            "xgboost": int(tree_feature_limit),
+            "lightgbm": int(tree_feature_limit),
+        },
+    )
+
+    cluster_id_map = selection["cluster_id_by_feature"]
+    cluster_size_map = selection["cluster_size_by_feature"]
+    cluster_rep_map = selection["cluster_representative_by_feature"]
+    annotated["corr_cluster_id"] = annotated["feature_name"].map(cluster_id_map)
+    annotated["corr_cluster_size"] = annotated["feature_name"].map(cluster_size_map)
+    annotated["corr_cluster_representative"] = annotated["feature_name"].map(cluster_rep_map)
+
+    retained_union: set[str] = set()
+    for model_name, selected_features in selection["feature_sets"].items():
+        retained_union.update(selected_features)
+        selected_rank = {feature_name: rank for rank, feature_name in enumerate(selected_features, start=1)}
+        annotated[f"retained_{model_name}"] = annotated["feature_name"].isin(selected_features)
+        annotated[f"selection_rank_{model_name}"] = annotated["feature_name"].map(selected_rank)
+
+    annotated["retained"] = annotated["feature_name"].isin(retained_union)
+    return annotated
+
+
+def build_model_feature_sets(
+    *,
+    report: pd.DataFrame,
+    correlation_matrix: pd.DataFrame,
+    correlation_threshold: float,
+    model_feature_limits: dict[str, int],
+) -> dict[str, Any]:
+    candidate_rows = report.loc[report["passed"].astype(bool)].copy()
+    candidate_rows["feature_name"] = candidate_rows["feature_name"].astype(str)
+    candidate_features = candidate_rows["feature_name"].tolist()
+    if not candidate_features:
+        return {
+            "feature_sets": {model_name: [] for model_name in model_feature_limits},
+            "cluster_id_by_feature": {},
+            "cluster_size_by_feature": {},
+            "cluster_representative_by_feature": {},
+        }
+
+    components = build_correlation_components(
+        feature_names=candidate_features,
+        correlation_matrix=correlation_matrix,
+        correlation_threshold=correlation_threshold,
+    )
+    row_by_feature = report.set_index("feature_name", drop=False)
+    representatives: list[tuple[str, list[str]]] = []
+    cluster_id_by_feature: dict[str, int] = {}
+    cluster_size_by_feature: dict[str, int] = {}
+    cluster_representative_by_feature: dict[str, str] = {}
+
+    for cluster_index, members in enumerate(components, start=1):
+        ordered_members = sorted(members, key=lambda name: selection_priority(row_by_feature.loc[name]), reverse=True)
+        representative = ordered_members[0]
+        representatives.append((representative, ordered_members))
+        for feature_name in ordered_members:
+            cluster_id_by_feature[feature_name] = cluster_index
+            cluster_size_by_feature[feature_name] = len(ordered_members)
+            cluster_representative_by_feature[feature_name] = representative
+
+    representatives.sort(key=lambda item: selection_priority(row_by_feature.loc[item[0]]), reverse=True)
+
+    feature_sets: dict[str, list[str]] = {}
+    for model_name, limit in model_feature_limits.items():
+        selected = [representative for representative, _ in representatives[:limit]]
+        selected = augment_with_missing_indicators(
+            selected_features=selected,
+            available_features=set(report["feature_name"].astype(str)),
+            correlation_matrix=correlation_matrix,
+            correlation_threshold=correlation_threshold,
+            limit=limit,
+        )
+        feature_sets[model_name] = selected
+
+    return {
+        "feature_sets": feature_sets,
+        "cluster_id_by_feature": cluster_id_by_feature,
+        "cluster_size_by_feature": cluster_size_by_feature,
+        "cluster_representative_by_feature": cluster_representative_by_feature,
+    }
+
+
+def build_correlation_components(
+    *,
+    feature_names: list[str],
+    correlation_matrix: pd.DataFrame,
+    correlation_threshold: float,
+) -> list[list[str]]:
+    adjacency: dict[str, set[str]] = {feature_name: set() for feature_name in feature_names}
+    for left_index, left_name in enumerate(feature_names):
+        for right_name in feature_names[left_index + 1 :]:
+            if left_name not in correlation_matrix.index or right_name not in correlation_matrix.columns:
+                continue
+            corr_value = correlation_matrix.at[left_name, right_name]
+            if pd.notna(corr_value) and abs(float(corr_value)) > correlation_threshold:
+                adjacency[left_name].add(right_name)
+                adjacency[right_name].add(left_name)
+
+    visited: set[str] = set()
+    components: list[list[str]] = []
+    for feature_name in feature_names:
+        if feature_name in visited:
+            continue
+        stack = [feature_name]
+        component: list[str] = []
+        while stack:
+            current = stack.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+            component.append(current)
+            stack.extend(sorted(adjacency[current] - visited))
+        components.append(component)
+    return components
+
+
+def augment_with_missing_indicators(
+    *,
+    selected_features: list[str],
+    available_features: set[str],
+    correlation_matrix: pd.DataFrame,
+    correlation_threshold: float,
+    limit: int,
+) -> list[str]:
+    augmented = list(selected_features)
+    for feature_name in list(selected_features):
+        if len(augmented) >= limit or is_missing_indicator_feature(feature_name):
+            continue
+        companion = missing_indicator_name(feature_name)
+        if companion not in available_features or companion in augmented:
+            continue
+        if can_add_feature(
+            candidate_feature=companion,
+            selected_features=augmented,
+            correlation_matrix=correlation_matrix,
+            correlation_threshold=correlation_threshold,
+        ):
+            augmented.append(companion)
+    return augmented[:limit]
+
+
+def can_add_feature(
+    *,
+    candidate_feature: str,
+    selected_features: list[str],
+    correlation_matrix: pd.DataFrame,
+    correlation_threshold: float,
+) -> bool:
+    if candidate_feature not in correlation_matrix.index:
+        return True
+    for selected_feature in selected_features:
+        if selected_feature not in correlation_matrix.columns:
+            continue
+        corr_value = correlation_matrix.at[candidate_feature, selected_feature]
+        if pd.notna(corr_value) and abs(float(corr_value)) > correlation_threshold:
+            return False
+    return True
+
+
+def selection_priority(row: pd.Series) -> tuple[float, float, float, int, str]:
+    stability_score = float(row.get("stability_score", float("nan")))
+    window_ic = float(row.get("window_signed_ic_mean", float("nan")))
+    rank_ic_value = float(row.get("rank_ic", float("nan")))
+    sign_consistency = float(row.get("sign_consistency", float("nan")))
+    return (
+        -np.inf if pd.isna(stability_score) else stability_score,
+        -np.inf if pd.isna(abs(window_ic)) else abs(window_ic),
+        -np.inf if pd.isna(abs(rank_ic_value)) else abs(rank_ic_value),
+        0 if row.get("feature_kind") == "missing_indicator" else 1,
+        str(row.get("feature_name", "")),
+    )
+
+
+def load_feature_matrix_for_correlation(
+    *,
+    feature_names: list[str],
+    batch_paths: list[Path],
+    rebalance_weekday: int,
+) -> pd.DataFrame:
+    if not feature_names:
+        return pd.DataFrame(columns=feature_names)
+
+    slices: list[pd.DataFrame] = []
+    for batch_path in batch_paths:
+        frame = pd.read_parquet(
+            batch_path,
+            filters=[("feature_name", "in", feature_names)],
+            columns=["ticker", "trade_date", "feature_name", "feature_value"],
+        )
+        if frame.empty:
+            continue
+        frame["ticker"] = frame["ticker"].astype(str).str.upper()
+        frame["trade_date"] = pd.to_datetime(frame["trade_date"])
+        frame = frame.loc[frame["trade_date"].dt.weekday == rebalance_weekday].copy()
+        if frame.empty:
+            continue
+        frame["feature_name"] = frame["feature_name"].astype(str)
+        frame["feature_value"] = pd.to_numeric(frame["feature_value"], errors="coerce")
+        slices.append(frame)
+
+    if not slices:
+        return pd.DataFrame(columns=feature_names)
+
+    combined = pd.concat(slices, ignore_index=True)
+    combined.sort_values(["trade_date", "ticker", "feature_name"], inplace=True)
+    combined.drop_duplicates(["trade_date", "ticker", "feature_name"], keep="last", inplace=True)
+    matrix = (
+        combined.set_index(["trade_date", "ticker", "feature_name"])["feature_value"]
+        .unstack("feature_name")
+        .sort_index()
+        .reindex(columns=feature_names)
+    )
+    return matrix.astype(np.float32)
+
+
+def compute_feature_correlation_matrix(feature_matrix: pd.DataFrame) -> pd.DataFrame:
+    if feature_matrix.empty:
+        return pd.DataFrame(index=feature_matrix.columns, columns=feature_matrix.columns, dtype=float)
+    corr = feature_matrix.corr(method="pearson", min_periods=50)
+    corr = corr.reindex(index=feature_matrix.columns, columns=feature_matrix.columns)
+    if not corr.empty:
+        np.fill_diagonal(corr.values, 1.0)
+    return corr
+
+
+def is_missing_indicator_feature(feature_name: str) -> bool:
+    return str(feature_name).startswith(MISSING_INDICATOR_PREFIX)
+
+
+def base_feature_name(feature_name: str) -> str:
+    name = str(feature_name)
+    if is_missing_indicator_feature(name):
+        return name[len(MISSING_INDICATOR_PREFIX) :]
+    return name
+
+
+def missing_indicator_name(feature_name: str) -> str:
+    base_name = base_feature_name(feature_name)
+    return f"{MISSING_INDICATOR_PREFIX}{base_name}"
+
+
+def normalize_json_value(value: Any) -> Any:
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, float) and (np.isnan(value) or np.isinf(value)):
+        return None
+    return value
 
 
 def build_label_series(labels: pd.DataFrame) -> pd.Series:
@@ -717,6 +1232,11 @@ def build_label_series(labels: pd.DataFrame) -> pd.Series:
 
 
 def load_feature_series(*, feature_name: str, batch_paths: list[Path]) -> pd.Series:
+    cache_key = (str(feature_name), tuple(str(path) for path in batch_paths))
+    cached = FEATURE_SERIES_CACHE.get(cache_key)
+    if cached is not None:
+        return cached.copy()
+
     slices: list[pd.Series] = []
     for batch_path in batch_paths:
         frame = pd.read_parquet(
@@ -734,12 +1254,34 @@ def load_feature_series(*, feature_name: str, batch_paths: list[Path]) -> pd.Ser
         slices.append(series.sort_index())
 
     if not slices:
+        if is_missing_indicator_feature(feature_name):
+            derived = derive_missing_indicator_series(feature_name=feature_name, batch_paths=batch_paths)
+            FEATURE_SERIES_CACHE[cache_key] = derived.copy()
+            return derived
+        empty = pd.Series(
+            dtype=float,
+            index=pd.MultiIndex.from_arrays([[], []], names=[DATE_LEVEL_NAME, TICKER_LEVEL_NAME]),
+            name=feature_name,
+        )
+        FEATURE_SERIES_CACHE[cache_key] = empty.copy()
+        return empty
+    series = pd.concat(slices).sort_index()
+    FEATURE_SERIES_CACHE[cache_key] = series.copy()
+    return series
+
+
+def derive_missing_indicator_series(*, feature_name: str, batch_paths: list[Path]) -> pd.Series:
+    base_name = base_feature_name(feature_name)
+    base_series = load_feature_series(feature_name=base_name, batch_paths=batch_paths)
+    if base_series.empty:
         return pd.Series(
             dtype=float,
             index=pd.MultiIndex.from_arrays([[], []], names=[DATE_LEVEL_NAME, TICKER_LEVEL_NAME]),
             name=feature_name,
         )
-    return pd.concat(slices).sort_index()
+    indicator = base_series.isna().astype(float)
+    indicator.name = feature_name
+    return indicator.sort_index()
 
 
 def align_label_and_feature(*, label_series: pd.Series, feature_series: pd.Series) -> pd.DataFrame:
@@ -755,37 +1297,60 @@ def align_label_and_feature(*, label_series: pd.Series, feature_series: pd.Serie
 def log_report_summary(*, feature_summary: dict[str, Any], report: pd.DataFrame, ic_threshold: float) -> None:
     pass_count = int(report["passed"].sum())
     fail_count = int((~report["passed"]).sum())
+    retained_union = int(report["retained"].sum()) if "retained" in report.columns else 0
+    retained_ridge = int(report["retained_ridge"].sum()) if "retained_ridge" in report.columns else 0
+    retained_xgboost = int(report["retained_xgboost"].sum()) if "retained_xgboost" in report.columns else 0
+    retained_lightgbm = int(report["retained_lightgbm"].sum()) if "retained_lightgbm" in report.columns else 0
     logger.info(
-        "IC screening summary: total_features={} passed={} rejected={} feature_tickers={}",
+        "IC screening summary: total_features={} stability_passed={} rejected={} retained_union={} ridge={} xgboost={} lightgbm={} feature_tickers={}",
         len(report),
         pass_count,
         fail_count,
+        retained_union,
+        retained_ridge,
+        retained_xgboost,
+        retained_lightgbm,
         feature_summary["ticker_count"],
     )
 
-    top20 = report.sort_values(["abs_ic", "feature_name"], ascending=[False, True]).head(20)
-    logger.info("Top 20 features by |IC|:")
+    top20 = report.sort_values(["retained", "stability_score", "feature_name"], ascending=[False, False, True]).head(20)
+    logger.info("Top 20 features by stability score:")
     for row in top20.itertuples(index=False):
         logger.info(
-            "  {} | domain={} | IC={:.6f} | RankIC={:.6f} | ICIR={} | n_obs={} | n_dates={} | n_tickers={}",
+            "  {} | domain={} | kind={} | signed_IC={:.6f} | RankIC={:.6f} | ICIR={} | sign_consistency={} | retained={} | n_obs={} | n_dates={} | n_tickers={}",
             row.feature_name,
             row.domain,
-            row.ic if pd.notna(row.ic) else float("nan"),
+            row.feature_kind,
+            row.signed_ic if pd.notna(row.signed_ic) else float("nan"),
             row.rank_ic if pd.notna(row.rank_ic) else float("nan"),
             format_metric(row.icir),
+            format_metric(row.sign_consistency),
+            bool(getattr(row, "retained", False)),
             row.n_obs,
             row.n_dates,
             row.n_tickers,
         )
 
     rejected = report.loc[~report["passed"], "feature_name"].tolist()
-    logger.info("Rejected features with |IC| < {}: {}", ic_threshold, rejected)
+    logger.info("Rejected features after stability screening (|window IC| / sign-consistency) with threshold {}: {}", ic_threshold, rejected)
 
 
 def format_metric(value: float) -> str:
     if pd.isna(value):
         return "nan"
     return f"{value:.6f}"
+
+
+def nanmean(values: list[float]) -> float:
+    if not values:
+        return float("nan")
+    return float(np.nanmean(np.asarray(values, dtype=float)))
+
+
+def nanstd(values: list[float]) -> float:
+    if not values:
+        return float("nan")
+    return float(np.nanstd(np.asarray(values, dtype=float)))
 
 
 def write_parquet_atomic(frame: pd.DataFrame, output_path: Path) -> None:

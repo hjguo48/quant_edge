@@ -175,12 +175,53 @@ def parse_date(value: str) -> date:
     return date.fromisoformat(value)
 
 
-def load_retained_features(report_path: Path) -> list[str]:
+def load_retained_features(report_path: Path, model_name: str | None = None) -> list[str]:
     report = pd.read_csv(report_path)
-    retained = report.loc[report["retained"].astype(bool), "feature_name"].astype(str).tolist()
+    retention_columns: list[str] = []
+    if model_name:
+        retention_columns.append(f"retained_{model_name.strip().lower()}")
+    retention_columns.extend(["retained", "passed"])
+
+    retained: list[str] = []
+    for column in retention_columns:
+        if column not in report.columns:
+            continue
+        mask = coerce_retention_mask(report[column])
+        retained = report.loc[mask, "feature_name"].astype(str).tolist()
+        if retained:
+            break
     if not retained:
         raise RuntimeError(f"No retained features found in {report_path}.")
-    return retained
+    return expand_legacy_retained_features(report, retained)
+
+
+def coerce_retention_mask(series: pd.Series) -> pd.Series:
+    if pd.api.types.is_bool_dtype(series):
+        return series.fillna(False)
+    normalized = series.astype(str).str.strip().str.lower()
+    return normalized.isin({"1", "true", "yes", "y"})
+
+
+def expand_legacy_retained_features(report: pd.DataFrame, retained_features: list[str]) -> list[str]:
+    if report_uses_explicit_missing_indicator_selection(report):
+        return retained_features
+
+    expanded = list(retained_features)
+    for feature_name in retained_features:
+        if is_missing_indicator_feature(feature_name):
+            continue
+        expanded.append(f"is_missing_{feature_name}")
+    return list(dict.fromkeys(expanded))
+
+
+def report_uses_explicit_missing_indicator_selection(report: pd.DataFrame) -> bool:
+    if "report_schema_version" in report.columns:
+        numeric_versions = pd.to_numeric(report["report_schema_version"], errors="coerce")
+        if (numeric_versions >= 2).any():
+            return True
+    if "feature_kind" in report.columns:
+        return True
+    return False
 
 
 def load_universe_tickers(label_source_path: Path) -> list[str]:
@@ -217,6 +258,7 @@ def build_or_load_feature_matrix(
         return matrix, diagnostics
 
     cached_matrix = pd.DataFrame(columns=retained_features)
+    requested_feature_names = expand_requested_feature_names(retained_features)
     if all_features_path.exists():
         cached_long = pd.read_parquet(
             all_features_path,
@@ -224,7 +266,7 @@ def build_or_load_feature_matrix(
             filters=[
                 ("trade_date", ">=", max(config.train_start, CACHED_FEATURE_START)),
                 ("trade_date", "<=", config.test_end),
-                ("feature_name", "in", retained_features),
+                ("feature_name", "in", requested_feature_names),
             ],
         )
         cached_matrix = long_to_feature_matrix(cached_long, retained_features)
@@ -297,7 +339,7 @@ def compute_feature_gap_matrix(
             as_of=as_of,
         )
         batch_matrix = long_to_feature_matrix(
-            batch_long.loc[batch_long["feature_name"].isin(retained_features)].copy(),
+            batch_long.loc[batch_long["feature_name"].isin(expand_requested_feature_names(retained_features))].copy(),
             retained_features,
         )
         matrices.append(batch_matrix)
@@ -313,11 +355,13 @@ def long_to_feature_matrix(features_long: pd.DataFrame, retained_features: list[
         index = pd.MultiIndex(levels=[[], []], codes=[[], []], names=["trade_date", "ticker"])
         return pd.DataFrame(index=index, columns=retained_features, dtype=float)
 
+    requested_feature_names = expand_requested_feature_names(retained_features)
     prepared = features_long.copy()
     prepared["ticker"] = prepared["ticker"].astype(str).str.upper()
     prepared["trade_date"] = pd.to_datetime(prepared["trade_date"])
     prepared["feature_name"] = prepared["feature_name"].astype(str)
     prepared["feature_value"] = pd.to_numeric(prepared["feature_value"], errors="coerce")
+    prepared = prepared.loc[prepared["feature_name"].isin(requested_feature_names)].copy()
     prepared.sort_values(["trade_date", "ticker", "feature_name"], inplace=True)
     prepared.drop_duplicates(["trade_date", "ticker", "feature_name"], keep="last", inplace=True)
 
@@ -326,9 +370,40 @@ def long_to_feature_matrix(features_long: pd.DataFrame, retained_features: list[
         .unstack("feature_name")
         .sort_index()
     )
+    matrix = synthesize_missing_indicator_columns(matrix, retained_features)
     matrix = matrix.reindex(columns=retained_features)
     matrix.index = matrix.index.set_names(["trade_date", "ticker"])
     return matrix
+
+
+def expand_requested_feature_names(retained_features: list[str]) -> list[str]:
+    expanded = set(retained_features)
+    expanded.update(base_feature_name(feature_name) for feature_name in retained_features)
+    return sorted(expanded)
+
+
+def synthesize_missing_indicator_columns(matrix: pd.DataFrame, retained_features: list[str]) -> pd.DataFrame:
+    expanded = matrix.copy()
+    for feature_name in retained_features:
+        if not is_missing_indicator_feature(feature_name):
+            continue
+        base_name = base_feature_name(feature_name)
+        if base_name not in expanded.columns:
+            expanded[feature_name] = np.nan
+            continue
+        expanded[feature_name] = expanded[base_name].isna().astype(float)
+    return expanded
+
+
+def is_missing_indicator_feature(feature_name: str) -> bool:
+    return str(feature_name).startswith("is_missing_")
+
+
+def base_feature_name(feature_name: str) -> str:
+    name = str(feature_name)
+    if is_missing_indicator_feature(name):
+        return name[len("is_missing_") :]
+    return name
 
 
 def summarize_feature_matrix(
