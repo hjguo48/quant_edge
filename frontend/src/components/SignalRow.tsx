@@ -73,17 +73,23 @@ const SignalRow = ({
         </div>
       </div>
 
-      {/* Alpha */}
+      {/* Score (Formerly Alpha) */}
       <div className="w-20 text-right flex-shrink-0">
         <div className={`text-sm font-bold ${isPositive ? "text-bull" : "text-bear"}`}>
-          {alpha > 0 ? "+" : ""}{alpha.toFixed(2)}%
+          {alpha > 0 ? "+" : ""}{alpha.toFixed(4)}
         </div>
-        <div className="text-xs text-muted-foreground">Est. Alpha</div>
+        <div className="text-xs text-muted-foreground">Score</div>
       </div>
 
-      {/* Sparkline */}
-      <div className="w-20 flex-shrink-0 flex justify-center">
-        <MiniSparkline data={sparkData} positive={isPositive} animated={hovered} />
+      {/* Trend */}
+      <div className="w-24 flex-shrink-0 flex justify-center">
+        <MiniSparkline
+          data={sparkData}
+          positive={isPositive}
+          width={60}
+          height={26}
+          animated={false}
+        />
       </div>
 
       {/* Meta */}

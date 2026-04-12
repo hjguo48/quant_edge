@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type CSSProperties } from "react";
 import { Filter, Search, SortDesc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import SignalRow from "../components/SignalRow";
@@ -20,12 +20,39 @@ interface LatestPredictionsResponse {
 
 const DIRECTIONS = ["All", "Long Signals", "Short Signals"];
 const PAGE_SIZE = 10;
+const SORT_OPTIONS = [
+  { key: "score", label: "Score" },
+  { key: "magnitude", label: "|Score|" },
+  { key: "rank", label: "Rank" },
+] as const;
+type SortMode = (typeof SORT_OPTIONS)[number]["key"];
+
+function hashTickerSeed(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+function generateDirectionalSparkData(score: number, seedKey: string): number[] {
+  const base = 50;
+  const direction = score > 0 ? 1 : -1;
+  const magnitude = Math.max(8, Math.min(Math.abs(score) * 5, 30));
+  const seed = hashTickerSeed(seedKey);
+
+  return Array.from({ length: 10 }, (_, index) => {
+    const normalizedNoise = Math.sin(seed + (index + 1) * 12.9898) * 43758.5453;
+    const noise = ((normalizedNoise - Math.floor(normalizedNoise)) - 0.5) * 4;
+    return base + direction * (index / 9) * magnitude + noise;
+  });
+}
 
 const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?: (ticker: string) => void }) => {
   const [search, setSearch] = useState("");
   const [direction, setDirection] = useState("All");
   const [minConf, setMinConf] = useState(0);
-  const [sort, setSort] = useState<"confidence" | "alpha" | "rank">("confidence");
+  const [sort, setSort] = useState<SortMode>("score");
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<LatestPredictionsResponse>({
@@ -35,20 +62,33 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   });
 
   const predictions = data?.predictions || [];
+  const sliderStyle = useMemo(
+    () =>
+      ({
+        "--slider-progress": (minConf / 90) * 100 + "%",
+      }) as CSSProperties,
+    [minConf],
+  );
+
+  const signalRows = useMemo(() => {
+    return predictions.map((prediction) => ({
+      ticker: prediction.ticker,
+      name: prediction.ticker,
+      direction: prediction.score > 0 ? ("long" as const) : ("short" as const),
+      confidence: Math.round(prediction.percentile),
+      alpha: prediction.score,
+      rank: prediction.rank,
+      time: data?.signal_date || "Current",
+      sector: "N/A",
+      sparkData: generateDirectionalSparkData(
+        prediction.score,
+        prediction.ticker + ":" + prediction.rank + ":" + prediction.score.toFixed(6),
+      ),
+    }));
+  }, [predictions, data?.signal_date]);
 
   const filtered = useMemo(() => {
-    return predictions
-      .map(p => ({
-        ticker: p.ticker,
-        name: p.ticker, 
-        direction: p.score > 0 ? "long" as const : "short" as const,
-        confidence: Math.round(p.percentile),
-        alpha: p.score,
-        rank: p.rank,
-        time: data?.signal_date || "Current",
-        sector: "N/A",
-        sparkData: [] as number[],
-      }))
+    return signalRows
       .filter((s) => {
         const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase());
         const matchDir =
@@ -59,12 +99,12 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         return matchSearch && matchDir && matchConf;
       })
       .sort((a, b) => {
-        if (sort === "confidence") return b.confidence - a.confidence;
-        if (sort === "alpha") return Math.abs(b.alpha) - Math.abs(a.alpha);
+        if (sort === "score") return b.alpha - a.alpha;
+        if (sort === "magnitude") return Math.abs(b.alpha) - Math.abs(a.alpha);
         if (sort === "rank") return a.rank - b.rank;
         return 0;
       });
-  }, [predictions, search, direction, minConf, sort, data?.signal_date]);
+  }, [signalRows, search, direction, minConf, sort]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -137,30 +177,36 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="w-px h-5 bg-border" />
 
           {/* Min Confidence */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground whitespace-nowrap">Min conf:</span>
-            <input
-              type="range"
-              min={0}
-              max={90}
-              step={5}
-              value={minConf}
-              onChange={(e) => setMinConf(Number(e.target.value))}
-              className="w-24 accent-primary"
-            />
-            <span className="text-xs font-mono text-foreground w-6">{minConf}%</span>
+            <div className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-2">
+              <input
+                type="range"
+                min={0}
+                max={90}
+                step={5}
+                value={minConf}
+                onChange={(e) => setMinConf(Number(e.target.value))}
+                className="signal-confidence-slider"
+                style={sliderStyle}
+                aria-label="Minimum confidence"
+              />
+              <span className="w-10 text-right text-xs font-mono font-semibold text-foreground">{minConf}%</span>
+            </div>
           </div>
 
           <div className="ml-auto flex items-center gap-1.5">
             <SortDesc size={13} className="text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Sort:</span>
-            {(["confidence", "alpha", "rank"] as const).map((s) => (
+            {SORT_OPTIONS.map((option) => (
               <button
-                key={s}
-                onClick={() => setSort(s)}
-                className={`text-xs px-2 py-1 rounded-md transition-colors ${sort === s ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+                key={option.key}
+                onClick={() => setSort(option.key)}
+                className={`text-xs px-2 py-1 rounded-md transition-colors ${
+                  sort === option.key ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                {s.charAt(0).toUpperCase() + s.slice(1)}
+                {option.label}
               </button>
             ))}
           </div>
@@ -175,7 +221,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Signal</div>
           <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confidence</div>
           <div className="w-20 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Score</div>
-          <div className="w-20 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">Trend</div>
+          <div className="w-24 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">Trend</div>
           <div className="w-28 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Date</div>
           <div className="w-4" />
         </div>
@@ -188,7 +234,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                 <div className="h-10 bg-muted rounded w-28" />
                 <div className="h-4 bg-muted rounded flex-1" />
                 <div className="h-10 bg-muted rounded w-20" />
-                <div className="h-10 bg-muted rounded w-20" />
+                <div className="h-10 bg-muted rounded w-24" />
                 <div className="h-10 bg-muted rounded w-28" />
               </div>
             ))}
