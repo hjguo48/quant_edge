@@ -8,6 +8,7 @@ class PredictionItem(BaseModel):
     score: float
     rank: int
     percentile: float
+    sector: str | None = None
 
 
 class PredictionResponse(BaseModel):
@@ -27,6 +28,7 @@ class TickerPredictionResponse(BaseModel):
     model_scores: dict[str, float] = Field(default_factory=dict)
     weight: float | None = None
     signal_date: str | None = None
+    sector: str | None = None
 
 
 class SignalHistoryPoint(BaseModel):

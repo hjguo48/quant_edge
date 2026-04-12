@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from src.api.deps import get_db
 from src.api.routers import predictions as predictions_router
 
 
@@ -76,9 +77,47 @@ def report_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
-def client(report_dir: Path) -> TestClient:
+def sector_map() -> dict[str, str | None]:
+    return {
+        "BKNG": "Consumer Discretionary",
+        "OGN": "Health Care",
+        "AA": "Materials",
+    }
+
+
+class FakeResult:
+    def __init__(self, rows: list[tuple[str, str | None]]) -> None:
+        self._rows = rows
+
+    def all(self) -> list[tuple[str, str | None]]:
+        return self._rows
+
+
+class FakeAsyncSession:
+    def __init__(self, sector_map: dict[str, str | None]) -> None:
+        self._sector_map = sector_map
+        self.statements: list[object] = []
+
+    async def execute(self, statement: object) -> FakeResult:
+        self.statements.append(statement)
+        return FakeResult(list(self._sector_map.items()))
+
+
+@pytest.fixture()
+def db_session(sector_map: dict[str, str | None]) -> FakeAsyncSession:
+    return FakeAsyncSession(sector_map)
+
+
+@pytest.fixture()
+def client(report_dir: Path, db_session: FakeAsyncSession) -> TestClient:
     app = FastAPI()
     app.include_router(predictions_router.router)
+
+    async def override_get_db() -> FakeAsyncSession:
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
     with (
         patch.object(predictions_router, "GREYSCALE_REPORT_DIR", report_dir),
         patch.object(predictions_router, "_READER", None),
@@ -87,8 +126,10 @@ def client(report_dir: Path) -> TestClient:
     ):
         yield client
 
+    app.dependency_overrides.clear()
 
-def test_get_latest_predictions(client: TestClient) -> None:
+
+def test_get_latest_predictions(client: TestClient, db_session: FakeAsyncSession) -> None:
     response = client.get("/api/predictions/latest")
     assert response.status_code == 200
 
@@ -102,7 +143,11 @@ def test_get_latest_predictions(client: TestClient) -> None:
         "score": pytest.approx(13.21),
         "rank": 1,
         "percentile": 100.0,
+        "sector": "Consumer Discretionary",
     }
+    assert payload["predictions"][-1]["sector"] is None
+    assert len(db_session.statements) == 1
+    assert " IN " in str(db_session.statements[0]).upper()
 
 
 def test_get_latest_predictions_with_top_n(client: TestClient) -> None:
@@ -110,6 +155,10 @@ def test_get_latest_predictions_with_top_n(client: TestClient) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert [item["ticker"] for item in payload["predictions"]] == ["BKNG", "OGN"]
+    assert [item["sector"] for item in payload["predictions"]] == [
+        "Consumer Discretionary",
+        "Health Care",
+    ]
 
 
 def test_get_ticker_prediction(client: TestClient) -> None:
@@ -123,6 +172,7 @@ def test_get_ticker_prediction(client: TestClient) -> None:
     assert payload["total"] == 4
     assert payload["weight"] == pytest.approx(0.015)
     assert payload["model_scores"]["ridge"] == pytest.approx(10.0)
+    assert payload["sector"] == "Consumer Discretionary"
 
 
 def test_get_ticker_prediction_not_found(client: TestClient) -> None:
