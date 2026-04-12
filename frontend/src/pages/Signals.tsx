@@ -288,82 +288,44 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         <div className="h-px bg-border/50" />
 
         {/* Row 2: Direction, Sector, and Confidence */}
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Direction</span>
-            <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
-              {DIRECTIONS.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDirection(d)}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                    direction === d ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Sector</span>
-            <div className="flex-shrink-0">
+        <div className="flex items-center gap-8">
+          {/* Direction Toggle Group */}
+          <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border border-border/50 flex-shrink-0">
+            {DIRECTIONS.map((d) => (
               <button
-                ref={sectorBtnRef}
-                onClick={toggleSectorDropdown}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-transparent hover:border-white/10 hover:bg-accent transition-all text-xs min-w-[140px] group"
+                key={d}
+                onClick={() => setDirection(d)}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                  direction === d ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                <span className={`truncate font-medium ${sectorFilter === "All Sectors" ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
-                  {sectorFilter}
-                </span>
-                <ChevronDown size={14} className={`ml-auto text-muted-foreground transition-transform duration-300 ${sectorOpen ? "rotate-180 text-primary" : "group-hover:text-foreground"}`} />
+                {d}
               </button>
-
-              {sectorOpen && createPortal(
-                <>
-                  <div className="fixed inset-0 z-[9998]" onClick={() => setSectorOpen(false)} />
-                  <div
-                    className="fixed z-[9999] bg-[#1A2540] backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-2 min-w-[220px] max-h-[400px] overflow-y-auto no-scrollbar animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
-                    style={{ top: dropdownPos.top, left: dropdownPos.left }}
-                  >
-                    <button
-                      onClick={() => { setSectorFilter("All Sectors"); setSectorOpen(false); }}
-                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
-                        sectorFilter === "All Sectors" 
-                          ? "text-primary font-bold bg-primary/5" 
-                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                      }`}
-                    >
-                      <span>All Sectors</span>
-                      {sectorFilter === "All Sectors" && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_#00C805]" />}
-                    </button>
-
-                    <div className="h-px bg-white/5 my-1 mx-2" />
-
-                    {PRIMARY_SECTORS.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => { setSectorFilter(s); setSectorOpen(false); }}
-                        className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
-                          sectorFilter === s 
-                            ? "text-primary font-bold bg-primary/5" 
-                            : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                        }`}
-                      >
-                        <span>{s}</span>
-                        {sectorFilter === s && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_#00C805]" />}
-                      </button>
-                    ))}
-                  </div>
-                </>,
-                document.body
-              )}
-            </div>
+            ))}
           </div>
 
-          <div className="flex items-center gap-3 ml-auto">
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Confidence</span>
+          <div className="w-px h-4 bg-border/50 flex-shrink-0" />
+
+          {/* Sector Filter Group */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Sector</span>
+            <button
+              ref={sectorBtnRef}
+              onClick={toggleSectorDropdown}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-transparent hover:border-white/10 hover:bg-accent transition-all text-xs min-w-[140px] group"
+            >
+              <span className={`truncate font-medium ${sectorFilter === "All Sectors" ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
+                {sectorFilter}
+              </span>
+              <ChevronDown size={14} className={`ml-auto text-muted-foreground transition-transform duration-300 ${sectorOpen ? "rotate-180 text-primary" : "group-hover:text-foreground"}`} />
+            </button>
+          </div>
+
+          <div className="w-px h-4 bg-border/50 flex-shrink-0" />
+
+          {/* Confidence Slider Group */}
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Min Confidence</span>
             <div className="flex items-center gap-3">
               <input
                 type="range"
