@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Brain, BarChart3, Info, TrendingUp, Layers } from "lucide-react";
+import { ArrowLeft, Brain, BarChart3, Info, TrendingUp, Layers, ShieldCheck, Target, AlertCircle } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -31,6 +31,21 @@ interface PredictionDetail {
   model_scores: Record<string, number>;
   weight: number;
   signal_date: string;
+  confidence: "high" | "medium" | "low";
+  model_spread: number;
+  model_agreement: number;
+}
+
+interface ExpectedReturnResponse {
+  ticker: string;
+  signal_date: string;
+  percentile: number;
+  quintile: number;
+  data_source: string;
+  ci_level: number;
+  n_observations: number;
+  annualized_excess: { estimate: number; ci_lower: number; ci_upper: number };
+  sharpe: { estimate: number; ci_lower: number; ci_upper: number };
 }
 
 interface ShapFeature {
@@ -236,6 +251,82 @@ function LoadingCard({ className = "", lines = 4 }: { className?: string; lines?
   );
 }
 
+const ExpectedReturnCard = ({ data }: { data: ExpectedReturnResponse }) => {
+  const renderRange = (label: string, estimate: number, lower: number, upper: number, isPercent: boolean = true) => {
+    const min = Math.min(lower, estimate, upper);
+    const max = Math.max(lower, estimate, upper);
+    const range = max - min;
+    const padding = range * 0.2;
+    const displayMin = min - padding;
+    const displayMax = max + padding;
+    const displayRange = displayMax - displayMin;
+
+    const getPos = (val: number) => ((val - displayMin) / displayRange) * 100;
+
+    const format = (v: number) => isPercent ? `${(v * 100).toFixed(1)}%` : v.toFixed(3);
+
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-muted-foreground font-medium">{label}</span>
+          <span className="text-foreground font-mono font-bold">{format(estimate)}</span>
+        </div>
+        <div className="relative h-6 flex items-center">
+          <div className="absolute w-full h-1 bg-muted rounded-full" />
+          {/* CI Bar */}
+          <div 
+            className="absolute h-1.5 bg-primary/30 rounded-full"
+            style={{ left: `${getPos(lower)}%`, width: `${getPos(upper) - getPos(lower)}%` }}
+          />
+          {/* Estimate Dot */}
+          <div 
+            className="absolute w-2.5 h-2.5 bg-primary rounded-full border-2 border-card shadow-[0_0_8px_#00C805]"
+            style={{ left: `${getPos(estimate)}%`, transform: 'translateX(-50%)' }}
+          />
+          {/* Labels */}
+          <div className="absolute top-4 left-0 w-full flex justify-between px-0.5">
+            <span className="text-[9px] text-muted-foreground font-mono">{format(lower)}</span>
+            <span className="text-[9px] text-muted-foreground font-mono">{format(upper)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-card rounded-2xl border border-border p-5 space-y-6 shadow-xl relative overflow-hidden group hover:border-primary/20 transition-colors">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-primary/10">
+            <Target size={16} className="text-primary" />
+          </div>
+          <h3 className="text-sm font-bold text-foreground">Expected Performance</h3>
+        </div>
+        <div className="bg-muted px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest text-primary border border-primary/10">
+          Q{data.quintile} - Top {(data.quintile - 1) * 20}-{data.quintile * 20}%
+        </div>
+      </div>
+
+      <div className="space-y-8 pt-2">
+        {renderRange("Annualized Excess Return", data.annualized_excess.estimate, data.annualized_excess.ci_lower, data.annualized_excess.ci_upper)}
+        {renderRange("Sharpe Ratio", data.sharpe.estimate, data.sharpe.ci_lower, data.sharpe.ci_upper, false)}
+      </div>
+
+      <div className="pt-4 space-y-3 border-t border-white/5">
+        <div className="flex items-start gap-2">
+          <ShieldCheck size={12} className="text-muted-foreground mt-0.5 opacity-50" />
+          <p className="text-[9px] text-muted-foreground leading-relaxed italic uppercase tracking-wider">
+            Based on historical model backtest performance. Past results do not guarantee future returns. Not investment advice.
+          </p>
+        </div>
+        <p className="text-[9px] text-muted-foreground/40 font-mono text-center">
+          Source: 10,000-sample block bootstrap · {data.n_observations} test observations
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const SignalDetail = ({
   ticker = "AAPL",
   onBack = () => {},
@@ -253,6 +344,13 @@ const SignalDetail = ({
   const predictionQuery = useQuery<PredictionDetail>({
     queryKey: ["prediction", normalizedTicker],
     queryFn: () => fetchApi<PredictionDetail>(`/api/predictions/${normalizedTicker}`),
+    enabled: Boolean(normalizedTicker),
+    retry: false,
+  });
+
+  const expectedReturnQuery = useQuery<ExpectedReturnResponse>({
+    queryKey: ["expectedReturn", normalizedTicker],
+    queryFn: () => fetchApi<ExpectedReturnResponse>(`/api/predictions/${normalizedTicker}/expected-return`),
     enabled: Boolean(normalizedTicker),
     retry: false,
   });
@@ -291,6 +389,7 @@ const SignalDetail = ({
   const technicals = technicalsQuery.data;
   const prediction = predictionQuery.data;
   const shap = shapQuery.data;
+  const expectedReturn = expectedReturnQuery.data;
   const history = historyQuery.data?.history || [];
 
   const isPrediction404 = predictionQuery.error instanceof Error && predictionQuery.error.message.includes("404");
@@ -425,90 +524,94 @@ const SignalDetail = ({
           )}
         </div>
 
-        <div className="w-full xl:w-80 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Brain size={14} className="text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Technical Indicators</h3>
+        <div className="w-full xl:w-80 space-y-5 flex-shrink-0 fade-in-up stagger-3">
+          {expectedReturn && <ExpectedReturnCard data={expectedReturn} />}
+          
+          <div className="bg-card rounded-xl border border-border p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Brain size={14} className="text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Technical Indicators</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Latest snapshot{technicals?.trade_date ? ` · ${formatDate(technicals.trade_date)}` : ""}
+            </p>
+
+            {technicalsQuery.isLoading ? (
+              <div className="space-y-3 animate-pulse">
+                {Array.from({ length: 10 }, (_, index) => (
+                  <div key={index} className="h-4 rounded-md bg-muted" style={{ width: `${92 - index * 4}%` }} />
+                ))}
+              </div>
+            ) : technicalsQuery.isError ? (
+              <p className="text-xs text-bear">{getErrorMessage(technicalsQuery.error)}</p>
+            ) : (
+              <div className="space-y-5">
+                <div className="space-y-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Momentum</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">RSI 14</span>
+                    <span className={`text-xs font-bold font-mono ${getRsiColor(technicals?.rsi_14)}`}>
+                      {formatNumber(technicals?.rsi_14, 2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">MACD</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.macd, 4)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Signal</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.macd_signal, 4)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Histogram</span>
+                    <span className={`text-xs font-bold font-mono ${getTrend(technicals?.macd_histogram) === "down" ? "text-bear" : "text-bull"}`}>
+                      {formatNumber(technicals?.macd_histogram, 4)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Bollinger Bands</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Upper</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.bb_upper)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Middle</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.bb_middle)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Lower</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.bb_lower)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Width</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.bb_width, 4)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Position</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.bb_position, 4)}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Moving Averages</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">SMA 20</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.sma_20)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">SMA 50</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.sma_50)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">SMA 200</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.sma_200)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            Latest snapshot{technicals?.trade_date ? ` · ${formatDate(technicals.trade_date)}` : ""}
-          </p>
-
-          {technicalsQuery.isLoading ? (
-            <div className="space-y-3 animate-pulse">
-              {Array.from({ length: 10 }, (_, index) => (
-                <div key={index} className="h-4 rounded-md bg-muted" style={{ width: `${92 - index * 4}%` }} />
-              ))}
-            </div>
-          ) : technicalsQuery.isError ? (
-            <p className="text-xs text-bear">{getErrorMessage(technicalsQuery.error)}</p>
-          ) : (
-            <div className="space-y-5">
-              <div className="space-y-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Momentum</div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">RSI 14</span>
-                  <span className={`text-xs font-bold font-mono ${getRsiColor(technicals?.rsi_14)}`}>
-                    {formatNumber(technicals?.rsi_14, 2)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">MACD</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.macd, 4)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Signal</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.macd_signal, 4)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Histogram</span>
-                  <span className={`text-xs font-bold font-mono ${getTrend(technicals?.macd_histogram) === "down" ? "text-bear" : "text-bull"}`}>
-                    {formatNumber(technicals?.macd_histogram, 4)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Bollinger Bands</div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Upper</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.bb_upper)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Middle</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.bb_middle)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Lower</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.bb_lower)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Width</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.bb_width, 4)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Position</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatNumber(technicals?.bb_position, 4)}</span>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Moving Averages</div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">SMA 20</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.sma_20)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">SMA 50</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.sma_50)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">SMA 200</span>
-                  <span className="text-xs font-bold font-mono text-foreground">{formatCurrency(technicals?.sma_200)}</span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -650,18 +753,33 @@ const SignalDetail = ({
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-2xl font-bold text-foreground">{detail?.ticker ?? normalizedTicker}</h2>
                 {prediction && (
-                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/20 text-bull" : "bg-bear/10 border-bear/20 text-bear"}`}>
-                    <span className="text-xs font-bold uppercase tracking-tight">
-                      Score: {prediction.fusion_score.toFixed(4)}
-                    </span>
-                    <span className="w-1 h-1 rounded-full bg-current opacity-40" />
-                    <span className="text-xs font-bold">
-                      Rank #{prediction.rank}
-                    </span>
-                    <span className="w-1 h-1 rounded-full bg-current opacity-40" />
-                    <span className="text-xs font-bold">
-                      Top {prediction.percentile.toFixed(1)}%
-                    </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/20 text-bull" : "bg-bear/10 border-bear/20 text-bear"}`}>
+                      <span className="text-xs font-bold uppercase tracking-tight">
+                        Score: {prediction.fusion_score.toFixed(4)}
+                      </span>
+                      <span className="w-1 h-1 rounded-full bg-current opacity-40" />
+                      <span className="text-xs font-bold">
+                        Rank #{prediction.rank}
+                      </span>
+                      <span className="w-1 h-1 rounded-full bg-current opacity-40" />
+                      <span className="text-xs font-bold">
+                        Top {prediction.percentile.toFixed(1)}%
+                      </span>
+                    </div>
+                    
+                    {/* Confidence Badge */}
+                    <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${
+                      prediction.confidence === "high" ? "bg-bull/10 border-bull/30 text-bull" :
+                      prediction.confidence === "medium" ? "bg-amber-500/10 border-amber-500/30 text-amber-500" :
+                      "bg-bear/10 border-bear/30 text-bear"
+                    }`}>
+                      {prediction.confidence} confidence
+                    </div>
+
+                    <div className="text-[10px] font-bold text-muted-foreground bg-muted/50 px-2 py-1 rounded border border-border/50">
+                      {Math.round(prediction.model_agreement * 100)}% Model Agreement
+                    </div>
                   </div>
                 )}
                 {predictionQuery.isLoading && (
@@ -740,15 +858,13 @@ const SignalDetail = ({
         </div>
       )}
 
-      <div className="flex gap-1 bg-muted rounded-xl p-1 w-fit fade-in-up stagger-1">
+      <div className="glass-tab-container w-fit fade-in-up stagger-1">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all duration-200 ${
-              activeTab === tab
-                ? "bg-card text-foreground shadow-custom"
-                : "text-muted-foreground hover:text-foreground"
+            className={`glass-tab capitalize ${
+              activeTab === tab ? "glass-tab-active" : "glass-tab-inactive"
             }`}
           >
             {tab}
