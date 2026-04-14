@@ -1,17 +1,96 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from pydantic import BaseModel, Field
 
 
 class PredictionItem(BaseModel):
     ticker: str
     score: float
+    rank: int
+    percentile: float
+    sector: str | None = None
+    company_name: str | None = None
 
 
 class PredictionResponse(BaseModel):
-    message: str
-    as_of: datetime | None = None
-    model_name: str | None = None
+    signal_date: str | None = None
+    week_number: int | None = None
+    model_name: str = "ic_weighted_fusion_60d"
+    universe_size: int | None = None
     predictions: list[PredictionItem] = Field(default_factory=list)
+
+
+class TickerPredictionResponse(BaseModel):
+    ticker: str
+    fusion_score: float
+    rank: int | None = None
+    total: int | None = None
+    percentile: float | None = None
+    model_scores: dict[str, float] = Field(default_factory=dict)
+    weight: float | None = None
+    signal_date: str | None = None
+    sector: str | None = None
+    confidence: str | None = None
+    model_spread: float | None = None
+    model_agreement: float | None = None
+
+
+class SignalHistoryPoint(BaseModel):
+    week: int
+    signal_date: str | None = None
+    score: float
+    rank: int | None = None
+    total: int | None = None
+
+
+class SignalHistoryResponse(BaseModel):
+    ticker: str
+    history: list[SignalHistoryPoint] = Field(default_factory=list)
+
+
+class ShapFeature(BaseModel):
+    feature: str
+    shap_value: float
+
+
+class TickerShapResponse(BaseModel):
+    ticker: str
+    signal_date: str | None = None
+    features: list[ShapFeature] = Field(default_factory=list)
+
+
+class ConfidenceStatsResponse(BaseModel):
+    annualized_excess_ci_lower: float | None = None
+    annualized_excess_ci_upper: float | None = None
+    annualized_excess_estimate: float | None = None
+    sharpe_ci_lower: float | None = None
+    sharpe_ci_upper: float | None = None
+    sharpe_estimate: float | None = None
+    n_bootstrap: int | None = None
+    ci_level: float | None = None
+
+
+class ExpectedReturnBand(BaseModel):
+    estimate: float
+    ci_lower: float
+    ci_upper: float
+
+
+class ExpectedReturnsResponse(BaseModel):
+    data_source: str = "g3_gate_bootstrap"
+    ci_level: float
+    n_observations: int
+    annualized_excess: ExpectedReturnBand
+    sharpe: ExpectedReturnBand
+
+
+class TickerExpectedReturnResponse(BaseModel):
+    ticker: str
+    signal_date: str | None = None
+    percentile: float | None = None
+    quintile: int | None = None
+    data_source: str = "g3_gate_bootstrap"
+    ci_level: float
+    n_observations: int
+    annualized_excess: ExpectedReturnBand
+    sharpe: ExpectedReturnBand

@@ -17,8 +17,9 @@ def test_feature_pipeline_runs_end_to_end_with_mocked_pit_sources(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     tickers = ["AAA", "BBB"]
+    all_price_tickers = [*tickers, "SPY"]
     full_prices = _build_price_history(
-        tickers=tickers,
+        tickers=all_price_tickers,
         start=date(2023, 1, 2),
         end=date(2024, 11, 15),
     )
@@ -78,6 +79,7 @@ def test_feature_pipeline_runs_end_to_end_with_mocked_pit_sources(
         }
 
     monkeypatch.setattr(pipeline_module, "get_prices_pit", fake_get_prices_pit)
+    monkeypatch.setattr(technical_module, "get_prices_pit", fake_get_prices_pit)
     monkeypatch.setattr(fundamental_module, "get_fundamentals_pit", fake_get_fundamentals_pit)
     monkeypatch.setattr(technical_module, "_load_pit_shares_outstanding", fake_load_pit_shares)
     monkeypatch.setattr(macro_module, "_load_macro_histories", fake_load_macro_histories)
@@ -132,6 +134,10 @@ def _build_price_history(*, tickers: list[str], start: date, end: date) -> pd.Da
 
 def _build_fundamentals_history(tickers: list[str]) -> pd.DataFrame:
     quarter_templates = [
+        ("2022Q4", date(2022, 12, 31), datetime(2023, 2, 10, 21, tzinfo=timezone.utc)),
+        ("2023Q1", date(2023, 3, 31), datetime(2023, 5, 10, 21, tzinfo=timezone.utc)),
+        ("2023Q2", date(2023, 6, 30), datetime(2023, 8, 9, 21, tzinfo=timezone.utc)),
+        ("2023Q3", date(2023, 9, 30), datetime(2023, 11, 9, 21, tzinfo=timezone.utc)),
         ("2023Q4", date(2023, 12, 31), datetime(2024, 2, 10, 21, tzinfo=timezone.utc)),
         ("2024Q1", date(2024, 3, 31), datetime(2024, 5, 10, 21, tzinfo=timezone.utc)),
         ("2024Q2", date(2024, 6, 30), datetime(2024, 8, 9, 21, tzinfo=timezone.utc)),

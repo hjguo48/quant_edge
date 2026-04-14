@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { AlertCircle, ChevronRight, Clock } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import MiniSparkline from "./MiniSparkline";
+import { getSectorColor } from "../constants/sectorColors";
 
 interface SignalRowProps {
   ticker?: string;
   name?: string;
   direction?: "long" | "short" | "neutral";
   confidence?: number;
-  alpha?: number;
-  time?: string;
-  sector?: string;
+  score?: number;
   sparkData?: number[];
+  sector?: string;
   onClick?: () => void;
 }
 
@@ -19,10 +19,9 @@ const SignalRow = ({
   name = "Apple Inc.",
   direction = "long",
   confidence = 78,
-  alpha = 2.4,
-  time = "2m ago",
-  sector = "Technology",
-  sparkData = [10, 12, 11, 15, 14, 18, 16, 20, 19, 24],
+  score = 0.0,
+  sparkData = [],
+  sector = "—",
   onClick = () => {},
 }: SignalRowProps) => {
   const [hovered, setHovered] = useState(false);
@@ -33,13 +32,15 @@ const SignalRow = ({
     direction === "long" ? "LONG SIGNAL" : direction === "short" ? "SHORT SIGNAL" : "NEUTRAL";
   const isPositive = direction === "long";
 
+  const sColor = getSectorColor(sector);
+
   return (
     <div
       data-cmp="SignalRow"
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className={`flex items-center gap-4 px-5 py-3.5 border-b border-border cursor-pointer transition-all duration-200 ${hovered ? "bg-accent/50" : ""}`}
+      className="flex items-center gap-4 px-5 py-3.5 border-b border-border last:border-0 cursor-pointer transition-all duration-200"
     >
       {/* Ticker */}
       <div className="w-24 flex-shrink-0">
@@ -73,26 +74,31 @@ const SignalRow = ({
         </div>
       </div>
 
-      {/* Alpha */}
+      {/* Score */}
       <div className="w-20 text-right flex-shrink-0">
         <div className={`text-sm font-bold ${isPositive ? "text-bull" : "text-bear"}`}>
-          {alpha > 0 ? "+" : ""}{alpha.toFixed(2)}%
+          {score > 0 ? "+" : ""}{score.toFixed(4)}
         </div>
-        <div className="text-xs text-muted-foreground">Est. Alpha</div>
+        <div className="text-xs text-muted-foreground">Score</div>
       </div>
 
-      {/* Sparkline */}
-      <div className="w-20 flex-shrink-0 flex justify-center">
-        <MiniSparkline data={sparkData} positive={isPositive} animated={hovered} />
+      {/* Trend */}
+      <div className="w-24 flex justify-center flex-shrink-0">
+        <MiniSparkline data={sparkData} positive={isPositive} width={80} height={32} animated={hovered} />
       </div>
 
-      {/* Meta */}
-      <div className="w-28 text-right flex-shrink-0">
-        <div className="flex items-center gap-1 justify-end text-xs text-muted-foreground">
-          <Clock size={11} />
-          <span>{time}</span>
-        </div>
-        <div className="text-xs text-muted-foreground mt-0.5">{sector}</div>
+      {/* Sector */}
+      <div className="w-32 flex justify-end flex-shrink-0">
+        <span 
+          className="text-[10px] font-semibold px-2 py-0.5 rounded-md border truncate max-w-full"
+          style={{ 
+            backgroundColor: sColor.bg, 
+            color: sColor.text, 
+            borderColor: sColor.border 
+          }}
+        >
+          {sector || "—"}
+        </span>
       </div>
 
       {/* Arrow */}

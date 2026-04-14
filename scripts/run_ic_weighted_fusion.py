@@ -417,6 +417,7 @@ def build_rolling_weights(
     model_names: list[str],
     rolling_window: int,
     temperature: float,
+    negative_ic_action: str = "zero",
 ) -> pd.DataFrame:
     history = daily_ic_frame.copy().sort_index()
     score_frame = history.shift(1).rolling(rolling_window, min_periods=rolling_window).mean()
@@ -426,7 +427,15 @@ def build_rolling_weights(
     for trade_date in weights.index:
         scores = score_frame.loc[trade_date, model_names].to_numpy(dtype=float)
         if np.isfinite(scores).all():
-            weights.loc[trade_date, model_names] = softmax(scores * temperature)
+            gated_scores = scores.copy()
+            if negative_ic_action == "zero":
+                gated_scores[gated_scores < 0] = 0.0
+            elif negative_ic_action == "halve":
+                gated_scores[gated_scores < 0] *= 0.5
+            if gated_scores.sum() == 0:
+                weights.loc[trade_date, model_names] = equal
+            else:
+                weights.loc[trade_date, model_names] = softmax(gated_scores * temperature)
         else:
             weights.loc[trade_date, model_names] = equal
     return weights

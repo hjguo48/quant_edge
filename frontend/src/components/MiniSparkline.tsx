@@ -37,12 +37,11 @@ const MiniSparkline = ({
     const getX = (i: number) => (i / (data.length - 1)) * width;
     const getY = (v: number) => height - ((v - min) / range) * (height - 4) - 2;
 
-    let progress = 0;
     const totalFrames = animated ? 45 : 1;
 
     const draw = (frame: number) => {
       ctx.clearRect(0, 0, width, height);
-      const p = Math.min(frame / totalFrames, 1);
+      const p = animated ? Math.min(frame / totalFrames, 1) : 1;
       const pointCount = Math.max(2, Math.floor(p * data.length));
 
       ctx.beginPath();
@@ -70,12 +69,12 @@ const MiniSparkline = ({
       ctx.fillStyle = grad;
       ctx.fill();
 
-      if (frame < totalFrames) {
+      if (animated && frame < totalFrames) {
         animRef.current = requestAnimationFrame(() => draw(frame + 1));
       }
     };
 
-    animRef.current = requestAnimationFrame(() => draw(progress));
+    animRef.current = requestAnimationFrame(() => draw(0));
     return () => cancelAnimationFrame(animRef.current);
   }, [data, positive, width, height, animated]);
 

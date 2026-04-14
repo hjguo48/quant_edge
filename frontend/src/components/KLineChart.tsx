@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { CandlestickChart, TrendingUp, RefreshCcw } from "lucide-react";
+import { fetchApi } from "../hooks/useApi";
 
 interface Candle {
   time: string;
@@ -24,7 +26,8 @@ interface StockPricesResponse {
   }>;
 }
 
-type RangeKey = "1D" | "1W" | "1M" | "3M" | "1Y";
+type RangeKey = "1D" | "1W" | "1M" | "3M" | "1Y" | "5Y" | "All";
+type ChartMode = "candlestick" | "line";
 
 interface RangeOption {
   key: RangeKey;
@@ -47,10 +50,12 @@ interface KLineChartProps {
 
 const RANGE_OPTIONS: RangeOption[] = [
   { key: "1D", label: "1D", days: 1 },
-  { key: "1W", label: "1W", days: 7 },
-  { key: "1M", label: "1M", days: 30 },
-  { key: "3M", label: "3M", days: 90 },
-  { key: "1Y", label: "1Y", days: 365 },
+  { key: "1W", label: "1W", days: 5 },
+  { key: "1M", label: "1M", days: 21 },
+  { key: "3M", label: "3M", days: 63 },
+  { key: "1Y", label: "1Y", days: 252 },
+  { key: "5Y", label: "5Y", days: 1260 },
+  { key: "All", label: "All", days: 2520 },
 ];
 
 function generateCandles(n: number): Candle[] {
@@ -87,24 +92,14 @@ function getDaysForRange(range: RangeKey): number {
   return RANGE_OPTIONS.find((option) => option.key === range)?.days ?? 30;
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-
-  return response.json() as Promise<T>;
-}
-
 function mapPricesToCandles(payload?: StockPricesResponse): Candle[] {
-  return (payload?.prices ?? [])
+  if (!payload?.prices) return [];
+  
+  return payload.prices
     .filter((price) => {
-      const open = price.open ?? price.close;
-      const high = price.high ?? price.close;
-      const low = price.low ?? price.close;
+      // Be more lenient: only require close to show a point
       const close = price.close ?? price.adj_close;
-
-      return [open, high, low, close].every((value) => typeof value === "number" && Number.isFinite(value));
+      return typeof close === "number" && Number.isFinite(close);
     })
     .map((price) => ({
       time: price.trade_date,
@@ -143,9 +138,18 @@ const KLineChart = ({
   const chartAreaRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fallbackCandlesRef = useRef<Candle[] | null>(null);
+  const rangeSelectorRef = useRef<HTMLDivElement>(null);
+  const rangeButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [selectedRange, setSelectedRange] = useState<RangeKey>(defaultRange);
+  const [chartMode, setChartMode] = useState<ChartMode>("candlestick");
   const [chartWidth, setChartWidth] = useState(0);
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [rangeSliderStyle, setRangeSliderStyle] = useState<CSSProperties>({
+    width: 0,
+    transform: "translateX(0px)",
+    opacity: 0,
+  });
 
   useEffect(() => {
     setSelectedRange(defaultRange);
@@ -175,6 +179,43 @@ const KLineChart = ({
     setHoverState(null);
   }, [selectedRange]);
 
+  useLayoutEffect(() => {
+    const updateRangeSlider = () => {
+      const selectedIndex = RANGE_OPTIONS.findIndex((option) => option.key === selectedRange);
+      const button = rangeButtonRefs.current[selectedIndex];
+
+      if (!button) {
+        setRangeSliderStyle((current) => ({ ...current, opacity: 0 }));
+        return;
+      }
+
+      setRangeSliderStyle({
+        width: button.offsetWidth,
+        transform: `translateX(${Math.max(0, button.offsetLeft - 4)}px)`,
+        opacity: 1,
+      });
+    };
+
+    updateRangeSlider();
+
+    const resizeObserver = new ResizeObserver(updateRangeSlider);
+    const container = rangeSelectorRef.current;
+    if (container) {
+      resizeObserver.observe(container);
+    }
+    rangeButtonRefs.current.forEach((button) => {
+      if (button) {
+        resizeObserver.observe(button);
+      }
+    });
+    window.addEventListener("resize", updateRangeSlider);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateRangeSlider);
+    };
+  }, [selectedRange]);
+
   if (!fallbackCandlesRef.current) {
     fallbackCandlesRef.current = generateCandles(60);
   }
@@ -182,16 +223,17 @@ const KLineChart = ({
   const selectedDays = getDaysForRange(selectedRange);
   const fallbackCandles = !ticker && !candles?.length ? fallbackCandlesRef.current ?? [] : [];
 
-  const pricesQuery = useQuery<StockPricesResponse>({
+  const pricesQuery = useQuery<StockPricesResponse, Error>({
     queryKey: ["klineChartPrices", ticker, selectedDays],
-    queryFn: () => fetchJson(`/api/stocks/${ticker}/prices?days=${selectedDays}`),
+    queryFn: () => fetchApi<StockPricesResponse>(`/api/stocks/${ticker}/prices?days=${selectedDays}`),
     enabled: Boolean(ticker),
     staleTime: 60_000,
+    retry: false,
     placeholderData: (previousData) => previousData,
   });
 
   const liveCandles = useMemo(() => mapPricesToCandles(pricesQuery.data), [pricesQuery.data]);
-  const data = liveCandles.length > 0 ? liveCandles : candles?.length ? candles : fallbackCandles;
+  const data = liveCandles.length > 0 ? liveCandles : (candles?.length ? candles : (ticker ? [] : fallbackCandles));
 
   const metrics = useMemo(() => {
     if (!chartWidth || data.length === 0) return null;
@@ -246,6 +288,7 @@ const KLineChart = ({
 
     const volumeTop = metrics.chartHeight + 10;
 
+    // Draw Grid
     ctx.strokeStyle = "rgba(255,255,255,0.04)";
     ctx.lineWidth = 1;
     for (let index = 0; index <= 4; index += 1) {
@@ -256,26 +299,78 @@ const KLineChart = ({
       ctx.stroke();
     }
 
+    const firstPoint = data[0];
+    const lastPoint = data[data.length - 1];
+    const isOverallPositive = lastPoint.close >= firstPoint.open;
+    const themeColor = isOverallPositive ? "#00C805" : "#FF5252";
+
+    if (chartMode === "line") {
+      // Draw Area
+      const gradient = ctx.createLinearGradient(0, metrics.padding.top, 0, metrics.chartHeight);
+      gradient.addColorStop(0, `${themeColor}33`);
+      gradient.addColorStop(1, `${themeColor}00`);
+      
+      ctx.beginPath();
+      data.forEach((candle, index) => {
+        const x = metrics.padding.left + index * metrics.spacing + metrics.spacing / 2;
+        const y = toY(candle.close);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      
+      // Close the path for filling
+      const firstX = metrics.padding.left + metrics.spacing / 2;
+      const lastX = metrics.padding.left + (data.length - 1) * metrics.spacing + metrics.spacing / 2;
+      ctx.lineTo(lastX, metrics.chartHeight);
+      ctx.lineTo(firstX, metrics.chartHeight);
+      ctx.closePath();
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // Draw Line
+      ctx.beginPath();
+      ctx.strokeStyle = themeColor;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      data.forEach((candle, index) => {
+        const x = metrics.padding.left + index * metrics.spacing + metrics.spacing / 2;
+        const y = toY(candle.close);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    } else {
+      // Draw Candlesticks
+      data.forEach((candle, index) => {
+        const x = metrics.padding.left + index * metrics.spacing + metrics.spacing / 2;
+        const isBullish = candle.close >= candle.open;
+        const color = isBullish ? "#00C805" : "#FF5252";
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, toY(candle.high));
+        ctx.lineTo(x, toY(candle.low));
+        ctx.stroke();
+
+        const bodyTop = toY(Math.max(candle.open, candle.close));
+        const bodyBottom = toY(Math.min(candle.open, candle.close));
+        const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x - metrics.candleWidth / 2, bodyTop, metrics.candleWidth, bodyHeight);
+      });
+    }
+
+    // Draw Volume (Always)
     data.forEach((candle, index) => {
       const x = metrics.padding.left + index * metrics.spacing + metrics.spacing / 2;
       const isBullish = candle.close >= candle.open;
       const color = isBullish ? "#00C805" : "#FF5252";
-
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, toY(candle.high));
-      ctx.lineTo(x, toY(candle.low));
-      ctx.stroke();
-
-      const bodyTop = toY(Math.max(candle.open, candle.close));
-      const bodyBottom = toY(Math.min(candle.open, candle.close));
-      const bodyHeight = Math.max(1, bodyBottom - bodyTop);
-
-      ctx.fillStyle = color;
-      ctx.fillRect(x - metrics.candleWidth / 2, bodyTop, metrics.candleWidth, bodyHeight);
-
+      
       const volumeBarHeight = (candle.volume / metrics.maxVolume) * (metrics.volumeHeight - 8);
+      ctx.fillStyle = color;
       ctx.globalAlpha = 0.35;
       ctx.fillRect(
         x - metrics.candleWidth / 2,
@@ -286,6 +381,7 @@ const KLineChart = ({
       ctx.globalAlpha = 1;
     });
 
+    // Draw Price Labels
     ctx.fillStyle = "rgba(96,123,150,0.85)";
     ctx.font = "10px Inter, sans-serif";
     ctx.textAlign = "right";
@@ -317,13 +413,20 @@ const KLineChart = ({
 
       ctx.setLineDash([]);
 
-      ctx.fillStyle = activeCandle.close >= activeCandle.open ? "#00C805" : "#FF5252";
+      ctx.fillStyle = activeCandle.close >= (chartMode === "candlestick" ? activeCandle.open : activeCandle.close) ? "#00C805" : "#FF5252";
+      // In line mode, we can just use the themeColor or point specific color. 
+      // Requirement says "线条颜色: 如果整体涨 → bull, 跌 → bear". 
+      // For hover dot, let's use themeColor for consistency in line mode.
+      ctx.fillStyle = chartMode === "line" ? themeColor : (activeCandle.close >= activeCandle.open ? "#00C805" : "#FF5252");
+      
       ctx.beginPath();
       ctx.arc(activeX, activeY, 3, 0, Math.PI * 2);
       ctx.fill();
     } else {
       const isBullish = activeCandle.close >= activeCandle.open;
-      ctx.strokeStyle = isBullish ? "rgba(0,200,5,0.5)" : "rgba(255,82,82,0.5)";
+      const currentThemeColor = chartMode === "line" ? themeColor : (isBullish ? "#00C805" : "#FF5252");
+      
+      ctx.strokeStyle = currentThemeColor;
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
@@ -333,7 +436,7 @@ const KLineChart = ({
       ctx.setLineDash([]);
 
       const badgeWidth = 56;
-      ctx.fillStyle = isBullish ? "#00C805" : "#FF5252";
+      ctx.fillStyle = currentThemeColor;
       ctx.beginPath();
       ctx.roundRect(width - metrics.padding.right - badgeWidth + 6, activeY - 9, badgeWidth, 18, 4);
       ctx.fill();
@@ -342,7 +445,7 @@ const KLineChart = ({
       ctx.textAlign = "center";
       ctx.fillText(`$${activeCandle.close.toFixed(2)}`, width - metrics.padding.right - badgeWidth / 2 + 6, activeY + 4);
     }
-  }, [data, height, hoverState, metrics]);
+  }, [data, height, hoverState, metrics, chartMode]);
 
   const handleMouseMove = (event: MouseEvent<HTMLCanvasElement>) => {
     if (!metrics) return;
@@ -372,6 +475,7 @@ const KLineChart = ({
   const totalChange =
     lastCandle && firstCandle ? ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100 : 0;
   const isPositive = totalChange >= 0;
+  const chartModeTranslate = chartMode === "candlestick" ? "translateX(0%)" : "translateX(100%)";
   const tooltipLeft =
     hoverState && metrics ? Math.max(12, Math.min(hoverState.x + 14, metrics.width - 176)) : 0;
   const tooltipTop = hoverState ? Math.max(12, Math.min(hoverState.y + 14, height - 126)) : 0;
@@ -388,37 +492,94 @@ const KLineChart = ({
             {totalChange >= 0 ? "+" : ""}{totalChange.toFixed(2)}%
           </span>
           {pricesQuery.isFetching && !isInitialLoading && (
-            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground animate-pulse">
               Refreshing
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {RANGE_OPTIONS.map((option) => (
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Chart Type Toggle */}
+          <div className="relative grid grid-cols-2 items-center rounded-lg bg-accent/50 p-1">
+            <div
+              aria-hidden="true"
+              className="absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-md bg-card shadow-sm transition-transform duration-300 ease-out"
+              style={{ transform: chartModeTranslate }}
+            />
             <button
-              key={option.key}
-              onClick={() => setSelectedRange(option.key)}
-              className={`text-xs px-2 py-1 rounded-md transition-all duration-200 ${
-                selectedRange === option.key
-                  ? "bg-primary text-primary-foreground font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              onClick={() => setChartMode("candlestick")}
+              className={`relative z-10 flex h-6 w-7 items-center justify-center rounded-md transition-colors duration-300 ${
+                chartMode === "candlestick" ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
+              title="Candlestick"
+              aria-label="Candlestick chart"
             >
-              {option.label}
+              <CandlestickChart size={12} />
             </button>
-          ))}
+            <button
+              onClick={() => setChartMode("line")}
+              className={`relative z-10 flex h-6 w-7 items-center justify-center rounded-md transition-colors duration-300 ${
+                chartMode === "line" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Line Chart"
+              aria-label="Line chart"
+            >
+              <TrendingUp size={12} />
+            </button>
+          </div>
+
+          <div className="w-px h-4 bg-border" />
+
+          {/* Range Selector */}
+          <div ref={rangeSelectorRef} className="relative flex items-center gap-1 bg-accent/50 p-1 rounded-lg">
+            <div
+              aria-hidden="true"
+              className="absolute bottom-1 top-1 left-1 rounded-md bg-card shadow-sm transition-all duration-300 ease-out"
+              style={rangeSliderStyle}
+            />
+            {RANGE_OPTIONS.map((option, index) => (
+              <button
+                key={option.key}
+                ref={(node) => {
+                  rangeButtonRefs.current[index] = node;
+                }}
+                onClick={() => {
+                  if (option.key === selectedRange) return;
+                  setIsTransitioning(true);
+                  setSelectedRange(option.key);
+                  setTimeout(() => setIsTransitioning(false), 350);
+                }}
+                className={`relative z-10 px-3 py-1 text-[10px] font-bold rounded-md transition-colors duration-300 ${
+                  selectedRange === option.key
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div ref={chartAreaRef} className="relative">
+      <div ref={chartAreaRef} className={`relative transition-all duration-500 ease-out origin-center ${isTransitioning ? "opacity-60 scale-[0.985]" : "opacity-100 scale-100"}`}>
         {isInitialLoading ? (
           <div className="flex items-center justify-center rounded-lg bg-surface animate-pulse" style={{ height }}>
             <span className="text-sm text-muted-foreground">Loading price history…</span>
           </div>
         ) : hasError ? (
-          <div className="flex items-center justify-center rounded-lg border border-dashed border-border bg-surface text-sm text-bear" style={{ height }}>
-            Failed to load price history.
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface px-4 text-center" style={{ height }}>
+            <span className="text-sm text-bear mb-2">Failed to load price history.</span>
+            <p className="text-[10px] text-muted-foreground mb-3 max-w-[200px]">
+              {pricesQuery.error?.message || "Internal server error"}
+            </p>
+            <button 
+              onClick={() => pricesQuery.refetch()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-accent transition-colors"
+            >
+              <RefreshCcw size={12} />
+              Retry
+            </button>
           </div>
         ) : data.length === 0 ? (
           <div className="flex items-center justify-center rounded-lg border border-dashed border-border bg-surface text-sm text-muted-foreground" style={{ height }}>
@@ -427,11 +588,12 @@ const KLineChart = ({
         ) : (
           <>
             <canvas
+              key={chartMode}
               ref={canvasRef}
               onMouseMove={handleMouseMove}
               onMouseLeave={() => setHoverState(null)}
               style={{ width: "100%", height, cursor: "crosshair" }}
-              className="block w-full"
+              className="block w-full animate-in fade-in duration-500"
             />
 
             {activeCandle && (
@@ -448,20 +610,24 @@ const KLineChart = ({
                   {formatTradeDate(activeCandle.time)}
                 </div>
                 <div className="space-y-1">
+                  {chartMode === "candlestick" && (
+                    <>
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">Open</span>
+                        <span className="font-mono text-foreground">${activeCandle.open.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">High</span>
+                        <span className="font-mono text-foreground">${activeCandle.high.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">Low</span>
+                        <span className="font-mono text-foreground">${activeCandle.low.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-muted-foreground">Open</span>
-                    <span className="font-mono text-foreground">${activeCandle.open.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-muted-foreground">High</span>
-                    <span className="font-mono text-foreground">${activeCandle.high.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-muted-foreground">Low</span>
-                    <span className="font-mono text-foreground">${activeCandle.low.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-muted-foreground">Close</span>
+                    <span className="text-muted-foreground">{chartMode === "candlestick" ? "Close" : "Price"}</span>
                     <span className="font-mono text-foreground">${activeCandle.close.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3 text-xs">

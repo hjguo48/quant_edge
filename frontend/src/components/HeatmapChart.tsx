@@ -71,7 +71,7 @@ const HeatmapChart = ({
         <table className="w-full border-separate" style={{ borderSpacing: "2px" }}>
           <thead>
             <tr>
-              <th className="w-20" />
+              {rows.length > 1 && <th className="w-20" />}
               {cols.map((col) => (
                 <th key={col} className="text-xs font-medium text-muted-foreground pb-2 text-center min-w-14">
                   {col}
@@ -82,9 +82,11 @@ const HeatmapChart = ({
           <tbody>
             {rows.map((row, ri) => (
               <tr key={row}>
-                <td className="text-xs font-medium text-muted-foreground pr-3 text-right whitespace-nowrap">
-                  {row}
-                </td>
+                {rows.length > 1 && (
+                  <td className="text-xs font-medium text-muted-foreground pr-3 text-right whitespace-nowrap">
+                    {row}
+                  </td>
+                )}
                 {cols.map((col, ci) => {
                   const v = data[ri][ci];
                   const normalizedValue = v / maxAbsValue;

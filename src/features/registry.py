@@ -92,6 +92,8 @@ _TECHNICAL_FEATURE_METADATA = {
     "stoch_k": "14-day stochastic oscillator %K.",
     "stoch_d": "Three-day moving average of stochastic %K.",
     "cci_20": "20-day commodity channel index.",
+    "residual_momentum": "Blitz, Huij & Martens (2011) 60-day sum of SPY market-model residual returns using a 252-day regression window.",
+    "idio_vol": "Ang, Hodrick, Xing & Zhang (2006) 60-day standard deviation of SPY market-model residual returns using a 252-day regression window.",
 }
 
 _FUNDAMENTAL_FEATURE_METADATA = {
@@ -110,6 +112,8 @@ _FUNDAMENTAL_FEATURE_METADATA = {
     "debt_to_equity": "Total debt divided by shareholder equity.",
     "current_ratio": "Current assets divided by current liabilities.",
     "eps_surprise": "Reported EPS surprise versus consensus EPS.",
+    "accruals": "Sloan (1996) accrual anomaly: (net income - operating cash flow) divided by total assets.",
+    "asset_growth": "Cooper, Gulen & Schill (2008) year-over-year total asset growth using t versus t-4 quarters.",
 }
 
 _MACRO_FEATURE_METADATA = {
@@ -148,7 +152,7 @@ _COMPOSITE_FEATURE_METADATA = {
     "macro_risk_on": "MACRO_REGIME composite: curve slope minus credit spread risk-on composite.",
 }
 
-assert len(TECHNICAL_FEATURE_NAMES) == 30
-assert len(FUNDAMENTAL_FEATURE_NAMES) == 15
+assert len(TECHNICAL_FEATURE_NAMES) == 32
+assert len(FUNDAMENTAL_FEATURE_NAMES) == 17
 assert len(MACRO_FEATURE_NAMES) == 10
 assert len(COMPOSITE_FEATURE_NAMES) == 20

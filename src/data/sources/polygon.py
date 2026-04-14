@@ -119,6 +119,73 @@ class PolygonDataSource(DataSource):
         )
         return frame
 
+    def fetch_adjusted_historical(
+        self,
+        tickers: Sequence[str],
+        start_date: date | datetime,
+        end_date: date | datetime,
+        *,
+        knowledge_time_mode: str = "historical",
+        observed_at: date | datetime | None = None,
+    ) -> pd.DataFrame:
+        start = self.coerce_date(start_date)
+        end = self.coerce_date(end_date)
+        observed_at_ts = (
+            self.coerce_datetime(observed_at or datetime.now(timezone.utc))
+            if knowledge_time_mode == "observed_at"
+            else None
+        )
+        rows: list[dict[str, Any]] = []
+
+        canonical_tickers = tuple(
+            dict.fromkeys(normalize_polygon_ticker(ticker) for ticker in self.normalize_tickers(tickers))
+        )
+
+        for ticker in canonical_tickers:
+            provider_ticker = to_polygon_request_ticker(ticker)
+            adjusted_bars = self._list_aggs(provider_ticker, start, end, adjusted=True)
+
+            if not adjusted_bars:
+                logger.warning(
+                    "polygon returned no adjusted daily bars for {} using provider symbol {}",
+                    ticker,
+                    provider_ticker,
+                )
+                continue
+
+            for trade_date, adjusted_bar in sorted(adjusted_bars.items()):
+                adjusted_close = adjusted_bar["close"]
+                rows.append(
+                    {
+                        "ticker": ticker,
+                        "trade_date": trade_date,
+                        "open": adjusted_bar["open"],
+                        "high": adjusted_bar["high"],
+                        "low": adjusted_bar["low"],
+                        "close": adjusted_close,
+                        "adj_close": adjusted_close,
+                        "volume": adjusted_bar["volume"],
+                        "knowledge_time": self._resolve_knowledge_time(
+                            trade_date,
+                            mode=knowledge_time_mode,
+                            observed_at=observed_at_ts,
+                        ),
+                        "source": self.source_name,
+                    },
+                )
+
+        frame = self.dataframe_or_empty(rows, PRICE_COLUMNS)
+        if not frame.empty:
+            self.persist_prices(frame)
+        logger.info(
+            "polygon fetched {} fully adjusted rows for {} tickers between {} and {}",
+            len(frame),
+            len(set(frame["ticker"])) if not frame.empty else 0,
+            start,
+            end,
+        )
+        return frame
+
     def fetch_incremental(
         self,
         tickers: Sequence[str],

@@ -6,75 +6,32 @@
     "price_snapshot_path": "/opt/quantedge/data/reports/greyscale/weekly_signal_prices.parquet",
     "report_dir": "data/reports/greyscale"
   },
-  "as_of_utc": "2026-04-11T04:03:52.366624+00:00",
+  "as_of_utc": "2026-04-11T18:23:47.651590+00:00",
   "db_state": {
-    "latest_pit_trade_date": "2026-04-09",
-    "latest_stored_trade_date": "2026-04-09",
-    "universe_membership_live_count": 503
+    "latest_pit_trade_date": "2026-04-10",
+    "latest_stored_trade_date": "2026-04-10",
+    "universe_membership_live_count": 0
   },
   "feature_pipeline": {
-    "batch_id": "21d7dfe2-b8c4-4a5b-a96a-99f1ca64d6a3",
-    "end_date": "2026-04-09",
+    "batch_id": "7e7fa41e-37c7-4c3e-a242-64510ea8b4dc",
+    "end_date": "2026-04-10",
     "expected_feature_count": 29,
     "feature_matrix_shape": {
       "n_features": 29,
-      "n_stocks": 605
+      "n_stocks": 604
     },
-    "feature_rows_live_date": 45375,
-    "feature_rows_total": 45375,
+    "feature_rows_live_date": 45300,
+    "feature_rows_total": 45300,
     "mode": "materialized_for_weekly_signal_pipeline",
     "reference_feature_matrix_path": "data/features/walkforward_feature_matrix_60d.parquet",
-    "start_date": "2025-03-05"
+    "start_date": "2025-03-06"
   },
-  "generated_at_utc": "2026-04-11T04:18:20.751107+00:00",
-  "greyscale_monitor": {
-    "generated_at_utc": "2026-04-11T04:19:24.314460+00:00",
-    "summary": {
-      "checks": {
-        "live_ic_above_threshold": {
-          "passed": null,
-          "threshold": 0.06,
-          "value": null
-        },
-        "model_consistency_above_threshold": {
-          "passed": null,
-          "threshold": 0.5,
-          "value": 0.3425051752158164
-        },
-        "no_layer12_halts": {
-          "passed": null,
-          "threshold": 0,
-          "value": 0
-        },
-        "positive_ic_weeks": {
-          "passed": null,
-          "threshold": ">= 3/4",
-          "value": 0
-        },
-        "turnover_below_cap": {
-          "passed": null,
-          "threshold": 0.45,
-          "value": 0.2
-        }
-      },
-      "gate_rule": "PASS requires 5/5 checks after 4 matured weekly reports; otherwise PENDING or FAIL.",
-      "gate_status": "PENDING",
-      "layer12_halt_count": 0,
-      "matured_weeks": 0,
-      "mean_live_ic": null,
-      "mean_pairwise_rank_correlation": 0.3425051752158164,
-      "mean_turnover": 0.2,
-      "positive_live_ic_weeks": 0,
-      "reports_seen": 2,
-      "rolling_live_ic_std": null
-    },
-    "summary_path": "/opt/quantedge/data/reports/greyscale/g4_gate_summary.json"
-  },
+  "generated_at_utc": "2026-04-11T18:58:39.229885+00:00",
   "latest_greyscale_report": {
     "regime": {
-      "regime": "mid",
-      "scalar": 0.8,
-      "vix": 21.04,
+      "regime": "low",
+      "scalar": 1.0,
+      "vix": 19.23,
       "weights": {
         "high": 0.8,
         "low": 1.0,
@@ -82,53 +39,53 @@
         "unknown": 1.0
       }
     },
-    "report_path": "/opt/quantedge/data/reports/greyscale/week_02.json",
-    "signal_date": "2026-04-09",
+    "report_path": "/opt/quantedge/data/reports/greyscale/week_03.json",
+    "signal_date": "2026-04-10",
     "weight_source": "seed_w11_avg_weights"
   },
   "live_outputs": {
-    "signal_date": "2026-04-09",
-    "ticker_count": 605,
+    "signal_date": "2026-04-10",
+    "ticker_count": 604,
     "top_10_scores": [
       {
-        "score": 10.536524953778056,
+        "score": 13.211949646992103,
         "ticker": "BKNG"
       },
       {
-        "score": 3.250955859254612,
-        "ticker": "COTY"
-      },
-      {
-        "score": 2.966674730271543,
+        "score": 6.263902865979788,
         "ticker": "OGN"
       },
       {
-        "score": 2.007285625913839,
+        "score": 3.6988602708832987,
+        "ticker": "COTY"
+      },
+      {
+        "score": 2.709445704194998,
         "ticker": "CVNA"
       },
       {
-        "score": 1.9069756145281636,
+        "score": 2.299887522380142,
         "ticker": "IBKR"
       },
       {
-        "score": 1.6790628212194953,
+        "score": 2.0263733500797496,
         "ticker": "PLTR"
       },
       {
-        "score": 1.5112963897532212,
+        "score": 1.9760343417323571,
         "ticker": "FICO"
       },
       {
-        "score": 1.415985530471855,
+        "score": 1.3931961163260258,
         "ticker": "FIX"
       },
       {
-        "score": 1.113825607989608,
-        "ticker": "TER"
+        "score": 1.3817939092803733,
+        "ticker": "MU"
       },
       {
-        "score": 0.9762745225640459,
-        "ticker": "XRX"
+        "score": 1.184182828722083,
+        "ticker": "TER"
       }
     ]
   },
@@ -320,436 +277,7 @@
     "selection_pct": 0.2,
     "sell_buffer_pct": 0.25
   },
-  "rebalance_pipeline": {
-    "audit_log": {
-      "audit_entries": 5,
-      "critical_alerts": [],
-      "fail_safe_mode": false,
-      "inserted_count": 5,
-      "inserted_ids": [
-        57,
-        58,
-        59,
-        60,
-        61
-      ],
-      "latest_signal_date": "2026-04-09",
-      "overall_severity": "green",
-      "report": {
-        "audit_log": [
-          {
-            "action": "load_signals_completed",
-            "actor": "weekly_rebalance_pipeline",
-            "details": {
-              "latest_signal_date": "2026-04-09",
-              "status": "ok",
-              "step": "load_signals"
-            },
-            "level": "INFO",
-            "timestamp_utc": "2026-04-11T05:58:13.119428+00:00"
-          },
-          {
-            "action": "portfolio_optimize_completed",
-            "actor": "weekly_rebalance_pipeline",
-            "details": {
-              "latest_signal_date": "2026-04-09",
-              "status": "ok",
-              "step": "portfolio_optimize"
-            },
-            "level": "INFO",
-            "timestamp_utc": "2026-04-11T05:58:13.134517+00:00"
-          },
-          {
-            "action": "portfolio_risk_check_completed",
-            "actor": "weekly_rebalance_pipeline",
-            "details": {
-              "latest_signal_date": "2026-04-09",
-              "status": "ok",
-              "step": "portfolio_risk_check"
-            },
-            "level": "INFO",
-            "timestamp_utc": "2026-04-11T05:58:13.149618+00:00"
-          },
-          {
-            "action": "generate_orders_completed",
-            "actor": "weekly_rebalance_pipeline",
-            "details": {
-              "latest_signal_date": "2026-04-09",
-              "status": "skipped",
-              "step": "generate_orders"
-            },
-            "level": "INFO",
-            "timestamp_utc": "2026-04-11T05:58:13.153931+00:00"
-          },
-          {
-            "action": "operational_risk_evaluated",
-            "actor": "risk_engine",
-            "details": {
-              "fail_safe": false,
-              "runtime_seconds": 0.0,
-              "timeout_severity": "green"
-            },
-            "level": "INFO",
-            "timestamp_utc": "2026-04-11T05:58:13.154074+00:00"
-          }
-        ],
-        "fail_safe_alert": {
-          "check_name": "fail_safe_mode",
-          "fail_safe_mode": false,
-          "halt_pipeline": false,
-          "message": "Fail-safe mode not required.",
-          "severity": "green"
-        },
-        "fail_safe_mode": false,
-        "halt_pipeline": false,
-        "overall_severity": "green",
-        "timeout_alert": {
-          "check_name": "timeout",
-          "fail_safe_mode": false,
-          "halt_pipeline": false,
-          "message": "Pipeline runtime 0.0s is within the allowed limit.",
-          "severity": "green"
-        }
-      },
-      "status": "ok",
-      "step": "audit_log",
-      "timestamp_utc": "2026-04-11T05:58:13.329233+00:00"
-    },
-    "generate_orders": {
-      "estimated_total_cost": 0.0,
-      "execution_date": null,
-      "execution_mode": "holding_period_gate",
-      "latest_signal_date": "2026-04-09",
-      "order_count": 0,
-      "orders": [],
-      "reason": "holding_period_active",
-      "rebalance_due": false,
-      "status": "skipped",
-      "step": "generate_orders",
-      "timestamp_utc": "2026-04-11T05:57:45.254452+00:00"
-    },
-    "load_signals": {
-      "current_portfolio_holdings": 100,
-      "feature_batch_id": "21d7dfe2-b8c4-4a5b-a96a-99f1ca64d6a3",
-      "holding_period": "4W",
-      "last_rebalance_signal_date": "2026-04-02",
-      "latest_signal_date": "2026-04-09",
-      "mlflow_run_id": "81ca402814bd4069a4e09e4d37ffe1b0",
-      "model_name": "ic_weighted_fusion_60d",
-      "signal_method": "equal_weight",
-      "signal_source": "fresh_live_snapshot",
-      "status": "ok",
-      "step": "load_signals",
-      "ticker_count": 605,
-      "timestamp_utc": "2026-04-11T05:56:19.909486+00:00",
-      "top_scores": [
-        {
-          "score": 10.536524953778056,
-          "ticker": "BKNG"
-        },
-        {
-          "score": 3.250955859254612,
-          "ticker": "COTY"
-        },
-        {
-          "score": 2.966674730271543,
-          "ticker": "OGN"
-        },
-        {
-          "score": 2.007285625913839,
-          "ticker": "CVNA"
-        },
-        {
-          "score": 1.9069756145281636,
-          "ticker": "IBKR"
-        },
-        {
-          "score": 1.6790628212194953,
-          "ticker": "PLTR"
-        },
-        {
-          "score": 1.5112963897532212,
-          "ticker": "FICO"
-        },
-        {
-          "score": 1.415985530471855,
-          "ticker": "FIX"
-        },
-        {
-          "score": 1.113825607989608,
-          "ticker": "TER"
-        },
-        {
-          "score": 0.9762745225640459,
-          "ticker": "XRX"
-        }
-      ]
-    },
-    "portfolio_optimize": {
-      "fallback_used": false,
-      "gross_exposure": 0.8000000000000006,
-      "holding_count": 100,
-      "holding_period": "4W",
-      "last_rebalance_signal_date": "2026-04-02",
-      "latest_signal_date": "2026-04-09",
-      "optimizer_name": "hold_previous_portfolio",
-      "rebalance_due": false,
-      "status": "ok",
-      "step": "portfolio_optimize",
-      "target_weights": {
-        "ADBE": 0.008,
-        "ADM": 0.008,
-        "ADSK": 0.008,
-        "ALB": 0.008,
-        "ALL": 0.008,
-        "AMAT": 0.008,
-        "AMCR": 0.008,
-        "AMD": 0.008,
-        "ANET": 0.008,
-        "APA": 0.008,
-        "APH": 0.008,
-        "APP": 0.008,
-        "ARE": 0.008,
-        "ARES": 0.008,
-        "BA": 0.008,
-        "BG": 0.008,
-        "BKNG": 0.008,
-        "CAH": 0.008,
-        "CCI": 0.008,
-        "CEG": 0.008,
-        "CHTR": 0.008,
-        "CLX": 0.008,
-        "COR": 0.008,
-        "CPRT": 0.008,
-        "CRWD": 0.008,
-        "CSGP": 0.008,
-        "CTAS": 0.008,
-        "CVNA": 0.008,
-        "DECK": 0.008,
-        "DLTR": 0.008,
-        "DPZ": 0.008,
-        "DXCM": 0.008,
-        "EME": 0.008,
-        "EXE": 0.008,
-        "EXPE": 0.008,
-        "FAST": 0.008,
-        "FICO": 0.008,
-        "FIX": 0.008,
-        "FTNT": 0.008,
-        "GDDY": 0.008,
-        "GE": 0.008,
-        "GEN": 0.008,
-        "GEV": 0.008,
-        "GRMN": 0.008,
-        "HCA": 0.008,
-        "HII": 0.008,
-        "HPE": 0.008,
-        "HPQ": 0.008,
-        "IBKR": 0.008,
-        "IDXX": 0.008,
-        "INCY": 0.008,
-        "IR": 0.008,
-        "IRM": 0.008,
-        "ISRG": 0.008,
-        "IT": 0.008,
-        "JBL": 0.008,
-        "JKHY": 0.008,
-        "LEN": 0.008,
-        "LLY": 0.008,
-        "LOW": 0.008,
-        "LULU": 0.008,
-        "LUV": 0.008,
-        "LVS": 0.008,
-        "META": 0.008,
-        "MKC": 0.008,
-        "MNST": 0.008,
-        "MPWR": 0.008,
-        "MSCI": 0.008,
-        "MTCH": 0.008,
-        "MTD": 0.008,
-        "MU": 0.008,
-        "NCLH": 0.008,
-        "NVDA": 0.008,
-        "ORLY": 0.008,
-        "OTIS": 0.008,
-        "PANW": 0.008,
-        "PAYC": 0.008,
-        "PGR": 0.008,
-        "PLTR": 0.008,
-        "PPG": 0.008,
-        "PTC": 0.008,
-        "PYPL": 0.008,
-        "RL": 0.008,
-        "SNDK": 0.008,
-        "SNPS": 0.008,
-        "TEL": 0.008,
-        "TER": 0.008,
-        "TPL": 0.008,
-        "TPR": 0.008,
-        "TTD": 0.008,
-        "TXT": 0.008,
-        "ULTA": 0.008,
-        "VRT": 0.008,
-        "VRTX": 0.008,
-        "VST": 0.008,
-        "WBD": 0.008,
-        "WSM": 0.008,
-        "WTW": 0.008,
-        "WYNN": 0.008,
-        "YUM": 0.008
-      },
-      "timestamp_utc": "2026-04-11T05:56:49.998913+00:00",
-      "top_weights": {
-        "ADBE": 0.008,
-        "ADM": 0.008,
-        "ADSK": 0.008,
-        "ALB": 0.008,
-        "ALL": 0.008,
-        "AMAT": 0.008,
-        "AMCR": 0.008,
-        "AMD": 0.008,
-        "ANET": 0.008,
-        "APA": 0.008
-      }
-    },
-    "portfolio_risk_check": {
-      "approved_weights": {
-        "ADBE": 0.008,
-        "ADM": 0.008,
-        "ADSK": 0.008,
-        "ALB": 0.008,
-        "ALL": 0.008,
-        "AMAT": 0.008,
-        "AMCR": 0.008,
-        "AMD": 0.008,
-        "ANET": 0.008,
-        "APA": 0.008,
-        "APH": 0.008,
-        "APP": 0.008,
-        "ARE": 0.008,
-        "ARES": 0.008,
-        "BA": 0.008,
-        "BG": 0.008,
-        "BKNG": 0.008,
-        "CAH": 0.008,
-        "CCI": 0.008,
-        "CEG": 0.008,
-        "CHTR": 0.008,
-        "CLX": 0.008,
-        "COR": 0.008,
-        "CPRT": 0.008,
-        "CRWD": 0.008,
-        "CSGP": 0.008,
-        "CTAS": 0.008,
-        "CVNA": 0.008,
-        "DECK": 0.008,
-        "DLTR": 0.008,
-        "DPZ": 0.008,
-        "DXCM": 0.008,
-        "EME": 0.008,
-        "EXE": 0.008,
-        "EXPE": 0.008,
-        "FAST": 0.008,
-        "FICO": 0.008,
-        "FIX": 0.008,
-        "FTNT": 0.008,
-        "GDDY": 0.008,
-        "GE": 0.008,
-        "GEN": 0.008,
-        "GEV": 0.008,
-        "GRMN": 0.008,
-        "HCA": 0.008,
-        "HII": 0.008,
-        "HPE": 0.008,
-        "HPQ": 0.008,
-        "IBKR": 0.008,
-        "IDXX": 0.008,
-        "INCY": 0.008,
-        "IR": 0.008,
-        "IRM": 0.008,
-        "ISRG": 0.008,
-        "IT": 0.008,
-        "JBL": 0.008,
-        "JKHY": 0.008,
-        "LEN": 0.008,
-        "LLY": 0.008,
-        "LOW": 0.008,
-        "LULU": 0.008,
-        "LUV": 0.008,
-        "LVS": 0.008,
-        "META": 0.008,
-        "MKC": 0.008,
-        "MNST": 0.008,
-        "MPWR": 0.008,
-        "MSCI": 0.008,
-        "MTCH": 0.008,
-        "MTD": 0.008,
-        "MU": 0.008,
-        "NCLH": 0.008,
-        "NVDA": 0.008,
-        "ORLY": 0.008,
-        "OTIS": 0.008,
-        "PANW": 0.008,
-        "PAYC": 0.008,
-        "PGR": 0.008,
-        "PLTR": 0.008,
-        "PPG": 0.008,
-        "PTC": 0.008,
-        "PYPL": 0.008,
-        "RL": 0.008,
-        "SNDK": 0.008,
-        "SNPS": 0.008,
-        "TEL": 0.008,
-        "TER": 0.008,
-        "TPL": 0.008,
-        "TPR": 0.008,
-        "TTD": 0.008,
-        "TXT": 0.008,
-        "ULTA": 0.008,
-        "VRT": 0.008,
-        "VRTX": 0.008,
-        "VST": 0.008,
-        "WBD": 0.008,
-        "WSM": 0.008,
-        "WTW": 0.008,
-        "WYNN": 0.008,
-        "YUM": 0.008
-      },
-      "audit_entries": 0,
-      "execution_date": null,
-      "execution_mode": "holding_period_gate",
-      "holding_count": 100,
-      "latest_signal_date": "2026-04-09",
-      "portfolio_beta": null,
-      "rebalance_due": false,
-      "sector_weights": {},
-      "status": "ok",
-      "step": "portfolio_risk_check",
-      "timestamp_utc": "2026-04-11T05:57:14.427824+00:00",
-      "triggered_rules": [],
-      "turnover": 0.0,
-      "warnings": [
-        "holding_period_active"
-      ]
-    },
-    "updated_at_utc": "2026-04-11T05:58:13.329295+00:00"
-  },
-  "signal_date": "2026-04-09",
-  "signal_risk": {
-    "challenger_ic": 0.0,
-    "fusion_ic": null,
-    "history_dates": 0,
-    "history_rows": 0,
-    "pass": true,
-    "recommend_switch": false,
-    "report": {
-      "matured_history_points": 0,
-      "message": "Insufficient matured live history for rolling signal-risk checks; the greyscale run stays on seeded fusion weights.",
-      "mode": "cold_start_seed_weights",
-      "required_points": 12
-    },
-    "severity": "green"
-  },
+  "signal_date": "2026-04-10",
   "strategy": {
     "all_features": [
       "atr_14",
@@ -947,7 +475,7 @@
     "strategy_name": "equal_weight_fusion"
   },
   "universe": {
-    "size": 605,
+    "size": 604,
     "source": "stock_prices_pit"
   }
 }

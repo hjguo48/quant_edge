@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 import json
@@ -45,6 +46,8 @@ TREE_SEARCH_N_ITER = 100
 TREE_N_JOBS = 4
 RANDOM_STATE = 42
 LABEL_BUFFER_DAYS = 120
+SPLIT_STRATEGY_PURGED_EMBARGO = "purged_embargo"
+SPLIT_STRATEGY_LEGACY_CONTIGUOUS = "legacy_contiguous"
 
 
 @dataclass(frozen=True)
@@ -71,6 +74,16 @@ class WindowSpec:
             refit_on_train_plus_validation=True,
         )
 
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "train_start": self.train_start.isoformat(),
+            "train_end": self.train_end.isoformat(),
+            "validation_start": self.validation_start.isoformat(),
+            "validation_end": self.validation_end.isoformat(),
+            "test_start": self.test_start.isoformat(),
+            "test_end": self.test_end.isoformat(),
+        }
+
 
 WINDOWS: tuple[WindowSpec, ...] = (
     WindowSpec("W1", date(2016, 3, 1), date(2019, 2, 28), date(2019, 3, 1), date(2019, 8, 31), date(2019, 9, 1), date(2020, 2, 29)),
@@ -94,22 +107,44 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging()
     install_runtime_optimizations()
 
-    windows = select_windows(limit=args.window_limit)
-    if not windows:
+    requested_windows = select_windows(limit=args.window_limit)
+    if not requested_windows:
         raise RuntimeError("No windows selected.")
 
     as_of_date = parse_date(args.as_of)
+    embargo_days = args.embargo_days if args.embargo_days is not None else args.horizon
+    requested_global_start = min(window.train_start for window in requested_windows)
+    requested_global_end = max(window.test_end for window in requested_windows)
+    trade_dates, trade_date_positions = load_trade_calendar(
+        start_date=requested_global_start,
+        end_date=requested_global_end,
+        as_of=as_of_date,
+        benchmark_ticker=args.benchmark_ticker,
+    )
+    windows = resolve_windows_with_embargo(
+        windows=requested_windows,
+        trade_dates=trade_dates,
+        trade_date_positions=trade_date_positions,
+        rebalance_weekday=args.rebalance_weekday,
+        embargo_days=embargo_days,
+    )
     retained_features = load_retained_features(REPO_ROOT / args.ic_report_path)
     model_names = parse_model_names(args.models)
     logger.info(
-        "walk-forward comparison configured for {} windows, {} models, {} retained 60D features",
+        "walk-forward comparison configured for {} windows, {} models, {} retained 60D features, embargo={} trading days",
         len(windows),
         len(model_names),
         len(retained_features),
+        embargo_days,
     )
 
     global_start = min(window.train_start for window in windows)
     global_end = max(window.test_end for window in windows)
+    baseline_report_path = resolve_baseline_report_path(REPO_ROOT / args.report_path, explicit_path=args.ic_baseline_report_path)
+    baseline_report = load_ic_baseline_report(
+        baseline_report_path,
+        current_strategy=SPLIT_STRATEGY_PURGED_EMBARGO,
+    )
 
     feature_matrix = build_or_load_feature_matrix(
         all_features_path=REPO_ROOT / args.all_features_path,
@@ -148,12 +183,35 @@ def main(argv: list[str] | None = None) -> int:
         "target_horizon": f"{args.horizon}D",
         "retained_feature_count": len(retained_features),
         "retained_features": retained_features,
+        "split_config": {
+            "strategy": SPLIT_STRATEGY_PURGED_EMBARGO,
+            "embargo_trading_days": int(embargo_days),
+            "rebalance_weekday": int(args.rebalance_weekday),
+            "calendar_ticker": args.benchmark_ticker.upper(),
+            "calendar_start": trade_dates[0].isoformat(),
+            "calendar_end": trade_dates[-1].isoformat(),
+            "calendar_observations": int(len(trade_dates)),
+        },
         "windows": [],
         "summary": {},
+        "embargo_validation": {},
+        "ic_comparison": build_ic_comparison(
+            current_windows=[],
+            baseline_report=baseline_report,
+            baseline_report_path=baseline_report_path,
+            model_names=model_names,
+            embargo_days=embargo_days,
+        ),
     }
 
-    for position, window in enumerate(windows, start=1):
-        logger.info("running window {}/{} {} (train {} -> {}, val {} -> {}, test {} -> {})",
+    for position, (requested_window, window) in enumerate(zip(requested_windows, windows, strict=True), start=1):
+        split_diagnostics = build_window_split_diagnostics(
+            requested_window=requested_window,
+            effective_window=window,
+            trade_date_positions=trade_date_positions,
+            embargo_days=embargo_days,
+        )
+        logger.info("running window {}/{} {} (train {} -> {}, val {} -> {}, test {} -> {}, gaps train->val={} val->test={})",
                     position,
                     len(windows),
                     window.window_id,
@@ -162,13 +220,17 @@ def main(argv: list[str] | None = None) -> int:
                     window.validation_start,
                     window.validation_end,
                     window.test_start,
-                    window.test_end)
+                    window.test_end,
+                    split_diagnostics["verification"]["train_to_validation"]["gap_trading_days"],
+                    split_diagnostics["verification"]["validation_to_test"]["gap_trading_days"])
         config = window.to_validation_config(
             rebalance_weekday=args.rebalance_weekday,
             horizon_days=args.horizon,
         )
         window_result = run_window(
             window=window,
+            requested_window=requested_window,
+            split_diagnostics=split_diagnostics,
             config=config,
             X=aligned_X,
             y=aligned_y,
@@ -182,6 +244,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         report_payload["windows"].append(window_result)
         report_payload["summary"] = summarize_results(report_payload["windows"], model_names)
+        report_payload["embargo_validation"] = summarize_embargo_validation(report_payload["windows"])
+        report_payload["ic_comparison"] = build_ic_comparison(
+            current_windows=report_payload["windows"],
+            baseline_report=baseline_report,
+            baseline_report_path=baseline_report_path,
+            model_names=model_names,
+            embargo_days=embargo_days,
+        )
         write_json_atomic(REPO_ROOT / args.report_path, json_safe(report_payload))
         logger.info("saved partial walk-forward report to {}", REPO_ROOT / args.report_path)
 
@@ -201,6 +271,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--report-path", default=DEFAULT_REPORT_PATH)
     parser.add_argument("--as-of", default=AS_OF_DATE.isoformat())
     parser.add_argument("--horizon", type=int, default=TARGET_HORIZON_DAYS)
+    parser.add_argument("--embargo-days", type=int)
     parser.add_argument("--label-buffer-days", type=int, default=LABEL_BUFFER_DAYS)
     parser.add_argument("--benchmark-ticker", default=BENCHMARK_TICKER)
     parser.add_argument("--rebalance-weekday", type=int, default=REBALANCE_WEEKDAY)
@@ -209,6 +280,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--random-state", type=int, default=RANDOM_STATE)
     parser.add_argument("--models", default="ridge,xgboost,lightgbm")
     parser.add_argument("--window-limit", type=int)
+    parser.add_argument("--ic-baseline-report-path")
     parser.add_argument("--disable-mlflow", action="store_true")
     return parser.parse_args(argv)
 
@@ -245,13 +317,396 @@ def select_windows(*, limit: int | None) -> list[WindowSpec]:
     return windows
 
 
+def load_trade_calendar(
+    *,
+    start_date: date,
+    end_date: date,
+    as_of: date,
+    benchmark_ticker: str,
+) -> tuple[tuple[date, ...], dict[date, int]]:
+    prices = get_prices_pit(
+        tickers=[benchmark_ticker.upper()],
+        start_date=start_date,
+        end_date=end_date,
+        as_of=as_of_datetime(as_of),
+    )
+    if prices.empty:
+        logger.warning(
+            "benchmark calendar {} missing from PIT prices for {} -> {}; falling back to business days",
+            benchmark_ticker.upper(),
+            start_date,
+            end_date,
+        )
+        trade_dates = tuple(pd.bdate_range(start_date, end_date).date)
+    else:
+        trade_dates = tuple(sorted(pd.to_datetime(prices["trade_date"]).dt.date.unique()))
+
+    if not trade_dates:
+        raise RuntimeError("No trading dates available to resolve walk-forward windows.")
+    return trade_dates, {trade_date: index for index, trade_date in enumerate(trade_dates)}
+
+
+def resolve_windows_with_embargo(
+    *,
+    windows: list[WindowSpec],
+    trade_dates: tuple[date, ...],
+    trade_date_positions: dict[date, int],
+    rebalance_weekday: int,
+    embargo_days: int,
+) -> list[WindowSpec]:
+    rebalance_dates = tuple(trade_date for trade_date in trade_dates if trade_date.weekday() == rebalance_weekday)
+    if not rebalance_dates:
+        raise RuntimeError(
+            f"No rebalance dates available for weekday={rebalance_weekday} in the selected trade calendar.",
+        )
+    return [
+        resolve_window_with_embargo(
+            window=window,
+            trade_dates=trade_dates,
+            trade_date_positions=trade_date_positions,
+            rebalance_dates=rebalance_dates,
+            embargo_days=embargo_days,
+        )
+        for window in windows
+    ]
+
+
+def resolve_window_with_embargo(
+    *,
+    window: WindowSpec,
+    trade_dates: tuple[date, ...],
+    trade_date_positions: dict[date, int],
+    rebalance_dates: tuple[date, ...],
+    embargo_days: int,
+) -> WindowSpec:
+    train_start = first_rebalance_date_on_or_after(window.train_start, rebalance_dates)
+    validation_start = first_rebalance_date_on_or_after(window.validation_start, rebalance_dates)
+    test_start = first_rebalance_date_on_or_after(window.test_start, rebalance_dates)
+    test_end = last_rebalance_date_on_or_before(window.test_end, rebalance_dates)
+    nominal_train_end = last_rebalance_date_on_or_before(window.train_end, rebalance_dates)
+    nominal_validation_end = last_rebalance_date_on_or_before(window.validation_end, rebalance_dates)
+
+    train_end = latest_rebalance_date_before_embargo(
+        boundary_start=validation_start,
+        nominal_end=nominal_train_end,
+        trade_dates=trade_dates,
+        trade_date_positions=trade_date_positions,
+        rebalance_dates=rebalance_dates,
+        embargo_days=embargo_days,
+    )
+    validation_end = latest_rebalance_date_before_embargo(
+        boundary_start=test_start,
+        nominal_end=nominal_validation_end,
+        trade_dates=trade_dates,
+        trade_date_positions=trade_date_positions,
+        rebalance_dates=rebalance_dates,
+        embargo_days=embargo_days,
+    )
+
+    effective_window = WindowSpec(
+        window_id=window.window_id,
+        train_start=train_start,
+        train_end=train_end,
+        validation_start=validation_start,
+        validation_end=validation_end,
+        test_start=test_start,
+        test_end=test_end,
+    )
+    if effective_window.train_start > effective_window.train_end:
+        raise RuntimeError(f"{window.window_id} train split became empty after applying embargo.")
+    if effective_window.validation_start > effective_window.validation_end:
+        raise RuntimeError(f"{window.window_id} validation split became empty after applying embargo.")
+    if effective_window.test_start > effective_window.test_end:
+        raise RuntimeError(f"{window.window_id} test split became empty after aligning to rebalance dates.")
+    return effective_window
+
+
+def first_rebalance_date_on_or_after(target: date, rebalance_dates: tuple[date, ...]) -> date:
+    index = bisect_left(rebalance_dates, target)
+    if index >= len(rebalance_dates):
+        raise RuntimeError(f"No rebalance date on or after {target}.")
+    return rebalance_dates[index]
+
+
+def last_rebalance_date_on_or_before(target: date, rebalance_dates: tuple[date, ...]) -> date:
+    index = bisect_right(rebalance_dates, target) - 1
+    if index < 0:
+        raise RuntimeError(f"No rebalance date on or before {target}.")
+    return rebalance_dates[index]
+
+
+def latest_rebalance_date_before_embargo(
+    *,
+    boundary_start: date,
+    nominal_end: date,
+    trade_dates: tuple[date, ...],
+    trade_date_positions: dict[date, int],
+    rebalance_dates: tuple[date, ...],
+    embargo_days: int,
+) -> date:
+    if boundary_start not in trade_date_positions:
+        raise RuntimeError(f"Boundary start {boundary_start} is missing from the trading calendar.")
+    latest_trade_index = trade_date_positions[boundary_start] - embargo_days - 1
+    if latest_trade_index < 0:
+        raise RuntimeError(
+            f"Not enough trading history before {boundary_start} to apply a {embargo_days}-day embargo.",
+        )
+    latest_trade_date = trade_dates[latest_trade_index]
+    return last_rebalance_date_on_or_before(min(nominal_end, latest_trade_date), rebalance_dates)
+
+
+def trading_gap_days(earlier_date: date, later_date: date, trade_date_positions: dict[date, int]) -> int:
+    if earlier_date not in trade_date_positions or later_date not in trade_date_positions:
+        raise RuntimeError(f"Cannot measure trading-day gap between {earlier_date} and {later_date}.")
+    return int(trade_date_positions[later_date] - trade_date_positions[earlier_date] - 1)
+
+
+def build_window_split_diagnostics(
+    *,
+    requested_window: WindowSpec,
+    effective_window: WindowSpec,
+    trade_date_positions: dict[date, int],
+    embargo_days: int,
+) -> dict[str, Any]:
+    train_to_validation_gap = trading_gap_days(
+        effective_window.train_end,
+        effective_window.validation_start,
+        trade_date_positions,
+    )
+    validation_to_test_gap = trading_gap_days(
+        effective_window.validation_end,
+        effective_window.test_start,
+        trade_date_positions,
+    )
+    return {
+        "requested_dates": requested_window.to_dict(),
+        "embargo_trading_days": int(embargo_days),
+        "verification": {
+            "train_to_validation": build_gap_verification(
+                earlier_date=effective_window.train_end,
+                later_date=effective_window.validation_start,
+                gap_trading_days=train_to_validation_gap,
+                minimum_required=embargo_days,
+            ),
+            "validation_to_test": build_gap_verification(
+                earlier_date=effective_window.validation_end,
+                later_date=effective_window.test_start,
+                gap_trading_days=validation_to_test_gap,
+                minimum_required=embargo_days,
+            ),
+            "refit_train_plus_validation_to_test": build_gap_verification(
+                earlier_date=effective_window.validation_end,
+                later_date=effective_window.test_start,
+                gap_trading_days=validation_to_test_gap,
+                minimum_required=embargo_days,
+            ),
+        },
+    }
+
+
+def build_gap_verification(
+    *,
+    earlier_date: date,
+    later_date: date,
+    gap_trading_days: int,
+    minimum_required: int,
+) -> dict[str, Any]:
+    return {
+        "earlier_date": earlier_date.isoformat(),
+        "later_date": later_date.isoformat(),
+        "gap_trading_days": int(gap_trading_days),
+        "minimum_required": int(minimum_required),
+        "passed": bool(gap_trading_days >= minimum_required),
+    }
+
+
+def summarize_embargo_validation(windows: list[dict[str, Any]]) -> dict[str, Any]:
+    boundaries = ("train_to_validation", "validation_to_test", "refit_train_plus_validation_to_test")
+    per_boundary: dict[str, dict[str, Any]] = {}
+    all_checks_passed = True
+    for boundary in boundaries:
+        checks = [
+            window["split_diagnostics"]["verification"][boundary]
+            for window in windows
+            if "split_diagnostics" in window
+        ]
+        if not checks:
+            per_boundary[boundary] = {
+                "windows_checked": 0,
+                "minimum_gap_trading_days": None,
+                "all_passed": False,
+            }
+            all_checks_passed = False
+            continue
+        minimum_gap = min(int(check["gap_trading_days"]) for check in checks)
+        boundary_passed = all(bool(check["passed"]) for check in checks)
+        per_boundary[boundary] = {
+            "windows_checked": int(len(checks)),
+            "minimum_gap_trading_days": int(minimum_gap),
+            "all_passed": bool(boundary_passed),
+        }
+        all_checks_passed = all_checks_passed and boundary_passed
+    return {
+        "window_count": int(len(windows)),
+        "all_windows_passed": bool(all_checks_passed),
+        "per_boundary": per_boundary,
+    }
+
+
+def resolve_baseline_report_path(report_path: Path, *, explicit_path: str | None) -> Path | None:
+    if explicit_path:
+        return REPO_ROOT / explicit_path
+    if report_path.exists():
+        return report_path
+    return None
+
+
+def load_ic_baseline_report(report_path: Path | None, *, current_strategy: str) -> dict[str, Any] | None:
+    if report_path is None or not report_path.exists():
+        return None
+    payload = json.loads(report_path.read_text())
+    baseline_strategy = split_strategy_from_report(payload)
+    if baseline_strategy == current_strategy:
+        logger.info(
+            "existing report {} already uses split strategy {}; skipping legacy IC comparison source",
+            report_path,
+            current_strategy,
+        )
+        return None
+    return payload
+
+
+def split_strategy_from_report(report: dict[str, Any]) -> str:
+    split_config = report.get("split_config", {})
+    strategy = split_config.get("strategy")
+    if strategy:
+        return str(strategy)
+    return SPLIT_STRATEGY_LEGACY_CONTIGUOUS
+
+
+def build_ic_comparison(
+    *,
+    current_windows: list[dict[str, Any]],
+    baseline_report: dict[str, Any] | None,
+    baseline_report_path: Path | None,
+    model_names: list[str],
+    embargo_days: int,
+) -> dict[str, Any]:
+    if baseline_report is None:
+        return {
+            "available": False,
+            "baseline_report_path": str(baseline_report_path) if baseline_report_path is not None else None,
+            "reason": "legacy_baseline_report_not_available",
+            "embargo_trading_days": int(embargo_days),
+        }
+
+    baseline_windows = {
+        str(window.get("window_id")): window
+        for window in baseline_report.get("windows", [])
+        if "window_id" in window
+    }
+    per_window: list[dict[str, Any]] = []
+    summary: dict[str, Any] = {}
+    for current_window in current_windows:
+        window_id = str(current_window.get("window_id"))
+        baseline_window = baseline_windows.get(window_id)
+        if baseline_window is None:
+            continue
+        models: dict[str, Any] = {}
+        for model_name in model_names:
+            current_metrics = current_window.get("results", {}).get(model_name, {}).get("test_metrics", {})
+            baseline_metrics = baseline_window.get("results", {}).get(model_name, {}).get("test_metrics", {})
+            if "ic" not in current_metrics or "ic" not in baseline_metrics:
+                continue
+            baseline_ic = float(baseline_metrics["ic"])
+            current_ic = float(current_metrics["ic"])
+            models[model_name] = {
+                "baseline_test_ic": baseline_ic,
+                "embargo_test_ic": current_ic,
+                "delta_test_ic": float(current_ic - baseline_ic),
+            }
+        if models:
+            per_window.append({"window_id": window_id, "models": models})
+
+    for model_name in model_names:
+        baseline_values = [
+            float(window["models"][model_name]["baseline_test_ic"])
+            for window in per_window
+            if model_name in window["models"]
+        ]
+        embargo_values = [
+            float(window["models"][model_name]["embargo_test_ic"])
+            for window in per_window
+            if model_name in window["models"]
+        ]
+        delta_values = [
+            float(window["models"][model_name]["delta_test_ic"])
+            for window in per_window
+            if model_name in window["models"]
+        ]
+        if not delta_values:
+            continue
+        summary[model_name] = {
+            "windows_compared": int(len(delta_values)),
+            "baseline_mean_test_ic": nanmean(baseline_values),
+            "embargo_mean_test_ic": nanmean(embargo_values),
+            "mean_delta_test_ic": nanmean(delta_values),
+            "min_delta_test_ic": float(np.nanmin(np.asarray(delta_values, dtype=float))),
+            "max_delta_test_ic": float(np.nanmax(np.asarray(delta_values, dtype=float))),
+        }
+
+    return {
+        "available": True,
+        "baseline_report_path": str(baseline_report_path) if baseline_report_path is not None else None,
+        "baseline_strategy": split_strategy_from_report(baseline_report),
+        "current_strategy": SPLIT_STRATEGY_PURGED_EMBARGO,
+        "embargo_trading_days": int(embargo_days),
+        "summary": summary,
+        "per_window": per_window,
+    }
+
+
 def load_retained_features(report_path: Path) -> list[str]:
     report = pd.read_csv(report_path)
-    retention_column = "passed" if "passed" in report.columns else "retained"
-    retained = report.loc[report[retention_column].astype(bool), "feature_name"].astype(str).tolist()
+    if "retained" in report.columns:
+        retention_column = "retained"
+    elif "passed" in report.columns:
+        retention_column = "passed"
+    else:
+        raise RuntimeError(f"No retention column found in {report_path}.")
+    retained = report.loc[coerce_retention_mask(report[retention_column]), "feature_name"].astype(str).tolist()
     if not retained:
         raise RuntimeError(f"No retained features found in {report_path}.")
-    return retained
+    return expand_legacy_retained_features(report, retained)
+
+
+def coerce_retention_mask(series: pd.Series) -> pd.Series:
+    if pd.api.types.is_bool_dtype(series):
+        return series.fillna(False)
+    normalized = series.astype(str).str.strip().str.lower()
+    return normalized.isin({"1", "true", "yes", "y"})
+
+
+def expand_legacy_retained_features(report: pd.DataFrame, retained_features: list[str]) -> list[str]:
+    if report_uses_explicit_missing_indicator_selection(report):
+        return retained_features
+
+    expanded = list(retained_features)
+    for feature_name in retained_features:
+        if is_missing_indicator_feature(feature_name):
+            continue
+        expanded.append(f"is_missing_{feature_name}")
+    return list(dict.fromkeys(expanded))
+
+
+def report_uses_explicit_missing_indicator_selection(report: pd.DataFrame) -> bool:
+    if "report_schema_version" in report.columns:
+        numeric_versions = pd.to_numeric(report["report_schema_version"], errors="coerce")
+        if (numeric_versions >= 2).any():
+            return True
+    if "feature_kind" in report.columns:
+        return True
+    return False
 
 
 def build_or_load_feature_matrix(
@@ -264,6 +719,7 @@ def build_or_load_feature_matrix(
     rebalance_weekday: int,
 ) -> pd.DataFrame:
     metadata_path = cache_path.with_suffix(".meta.json")
+    requested_feature_names = expand_requested_feature_names(retained_features)
     expected_metadata = {
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
@@ -292,7 +748,7 @@ def build_or_load_feature_matrix(
         filters=[
             ("trade_date", ">=", start_date),
             ("trade_date", "<=", end_date),
-            ("feature_name", "in", retained_features),
+            ("feature_name", "in", requested_feature_names),
         ],
     )
     features_long["trade_date"] = pd.to_datetime(features_long["trade_date"])
@@ -310,6 +766,23 @@ def build_or_load_feature_matrix(
         matrix.shape[1],
     )
     return matrix
+
+
+def expand_requested_feature_names(retained_features: list[str]) -> list[str]:
+    expanded = set(retained_features)
+    expanded.update(base_feature_name(feature_name) for feature_name in retained_features)
+    return sorted(expanded)
+
+
+def is_missing_indicator_feature(feature_name: str) -> bool:
+    return str(feature_name).startswith("is_missing_")
+
+
+def base_feature_name(feature_name: str) -> str:
+    name = str(feature_name)
+    if is_missing_indicator_feature(name):
+        return name[len("is_missing_") :]
+    return name
 
 
 def build_or_load_label_series(
@@ -371,6 +844,8 @@ def align_panel(X: pd.DataFrame, y: pd.Series) -> tuple[pd.DataFrame, pd.Series]
 def run_window(
     *,
     window: WindowSpec,
+    requested_window: WindowSpec,
+    split_diagnostics: dict[str, Any],
     config: ValidationWindowConfig,
     X: pd.DataFrame,
     y: pd.Series,
@@ -416,6 +891,10 @@ def run_window(
             "train": f"{window.train_start:%Y-%m} -> {window.train_end:%Y-%m}",
             "validation": f"{window.validation_start:%Y-%m} -> {window.validation_end:%Y-%m}",
             "test": f"{window.test_start:%Y-%m} -> {window.test_end:%Y-%m}",
+        },
+        "split_diagnostics": {
+            **split_diagnostics,
+            "requested_window_id": requested_window.window_id,
         },
         "row_counts": {
             "train": build_split_shape(train_X),

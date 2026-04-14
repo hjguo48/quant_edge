@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date, datetime, time, timezone
 from math import sqrt
 
@@ -9,6 +10,7 @@ import sqlalchemy as sa
 from loguru import logger
 
 from src.data.db.models import FundamentalsPIT
+from src.data.db.pit import get_prices_pit
 from src.data.db.session import get_session_factory
 
 TECHNICAL_FEATURE_NAMES = (
@@ -42,18 +44,36 @@ TECHNICAL_FEATURE_NAMES = (
     "stoch_k",
     "stoch_d",
     "cci_20",
+    "residual_momentum",
+    "idio_vol",
 )
 
 _ANNUALIZATION_FACTOR = sqrt(252.0)
 _PIT_SHARES_METRIC_NAME = "weighted_average_shares_outstanding"
+_MARKET_PROXY_TICKER = "SPY"
+_MARKET_MODEL_WINDOW = 252
+_RESIDUAL_FEATURE_WINDOW = 60
 
 
-def compute_technical_features(prices_df: pd.DataFrame) -> pd.DataFrame:
+def compute_technical_features(
+    prices_df: pd.DataFrame,
+    *,
+    market_prices_df: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Compute technical features, including residual momentum and idio volatility.
+
+    New additions:
+    - `residual_momentum`: 60-day sum of SPY market-model residual returns
+      using a 252-day rolling regression window (Blitz, Huij & Martens, 2011).
+    - `idio_vol`: 60-day standard deviation of those residual returns
+      (Ang, Hodrick, Xing & Zhang, 2006).
+    """
     prepared = _prepare_prices(prices_df)
     if prepared.empty:
         return _empty_feature_frame()
 
     prepared = _attach_pit_shares_outstanding(prepared)
+    prepared = _attach_market_returns(prepared, market_prices_df=market_prices_df)
     feature_frames: list[pd.DataFrame] = []
 
     for ticker, group in prepared.groupby("ticker", sort=False):
@@ -261,8 +281,104 @@ def _compute_ticker_features(group: pd.DataFrame) -> pd.DataFrame:
     group["adx_14"] = _adx(group, 14)
     group["stoch_k"], group["stoch_d"] = _stochastic(group, 14, 3)
     group["cci_20"] = _cci(group, 20)
+    residual_returns = _market_model_residuals(returns_1d, group["market_return_1d"])
+    group["residual_momentum"] = residual_returns.rolling(
+        _RESIDUAL_FEATURE_WINDOW,
+        min_periods=_RESIDUAL_FEATURE_WINDOW,
+    ).sum()
+    group["idio_vol"] = residual_returns.rolling(
+        _RESIDUAL_FEATURE_WINDOW,
+        min_periods=_RESIDUAL_FEATURE_WINDOW,
+    ).std(ddof=0)
 
     return group
+
+
+def _attach_market_returns(
+    prices_df: pd.DataFrame,
+    *,
+    market_prices_df: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    market_returns = _load_market_returns(prices_df, market_prices_df=market_prices_df)
+    if market_returns.empty:
+        frame = prices_df.copy()
+        frame["market_return_1d"] = np.nan
+        return frame
+    return prices_df.merge(market_returns, on="trade_date", how="left")
+
+
+def _load_market_returns(
+    prices_df: pd.DataFrame,
+    *,
+    market_prices_df: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    if prices_df.empty:
+        return pd.DataFrame(columns=["trade_date", "market_return_1d"])
+
+    benchmark_rows = prices_df.loc[prices_df["ticker"] == _MARKET_PROXY_TICKER].copy()
+    if market_prices_df is not None and not market_prices_df.empty:
+        benchmark_rows = pd.concat([benchmark_rows, market_prices_df], ignore_index=True)
+    else:
+        fetched_benchmark = _fetch_market_proxy_prices(prices_df)
+        if not fetched_benchmark.empty:
+            benchmark_rows = pd.concat([benchmark_rows, fetched_benchmark], ignore_index=True)
+    if benchmark_rows.empty:
+        return pd.DataFrame(columns=["trade_date", "market_return_1d"])
+
+    benchmark = _prepare_prices(benchmark_rows)
+    benchmark = benchmark.loc[
+        benchmark["ticker"] == _MARKET_PROXY_TICKER,
+        ["trade_date", "adj_close", "close"],
+    ].sort_values("trade_date")
+    benchmark_price = benchmark["adj_close"].fillna(benchmark["close"])
+    benchmark["market_return_1d"] = benchmark_price.pct_change()
+    return benchmark[["trade_date", "market_return_1d"]]
+
+
+def _fetch_market_proxy_prices(prices_df: pd.DataFrame) -> pd.DataFrame:
+    if "knowledge_time" not in prices_df.columns:
+        return pd.DataFrame()
+
+    knowledge_times = pd.to_datetime(prices_df["knowledge_time"], utc=True, errors="coerce").dropna()
+    if knowledge_times.empty:
+        return pd.DataFrame()
+
+    trade_dates = pd.to_datetime(prices_df["trade_date"]).dt.date
+    try:
+        return get_prices_pit(
+            tickers=[_MARKET_PROXY_TICKER],
+            start_date=trade_dates.min(),
+            end_date=trade_dates.max(),
+            as_of=knowledge_times.max().to_pydatetime(),
+        )
+    except Exception as exc:
+        logger.warning(
+            "failed to load {} market proxy history for residual features: {}",
+            _MARKET_PROXY_TICKER,
+            exc,
+        )
+        return pd.DataFrame()
+
+
+def _market_model_residuals(
+    stock_returns: pd.Series,
+    market_returns: pd.Series,
+    *,
+    regression_window: int = _MARKET_MODEL_WINDOW,
+) -> pd.Series:
+    x = pd.to_numeric(market_returns, errors="coerce")
+    y = pd.to_numeric(stock_returns, errors="coerce")
+    rolling_count = (x.notna() & y.notna()).rolling(regression_window, min_periods=regression_window).sum()
+    x_mean = x.rolling(regression_window, min_periods=regression_window).mean()
+    y_mean = y.rolling(regression_window, min_periods=regression_window).mean()
+    xy_mean = (x * y).rolling(regression_window, min_periods=regression_window).mean()
+    xx_mean = (x * x).rolling(regression_window, min_periods=regression_window).mean()
+    covariance = xy_mean - (x_mean * y_mean)
+    variance = xx_mean - (x_mean * x_mean)
+    beta = covariance / variance.replace(0, np.nan)
+    alpha = y_mean - beta * x_mean
+    residuals = y - (alpha + beta * x)
+    return residuals.where(rolling_count >= regression_window)
 
 
 def _average_true_range(group: pd.DataFrame, window: int) -> pd.Series:

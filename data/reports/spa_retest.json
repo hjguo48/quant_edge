@@ -1,0 +1,137 @@
+{
+  "conclusion": {
+    "decision": "adopt_sw_shrink_sb0.4_mt0.005_sp0.25_sh0.5_nt0.005",
+    "net_excess_delta": 0.03014195061081515,
+    "rationale": "sw_shrink_sb0.4_mt0.005_sp0.25_sh0.5_nt0.005 delivers significantly higher net excess return (0.0576 vs 0.0274) with lower turnover (0.0268 vs 0.0483). SPA p-value=0.032705 confirms statistical significance.",
+    "spa_p_value": 0.032704647836033794,
+    "spa_significant": true,
+    "turnover_delta": -0.021518293081405522
+  },
+  "description": "SPA retest: score_weighted_controlled vs equal_weight after Phase B turnover optimization",
+  "generated_at_utc": "2026-04-12T22:05:14.384598+00:00",
+  "git_branch": "feature/s1-alpha-optimization",
+  "schemes": {
+    "equal_weight": {
+      "annualized_benchmark_return": 0.1010331214085387,
+      "annualized_gross_excess": 0.03937525036478551,
+      "annualized_gross_return": 0.14040837177332421,
+      "annualized_net_excess": 0.027435721963762427,
+      "annualized_net_return": 0.12846884337230113,
+      "average_turnover": 0.04834591155026034,
+      "config": {
+        "min_trade_weight": 0.01,
+        "selection_pct": 0.2,
+        "sell_buffer_pct": 0.25,
+        "weighting_scheme": "equal_weight"
+      },
+      "period_count": 196,
+      "sharpe_proxy": 0.3499008273367518,
+      "total_cost_drag": 0.01193952840102308
+    },
+    "sw_shrink_sb0.4_mt0.005_sp0.25_sh0.5_nt0.005": {
+      "annualized_benchmark_return": 0.1010331214085387,
+      "annualized_gross_excess": 0.06548012868381314,
+      "annualized_gross_return": 0.16651325009235185,
+      "annualized_net_excess": 0.057577672574577576,
+      "annualized_net_return": 0.15861079398311628,
+      "average_turnover": 0.02682761846885482,
+      "config": {
+        "max_weight": 0.05,
+        "min_holdings": 20,
+        "min_trade_weight": 0.005,
+        "no_trade_zone": 0.005,
+        "selection_pct": 0.25,
+        "sell_buffer_pct": 0.4,
+        "turnover_penalty_lambda": 0.0,
+        "weight_shrinkage": 0.5
+      },
+      "period_count": 196,
+      "sharpe_proxy": 0.6127435588461297,
+      "total_cost_drag": 0.007902456109235567
+    }
+  },
+  "script": "scripts/run_spa_retest.py",
+  "source_config": {
+    "best_config": {
+      "max_weight": 0.05,
+      "min_holdings": 20,
+      "min_trade_weight": 0.005,
+      "no_trade_zone": 0.005,
+      "selection_pct": 0.25,
+      "sell_buffer_pct": 0.4,
+      "turnover_penalty_lambda": 0.0,
+      "weight_shrinkage": 0.5
+    },
+    "best_scheme": "sw_shrink_sb0.4_mt0.005_sp0.25_sh0.5_nt0.005",
+    "turnover_report": "data/reports/turnover_optimization.json"
+  },
+  "spa_comprehensive": {
+    "description": "All Pareto-optimal configs vs equal_weight",
+    "result": {
+      "benchmark": "equal_weight",
+      "comparisons": [
+        {
+          "adjusted_p_value": 0.09811394350810138,
+          "benchmark_mean_ic": 0.0007409184812558694,
+          "competitor": "sw_shrink_sb0.4_mt0.005_sp0.25_sh0.5_nt0.005",
+          "competitor_mean_ic": 0.0012739764399907051,
+          "mean_ic_delta": 0.0005330579587348359,
+          "n_observations": 196,
+          "p_value": 0.032704647836033794,
+          "significant": false,
+          "t_statistic": 1.852889262583812
+        },
+        {
+          "adjusted_p_value": 0.09811394350810138,
+          "benchmark_mean_ic": 0.0007409184812558694,
+          "competitor": "sw_penalty_sb0.4_mt0.005_sp0.25_sh0.5_nt0.005_lam0.5",
+          "competitor_mean_ic": 0.0012607270956236604,
+          "mean_ic_delta": 0.0005198086143677911,
+          "n_observations": 196,
+          "p_value": 0.04188146826044029,
+          "significant": false,
+          "t_statistic": 1.7381499618969385
+        },
+        {
+          "adjusted_p_value": 0.09811394350810138,
+          "benchmark_mean_ic": 0.0007409184812558694,
+          "competitor": "sw_penalty_sb0.4_mt0.005_sp0.25_sh0.5_nt0.005_lam1.0",
+          "competitor_mean_ic": 0.0012554775732416081,
+          "mean_ic_delta": 0.0005145590919857388,
+          "n_observations": 196,
+          "p_value": 0.04461777509587863,
+          "significant": false,
+          "t_statistic": 1.7079578378737281
+        }
+      ],
+      "method": "paired_t_test_holm_fallback",
+      "null_hypothesis": "equal_weight is not worse than any competitor on aligned test-period IC.",
+      "p_value": 0.09811394350810138,
+      "significant": false
+    }
+  },
+  "spa_primary": {
+    "description": "sw_shrink_sb0.4_mt0.005_sp0.25_sh0.5_nt0.005 vs equal_weight",
+    "result": {
+      "benchmark": "equal_weight",
+      "comparisons": [
+        {
+          "adjusted_p_value": 0.032704647836033794,
+          "benchmark_mean_ic": 0.0007409184812558694,
+          "competitor": "score_weighted_controlled",
+          "competitor_mean_ic": 0.0012739764399907051,
+          "mean_ic_delta": 0.0005330579587348359,
+          "n_observations": 196,
+          "p_value": 0.032704647836033794,
+          "significant": true,
+          "t_statistic": 1.852889262583812
+        }
+      ],
+      "method": "paired_t_test_holm_fallback",
+      "null_hypothesis": "equal_weight is not worse than any competitor on aligned test-period IC.",
+      "p_value": 0.032704647836033794,
+      "significant": true
+    }
+  },
+  "task": "S1.12"
+}

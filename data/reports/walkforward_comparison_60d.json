@@ -1,26 +1,311 @@
 {
   "as_of": "2026-03-31",
-  "generated_at": "2026-04-05T14:03:10.093994+00:00",
-  "retained_feature_count": 29,
+  "embargo_validation": {
+    "all_windows_passed": true,
+    "per_boundary": {
+      "refit_train_plus_validation_to_test": {
+        "all_passed": true,
+        "minimum_gap_trading_days": 60,
+        "windows_checked": 11
+      },
+      "train_to_validation": {
+        "all_passed": true,
+        "minimum_gap_trading_days": 60,
+        "windows_checked": 11
+      },
+      "validation_to_test": {
+        "all_passed": true,
+        "minimum_gap_trading_days": 60,
+        "windows_checked": 11
+      }
+    },
+    "window_count": 11
+  },
+  "generated_at": "2026-04-13T04:56:36.861659+00:00",
+  "ic_comparison": {
+    "available": true,
+    "baseline_report_path": "/home/jiahao/quant_edge/data/reports/walkforward_comparison_60d.json",
+    "baseline_strategy": "legacy_contiguous",
+    "current_strategy": "purged_embargo",
+    "embargo_trading_days": 60,
+    "per_window": [
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": 0.01133318221493478,
+            "delta_test_ic": 0.04258390189656699,
+            "embargo_test_ic": 0.05391708411150177
+          },
+          "ridge": {
+            "baseline_test_ic": 0.053796850150560495,
+            "delta_test_ic": 0.05804475010421555,
+            "embargo_test_ic": 0.11184160025477605
+          },
+          "xgboost": {
+            "baseline_test_ic": 0.054710330383818215,
+            "delta_test_ic": -0.03326646637960467,
+            "embargo_test_ic": 0.021443864004213546
+          }
+        },
+        "window_id": "W1"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": -0.01894306522128041,
+            "delta_test_ic": 0.011271734838993491,
+            "embargo_test_ic": -0.007671330382286919
+          },
+          "ridge": {
+            "baseline_test_ic": 0.13890209214788082,
+            "delta_test_ic": 0.03189443047547172,
+            "embargo_test_ic": 0.17079652262335254
+          },
+          "xgboost": {
+            "baseline_test_ic": 0.015431405893600009,
+            "delta_test_ic": -0.021527716843923825,
+            "embargo_test_ic": -0.006096310950323816
+          }
+        },
+        "window_id": "W2"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": 0.01622208854824022,
+            "delta_test_ic": -0.0071352301120291214,
+            "embargo_test_ic": 0.009086858436211098
+          },
+          "ridge": {
+            "baseline_test_ic": 0.1552513385380374,
+            "delta_test_ic": 0.022847779707523302,
+            "embargo_test_ic": 0.1780991182455607
+          },
+          "xgboost": {
+            "baseline_test_ic": 0.012335752647816431,
+            "delta_test_ic": 0.03233487569682195,
+            "embargo_test_ic": 0.044670628344638384
+          }
+        },
+        "window_id": "W3"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": 0.11746075930470892,
+            "delta_test_ic": -0.06341489467387844,
+            "embargo_test_ic": 0.054045864630830484
+          },
+          "ridge": {
+            "baseline_test_ic": 0.09062564163290043,
+            "delta_test_ic": -0.004380151813490177,
+            "embargo_test_ic": 0.08624548981941026
+          },
+          "xgboost": {
+            "baseline_test_ic": 0.11888117067884414,
+            "delta_test_ic": -0.07847506752978281,
+            "embargo_test_ic": 0.040406103149061325
+          }
+        },
+        "window_id": "W4"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": 0.06342687468441977,
+            "delta_test_ic": -0.15748748853457734,
+            "embargo_test_ic": -0.09406061385015758
+          },
+          "ridge": {
+            "baseline_test_ic": -0.0781770126786796,
+            "delta_test_ic": -0.04044816012071786,
+            "embargo_test_ic": -0.11862517279939747
+          },
+          "xgboost": {
+            "baseline_test_ic": -0.01170240324370678,
+            "delta_test_ic": -0.03121444387322408,
+            "embargo_test_ic": -0.04291684711693086
+          }
+        },
+        "window_id": "W5"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": -0.02833860109445828,
+            "delta_test_ic": 0.02294263963634034,
+            "embargo_test_ic": -0.0053959614581179415
+          },
+          "ridge": {
+            "baseline_test_ic": -0.01738507715684341,
+            "delta_test_ic": -0.018669353609554167,
+            "embargo_test_ic": -0.036054430766397576
+          },
+          "xgboost": {
+            "baseline_test_ic": -0.006449178839218499,
+            "delta_test_ic": -0.01989774229155958,
+            "embargo_test_ic": -0.02634692113077808
+          }
+        },
+        "window_id": "W6"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": 0.1403592550042558,
+            "delta_test_ic": -0.15133972632607703,
+            "embargo_test_ic": -0.010980471321821235
+          },
+          "ridge": {
+            "baseline_test_ic": 0.05436826710990347,
+            "delta_test_ic": 0.01774829359437452,
+            "embargo_test_ic": 0.072116560704278
+          },
+          "xgboost": {
+            "baseline_test_ic": 0.15703610346278113,
+            "delta_test_ic": -0.10034261301773695,
+            "embargo_test_ic": 0.05669349044504419
+          }
+        },
+        "window_id": "W7"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": 0.17812267701005532,
+            "delta_test_ic": -0.14718082186982429,
+            "embargo_test_ic": 0.030941855140231036
+          },
+          "ridge": {
+            "baseline_test_ic": 0.020944960582553702,
+            "delta_test_ic": -0.020555936715853297,
+            "embargo_test_ic": 0.0003890238667004042
+          },
+          "xgboost": {
+            "baseline_test_ic": 0.2345800780653615,
+            "delta_test_ic": -0.19822493719954876,
+            "embargo_test_ic": 0.03635514086581273
+          }
+        },
+        "window_id": "W8"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": 0.10194311911979681,
+            "delta_test_ic": -0.04199876037067692,
+            "embargo_test_ic": 0.05994435874911989
+          },
+          "ridge": {
+            "baseline_test_ic": -0.001660231261839776,
+            "delta_test_ic": -0.023195629599732467,
+            "embargo_test_ic": -0.024855860861572245
+          },
+          "xgboost": {
+            "baseline_test_ic": 0.12577773116974666,
+            "delta_test_ic": -0.023558521081141107,
+            "embargo_test_ic": 0.10221921008860556
+          }
+        },
+        "window_id": "W9"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": 0.03851336245465305,
+            "delta_test_ic": -0.012805685877063148,
+            "embargo_test_ic": 0.0257076765775899
+          },
+          "ridge": {
+            "baseline_test_ic": -0.005589754634767291,
+            "delta_test_ic": 0.0027470175209298488,
+            "embargo_test_ic": -0.0028427371138374426
+          },
+          "xgboost": {
+            "baseline_test_ic": 0.060761337594819935,
+            "delta_test_ic": -0.09489951746285234,
+            "embargo_test_ic": -0.03413817986803241
+          }
+        },
+        "window_id": "W10"
+      },
+      {
+        "models": {
+          "lightgbm": {
+            "baseline_test_ic": 0.12159407338300797,
+            "delta_test_ic": -0.09041768904276634,
+            "embargo_test_ic": 0.03117638434024163
+          },
+          "ridge": {
+            "baseline_test_ic": -0.02170702390585088,
+            "delta_test_ic": 0.012890705504371098,
+            "embargo_test_ic": -0.008816318401479782
+          },
+          "xgboost": {
+            "baseline_test_ic": 0.18880248584701612,
+            "delta_test_ic": -0.20489542156760704,
+            "embargo_test_ic": -0.01609293572059091
+          }
+        },
+        "window_id": "W11"
+      }
+    ],
+    "summary": {
+      "lightgbm": {
+        "baseline_mean_test_ic": 0.06742670230984854,
+        "embargo_mean_test_ic": 0.013337427724849284,
+        "max_delta_test_ic": 0.04258390189656699,
+        "mean_delta_test_ic": -0.05408927458499926,
+        "min_delta_test_ic": -0.15748748853457734,
+        "windows_compared": 11
+      },
+      "ridge": {
+        "baseline_mean_test_ic": 0.03539727732035048,
+        "embargo_mean_test_ic": 0.03893579959739941,
+        "max_delta_test_ic": 0.05804475010421555,
+        "mean_delta_test_ic": 0.0035385222770489156,
+        "min_delta_test_ic": -0.04044816012071786,
+        "windows_compared": 11
+      },
+      "xgboost": {
+        "baseline_mean_test_ic": 0.08637861942371626,
+        "embargo_mean_test_ic": 0.016017931100974513,
+        "max_delta_test_ic": 0.03233487569682195,
+        "mean_delta_test_ic": -0.07036068832274175,
+        "min_delta_test_ic": -0.20489542156760704,
+        "windows_compared": 11
+      }
+    }
+  },
+  "retained_feature_count": 76,
   "retained_features": [
+    "pb_ratio_sector_rel",
     "vol_60d",
+    "ps_ratio_sector_rel",
     "atr_14",
     "low_52w_ratio",
     "gk_vol",
+    "pe_ratio_sector_rel",
     "vol_20d",
     "vol_rank",
     "bb_width",
     "value_mom_pb",
     "quality_value_roe_pb",
     "pb_ratio",
+    "roa_sector_rel",
     "ev_ebitda",
+    "operating_margin_sector_rel",
+    "ev_ebitda_sector_rel",
     "current_ratio",
+    "current_ratio_sector_rel",
     "fcf_yield",
     "dividend_yield",
+    "fcf_yield_sector_rel",
     "revenue_growth_yoy",
     "ps_ratio",
     "adx_14",
     "amihud",
+    "dividend_yield_sector_rel",
     "high_52w_ratio",
     "roa",
     "profitability_combo",
@@ -31,37 +316,84 @@
     "quality_value_roa_pe",
     "earnings_growth_yoy",
     "operating_margin",
-    "stoch_d"
+    "stoch_d",
+    "is_missing_pb_ratio_sector_rel",
+    "is_missing_vol_60d",
+    "is_missing_ps_ratio_sector_rel",
+    "is_missing_atr_14",
+    "is_missing_low_52w_ratio",
+    "is_missing_gk_vol",
+    "is_missing_pe_ratio_sector_rel",
+    "is_missing_vol_20d",
+    "is_missing_vol_rank",
+    "is_missing_bb_width",
+    "is_missing_value_mom_pb",
+    "is_missing_quality_value_roe_pb",
+    "is_missing_pb_ratio",
+    "is_missing_roa_sector_rel",
+    "is_missing_ev_ebitda",
+    "is_missing_operating_margin_sector_rel",
+    "is_missing_ev_ebitda_sector_rel",
+    "is_missing_current_ratio",
+    "is_missing_current_ratio_sector_rel",
+    "is_missing_fcf_yield",
+    "is_missing_dividend_yield",
+    "is_missing_fcf_yield_sector_rel",
+    "is_missing_revenue_growth_yoy",
+    "is_missing_ps_ratio",
+    "is_missing_adx_14",
+    "is_missing_amihud",
+    "is_missing_dividend_yield_sector_rel",
+    "is_missing_high_52w_ratio",
+    "is_missing_roa",
+    "is_missing_profitability_combo",
+    "is_missing_debt_to_equity",
+    "is_missing_roe",
+    "is_missing_value_mom_pe",
+    "is_missing_pe_ratio",
+    "is_missing_quality_value_roa_pe",
+    "is_missing_earnings_growth_yoy",
+    "is_missing_operating_margin",
+    "is_missing_stoch_d"
   ],
+  "split_config": {
+    "calendar_end": "2025-02-28",
+    "calendar_observations": 1800,
+    "calendar_start": "2018-01-02",
+    "calendar_ticker": "SPY",
+    "embargo_trading_days": 60,
+    "rebalance_weekday": 4,
+    "strategy": "purged_embargo"
+  },
   "summary": {
     "lightgbm": {
-      "mean_hit_rate": 0.5155489344269099,
-      "mean_test_ic": 0.06742670230984854,
-      "mean_test_icir": 0.45649452628872583,
-      "mean_test_rank_ic": 0.035787902237201456,
-      "mean_top_decile_return": 0.06118821172170581,
-      "std_test_ic": 0.06568018618089064,
-      "win_count": 1,
+      "mean_hit_rate": 0.5212433964778216,
+      "mean_test_ic": 0.013337427724849284,
+      "mean_test_icir": 0.2352942967765643,
+      "mean_test_rank_ic": 0.03367465307330197,
+      "mean_top_decile_return": 0.0447323596731951,
+      "std_test_ic": 0.04177138356760233,
+      "win_count": 3,
       "windows_completed": 11
     },
     "ridge": {
-      "mean_hit_rate": 0.5078222225347695,
-      "mean_test_ic": 0.03539727732035048,
-      "mean_test_icir": 0.2863469431119258,
-      "mean_test_rank_ic": 0.021329110134119585,
-      "mean_top_decile_return": 0.009412392929562217,
-      "std_test_ic": 0.06811415574593399,
-      "win_count": 2,
+      "mean_hit_rate": 0.5136930530998,
+      "mean_test_ic": 0.03893579959739941,
+      "mean_test_icir": 0.5355806314176278,
+      "mean_test_rank_ic": 0.0286844661927361,
+      "mean_top_decile_return": 0.01443583154329668,
+      "std_test_ic": 0.08813112154842735,
+      "win_count": 5,
       "windows_completed": 11
     },
     "xgboost": {
-      "mean_hit_rate": 0.5182043575045682,
-      "mean_test_ic": 0.08637861942371626,
-      "mean_test_icir": 0.6146154027198049,
-      "mean_test_rank_ic": 0.07092611772285656,
-      "mean_top_decile_return": 0.06211501125855696,
-      "std_test_ic": 0.08003827077588754,
-      "win_count": 8,
+      "mean_hit_rate": 0.5155152004028485,
+      "mean_test_ic": 0.016017931100974513,
+      "mean_test_icir": 0.1881492847299825,
+      "mean_test_rank_ic": 0.041311440791318814,
+      "mean_top_decile_return": 0.0451357047497252,
+      "std_test_ic": 0.04290352411506643,
+      "win_count": 3,
       "windows_completed": 11
     }
   },
@@ -70,324 +402,14 @@
     {
       "dates": {
         "test": "2019-09 -> 2020-02",
-        "test_end": "2020-02-29",
-        "test_start": "2019-09-01",
-        "train": "2016-03 -> 2019-02",
-        "train_end": "2019-02-28",
-        "train_start": "2016-03-01",
-        "validation": "2019-03 -> 2019-08",
-        "validation_end": "2019-08-31",
+        "test_end": "2020-02-28",
+        "test_start": "2019-09-06",
+        "train": "2018-01 -> 2018-11",
+        "train_end": "2018-11-23",
+        "train_start": "2018-01-05",
+        "validation": "2019-03 -> 2019-06",
+        "validation_end": "2019-06-07",
         "validation_start": "2019-03-01"
-      },
-      "results": {
-        "lightgbm": {
-          "best_hyperparams": {
-            "colsample_bytree": 0.6,
-            "learning_rate": 0.03,
-            "max_depth": 5,
-            "min_child_samples": 100,
-            "n_estimators": 1000,
-            "reg_alpha": 0.0,
-            "reg_lambda": 0.1,
-            "subsample": 0.6
-          },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "9e1623bebe12423cb47ece05321bc66a",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
-          "selection": {
-            "best_ic": 0.017812377145207177,
-            "search_n_iter": 100,
-            "trial_count": 100
-          },
-          "test_metrics": {
-            "hit_rate": 0.5267456104532462,
-            "ic": 0.01133318221493478,
-            "icir": 0.20052926649326952,
-            "long_short_return": -0.02719749488516041,
-            "rank_ic": 0.05946243486366053,
-            "top_decile_return": -0.04187491516083079,
-            "turnover": 0.2870175438596491
-          },
-          "validation_metrics": {
-            "hit_rate": 0.5118355200865684,
-            "ic": 0.017812377145207177,
-            "icir": 0.1858844514384785,
-            "long_short_return": 0.050766722680811,
-            "rank_ic": 0.01180417813577667,
-            "top_decile_return": 0.030657738645772967,
-            "turnover": 0.3029522081064731
-          }
-        },
-        "ridge": {
-          "best_hyperparams": {
-            "alpha": 10.0
-          },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "f984499eb17041519051519b4e8895ba",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
-          "selection": {
-            "best_ic": -0.04059765391709296,
-            "scores_by_alpha": {
-              "0.001": -0.041168970004706214,
-              "0.01": -0.0411677827284741,
-              "0.1": -0.04115605451928543,
-              "1.0": -0.04105167166443694,
-              "10.0": -0.04059765391709296,
-              "100.0": -0.04100671735755319
-            }
-          },
-          "test_metrics": {
-            "hit_rate": 0.49666530556689803,
-            "ic": 0.053796850150560495,
-            "icir": 0.6413344209838899,
-            "long_short_return": 0.047332690015156643,
-            "rank_ic": 0.023379151585884186,
-            "top_decile_return": 0.0029901640546484112,
-            "turnover": 0.20771929824561405
-          },
-          "validation_metrics": {
-            "hit_rate": 0.47186527796564315,
-            "ic": -0.04059765391709296,
-            "icir": -0.4690685689783818,
-            "long_short_return": -0.028350704006179134,
-            "rank_ic": -0.07501351462604265,
-            "top_decile_return": -0.02450593693027622,
-            "turnover": 0.2075620084694495
-          }
-        },
-        "xgboost": {
-          "best_hyperparams": {
-            "colsample_bytree": 1.0,
-            "learning_rate": 0.01,
-            "max_depth": 6,
-            "min_child_weight": 5,
-            "n_estimators": 1000,
-            "reg_alpha": 0.1,
-            "reg_lambda": 1.0,
-            "subsample": 1.0
-          },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "b9762551039b46ad9412f5ffa3c530ec",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
-          "selection": {
-            "best_ic": 0.08497896006919722,
-            "search_n_iter": 100,
-            "trial_count": 100
-          },
-          "test_metrics": {
-            "hit_rate": 0.5594800598883898,
-            "ic": 0.054710330383818215,
-            "icir": 0.6344661448265282,
-            "long_short_return": 0.08732679821360899,
-            "rank_ic": 0.17735907588836117,
-            "top_decile_return": 0.01960655483339495,
-            "turnover": 0.336140350877193
-          },
-          "validation_metrics": {
-            "hit_rate": 0.5334099824157987,
-            "ic": 0.08497896006919722,
-            "icir": 0.47780784376821445,
-            "long_short_return": 0.068940002364279,
-            "rank_ic": 0.0747083702217946,
-            "top_decile_return": 0.040987224307115655,
-            "turnover": 0.2776890502117363
-          }
-        }
-      },
-      "row_counts": {
-        "test": {
-          "dates": 26,
-          "rows": 14694,
-          "tickers": 574
-        },
-        "train": {
-          "dates": 59,
-          "rows": 34000,
-          "tickers": 595
-        },
-        "validation": {
-          "dates": 26,
-          "rows": 14786,
-          "tickers": 579
-        }
-      },
-      "window_id": "W1"
-    },
-    {
-      "dates": {
-        "test": "2020-03 -> 2020-08",
-        "test_end": "2020-08-31",
-        "test_start": "2020-03-01",
-        "train": "2016-09 -> 2019-08",
-        "train_end": "2019-08-31",
-        "train_start": "2016-09-01",
-        "validation": "2019-09 -> 2020-02",
-        "validation_end": "2020-02-29",
-        "validation_start": "2019-09-01"
-      },
-      "results": {
-        "lightgbm": {
-          "best_hyperparams": {
-            "colsample_bytree": 1.0,
-            "learning_rate": 0.01,
-            "max_depth": 3,
-            "min_child_samples": 20,
-            "n_estimators": 200,
-            "reg_alpha": 0.0,
-            "reg_lambda": 0.1,
-            "subsample": 0.6
-          },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "b56fc2a25f384fcda5c1c65a36165688",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
-          "selection": {
-            "best_ic": 0.0704397129021585,
-            "search_n_iter": 100,
-            "trial_count": 100
-          },
-          "test_metrics": {
-            "hit_rate": 0.5213662575779979,
-            "ic": -0.01894306522128041,
-            "icir": -0.19282396393956083,
-            "long_short_return": 0.036881109733836404,
-            "rank_ic": 0.03517065037447707,
-            "top_decile_return": 0.07825932206805895,
-            "turnover": 0.13407159202353713
-          },
-          "validation_metrics": {
-            "hit_rate": 0.5423982577922962,
-            "ic": 0.0704397129021585,
-            "icir": 0.7693279820279519,
-            "long_short_return": 0.05931557107837932,
-            "rank_ic": 0.18912268596678303,
-            "top_decile_return": -0.005777282737765481,
-            "turnover": 0.1719298245614035
-          }
-        },
-        "ridge": {
-          "best_hyperparams": {
-            "alpha": 10.0
-          },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "95ec60c6f35b49b8bfa225a52fe1b6f2",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
-          "selection": {
-            "best_ic": 0.053796850150560495,
-            "scores_by_alpha": {
-              "0.001": 0.05367021947451521,
-              "0.01": 0.053670450740128134,
-              "0.1": 0.053672745903274297,
-              "1.0": 0.053694038590539894,
-              "10.0": 0.053796850150560495,
-              "100.0": 0.052433195468064984
-            }
-          },
-          "test_metrics": {
-            "hit_rate": 0.562841934052935,
-            "ic": 0.13890209214788082,
-            "icir": 1.1051241202766262,
-            "long_short_return": 0.09069229287095415,
-            "rank_ic": 0.15080793132989143,
-            "top_decile_return": 0.0641458039539304,
-            "turnover": 0.2492099814754277
-          },
-          "validation_metrics": {
-            "hit_rate": 0.49666530556689803,
-            "ic": 0.053796850150560495,
-            "icir": 0.6413344209838899,
-            "long_short_return": 0.047332690015156643,
-            "rank_ic": 0.023379151585884186,
-            "top_decile_return": 0.0029901640546484112,
-            "turnover": 0.20771929824561405
-          }
-        },
-        "xgboost": {
-          "best_hyperparams": {
-            "colsample_bytree": 0.6,
-            "learning_rate": 0.03,
-            "max_depth": 6,
-            "min_child_weight": 5,
-            "n_estimators": 1000,
-            "reg_alpha": 0.1,
-            "reg_lambda": 0.1,
-            "subsample": 0.8
-          },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "a78d627de9ad454bab0a00b1ec912d00",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
-          "selection": {
-            "best_ic": 0.07872363410024406,
-            "search_n_iter": 100,
-            "trial_count": 100
-          },
-          "test_metrics": {
-            "hit_rate": 0.5241017300014786,
-            "ic": 0.015431405893600009,
-            "icir": 0.1577683313619481,
-            "long_short_return": 0.10701466333551805,
-            "rank_ic": 0.08673749053831463,
-            "top_decile_return": 0.1174207681635943,
-            "turnover": 0.35875013621009044
-          },
-          "validation_metrics": {
-            "hit_rate": 0.5649244589628419,
-            "ic": 0.07872363410024406,
-            "icir": 0.6888859455622784,
-            "long_short_return": 0.06034030085667178,
-            "rank_ic": 0.17150687177505308,
-            "top_decile_return": 0.0019597180029416023,
-            "turnover": 0.37052631578947365
-          }
-        }
-      },
-      "row_counts": {
-        "test": {
-          "dates": 24,
-          "rows": 13526,
-          "tickers": 568
-        },
-        "train": {
-          "dates": 85,
-          "rows": 48786,
-          "tickers": 603
-        },
-        "validation": {
-          "dates": 26,
-          "rows": 14694,
-          "tickers": 574
-        }
-      },
-      "window_id": "W2"
-    },
-    {
-      "dates": {
-        "test": "2020-09 -> 2021-02",
-        "test_end": "2021-02-28",
-        "test_start": "2020-09-01",
-        "train": "2017-03 -> 2020-02",
-        "train_end": "2020-02-29",
-        "train_start": "2017-03-01",
-        "validation": "2020-03 -> 2020-08",
-        "validation_end": "2020-08-31",
-        "validation_start": "2020-03-01"
       },
       "results": {
         "lightgbm": {
@@ -401,115 +423,450 @@
             "reg_lambda": 0.0,
             "subsample": 1.0
           },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "94904664280b45dab4069ef5eef089af",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.031174834680210883,
+            "best_ic": 0.12850780204188908,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.43545983007899836,
-            "ic": 0.01622208854824022,
-            "icir": 0.20943716669247936,
-            "long_short_return": 0.11716450148202816,
-            "rank_ic": -0.14349172391744264,
-            "top_decile_return": 0.2632252198592675,
-            "turnover": 0.24162307943772476
+            "hit_rate": 0.5860895603647748,
+            "ic": 0.05391708411150177,
+            "icir": 0.8611066774611603,
+            "long_short_return": 0.14831633042067624,
+            "rank_ic": 0.23368224045430191,
+            "top_decile_return": 0.0350763520175719,
+            "turnover": 0.17333333333333337
           },
           "validation_metrics": {
-            "hit_rate": 0.5203312139583025,
-            "ic": 0.031174834680210883,
-            "icir": 0.38014274785841046,
-            "long_short_return": 0.04082359647348119,
-            "rank_ic": 0.04221535649483534,
-            "top_decile_return": 0.10127125709300631,
-            "turnover": 0.24698975700119863
+            "hit_rate": 0.5604975499434602,
+            "ic": 0.12850780204188908,
+            "icir": 0.7188524632194656,
+            "long_short_return": 0.07100577470167135,
+            "rank_ic": 0.1773810743337043,
+            "top_decile_return": 0.06419660704083464,
+            "turnover": 0.1644562334217507
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 0.001
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": -0.015152368305864214,
+            "scores_by_alpha": {
+              "0.001": -0.015152368305864214,
+              "0.01": -0.015157504427021575,
+              "0.1": -0.015206569883067728,
+              "1.0": -0.015613126091874199,
+              "10.0": -0.017099250868936013,
+              "100.0": -0.01776979560650115
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5690077582686811,
+            "ic": 0.11184160025477605,
+            "icir": 2.370635178826584,
+            "long_short_return": 0.05933879723941838,
+            "rank_ic": 0.09156462001301781,
+            "top_decile_return": 0.004663947428733924,
+            "turnover": 0.2154385964912281
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4896343761779118,
+            "ic": -0.015152368305864214,
+            "icir": -0.5701534905466131,
+            "long_short_return": -0.012377343563262463,
+            "rank_ic": -0.03695248498179817,
+            "top_decile_return": -0.013759269777251962,
+            "turnover": 0.22907068732840064
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.03,
+            "max_depth": 6,
+            "min_child_weight": 5,
+            "n_estimators": 1000,
+            "reg_alpha": 0.1,
+            "reg_lambda": 0.1,
+            "subsample": 0.8
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.17969448917459824,
+            "search_n_iter": 100,
+            "trial_count": 100
+          },
+          "test_metrics": {
+            "hit_rate": 0.5589356199809447,
+            "ic": 0.021443864004213546,
+            "icir": 0.6690760523110483,
+            "long_short_return": 0.12949525182686947,
+            "rank_ic": 0.19745112866657874,
+            "top_decile_return": 0.027514255446864328,
+            "turnover": 0.2835087719298246
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5212966453071994,
+            "ic": 0.17969448917459824,
+            "icir": 1.1727870140923615,
+            "long_short_return": 0.12622365594780147,
+            "rank_ic": 0.08315645281331223,
+            "top_decile_return": 0.09354571501787275,
+            "turnover": 0.2682302573409651
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 14694,
+          "tickers": 574
+        },
+        "train": {
+          "dates": 46,
+          "rows": 26563,
+          "tickers": 592
+        },
+        "validation": {
+          "dates": 14,
+          "rows": 7959,
+          "tickers": 575
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2020-02-29",
+          "test_start": "2019-09-01",
+          "train_end": "2019-02-28",
+          "train_start": "2016-03-01",
+          "validation_end": "2019-08-31",
+          "validation_start": "2019-03-01"
+        },
+        "requested_window_id": "W1",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2019-06-07",
+            "gap_trading_days": 62,
+            "later_date": "2019-09-06",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2018-11-23",
+            "gap_trading_days": 64,
+            "later_date": "2019-03-01",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2019-06-07",
+            "gap_trading_days": 62,
+            "later_date": "2019-09-06",
+            "minimum_required": 60,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W1"
+    },
+    {
+      "dates": {
+        "test": "2020-03 -> 2020-08",
+        "test_end": "2020-08-28",
+        "test_start": "2020-03-06",
+        "train": "2018-01 -> 2019-06",
+        "train_end": "2019-06-07",
+        "train_start": "2018-01-05",
+        "validation": "2019-09 -> 2019-12",
+        "validation_end": "2019-12-06",
+        "validation_start": "2019-09-06"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.05,
+            "max_depth": 6,
+            "min_child_samples": 50,
+            "n_estimators": 1000,
+            "reg_alpha": 0.1,
+            "reg_lambda": 1.0,
+            "subsample": 0.8
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.09827603821647087,
+            "search_n_iter": 100,
+            "trial_count": 100
+          },
+          "test_metrics": {
+            "hit_rate": 0.5277983143575337,
+            "ic": -0.007671330382286919,
+            "icir": -0.12132376701385274,
+            "long_short_return": 0.02474497038892748,
+            "rank_ic": 0.04869441859382515,
+            "top_decile_return": 0.07979155992224471,
+            "turnover": 0.26747575460390105
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5342759752556495,
+            "ic": 0.09827603821647087,
+            "icir": 0.6875508598588187,
+            "long_short_return": 0.03630451457369239,
+            "rank_ic": 0.09278952239043604,
+            "top_decile_return": 0.026726627779283134,
+            "turnover": 0.26585695006747645
           }
         },
         "ridge": {
           "best_hyperparams": {
             "alpha": 100.0
           },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "3ea088a8fe3f413a9670d8d159b04297",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.14200284831997795,
+            "best_ic": 0.1095703082666766,
             "scores_by_alpha": {
-              "0.001": 0.1384499978923891,
-              "0.01": 0.13845042986634631,
-              "0.1": 0.1384547463801783,
-              "1.0": 0.1384975994724248,
-              "10.0": 0.13890209214788082,
-              "100.0": 0.14200284831997795
+              "0.001": 0.1064013156540908,
+              "0.01": 0.10639669304468709,
+              "0.1": 0.1063535930695463,
+              "1.0": 0.10610749227841697,
+              "10.0": 0.10616662440785465,
+              "100.0": 0.1095703082666766
             }
           },
           "test_metrics": {
-            "hit_rate": 0.5626770010433746,
-            "ic": 0.1552513385380374,
-            "icir": 0.9412671935292891,
-            "long_short_return": -0.0013131613322813068,
-            "rank_ic": 0.15104421669697865,
-            "top_decile_return": 0.1175079709809197,
-            "turnover": 0.22458319712324284
+            "hit_rate": 0.5552269702794618,
+            "ic": 0.17079652262335254,
+            "icir": 2.109975707348718,
+            "long_short_return": 0.1302210460741177,
+            "rank_ic": 0.16689092178362863,
+            "top_decile_return": 0.08939538397966224,
+            "turnover": 0.1731502669717773
           },
           "validation_metrics": {
-            "hit_rate": 0.5644684311695993,
-            "ic": 0.14200284831997795,
-            "icir": 1.103462653327373,
-            "long_short_return": 0.09630469792020681,
-            "rank_ic": 0.15423327066117723,
-            "top_decile_return": 0.06708582144656956,
-            "turnover": 0.23847662634847988
+            "hit_rate": 0.5437444767074864,
+            "ic": 0.1095703082666766,
+            "icir": 1.4694664467793985,
+            "long_short_return": 0.050647132882824866,
+            "rank_ic": 0.08254397625978836,
+            "top_decile_return": 0.03225783605846864,
+            "turnover": 0.1511470985155196
           }
         },
         "xgboost": {
           "best_hyperparams": {
             "colsample_bytree": 0.6,
-            "learning_rate": 0.01,
-            "max_depth": 6,
-            "min_child_weight": 5,
-            "n_estimators": 200,
+            "learning_rate": 0.1,
+            "max_depth": 7,
+            "min_child_weight": 20,
+            "n_estimators": 100,
             "reg_alpha": 0.1,
-            "reg_lambda": 0.1,
-            "subsample": 0.8
+            "reg_lambda": 1.0,
+            "subsample": 0.6
           },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "c59b67d3012341a2b48b6766ad160958",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.03299039393019829,
+            "best_ic": 0.10239821128321681,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.4383663735280966,
-            "ic": 0.012335752647816431,
-            "icir": 0.1824427456326118,
-            "long_short_return": -0.060140409106612565,
-            "rank_ic": -0.13696114601392229,
-            "top_decile_return": 0.16269618055843293,
-            "turnover": 0.15260978533289746
+            "hit_rate": 0.5479077332544728,
+            "ic": -0.006096310950323816,
+            "icir": -0.10988833458157567,
+            "long_short_return": 0.04065489513154592,
+            "rank_ic": 0.0902131727810268,
+            "top_decile_return": 0.0931693201661768,
+            "turnover": 0.24516454178925576
           },
           "validation_metrics": {
-            "hit_rate": 0.525062841934053,
-            "ic": 0.03299039393019829,
-            "icir": 0.34415137477318464,
-            "long_short_return": 0.09824870335593465,
-            "rank_ic": 0.08827080096872504,
-            "top_decile_return": 0.13387438668800686,
-            "turnover": 0.2053775743707094
+            "hit_rate": 0.5489205908344906,
+            "ic": 0.10239821128321681,
+            "icir": 0.8706036502201018,
+            "long_short_return": 0.058626710698838305,
+            "rank_ic": 0.1201401118004624,
+            "top_decile_return": 0.029643168021759786,
+            "turnover": 0.22402159244264508
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 24,
+          "rows": 13526,
+          "tickers": 568
+        },
+        "train": {
+          "dates": 73,
+          "rows": 41959,
+          "tickers": 599
+        },
+        "validation": {
+          "dates": 14,
+          "rows": 7921,
+          "tickers": 570
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2020-08-31",
+          "test_start": "2020-03-01",
+          "train_end": "2019-08-31",
+          "train_start": "2016-09-01",
+          "validation_end": "2020-02-29",
+          "validation_start": "2019-09-01"
+        },
+        "requested_window_id": "W2",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2019-12-06",
+            "gap_trading_days": 60,
+            "later_date": "2020-03-06",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2019-06-07",
+            "gap_trading_days": 62,
+            "later_date": "2019-09-06",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2019-12-06",
+            "gap_trading_days": 60,
+            "later_date": "2020-03-06",
+            "minimum_required": 60,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W2"
+    },
+    {
+      "dates": {
+        "test": "2020-09 -> 2021-02",
+        "test_end": "2021-02-26",
+        "test_start": "2020-09-04",
+        "train": "2018-01 -> 2019-12",
+        "train_end": "2019-12-06",
+        "train_start": "2018-01-05",
+        "validation": "2020-03 -> 2020-06",
+        "validation_end": "2020-06-05",
+        "validation_start": "2020-03-06"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.1,
+            "max_depth": 4,
+            "min_child_samples": 20,
+            "n_estimators": 1000,
+            "reg_alpha": 0.01,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.03931021153050236,
+            "search_n_iter": 100,
+            "trial_count": 100
+          },
+          "test_metrics": {
+            "hit_rate": 0.4788344015501565,
+            "ic": 0.009086858436211098,
+            "icir": 0.14961114230530098,
+            "long_short_return": 0.15669572382028696,
+            "rank_ic": -0.04124831882882674,
+            "top_decile_return": 0.2653438681856973,
+            "turnover": 0.3035714285714285
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5376665760130541,
+            "ic": 0.03931021153050236,
+            "icir": 0.7917459413972662,
+            "long_short_return": 0.04132704796401561,
+            "rank_ic": 0.10465998476991234,
+            "top_decile_return": 0.11678589025584778,
+            "turnover": 0.3654970760233918
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.19038273558599045,
+            "scores_by_alpha": {
+              "0.001": 0.18368400248715952,
+              "0.01": 0.18368515179694608,
+              "0.1": 0.18369705292006858,
+              "1.0": 0.18382405486809658,
+              "10.0": 0.18480208767761164,
+              "100.0": 0.19038273558599045
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5558205395737069,
+            "ic": 0.1780991182455607,
+            "icir": 1.261878791525666,
+            "long_short_return": 0.1131608059417205,
+            "rank_ic": 0.17910569443373078,
+            "top_decile_return": 0.10589913431796001,
+            "turnover": 0.200419527078566
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5673103073157465,
+            "ic": 0.19038273558599045,
+            "icir": 2.2632723629503078,
+            "long_short_return": 0.15620643902141973,
+            "rank_ic": 0.1930110909079761,
+            "top_decile_return": 0.10266816805244112,
+            "turnover": 0.18567251461988307
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.8,
+            "learning_rate": 0.1,
+            "max_depth": 4,
+            "min_child_weight": 20,
+            "n_estimators": 1000,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.1,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.0424069260281471,
+            "search_n_iter": 100,
+            "trial_count": 100
+          },
+          "test_metrics": {
+            "hit_rate": 0.4713071992845432,
+            "ic": 0.044670628344638384,
+            "icir": 0.39232086442126995,
+            "long_short_return": 0.14693139076047934,
+            "rank_ic": -0.05238006433535639,
+            "top_decile_return": 0.27830605752040677,
+            "turnover": 0.273387272529149
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5511286374762034,
+            "ic": 0.0424069260281471,
+            "icir": 0.9125164873253045,
+            "long_short_return": 0.1083014156007327,
+            "rank_ic": 0.11982738727190176,
+            "top_decile_return": 0.1368715801606085,
+            "turnover": 0.33771929824561403
           }
         }
       },
@@ -520,14 +877,49 @@
           "tickers": 567
         },
         "train": {
-          "dates": 111,
-          "rows": 63480,
-          "tickers": 608
+          "dates": 99,
+          "rows": 56707,
+          "tickers": 605
         },
         "validation": {
-          "dates": 24,
-          "rows": 13526,
+          "dates": 13,
+          "rows": 7354,
           "tickers": 568
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2021-02-28",
+          "test_start": "2020-09-01",
+          "train_end": "2020-02-29",
+          "train_start": "2017-03-01",
+          "validation_end": "2020-08-31",
+          "validation_start": "2020-03-01"
+        },
+        "requested_window_id": "W3",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2020-06-05",
+            "gap_trading_days": 63,
+            "later_date": "2020-09-04",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2019-12-06",
+            "gap_trading_days": 60,
+            "later_date": "2020-03-06",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2020-06-05",
+            "gap_trading_days": 63,
+            "later_date": "2020-09-04",
+            "minimum_required": 60,
+            "passed": true
+          }
         }
       },
       "window_id": "W3"
@@ -535,136 +927,121 @@
     {
       "dates": {
         "test": "2021-03 -> 2021-08",
-        "test_end": "2021-08-31",
-        "test_start": "2021-03-01",
-        "train": "2017-09 -> 2020-08",
-        "train_end": "2020-08-31",
-        "train_start": "2017-09-01",
-        "validation": "2020-09 -> 2021-02",
-        "validation_end": "2021-02-28",
-        "validation_start": "2020-09-01"
+        "test_end": "2021-08-27",
+        "test_start": "2021-03-05",
+        "train": "2018-01 -> 2020-06",
+        "train_end": "2020-06-05",
+        "train_start": "2018-01-05",
+        "validation": "2020-09 -> 2020-12",
+        "validation_end": "2020-12-04",
+        "validation_start": "2020-09-04"
       },
       "results": {
         "lightgbm": {
           "best_hyperparams": {
-            "colsample_bytree": 0.8,
+            "colsample_bytree": 1.0,
             "learning_rate": 0.01,
-            "max_depth": 3,
+            "max_depth": 7,
             "min_child_samples": 100,
             "n_estimators": 200,
-            "reg_alpha": 0.01,
+            "reg_alpha": 0.0,
             "reg_lambda": 0.1,
-            "subsample": 0.8
+            "subsample": 0.6
           },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "ec674f8a026b4cafa710451460006806",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.19134232049900748,
+            "best_ic": 0.09101727792990617,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.49938597124900674,
-            "ic": 0.11746075930470892,
-            "icir": 0.4179731209303036,
-            "long_short_return": 0.12375706122597024,
-            "rank_ic": 0.06506831368208636,
-            "top_decile_return": 0.11386833874389803,
-            "turnover": 0.203125
+            "hit_rate": 0.5460521563244961,
+            "ic": 0.054045864630830484,
+            "icir": 1.3366369473261213,
+            "long_short_return": 0.1315517863318919,
+            "rank_ic": 0.07142314297775247,
+            "top_decile_return": 0.10529542949943513,
+            "turnover": 0.14211309523809523
           },
           "validation_metrics": {
-            "hit_rate": 0.40930093903711434,
-            "ic": 0.19134232049900748,
-            "icir": 1.0610733775786862,
-            "long_short_return": 0.06281390548612929,
-            "rank_ic": -0.2142197777797338,
-            "top_decile_return": 0.21964620629913592,
-            "turnover": 0.15809905197777052
+            "hit_rate": 0.4761661341853035,
+            "ic": 0.09101727792990617,
+            "icir": 1.1885279289957735,
+            "long_short_return": -0.006784333153029023,
+            "rank_ic": -0.046420948950879545,
+            "top_decile_return": 0.16178997698913972,
+            "turnover": 0.11526412184306922
           }
         },
         "ridge": {
           "best_hyperparams": {
             "alpha": 100.0
           },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "e6bf4a034fba4362bea162302d781745",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.1552513385380374,
+            "best_ic": 0.24731379717624322,
             "scores_by_alpha": {
-              "0.001": 0.15059930207809138,
-              "0.01": 0.15059980938702558,
-              "0.1": 0.15060487895463825,
-              "1.0": 0.15065523549588436,
-              "10.0": 0.15113409335008965,
-              "100.0": 0.1552513385380374
+              "0.001": 0.2447485080568008,
+              "0.01": 0.24474607353637726,
+              "0.1": 0.2447279922703242,
+              "1.0": 0.24474781009026694,
+              "10.0": 0.24458891814843028,
+              "100.0": 0.24731379717624322
             }
           },
           "test_metrics": {
-            "hit_rate": 0.49830239110019503,
-            "ic": 0.09062564163290043,
-            "icir": 0.7868592052936126,
-            "long_short_return": 0.0352772467336995,
-            "rank_ic": 0.03697036773745232,
-            "top_decile_return": 0.011663194995722992,
-            "turnover": 0.22767857142857142
+            "hit_rate": 0.5295817380625587,
+            "ic": 0.08624548981941026,
+            "icir": 0.9662375950096364,
+            "long_short_return": 0.03835245197578818,
+            "rank_ic": 0.04389612513916674,
+            "top_decile_return": 0.01063966119692238,
+            "turnover": 0.171875
           },
           "validation_metrics": {
-            "hit_rate": 0.5626770010433746,
-            "ic": 0.1552513385380374,
-            "icir": 0.9412671935292891,
-            "long_short_return": -0.0013131613322813068,
-            "rank_ic": 0.15104421669697865,
-            "top_decile_return": 0.1175079709809197,
-            "turnover": 0.22458319712324284
+            "hit_rate": 0.5965495207667731,
+            "ic": 0.24731379717624322,
+            "icir": 3.8695690327048102,
+            "long_short_return": 0.17336004152453602,
+            "rank_ic": 0.27719659570859034,
+            "top_decile_return": 0.16043863445317466,
+            "turnover": 0.17967996915365336
           }
         },
         "xgboost": {
           "best_hyperparams": {
             "colsample_bytree": 0.6,
             "learning_rate": 0.01,
-            "max_depth": 5,
-            "min_child_weight": 10,
+            "max_depth": 6,
+            "min_child_weight": 5,
             "n_estimators": 100,
-            "reg_alpha": 0.01,
+            "reg_alpha": 0.1,
             "reg_lambda": 0.1,
-            "subsample": 0.8
+            "subsample": 1.0
           },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "2079f56b726e4db2a4f876e6b4283794",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.12383067753474743,
+            "best_ic": 0.13911581324838707,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.45156396734811816,
-            "ic": 0.11888117067884414,
-            "icir": 0.429644815469,
-            "long_short_return": 0.13220817311025368,
-            "rank_ic": 0.07054112928267141,
-            "top_decile_return": 0.1000870202323393,
-            "turnover": 0.15476190476190477
+            "hit_rate": 0.5139059452430832,
+            "ic": 0.040406103149061325,
+            "icir": 0.7457637884293756,
+            "long_short_return": 0.12057538528526432,
+            "rank_ic": 0.0706912204337608,
+            "top_decile_return": 0.09017484670056033,
+            "turnover": 0.13095238095238093
           },
           "validation_metrics": {
-            "hit_rate": 0.45968102548815026,
-            "ic": 0.12383067753474743,
-            "icir": 0.9514398568603628,
-            "long_short_return": 0.13368807121048948,
-            "rank_ic": -0.13769759121492742,
-            "top_decile_return": 0.2611100366635295,
-            "turnover": 0.14021466710253896
+            "hit_rate": 0.48587859424920127,
+            "ic": 0.13911581324838707,
+            "icir": 2.3188324446578408,
+            "long_short_return": -0.006189061244074821,
+            "rank_ic": -0.029370284481782465,
+            "top_decile_return": 0.13815466803933682,
+            "turnover": 0.09603335261229998
           }
         }
       },
@@ -675,14 +1052,49 @@
           "tickers": 563
         },
         "train": {
-          "dates": 135,
-          "rows": 77006,
+          "dates": 124,
+          "rows": 70834,
           "tickers": 613
         },
         "validation": {
-          "dates": 24,
-          "rows": 13418,
-          "tickers": 567
+          "dates": 14,
+          "rows": 7825,
+          "tickers": 564
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2021-08-31",
+          "test_start": "2021-03-01",
+          "train_end": "2020-08-31",
+          "train_start": "2017-09-01",
+          "validation_end": "2021-02-28",
+          "validation_start": "2020-09-01"
+        },
+        "requested_window_id": "W4",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2020-12-04",
+            "gap_trading_days": 60,
+            "later_date": "2021-03-05",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2020-06-05",
+            "gap_trading_days": 63,
+            "later_date": "2020-09-04",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2020-12-04",
+            "gap_trading_days": 60,
+            "later_date": "2021-03-05",
+            "minimum_required": 60,
+            "passed": true
+          }
         }
       },
       "window_id": "W4"
@@ -690,136 +1102,121 @@
     {
       "dates": {
         "test": "2021-09 -> 2022-02",
-        "test_end": "2022-02-28",
-        "test_start": "2021-09-01",
-        "train": "2018-03 -> 2021-02",
-        "train_end": "2021-02-28",
-        "train_start": "2018-03-01",
-        "validation": "2021-03 -> 2021-08",
-        "validation_end": "2021-08-31",
-        "validation_start": "2021-03-01"
+        "test_end": "2022-02-25",
+        "test_start": "2021-09-03",
+        "train": "2018-03 -> 2020-12",
+        "train_end": "2020-12-04",
+        "train_start": "2018-03-02",
+        "validation": "2021-03 -> 2021-06",
+        "validation_end": "2021-06-04",
+        "validation_start": "2021-03-05"
       },
       "results": {
         "lightgbm": {
           "best_hyperparams": {
             "colsample_bytree": 0.6,
-            "learning_rate": 0.05,
+            "learning_rate": 0.01,
             "max_depth": 6,
             "min_child_samples": 20,
-            "n_estimators": 1000,
-            "reg_alpha": 0.0,
+            "n_estimators": 100,
+            "reg_alpha": 0.1,
             "reg_lambda": 0.1,
-            "subsample": 0.8
+            "subsample": 1.0
           },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "0e5f315280a04f12874413eabf208218",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.13387615402094344,
+            "best_ic": 0.10305392312941979,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.4529578694608164,
-            "ic": 0.06342687468441977,
-            "icir": 0.5187207776446666,
-            "long_short_return": 0.05706949765366241,
-            "rank_ic": -0.08346768194649645,
-            "top_decile_return": 0.06425703018797817,
-            "turnover": 0.3254193722943723
+            "hit_rate": 0.43585825511169324,
+            "ic": -0.09406061385015758,
+            "icir": -1.2741686639877468,
+            "long_short_return": -0.21408962867408388,
+            "rank_ic": -0.2200135925537373,
+            "top_decile_return": -0.08519667114270141,
+            "turnover": 0.1087391774891775
           },
           "validation_metrics": {
-            "hit_rate": 0.5191071299573792,
-            "ic": 0.13387615402094344,
-            "icir": 0.4618771620577153,
-            "long_short_return": 0.10530143278575795,
-            "rank_ic": 0.05663562371133169,
-            "top_decile_return": 0.09520046605606758,
-            "turnover": 0.33258928571428575
+            "hit_rate": 0.5150673517567005,
+            "ic": 0.10305392312941979,
+            "icir": 1.329789493237443,
+            "long_short_return": 0.1958425819250524,
+            "rank_ic": 0.06151531906482212,
+            "top_decile_return": 0.15198422749744586,
+            "turnover": 0.12351190476190477
           }
         },
         "ridge": {
           "best_hyperparams": {
             "alpha": 0.001
           },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "25377c2633fc4c698eaad7800f704758",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.09154056883068595,
+            "best_ic": 0.07417136261221396,
             "scores_by_alpha": {
-              "0.001": 0.09154056883068595,
-              "0.01": 0.09154054507870671,
-              "0.1": 0.09154030764992876,
-              "1.0": 0.09153794252808187,
-              "10.0": 0.091515218293427,
-              "100.0": 0.09133825541424284
+              "0.001": 0.07417136261221396,
+              "0.01": 0.0741704389262657,
+              "0.1": 0.07416183513755069,
+              "1.0": 0.07410851140172309,
+              "10.0": 0.07394316748838829,
+              "100.0": 0.07372981251618524
             }
           },
           "test_metrics": {
-            "hit_rate": 0.45601397074874483,
-            "ic": -0.0781770126786796,
-            "icir": -0.720704445743003,
-            "long_short_return": -0.07349065383509089,
-            "rank_ic": -0.14378884702141287,
-            "top_decile_return": -0.05089685345755426,
-            "turnover": 0.22466179653679652
+            "hit_rate": 0.43098304591428366,
+            "ic": -0.11862517279939747,
+            "icir": -0.9133297804797549,
+            "long_short_return": -0.0649967400912986,
+            "rank_ic": -0.19626507146622857,
+            "top_decile_return": -0.009959797451502599,
+            "turnover": 0.18966450216450217
           },
           "validation_metrics": {
-            "hit_rate": 0.49750776565773314,
-            "ic": 0.09154056883068595,
-            "icir": 0.7935021234464216,
-            "long_short_return": 0.03577245033737974,
-            "rank_ic": 0.038135189868686054,
-            "top_decile_return": 0.011691505643426919,
-            "turnover": 0.23586309523809523
+            "hit_rate": 0.5215942230245799,
+            "ic": 0.07417136261221396,
+            "icir": 0.7770890168175288,
+            "long_short_return": 0.0357347981084963,
+            "rank_ic": 0.012240345525112375,
+            "top_decile_return": 0.0031405576469675693,
+            "turnover": 0.18750000000000003
           }
         },
         "xgboost": {
           "best_hyperparams": {
-            "colsample_bytree": 0.6,
-            "learning_rate": 0.1,
-            "max_depth": 6,
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.01,
+            "max_depth": 3,
             "min_child_weight": 5,
-            "n_estimators": 500,
+            "n_estimators": 200,
             "reg_alpha": 0.0,
-            "reg_lambda": 1.0,
+            "reg_lambda": 0.1,
             "subsample": 0.6
           },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "62316e1990fb4c7db4758cc910e2b5c9",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.16724257524247588,
+            "best_ic": 0.15978871708051587,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.46314487375391106,
-            "ic": -0.01170240324370678,
-            "icir": -0.08763959949294094,
-            "long_short_return": -0.05778265743394148,
-            "rank_ic": -0.08530800009578991,
-            "top_decile_return": 0.0016688184746506513,
-            "turnover": 0.3471455627705628
+            "hit_rate": 0.44066069999272356,
+            "ic": -0.04291684711693086,
+            "icir": -0.720792531085943,
+            "long_short_return": -0.10445378202213297,
+            "rank_ic": -0.17743077884470326,
+            "top_decile_return": -0.06920060508571783,
+            "turnover": 0.14094967532467534
           },
           "validation_metrics": {
-            "hit_rate": 0.5272701004117605,
-            "ic": 0.16724257524247588,
-            "icir": 0.5537744053425699,
-            "long_short_return": 0.1241825023830445,
-            "rank_ic": 0.07561197297149365,
-            "top_decile_return": 0.10188948193913626,
-            "turnover": 0.35491071428571425
+            "hit_rate": 0.5211776142202472,
+            "ic": 0.15978871708051587,
+            "icir": 1.0420984477726984,
+            "long_short_return": 0.18344443993031875,
+            "rank_ic": 0.021592293190336717,
+            "top_decile_return": 0.1482248743867854,
+            "turnover": 0.13392857142857142
           }
         }
       },
@@ -830,14 +1227,49 @@
           "tickers": 559
         },
         "train": {
-          "dates": 151,
-          "rows": 85764,
-          "tickers": 619
+          "dates": 141,
+          "rows": 80171,
+          "tickers": 617
         },
         "validation": {
-          "dates": 25,
-          "rows": 13843,
-          "tickers": 563
+          "dates": 13,
+          "rows": 7201,
+          "tickers": 560
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2022-02-28",
+          "test_start": "2021-09-01",
+          "train_end": "2021-02-28",
+          "train_start": "2018-03-01",
+          "validation_end": "2021-08-31",
+          "validation_start": "2021-03-01"
+        },
+        "requested_window_id": "W5",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2021-06-04",
+            "gap_trading_days": 63,
+            "later_date": "2021-09-03",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2020-12-04",
+            "gap_trading_days": 60,
+            "later_date": "2021-03-05",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2021-06-04",
+            "gap_trading_days": 63,
+            "later_date": "2021-09-03",
+            "minimum_required": 60,
+            "passed": true
+          }
         }
       },
       "window_id": "W5"
@@ -845,14 +1277,14 @@
     {
       "dates": {
         "test": "2022-03 -> 2022-08",
-        "test_end": "2022-08-31",
-        "test_start": "2022-03-01",
-        "train": "2018-09 -> 2021-08",
-        "train_end": "2021-08-31",
-        "train_start": "2018-09-01",
-        "validation": "2021-09 -> 2022-02",
-        "validation_end": "2022-02-28",
-        "validation_start": "2021-09-01"
+        "test_end": "2022-08-26",
+        "test_start": "2022-03-04",
+        "train": "2018-09 -> 2021-06",
+        "train_end": "2021-06-04",
+        "train_start": "2018-09-07",
+        "validation": "2021-09 -> 2021-12",
+        "validation_end": "2021-12-03",
+        "validation_start": "2021-09-03"
       },
       "results": {
         "lightgbm": {
@@ -866,115 +1298,100 @@
             "reg_lambda": 0.1,
             "subsample": 0.6
           },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "f041cea053964223b38da09a42d67403",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.25934352017141504,
+            "best_ic": -0.011127788620522421,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5127545394398294,
-            "ic": -0.02833860109445828,
-            "icir": -0.4699864342474037,
-            "long_short_return": -0.007448509327837572,
-            "rank_ic": 0.014965006981115869,
-            "top_decile_return": 0.003666228776995902,
-            "turnover": 0.16818181818181818
+            "hit_rate": 0.5136366977872528,
+            "ic": -0.0053959614581179415,
+            "icir": -0.18649400213229358,
+            "long_short_return": -0.04099735344596607,
+            "rank_ic": -0.04061494155183785,
+            "top_decile_return": -0.023391469392970585,
+            "turnover": 0.12272727272727275
           },
           "validation_metrics": {
-            "hit_rate": 0.4335297969875573,
-            "ic": 0.25934352017141504,
-            "icir": 0.8141700589888193,
-            "long_short_return": -0.0011032845199963409,
-            "rank_ic": -0.18169931595976788,
-            "top_decile_return": 0.01520446231858636,
-            "turnover": 0.159767316017316
+            "hit_rate": 0.48609494243952917,
+            "ic": -0.011127788620522421,
+            "icir": -0.6722237584135639,
+            "long_short_return": -0.07253508842559941,
+            "rank_ic": -0.1725138058337171,
+            "top_decile_return": -0.06235310446467136,
+            "turnover": 0.12362637362637363
           }
         },
         "ridge": {
           "best_hyperparams": {
             "alpha": 0.001
           },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "8e3c5154d90044dd93cc8fb9c56755c1",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": -0.07776210251565711,
+            "best_ic": -0.08321589782137825,
             "scores_by_alpha": {
-              "0.001": -0.07776210251565711,
-              "0.01": -0.07776233133604869,
-              "0.1": -0.077764615396131,
-              "1.0": -0.07778705220580288,
-              "10.0": -0.0779791997145767,
-              "100.0": -0.07886111354132329
+              "0.001": -0.08321589782137825,
+              "0.01": -0.083216080208664,
+              "0.1": -0.08321801814812566,
+              "1.0": -0.08325573727237538,
+              "10.0": -0.08409201551772134,
+              "100.0": -0.08755302862114522
             }
           },
           "test_metrics": {
-            "hit_rate": 0.4924648974490921,
-            "ic": -0.01738507715684341,
-            "icir": -0.13214563131413806,
-            "long_short_return": -0.005680644999939002,
-            "rank_ic": -0.03179530021965072,
-            "top_decile_return": 0.0063781789145336346,
-            "turnover": 0.19999999999999996
+            "hit_rate": 0.48981842240682205,
+            "ic": -0.036054430766397576,
+            "icir": -0.21963025835411845,
+            "long_short_return": -0.0301656784448693,
+            "rank_ic": -0.030746443629775258,
+            "top_decile_return": -0.007868187221558383,
+            "turnover": 0.15530303030303033
           },
           "validation_metrics": {
-            "hit_rate": 0.4564505566470203,
-            "ic": -0.07776210251565711,
-            "icir": -0.7351539617831656,
-            "long_short_return": -0.06983910322592007,
-            "rank_ic": -0.1400062299719746,
-            "top_decile_return": -0.047578258367105025,
-            "turnover": 0.2306547619047619
+            "hit_rate": 0.4549217436295434,
+            "ic": -0.08321589782137825,
+            "icir": -0.8501215910862296,
+            "long_short_return": -0.0016762571680045354,
+            "rank_ic": -0.138253674282843,
+            "top_decile_return": 0.023230245105279237,
+            "turnover": 0.21016483516483525
           }
         },
         "xgboost": {
           "best_hyperparams": {
-            "colsample_bytree": 0.6,
+            "colsample_bytree": 1.0,
             "learning_rate": 0.1,
-            "max_depth": 4,
+            "max_depth": 3,
             "min_child_weight": 5,
             "n_estimators": 1000,
             "reg_alpha": 0.01,
             "reg_lambda": 0.0,
             "subsample": 1.0
           },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "9832a30639584ef59a41fc0f5e2da7bb",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.2650106708243067,
+            "best_ic": 0.05525377624609801,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5179004631331324,
-            "ic": -0.006449178839218499,
-            "icir": -0.11079921472885597,
-            "long_short_return": 0.010651016322244323,
-            "rank_ic": 0.037618712274006,
-            "top_decile_return": 0.01574754424915847,
-            "turnover": 0.35606060606060613
+            "hit_rate": 0.5126810262442109,
+            "ic": -0.02634692113077808,
+            "icir": -0.9471179324227137,
+            "long_short_return": -0.013969153504384409,
+            "rank_ic": 0.012872117067679762,
+            "top_decile_return": -0.008826720917128666,
+            "turnover": 0.2659090909090909
           },
           "validation_metrics": {
-            "hit_rate": 0.4623444662737394,
-            "ic": 0.2650106708243067,
-            "icir": 0.9116093069607785,
-            "long_short_return": 0.07077134731321283,
-            "rank_ic": -0.06770967961195619,
-            "top_decile_return": 0.07104145081536516,
-            "turnover": 0.37815205627705634
+            "hit_rate": 0.4687621265036865,
+            "ic": 0.05525377624609801,
+            "icir": 0.8447153658450502,
+            "long_short_return": 0.028516496490939267,
+            "rank_ic": -0.06614034701219929,
+            "top_decile_return": 0.02461021696599484,
+            "turnover": 0.28846153846153855
           }
         }
       },
@@ -985,14 +1402,49 @@
           "tickers": 549
         },
         "train": {
-          "dates": 150,
-          "rows": 84556,
-          "tickers": 608
+          "dates": 138,
+          "rows": 77914,
+          "tickers": 605
         },
         "validation": {
-          "dates": 25,
-          "rows": 13743,
-          "tickers": 559
+          "dates": 14,
+          "rows": 7731,
+          "tickers": 556
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2022-08-31",
+          "test_start": "2022-03-01",
+          "train_end": "2021-08-31",
+          "train_start": "2018-09-01",
+          "validation_end": "2022-02-28",
+          "validation_start": "2021-09-01"
+        },
+        "requested_window_id": "W6",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2021-12-03",
+            "gap_trading_days": 61,
+            "later_date": "2022-03-04",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2021-06-04",
+            "gap_trading_days": 63,
+            "later_date": "2021-09-03",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2021-12-03",
+            "gap_trading_days": 61,
+            "later_date": "2022-03-04",
+            "minimum_required": 60,
+            "passed": true
+          }
         }
       },
       "window_id": "W6"
@@ -1000,136 +1452,121 @@
     {
       "dates": {
         "test": "2022-09 -> 2023-02",
-        "test_end": "2023-02-28",
-        "test_start": "2022-09-01",
-        "train": "2019-03 -> 2022-02",
-        "train_end": "2022-02-28",
+        "test_end": "2023-02-24",
+        "test_start": "2022-09-02",
+        "train": "2019-03 -> 2021-12",
+        "train_end": "2021-12-03",
         "train_start": "2019-03-01",
-        "validation": "2022-03 -> 2022-08",
-        "validation_end": "2022-08-31",
-        "validation_start": "2022-03-01"
+        "validation": "2022-03 -> 2022-06",
+        "validation_end": "2022-06-03",
+        "validation_start": "2022-03-04"
       },
       "results": {
         "lightgbm": {
           "best_hyperparams": {
-            "colsample_bytree": 0.8,
+            "colsample_bytree": 1.0,
             "learning_rate": 0.1,
-            "max_depth": 5,
-            "min_child_samples": 50,
+            "max_depth": 6,
+            "min_child_samples": 100,
             "n_estimators": 1000,
-            "reg_alpha": 0.0,
+            "reg_alpha": 0.1,
             "reg_lambda": 1.0,
             "subsample": 1.0
           },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "c752f6a82d6e4fc9a6064b5bcebe624d",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.13001167031633223,
+            "best_ic": 0.006806510787855573,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5375178316690442,
-            "ic": 0.1403592550042558,
-            "icir": 0.9244694990282528,
-            "long_short_return": 0.0786466832636912,
-            "rank_ic": 0.11822650671755519,
-            "top_decile_return": 0.033635166785209496,
-            "turnover": 0.3590707070707071
+            "hit_rate": 0.5166191155492154,
+            "ic": -0.010980471321821235,
+            "icir": -0.3511204998869072,
+            "long_short_return": 0.022606068696059408,
+            "rank_ic": 0.048081777475944235,
+            "top_decile_return": -0.0076577235557929065,
+            "turnover": 0.2712188552188552
           },
           "validation_metrics": {
-            "hit_rate": 0.5371609203852091,
-            "ic": 0.13001167031633223,
-            "icir": 1.3608716521785862,
-            "long_short_return": 0.05534078847681328,
-            "rank_ic": 0.10816226582053452,
-            "top_decile_return": 0.044662567714003405,
-            "turnover": 0.31742424242424244
+            "hit_rate": 0.4992237120677488,
+            "ic": 0.006806510787855573,
+            "icir": 0.12802989060442585,
+            "long_short_return": 0.005681038444814491,
+            "rank_ic": 0.003754871532861374,
+            "top_decile_return": -0.0017329074492417002,
+            "turnover": 0.29696969696969694
           }
         },
         "ridge": {
           "best_hyperparams": {
-            "alpha": 10.0
+            "alpha": 100.0
           },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "28d9873549f24ac6944e9c7f8b08a7f7",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.00781895359112369,
+            "best_ic": 0.007987291835717829,
             "scores_by_alpha": {
-              "0.001": 0.007782274268379461,
-              "0.01": 0.007782354075674774,
-              "0.1": 0.007783145919741464,
-              "1.0": 0.007790462387681104,
-              "10.0": 0.00781895359112369,
-              "100.0": 0.007111229166113195
+              "0.001": -0.0018756362542612349,
+              "0.01": -0.001859222247405711,
+              "0.1": -0.0017036185463311772,
+              "1.0": -0.0004478740787097805,
+              "10.0": 0.004618360163833221,
+              "100.0": 0.007987291835717829
             }
           },
           "test_metrics": {
-            "hit_rate": 0.5245363766048502,
-            "ic": 0.05436826710990347,
-            "icir": 0.6203428112496651,
-            "long_short_return": 0.017191630153840762,
-            "rank_ic": 0.06933412024309946,
-            "top_decile_return": -0.008455280888499625,
-            "turnover": 0.18552188552188553
+            "hit_rate": 0.532453637660485,
+            "ic": 0.072116560704278,
+            "icir": 0.7633731429324033,
+            "long_short_return": 0.021575292509400382,
+            "rank_ic": 0.08876262269260757,
+            "top_decile_return": -0.005200864298658191,
+            "turnover": 0.180983164983165
           },
           "validation_metrics": {
-            "hit_rate": 0.5101080643975594,
-            "ic": 0.00781895359112369,
-            "icir": 0.11469618201246135,
-            "long_short_return": 0.0018909311966769137,
-            "rank_ic": 0.019201655661656398,
-            "top_decile_return": 0.003612012455630267,
-            "turnover": 0.17954545454545454
+            "hit_rate": 0.5099505998588567,
+            "ic": 0.007987291835717829,
+            "icir": 0.0571420168996767,
+            "long_short_return": 0.007370629560272932,
+            "rank_ic": 0.02754369932297538,
+            "top_decile_return": -0.004462958906524881,
+            "turnover": 0.17121212121212123
           }
         },
         "xgboost": {
           "best_hyperparams": {
-            "colsample_bytree": 0.6,
+            "colsample_bytree": 0.8,
             "learning_rate": 0.1,
             "max_depth": 7,
-            "min_child_weight": 10,
-            "n_estimators": 500,
-            "reg_alpha": 0.01,
+            "min_child_weight": 5,
+            "n_estimators": 200,
+            "reg_alpha": 0.0,
             "reg_lambda": 0.1,
-            "subsample": 0.8
+            "subsample": 0.6
           },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "718b2fea43ef430ab464e10a33cc4279",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.15683710560388872,
+            "best_ic": -2.3352671317708677e-05,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5466476462196862,
-            "ic": 0.15703610346278113,
-            "icir": 0.8140846918805746,
-            "long_short_return": 0.08074573269967239,
-            "rank_ic": 0.1282888815598664,
-            "top_decile_return": 0.0353897202823984,
-            "turnover": 0.3901548821548822
+            "hit_rate": 0.5171184022824536,
+            "ic": 0.05669349044504419,
+            "icir": 0.8157524127918555,
+            "long_short_return": 0.03438348284371044,
+            "rank_ic": 0.056574534969090345,
+            "top_decile_return": 0.002344254555037715,
+            "turnover": 0.28005387205387205
           },
           "validation_metrics": {
-            "hit_rate": 0.5486289789017128,
-            "ic": 0.15683710560388872,
-            "icir": 1.3584029224842393,
-            "long_short_return": 0.09167773641470822,
-            "rank_ic": 0.152683395860996,
-            "top_decile_return": 0.06082047190299819,
-            "turnover": 0.35681818181818176
+            "hit_rate": 0.4990825688073395,
+            "ic": -2.3352671317708677e-05,
+            "icir": -0.00020826482924816823,
+            "long_short_return": 0.015317425672031985,
+            "rank_ic": 0.0008239574154860005,
+            "top_decile_return": 0.0026395183919306208,
+            "turnover": 0.34696969696969693
           }
         }
       },
@@ -1140,14 +1577,49 @@
           "tickers": 546
         },
         "train": {
-          "dates": 150,
-          "rows": 84010,
-          "tickers": 605
+          "dates": 139,
+          "rows": 77998,
+          "tickers": 603
         },
         "validation": {
-          "dates": 25,
-          "rows": 13603,
-          "tickers": 549
+          "dates": 13,
+          "rows": 7085,
+          "tickers": 547
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2023-02-28",
+          "test_start": "2022-09-01",
+          "train_end": "2022-02-28",
+          "train_start": "2019-03-01",
+          "validation_end": "2022-08-31",
+          "validation_start": "2022-03-01"
+        },
+        "requested_window_id": "W7",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2022-06-03",
+            "gap_trading_days": 62,
+            "later_date": "2022-09-02",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2021-12-03",
+            "gap_trading_days": 61,
+            "later_date": "2022-03-04",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2022-06-03",
+            "gap_trading_days": 62,
+            "later_date": "2022-09-02",
+            "minimum_required": 60,
+            "passed": true
+          }
         }
       },
       "window_id": "W7"
@@ -1155,136 +1627,121 @@
     {
       "dates": {
         "test": "2023-03 -> 2023-08",
-        "test_end": "2023-08-31",
-        "test_start": "2023-03-01",
-        "train": "2019-09 -> 2022-08",
-        "train_end": "2022-08-31",
-        "train_start": "2019-09-01",
-        "validation": "2022-09 -> 2023-02",
-        "validation_end": "2023-02-28",
-        "validation_start": "2022-09-01"
+        "test_end": "2023-08-25",
+        "test_start": "2023-03-03",
+        "train": "2019-09 -> 2022-06",
+        "train_end": "2022-06-03",
+        "train_start": "2019-09-06",
+        "validation": "2022-09 -> 2022-12",
+        "validation_end": "2022-12-02",
+        "validation_start": "2022-09-02"
       },
       "results": {
         "lightgbm": {
           "best_hyperparams": {
             "colsample_bytree": 1.0,
-            "learning_rate": 0.1,
-            "max_depth": 6,
+            "learning_rate": 0.01,
+            "max_depth": 7,
             "min_child_samples": 100,
-            "n_estimators": 1000,
-            "reg_alpha": 0.1,
-            "reg_lambda": 1.0,
-            "subsample": 1.0
+            "n_estimators": 200,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.1,
+            "subsample": 0.6
           },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "aa8a4072b72f45d59f65b92ee8511f29",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.15861753497288295,
+            "best_ic": 0.039108272678195596,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5662506539122637,
-            "ic": 0.17812267701005532,
-            "icir": 1.1095190375763264,
-            "long_short_return": 0.09751344963784067,
-            "rank_ic": 0.11765329934757149,
-            "top_decile_return": 0.04860829404478735,
-            "turnover": 0.3587962962962963
+            "hit_rate": 0.5360585905388237,
+            "ic": 0.030941855140231036,
+            "icir": 0.40120789357929315,
+            "long_short_return": 0.09267949701851622,
+            "rank_ic": 0.12500639530195454,
+            "top_decile_return": 0.05498187959018775,
+            "turnover": 0.15817901234567902
           },
           "validation_metrics": {
-            "hit_rate": 0.5387303851640514,
-            "ic": 0.15861753497288295,
-            "icir": 1.2673756823910052,
-            "long_short_return": 0.09848232875219609,
-            "rank_ic": 0.12317971046691306,
-            "top_decile_return": 0.039277146348367944,
-            "turnover": 0.3428013468013468
+            "hit_rate": 0.5201799655948127,
+            "ic": 0.039108272678195596,
+            "icir": 1.1231120425868684,
+            "long_short_return": 0.03407658081458266,
+            "rank_ic": 0.05579121328443182,
+            "top_decile_return": 0.03981810228327765,
+            "turnover": 0.13069153069153072
           }
         },
         "ridge": {
           "best_hyperparams": {
             "alpha": 100.0
           },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "23556ca813b94f87aee279789ed97a4f",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.06949067386159259,
+            "best_ic": 0.09836787806409086,
             "scores_by_alpha": {
-              "0.001": 0.06904419569103583,
-              "0.01": 0.06904430317731393,
-              "0.1": 0.06904537488976882,
-              "1.0": 0.0690557888893179,
-              "10.0": 0.06913810534432979,
-              "100.0": 0.06949067386159259
+              "0.001": 0.09776363777075514,
+              "0.01": 0.09776348805773824,
+              "0.1": 0.09776196685372478,
+              "1.0": 0.09774542421699237,
+              "10.0": 0.09764358477621696,
+              "100.0": 0.09836787806409086
             }
           },
           "test_metrics": {
-            "hit_rate": 0.49801958000149465,
-            "ic": 0.020944960582553702,
-            "icir": 0.1644578469054289,
-            "long_short_return": 0.015319302153408208,
-            "rank_ic": 0.024258588814833903,
-            "top_decile_return": -0.013825398667566553,
-            "turnover": 0.17978395061728394
+            "hit_rate": 0.4909946939690606,
+            "ic": 0.0003890238667004042,
+            "icir": 0.003102573531324164,
+            "long_short_return": 0.017361287452283068,
+            "rank_ic": -0.0007496790254684182,
+            "top_decile_return": -0.012813496860044562,
+            "turnover": 0.17361111111111113
           },
           "validation_metrics": {
-            "hit_rate": 0.5293152639087019,
-            "ic": 0.06949067386159259,
-            "icir": 0.7334390125320728,
-            "long_short_return": 0.031510166417469156,
-            "rank_ic": 0.0820176688787755,
-            "top_decile_return": 0.003436495424525001,
-            "turnover": 0.16853872053872052
+            "hit_rate": 0.5490273918221517,
+            "ic": 0.09836787806409086,
+            "icir": 1.194045354330015,
+            "long_short_return": 0.04327982879190822,
+            "rank_ic": 0.12043047088863455,
+            "top_decile_return": 0.045983700112485267,
+            "turnover": 0.16612276612276616
           }
         },
         "xgboost": {
           "best_hyperparams": {
-            "colsample_bytree": 0.6,
-            "learning_rate": 0.03,
-            "max_depth": 7,
-            "min_child_weight": 5,
-            "n_estimators": 1000,
+            "colsample_bytree": 0.8,
+            "learning_rate": 0.1,
+            "max_depth": 5,
+            "min_child_weight": 20,
+            "n_estimators": 100,
             "reg_alpha": 0.0,
-            "reg_lambda": 1.0,
+            "reg_lambda": 0.0,
             "subsample": 1.0
           },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "efd8b3ddea14486da50922fc652604f8",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.20967556818073962,
+            "best_ic": 0.06054027649204118,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5702114939092744,
-            "ic": 0.2345800780653615,
-            "icir": 0.9652653007608889,
-            "long_short_return": 0.11581302916680572,
-            "rank_ic": 0.15860134582750324,
-            "top_decile_return": 0.06355813131298814,
-            "turnover": 0.32021604938271603
+            "hit_rate": 0.5499588969434273,
+            "ic": 0.03635514086581273,
+            "icir": 0.40899744914098035,
+            "long_short_return": 0.08379476744781025,
+            "rank_ic": 0.11165305985659284,
+            "top_decile_return": 0.0461162439529032,
+            "turnover": 0.20910493827160495
           },
           "validation_metrics": {
-            "hit_rate": 0.5517118402282454,
-            "ic": 0.20967556818073962,
-            "icir": 1.178582442822714,
-            "long_short_return": 0.11725478076570718,
-            "rank_ic": 0.1656520627941648,
-            "top_decile_return": 0.04021020856552804,
-            "turnover": 0.3384107744107744
+            "hit_rate": 0.5098584094217282,
+            "ic": 0.06054027649204118,
+            "icir": 1.3685672856617446,
+            "long_short_return": -0.002489105115093874,
+            "rank_ic": 0.05070797892370927,
+            "top_decile_return": 0.020622999582792727,
+            "turnover": 0.21711991711991707
           }
         }
       },
@@ -1295,14 +1752,49 @@
           "tickers": 540
         },
         "train": {
-          "dates": 149,
-          "rows": 82827,
-          "tickers": 598
+          "dates": 137,
+          "rows": 76309,
+          "tickers": 597
         },
         "validation": {
-          "dates": 26,
-          "rows": 14020,
-          "tickers": 546
+          "dates": 14,
+          "rows": 7557,
+          "tickers": 543
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2023-08-31",
+          "test_start": "2023-03-01",
+          "train_end": "2022-08-31",
+          "train_start": "2019-09-01",
+          "validation_end": "2023-02-28",
+          "validation_start": "2022-09-01"
+        },
+        "requested_window_id": "W8",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2022-12-02",
+            "gap_trading_days": 60,
+            "later_date": "2023-03-03",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2022-06-03",
+            "gap_trading_days": 62,
+            "later_date": "2022-09-02",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2022-12-02",
+            "gap_trading_days": 60,
+            "later_date": "2023-03-03",
+            "minimum_required": 60,
+            "passed": true
+          }
         }
       },
       "window_id": "W8"
@@ -1310,136 +1802,121 @@
     {
       "dates": {
         "test": "2023-09 -> 2024-02",
-        "test_end": "2024-02-29",
+        "test_end": "2024-02-23",
         "test_start": "2023-09-01",
-        "train": "2020-03 -> 2023-02",
-        "train_end": "2023-02-28",
-        "train_start": "2020-03-01",
-        "validation": "2023-03 -> 2023-08",
-        "validation_end": "2023-08-31",
-        "validation_start": "2023-03-01"
+        "train": "2020-03 -> 2022-12",
+        "train_end": "2022-12-02",
+        "train_start": "2020-03-06",
+        "validation": "2023-03 -> 2023-06",
+        "validation_end": "2023-06-02",
+        "validation_start": "2023-03-03"
       },
       "results": {
         "lightgbm": {
           "best_hyperparams": {
             "colsample_bytree": 0.6,
-            "learning_rate": 0.05,
+            "learning_rate": 0.03,
             "max_depth": 6,
             "min_child_samples": 20,
-            "n_estimators": 1000,
-            "reg_alpha": 0.0,
-            "reg_lambda": 0.1,
-            "subsample": 0.8
+            "n_estimators": 100,
+            "reg_alpha": 0.1,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
           },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "b23af37d0f9e435a896a334dd06e1d05",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.20341018573072392,
+            "best_ic": 0.2118979255381115,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.557514450867052,
-            "ic": 0.10194311911979681,
-            "icir": 1.0787227211443045,
-            "long_short_return": 0.07698944689796951,
-            "rank_ic": 0.1439079684575411,
-            "top_decile_return": 0.056363936144484095,
-            "turnover": 0.32339622641509436
+            "hit_rate": 0.5463150289017341,
+            "ic": 0.05994435874911989,
+            "icir": 0.8987442755187857,
+            "long_short_return": 0.0646726896112993,
+            "rank_ic": 0.13410819450182446,
+            "top_decile_return": 0.04353614047610465,
+            "turnover": 0.15726065688329838
           },
           "validation_metrics": {
-            "hit_rate": 0.5552649278828189,
-            "ic": 0.20341018573072392,
-            "icir": 1.0576911184032705,
-            "long_short_return": 0.09399827797030136,
-            "rank_ic": 0.12916004786684876,
-            "top_decile_return": 0.04539638141638999,
-            "turnover": 0.32253086419753085
+            "hit_rate": 0.5035206207788475,
+            "ic": 0.2118979255381115,
+            "icir": 3.32255737860394,
+            "long_short_return": 0.1340795967289736,
+            "rank_ic": 0.169654729193068,
+            "top_decile_return": 0.08433297182883794,
+            "turnover": 0.19444444444444442
           }
         },
         "ridge": {
           "best_hyperparams": {
             "alpha": 100.0
           },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "d86cee9b3f614b8597d3506b77006c6a",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.00443595397031768,
+            "best_ic": 0.07104969578821672,
             "scores_by_alpha": {
-              "0.001": 0.0029562700652763494,
-              "0.01": 0.002956450312070191,
-              "0.1": 0.0029582512254957547,
-              "1.0": 0.002976109478833825,
-              "10.0": 0.0031429402410242026,
-              "100.0": 0.00443595397031768
+              "0.001": 0.06784783798168434,
+              "0.01": 0.06784869535481339,
+              "0.1": 0.06785830800343774,
+              "1.0": 0.06797072630266145,
+              "10.0": 0.06867849427371062,
+              "100.0": 0.07104969578821672
             }
           },
           "test_metrics": {
-            "hit_rate": 0.5065028901734104,
-            "ic": -0.001660231261839776,
-            "icir": -0.020192115691006866,
-            "long_short_return": -0.016135139883967812,
-            "rank_ic": -0.005339887181041907,
-            "top_decile_return": -0.008206106410890953,
-            "turnover": 0.1549685534591195
+            "hit_rate": 0.4938583815028902,
+            "ic": -0.024855860861572245,
+            "icir": -0.2977691574269205,
+            "long_short_return": -0.02746509204572415,
+            "rank_ic": -0.014254207831121666,
+            "top_decile_return": -0.012195478465070521,
+            "turnover": 0.15056603773584906
           },
           "validation_metrics": {
-            "hit_rate": 0.4815783573723937,
-            "ic": 0.00443595397031768,
-            "icir": 0.034265552984224124,
-            "long_short_return": 0.004917501865390026,
-            "rank_ic": 0.012516860480918175,
-            "top_decile_return": -0.01881464671991657,
-            "turnover": 0.17129629629629628
+            "hit_rate": 0.5061071993102457,
+            "ic": 0.07104969578821672,
+            "icir": 1.0048035994331517,
+            "long_short_return": 0.06004110933855013,
+            "rank_ic": 0.0858229406285192,
+            "top_decile_return": 0.013059604497074875,
+            "turnover": 0.15895061728395063
           }
         },
         "xgboost": {
           "best_hyperparams": {
-            "colsample_bytree": 0.6,
-            "learning_rate": 0.1,
-            "max_depth": 4,
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.05,
+            "max_depth": 5,
             "min_child_weight": 5,
-            "n_estimators": 500,
-            "reg_alpha": 0.1,
+            "n_estimators": 100,
+            "reg_alpha": 0.0,
             "reg_lambda": 0.0,
             "subsample": 1.0
           },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "ad069dbfe0aa4c6e85051518664dc521",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.20238749543820578,
+            "best_ic": 0.21799854143484762,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5501445086705202,
-            "ic": 0.12577773116974666,
-            "icir": 2.582301718618236,
-            "long_short_return": 0.0950755087232623,
-            "rank_ic": 0.14502794030625515,
-            "top_decile_return": 0.07434153457767795,
-            "turnover": 0.2950803633822502
+            "hit_rate": 0.5436416184971098,
+            "ic": 0.10221921008860556,
+            "icir": 1.4576908938378255,
+            "long_short_return": 0.05679063067912264,
+            "rank_ic": 0.1291134081862528,
+            "top_decile_return": 0.031395601670073055,
+            "turnover": 0.14531097134870719
           },
           "validation_metrics": {
-            "hit_rate": 0.5536955384500412,
-            "ic": 0.20238749543820578,
-            "icir": 0.8813143781485735,
-            "long_short_return": 0.0653101947656146,
-            "rank_ic": 0.11526598301866013,
-            "top_decile_return": 0.030951121174402418,
-            "turnover": 0.2916666666666667
+            "hit_rate": 0.511424055180342,
+            "ic": 0.21799854143484762,
+            "icir": 2.806601563366636,
+            "long_short_return": 0.1372711953931776,
+            "rank_ic": 0.16797307920271487,
+            "top_decile_return": 0.08784436218449777,
+            "turnover": 0.18672839506172842
           }
         }
       },
@@ -1450,14 +1927,49 @@
           "tickers": 538
         },
         "train": {
-          "dates": 149,
-          "rows": 82153,
-          "tickers": 590
+          "dates": 137,
+          "rows": 75690,
+          "tickers": 587
         },
         "validation": {
-          "dates": 25,
-          "rows": 13381,
-          "tickers": 540
+          "dates": 13,
+          "rows": 6959,
+          "tickers": 539
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2024-02-29",
+          "test_start": "2023-09-01",
+          "train_end": "2023-02-28",
+          "train_start": "2020-03-01",
+          "validation_end": "2023-08-31",
+          "validation_start": "2023-03-01"
+        },
+        "requested_window_id": "W9",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2023-06-02",
+            "gap_trading_days": 62,
+            "later_date": "2023-09-01",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2022-12-02",
+            "gap_trading_days": 60,
+            "later_date": "2023-03-03",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2023-06-02",
+            "gap_trading_days": 62,
+            "later_date": "2023-09-01",
+            "minimum_required": 60,
+            "passed": true
+          }
         }
       },
       "window_id": "W9"
@@ -1465,136 +1977,121 @@
     {
       "dates": {
         "test": "2024-03 -> 2024-08",
-        "test_end": "2024-08-31",
+        "test_end": "2024-08-30",
         "test_start": "2024-03-01",
-        "train": "2020-09 -> 2023-08",
-        "train_end": "2023-08-31",
-        "train_start": "2020-09-01",
-        "validation": "2023-09 -> 2024-02",
-        "validation_end": "2024-02-29",
+        "train": "2020-09 -> 2023-06",
+        "train_end": "2023-06-02",
+        "train_start": "2020-09-04",
+        "validation": "2023-09 -> 2023-12",
+        "validation_end": "2023-12-01",
         "validation_start": "2023-09-01"
       },
       "results": {
         "lightgbm": {
           "best_hyperparams": {
-            "colsample_bytree": 0.6,
-            "learning_rate": 0.05,
-            "max_depth": 6,
-            "min_child_samples": 20,
+            "colsample_bytree": 0.8,
+            "learning_rate": 0.1,
+            "max_depth": 4,
+            "min_child_samples": 100,
             "n_estimators": 1000,
             "reg_alpha": 0.0,
             "reg_lambda": 0.1,
-            "subsample": 0.8
+            "subsample": 0.6
           },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "3b89b39f41b1448e97513fafc46fb862",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.14024911853511288,
+            "best_ic": 0.09097129037377812,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5079862883815914,
-            "ic": 0.03851336245465305,
-            "icir": 0.4675227034587097,
-            "long_short_return": 0.020500923274667373,
-            "rank_ic": 0.010781873707881216,
-            "top_decile_return": 0.013978922850363092,
-            "turnover": 0.3509433962264151
+            "hit_rate": 0.5013492815987164,
+            "ic": 0.0257076765775899,
+            "icir": 0.42572244983747437,
+            "long_short_return": -0.011960970100213277,
+            "rank_ic": -0.015307457998043646,
+            "top_decile_return": -0.0003553613560755815,
+            "turnover": 0.2860377358490566
           },
           "validation_metrics": {
-            "hit_rate": 0.5466040462427746,
-            "ic": 0.14024911853511288,
-            "icir": 2.0503651868516597,
-            "long_short_return": 0.088514134050587,
-            "rank_ic": 0.11720061333536631,
-            "top_decile_return": 0.0717181580779765,
-            "turnover": 0.3203913347309574
+            "hit_rate": 0.5316472634818681,
+            "ic": 0.09097129037377812,
+            "icir": 2.5356673873029405,
+            "long_short_return": 0.06217207467679114,
+            "rank_ic": 0.09877266821355926,
+            "top_decile_return": 0.04220011513832724,
+            "turnover": 0.2720797720797721
           }
         },
         "ridge": {
           "best_hyperparams": {
             "alpha": 100.0
           },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "175c86ab126a4ce980806421fd1f529b",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": -0.032901023041107216,
+            "best_ic": -0.061117824773275674,
             "scores_by_alpha": {
-              "0.001": -0.03571506247916177,
-              "0.01": -0.035714703657741806,
-              "0.1": -0.03571111807555904,
-              "1.0": -0.0356755200824047,
-              "10.0": -0.035341152719772055,
-              "100.0": -0.032901023041107216
+              "0.001": -0.06456989955315792,
+              "0.01": -0.06457443822858434,
+              "0.1": -0.06461054407458175,
+              "1.0": -0.06464237274671279,
+              "10.0": -0.06414246373357332,
+              "100.0": -0.061117824773275674
             }
           },
           "test_metrics": {
-            "hit_rate": 0.48982568740427396,
-            "ic": -0.005589754634767291,
-            "icir": -0.06401019850544755,
-            "long_short_return": 0.0003568362124043471,
-            "rank_ic": -0.019627583025617915,
-            "top_decile_return": -0.002579569377490771,
-            "turnover": 0.17962264150943394
+            "hit_rate": 0.4995988622274086,
+            "ic": -0.0028427371138374426,
+            "icir": -0.04121155319305851,
+            "long_short_return": 0.0009316332010255959,
+            "rank_ic": -0.0037913430581925753,
+            "top_decile_return": -0.0018769754487752545,
+            "turnover": 0.16603773584905657
           },
           "validation_metrics": {
-            "hit_rate": 0.4936416184971098,
-            "ic": -0.032901023041107216,
-            "icir": -0.40349707560793824,
-            "long_short_return": -0.03016564962427862,
-            "rank_ic": -0.03916729961630102,
-            "top_decile_return": -0.009517099811502932,
-            "turnover": 0.1579454926624738
+            "hit_rate": 0.4956510103037602,
+            "ic": -0.061117824773275674,
+            "icir": -0.7937620035016909,
+            "long_short_return": -0.04789142129283379,
+            "rank_ic": -0.03761470978548,
+            "top_decile_return": -0.016149993226406496,
+            "turnover": 0.14102564102564102
           }
         },
         "xgboost": {
           "best_hyperparams": {
-            "colsample_bytree": 1.0,
-            "learning_rate": 0.05,
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.1,
             "max_depth": 7,
-            "min_child_weight": 5,
+            "min_child_weight": 10,
             "n_estimators": 500,
-            "reg_alpha": 0.1,
-            "reg_lambda": 0.0,
-            "subsample": 0.6
+            "reg_alpha": 0.01,
+            "reg_lambda": 0.1,
+            "subsample": 0.8
           },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "b3a3eb5bb5c24725be41252e21608c06",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.1836290180153026,
+            "best_ic": 0.12035074831450245,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5232295237400627,
-            "ic": 0.060761337594819935,
-            "icir": 0.5429905177479978,
-            "long_short_return": 0.03763836892221111,
-            "rank_ic": 0.04743077473836848,
-            "top_decile_return": 0.024724667647720223,
-            "turnover": 0.3426415094339623
+            "hit_rate": 0.49697323317044706,
+            "ic": -0.03413817986803241,
+            "icir": -0.40885730313161395,
+            "long_short_return": -0.005424268545577144,
+            "rank_ic": -0.01896810771873142,
+            "top_decile_return": 0.0025567716716640198,
+            "turnover": 0.32679245283018865
           },
           "validation_metrics": {
-            "hit_rate": 0.548771676300578,
-            "ic": 0.1836290180153026,
-            "icir": 1.4664741075917602,
-            "long_short_return": 0.0781479726916471,
-            "rank_ic": 0.12774878901970654,
-            "top_decile_return": 0.059918915875839814,
-            "turnover": 0.30992313067784766
+            "hit_rate": 0.5478388866586378,
+            "ic": 0.12035074831450245,
+            "icir": 1.7601522499536773,
+            "long_short_return": 0.07408388277427172,
+            "rank_ic": 0.1336012460639955,
+            "top_decile_return": 0.059076259978653525,
+            "turnover": 0.31908831908831914
           }
         }
       },
@@ -1605,14 +2102,49 @@
           "tickers": 534
         },
         "train": {
-          "dates": 150,
-          "rows": 82008,
-          "tickers": 585
+          "dates": 138,
+          "rows": 75586,
+          "tickers": 584
         },
         "validation": {
-          "dates": 26,
-          "rows": 13840,
-          "tickers": 538
+          "dates": 14,
+          "rows": 7473,
+          "tickers": 537
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2024-08-31",
+          "test_start": "2024-03-01",
+          "train_end": "2023-08-31",
+          "train_start": "2020-09-01",
+          "validation_end": "2024-02-29",
+          "validation_start": "2023-09-01"
+        },
+        "requested_window_id": "W10",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2023-12-01",
+            "gap_trading_days": 60,
+            "later_date": "2024-03-01",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2023-06-02",
+            "gap_trading_days": 62,
+            "later_date": "2023-09-01",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2023-12-01",
+            "gap_trading_days": 60,
+            "later_date": "2024-03-01",
+            "minimum_required": 60,
+            "passed": true
+          }
         }
       },
       "window_id": "W10"
@@ -1621,135 +2153,120 @@
       "dates": {
         "test": "2024-09 -> 2025-02",
         "test_end": "2025-02-28",
-        "test_start": "2024-09-01",
-        "train": "2021-03 -> 2024-02",
-        "train_end": "2024-02-29",
-        "train_start": "2021-03-01",
-        "validation": "2024-03 -> 2024-08",
-        "validation_end": "2024-08-31",
+        "test_start": "2024-09-06",
+        "train": "2021-03 -> 2023-12",
+        "train_end": "2023-12-01",
+        "train_start": "2021-03-05",
+        "validation": "2024-03 -> 2024-06",
+        "validation_end": "2024-06-07",
         "validation_start": "2024-03-01"
       },
       "results": {
         "lightgbm": {
           "best_hyperparams": {
-            "colsample_bytree": 0.6,
+            "colsample_bytree": 1.0,
             "learning_rate": 0.01,
-            "max_depth": 6,
+            "max_depth": 3,
             "min_child_samples": 20,
             "n_estimators": 200,
-            "reg_alpha": 0.01,
-            "reg_lambda": 1.0,
-            "subsample": 1.0
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.1,
+            "subsample": 0.6
           },
-          "logged_run": {
-            "experiment_id": "3",
-            "experiment_name": "lightgbm_60D_20260405_140310",
-            "run_id": "e56e817e6c8949b58a3c6704864710a9",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.07291357196545929,
+            "best_ic": 0.04388971252791169,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5530989756061611,
-            "ic": 0.12159407338300797,
-            "icir": 0.7573558943946366,
-            "long_short_return": 0.05934680538482883,
-            "rank_ic": 0.05539027634126628,
-            "top_decile_return": 0.03908278463855215,
-            "turnover": 0.17867924528301887
+            "hit_rate": 0.5450659591716412,
+            "ic": 0.03117638434024163,
+            "icir": 0.44831481153487174,
+            "long_short_return": 0.03739336279589029,
+            "rank_ic": 0.026609325433164396,
+            "top_decile_return": 0.024631952161445196,
+            "turnover": 0.1166763425253991
           },
           "validation_metrics": {
-            "hit_rate": 0.5161549121143607,
-            "ic": 0.07291357196545929,
-            "icir": 0.9172106562772505,
-            "long_short_return": 0.02886829718293444,
-            "rank_ic": -0.01002896774508898,
-            "top_decile_return": 0.02681342055194221,
-            "turnover": 0.16981132075471692
+            "hit_rate": 0.5489321438226548,
+            "ic": 0.04388971252791169,
+            "icir": 0.968593057672983,
+            "long_short_return": -0.0002572297874116331,
+            "rank_ic": -0.0172769023244131,
+            "top_decile_return": -0.020634075128544375,
+            "turnover": 0.09869375907111753
           }
         },
         "ridge": {
           "best_hyperparams": {
             "alpha": 0.001
           },
-          "logged_run": {
-            "experiment_id": "1",
-            "experiment_name": "ridge_60D_20260405_140310",
-            "run_id": "8434dae33b4e4200ae2d25f2c0d19d87",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": -0.013892929297724314,
+            "best_ic": -0.05672213596056515,
             "scores_by_alpha": {
-              "0.001": -0.013892929297724314,
-              "0.01": -0.01389299081587997,
-              "0.1": -0.013893609135130226,
-              "1.0": -0.013900090851960308,
-              "10.0": -0.013984764563644133,
-              "100.0": -0.015160008673208752
+              "0.001": -0.05672213596056515,
+              "0.01": -0.05673808457127272,
+              "0.1": -0.05688812658067205,
+              "1.0": -0.05771792257588859,
+              "10.0": -0.05875544490353306,
+              "100.0": -0.06273141843383644
             }
           },
           "test_metrics": {
-            "hit_rate": 0.4981944137371951,
-            "ic": -0.02170702390585088,
-            "icir": -0.17251683275373192,
-            "long_short_return": -0.004936628010368403,
-            "rank_ic": -0.02062254748510115,
-            "top_decile_return": -0.015185781872568572,
-            "turnover": 0.27492017416545717
+            "hit_rate": 0.5032795342324416,
+            "ic": -0.008816318401479782,
+            "icir": -0.11187529412657582,
+            "long_short_return": 0.005327155560837796,
+            "rank_ic": -0.00888411093126795,
+            "top_decile_return": -0.0018891802014055813,
+            "turnover": 0.26892597968069665
           },
           "validation_metrics": {
-            "hit_rate": 0.4815111953905623,
-            "ic": -0.013892929297724314,
-            "icir": -0.14418370720834042,
-            "long_short_return": 1.753111118834871e-05,
-            "rank_ic": -0.05082771690289533,
-            "top_decile_return": 0.0035551427842037226,
-            "turnover": 0.24150943396226413
+            "hit_rate": 0.4674236280075696,
+            "ic": -0.05672213596056515,
+            "icir": -1.6356468944651026,
+            "long_short_return": -0.02430138371553388,
+            "rank_ic": -0.09130327394040727,
+            "top_decile_return": -0.038631289280352275,
+            "turnover": 0.2351233671988389
           }
         },
         "xgboost": {
           "best_hyperparams": {
-            "colsample_bytree": 0.6,
-            "learning_rate": 0.03,
-            "max_depth": 6,
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.1,
+            "max_depth": 7,
             "min_child_weight": 5,
-            "n_estimators": 1000,
-            "reg_alpha": 0.1,
-            "reg_lambda": 0.1,
-            "subsample": 0.8
+            "n_estimators": 100,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
           },
-          "logged_run": {
-            "experiment_id": "2",
-            "experiment_name": "xgboost_60D_20260405_140310",
-            "run_id": "2f01f31211694a8ba1ba2e7e7d124e21",
-            "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r82.db"
-          },
+          "logged_run": null,
           "selection": {
-            "best_ic": 0.09286817588217862,
+            "best_ic": 0.046203358811446084,
             "search_n_iter": 100,
             "trial_count": 100
           },
           "test_metrics": {
-            "hit_rate": 0.5554572923575798,
-            "ic": 0.18880248584701612,
-            "icir": 0.6502439778418654,
-            "long_short_return": 0.1135755430313682,
-            "rank_ic": 0.15085109064578794,
-            "top_decile_return": 0.06802418351177118,
-            "turnover": 0.28939042089985484
+            "hit_rate": 0.5175768295379173,
+            "ic": -0.01609293572059091,
+            "icir": -0.23330322768070152,
+            "long_short_return": 0.0025161237471380527,
+            "rank_ic": 0.034636157642315916,
+            "top_decile_return": 0.0029427265661374235,
+            "turnover": 0.28709724238026124
           },
           "validation_metrics": {
-            "hit_rate": 0.5206038946831012,
-            "ic": 0.09286817588217862,
-            "icir": 0.9752381411911334,
-            "long_short_return": 0.038454460889823704,
-            "rank_ic": 0.03795987133906884,
-            "top_decile_return": 0.022065346594910325,
-            "turnover": 0.30792452830188677
+            "hit_rate": 0.519735063530684,
+            "ic": 0.046203358811446084,
+            "icir": 1.0315854618932845,
+            "long_short_return": 0.022516411356714564,
+            "rank_ic": -0.0018710834680190325,
+            "top_decile_return": -0.010863838105796303,
+            "turnover": 0.2612481857764877
           }
         }
       },
@@ -1760,14 +2277,49 @@
           "tickers": 529
         },
         "train": {
-          "dates": 152,
-          "rows": 82430,
-          "tickers": 579
+          "dates": 140,
+          "rows": 76063,
+          "tickers": 578
         },
         "validation": {
-          "dates": 26,
-          "rows": 13711,
-          "tickers": 534
+          "dates": 14,
+          "rows": 7398,
+          "tickers": 533
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 60,
+        "requested_dates": {
+          "test_end": "2025-02-28",
+          "test_start": "2024-09-01",
+          "train_end": "2024-02-29",
+          "train_start": "2021-03-01",
+          "validation_end": "2024-08-31",
+          "validation_start": "2024-03-01"
+        },
+        "requested_window_id": "W11",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2024-06-07",
+            "gap_trading_days": 61,
+            "later_date": "2024-09-06",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2023-12-01",
+            "gap_trading_days": 60,
+            "later_date": "2024-03-01",
+            "minimum_required": 60,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2024-06-07",
+            "gap_trading_days": 61,
+            "later_date": "2024-09-06",
+            "minimum_required": 60,
+            "passed": true
+          }
         }
       },
       "window_id": "W11"

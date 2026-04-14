@@ -5,6 +5,7 @@ from datetime import date, timedelta
 import sys
 
 from loguru import logger
+import sqlalchemy as sa
 
 from _data_ops import (
     configure_logging,
@@ -16,11 +17,14 @@ from _data_ops import (
     summarize_quality_reports,
     summarize_row_counts,
 )
+from src.config import settings
 from src.data.corporate_actions import fetch_corporate_actions
+from src.data.db.models import Stock, StockPrice
+from src.data.db.session import get_session_factory
 from src.data.quality import DataQualityChecker
 from src.data.sources.fmp import FMPDataSource
 from src.data.sources.fred import FredDataSource
-from src.data.sources.polygon import PolygonDataSource
+from src.data.sources.polygon import PolygonDataSource, normalize_polygon_ticker
 
 
 @dataclass
@@ -29,6 +33,8 @@ class UpdateSummary:
     macro_rows: int = 0
     fundamental_rows: int = 0
     corporate_action_rows: int = 0
+    split_adjusted_tickers: list[str] = field(default_factory=list)
+    price_anomaly_tickers: list[str] = field(default_factory=list)
     skipped_price_tickers: list[str] = field(default_factory=list)
     failed_price_tickers: list[str] = field(default_factory=list)
     failed_fundamental_tickers: list[str] = field(default_factory=list)
@@ -48,6 +54,11 @@ def main() -> int:
     latest_price_dates = get_latest_price_dates(tracked_tickers)
 
     logger.info("daily update will process {} tracked tickers", len(tracked_tickers))
+    _handle_stock_splits(
+        tickers=tracked_tickers,
+        market_data_end=market_data_end,
+        summary=summary,
+    )
     _update_prices(
         tickers=tracked_tickers,
         latest_price_dates=latest_price_dates,
@@ -55,6 +66,7 @@ def main() -> int:
         checker=checker,
         summary=summary,
     )
+    _check_price_anomalies(tickers=tracked_tickers, summary=summary)
     _update_macro(today=today, checker=checker, summary=summary)
     _update_fundamentals(tickers=tracked_tickers, today=today, checker=checker, summary=summary)
     _update_corporate_actions(tickers=tracked_tickers, today=today, summary=summary)
@@ -111,6 +123,105 @@ def _update_prices(
         except Exception as exc:
             logger.opt(exception=exc).error("daily price update failed for {}", ticker)
             summary.failed_price_tickers.append(ticker)
+
+
+def _handle_stock_splits(
+    *,
+    tickers: list[str],
+    market_data_end: date,
+    summary: UpdateSummary,
+    lookback_days: int = 5,
+) -> None:
+    if not tickers:
+        logger.warning("no tracked tickers found in stocks; skipping split detection")
+        return
+    if not settings.POLYGON_API_KEY:
+        logger.warning("POLYGON_API_KEY is not configured; skipping split detection")
+        return
+
+    lookback_start = date.today() - timedelta(days=lookback_days)
+    try:
+        split_rows = _fetch_recent_splits(start_date=lookback_start, end_date=date.today())
+    except Exception as exc:
+        logger.opt(exception=exc).error("recent split detection failed")
+        summary.failed_components.append("split_detection")
+        return
+
+    tracked_tickers = {normalize_polygon_ticker(ticker) for ticker in tickers}
+    matching_splits = [
+        row
+        for row in split_rows
+        if row["ticker"] in tracked_tickers
+    ]
+    if not matching_splits:
+        logger.info("no tracked-ticker splits detected between {} and {}", lookback_start, date.today())
+        return
+
+    source = PolygonDataSource(min_request_interval=0.0)
+    split_tickers = sorted({str(row["ticker"]) for row in matching_splits})
+    for ticker in split_tickers:
+        related_events = [row for row in matching_splits if row["ticker"] == ticker]
+        start_date = _resolve_adjusted_backfill_start(ticker=ticker, market_data_end=market_data_end)
+        logger.warning(
+            "detected split event(s) for {}: {}. Re-fetching fully adjusted history from {} to {}",
+            ticker,
+            "; ".join(_format_split_event(row) for row in related_events),
+            start_date,
+            market_data_end,
+        )
+        try:
+            frame = source.fetch_adjusted_historical([ticker], start_date, market_data_end)
+            if frame.empty:
+                logger.warning("split-adjusted backfill returned no rows for {}", ticker)
+                continue
+            if ticker not in summary.split_adjusted_tickers:
+                summary.split_adjusted_tickers.append(ticker)
+        except Exception as exc:
+            logger.opt(exception=exc).error("split-adjusted price backfill failed for {}", ticker)
+            if ticker not in summary.failed_price_tickers:
+                summary.failed_price_tickers.append(ticker)
+
+
+def _check_price_anomalies(
+    *,
+    tickers: list[str],
+    summary: UpdateSummary,
+    threshold: float = 0.50,
+) -> None:
+    if not tickers:
+        return
+
+    rows = _load_latest_closes(tickers=tickers)
+    closes_by_ticker: dict[str, list[tuple[date, float]]] = {}
+    for ticker, trade_date, close_value in rows:
+        if close_value is None:
+            continue
+        closes_by_ticker.setdefault(str(ticker), []).append((trade_date, float(close_value)))
+
+    for ticker, series in closes_by_ticker.items():
+        if len(series) < 2:
+            continue
+
+        latest_date, latest_close = series[0]
+        previous_date, previous_close = series[1]
+        if previous_close == 0:
+            continue
+
+        pct_change = (latest_close / previous_close) - 1.0
+        if abs(pct_change) <= threshold:
+            continue
+
+        logger.warning(
+            "price anomaly detected for {} between {} and {}: {:.4f} -> {:.4f} ({:+.2%})",
+            ticker,
+            previous_date,
+            latest_date,
+            previous_close,
+            latest_close,
+            pct_change,
+        )
+        if ticker not in summary.price_anomaly_tickers:
+            summary.price_anomaly_tickers.append(ticker)
 
 
 def _update_macro(
@@ -189,6 +300,118 @@ def _update_corporate_actions(
             summary.failed_action_tickers.append(ticker)
 
 
+def _fetch_recent_splits(*, start_date: date, end_date: date) -> list[dict[str, object]]:
+    try:
+        import requests
+    except ImportError as exc:
+        raise RuntimeError("requests is required for split detection") from exc
+
+    session = requests.Session()
+    session.trust_env = False
+    session.headers.update({"User-Agent": "QuantEdge/0.1.0"})
+
+    url = "https://api.polygon.io/v3/reference/splits"
+    params: dict[str, object] | None = {
+        "execution_date.gte": start_date.isoformat(),
+        "execution_date.lte": end_date.isoformat(),
+        "limit": 1_000,
+        "sort": "execution_date",
+        "order": "asc",
+        "apiKey": settings.POLYGON_API_KEY,
+    }
+    rows: list[dict[str, object]] = []
+
+    while url:
+        response = session.get(url, params=params, timeout=30)
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Polygon splits request failed with HTTP {response.status_code}: {response.text[:500]}",
+            )
+
+        payload = response.json()
+        results = payload.get("results") or []
+        if not isinstance(results, list):
+            raise RuntimeError(f"Unexpected Polygon splits payload type: {type(results).__name__}")
+
+        for item in results:
+            execution_date = item.get("execution_date")
+            ticker = item.get("ticker")
+            if not execution_date or not ticker:
+                continue
+            rows.append(
+                {
+                    "ticker": normalize_polygon_ticker(str(ticker)),
+                    "execution_date": date.fromisoformat(str(execution_date)),
+                    "split_from": item.get("split_from"),
+                    "split_to": item.get("split_to"),
+                },
+            )
+
+        next_url = payload.get("next_url")
+        if isinstance(next_url, str) and next_url:
+            url = next_url
+            params = {"apiKey": settings.POLYGON_API_KEY}
+        else:
+            break
+
+    return rows
+
+
+def _resolve_adjusted_backfill_start(*, ticker: str, market_data_end: date) -> date:
+    fallback_start = market_data_end - timedelta(days=365 * 10)
+    session_factory = get_session_factory()
+    with session_factory() as session:
+        min_trade_date = session.execute(
+            sa.select(sa.func.min(StockPrice.trade_date)).where(StockPrice.ticker == ticker),
+        ).scalar_one_or_none()
+        ipo_date = session.execute(
+            sa.select(Stock.ipo_date).where(Stock.ticker == ticker),
+        ).scalar_one_or_none()
+
+    candidates = [value for value in (min_trade_date, ipo_date) if value is not None]
+    if not candidates:
+        return fallback_start
+    return min(candidates)
+
+
+def _load_latest_closes(*, tickers: list[str]) -> list[tuple[str, date, object]]:
+    if not tickers:
+        return []
+
+    session_factory = get_session_factory()
+    latest_rows = (
+        sa.select(
+            StockPrice.ticker.label("ticker"),
+            StockPrice.trade_date.label("trade_date"),
+            StockPrice.close.label("close"),
+            sa.func.row_number().over(
+                partition_by=StockPrice.ticker,
+                order_by=StockPrice.trade_date.desc(),
+            ).label("row_num"),
+        )
+        .where(StockPrice.ticker.in_(tickers))
+        .subquery()
+    )
+
+    with session_factory() as session:
+        rows = session.execute(
+            sa.select(latest_rows.c.ticker, latest_rows.c.trade_date, latest_rows.c.close)
+            .where(latest_rows.c.row_num <= 2)
+            .order_by(latest_rows.c.ticker, latest_rows.c.trade_date.desc()),
+        ).all()
+
+    return [(str(ticker), trade_date, close_value) for ticker, trade_date, close_value in rows]
+
+
+def _format_split_event(row: dict[str, object]) -> str:
+    split_from = row.get("split_from")
+    split_to = row.get("split_to")
+    execution_date = row.get("execution_date")
+    if split_from and split_to:
+        return f"{execution_date} {split_from}:{split_to}"
+    return str(execution_date)
+
+
 def _log_summary(summary: UpdateSummary) -> None:
     logger.info(
         "daily update summary prices={} macro={} fundamentals={} corporate_actions={}",
@@ -197,6 +420,10 @@ def _log_summary(summary: UpdateSummary) -> None:
         summary.fundamental_rows,
         summary.corporate_action_rows,
     )
+    if summary.split_adjusted_tickers:
+        logger.info("split-adjusted tickers: {}", ",".join(summary.split_adjusted_tickers))
+    if summary.price_anomaly_tickers:
+        logger.warning("price anomaly tickers: {}", ",".join(summary.price_anomaly_tickers))
     if summary.skipped_price_tickers:
         logger.info("skipped price tickers: {}", ",".join(summary.skipped_price_tickers))
     if summary.failed_price_tickers:

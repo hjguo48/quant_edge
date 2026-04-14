@@ -1,0 +1,1209 @@
+{
+  "as_of": "2026-03-31",
+  "embargo_validation": {
+    "all_windows_passed": true,
+    "per_boundary": {
+      "refit_train_plus_validation_to_test": {
+        "all_passed": true,
+        "minimum_gap_trading_days": 23,
+        "windows_checked": 11
+      },
+      "train_to_validation": {
+        "all_passed": true,
+        "minimum_gap_trading_days": 23,
+        "windows_checked": 11
+      },
+      "validation_to_test": {
+        "all_passed": true,
+        "minimum_gap_trading_days": 23,
+        "windows_checked": 11
+      }
+    },
+    "window_count": 11
+  },
+  "generated_at": "2026-04-14T03:25:56.900656+00:00",
+  "ic_comparison": {
+    "available": false,
+    "baseline_report_path": null,
+    "embargo_trading_days": 20,
+    "reason": "legacy_baseline_report_not_available"
+  },
+  "retained_feature_count": 18,
+  "retained_features": [
+    "is_missing_dividend_yield",
+    "value_mom_pb",
+    "gk_vol",
+    "revenue_growth_yoy",
+    "asset_growth",
+    "is_missing_ret_5d",
+    "vol_rank",
+    "vol_60d",
+    "is_missing_ret_10d",
+    "residual_momentum",
+    "low_52w_ratio",
+    "dividend_yield",
+    "bb_width",
+    "is_missing_gk_vol",
+    "is_missing_vol_60d",
+    "is_missing_residual_momentum",
+    "is_missing_value_mom_pb",
+    "is_missing_revenue_growth_yoy"
+  ],
+  "split_config": {
+    "calendar_end": "2025-02-28",
+    "calendar_observations": 1800,
+    "calendar_start": "2018-01-02",
+    "calendar_ticker": "SPY",
+    "embargo_trading_days": 20,
+    "rebalance_weekday": 4,
+    "strategy": "purged_embargo"
+  },
+  "summary": {
+    "ridge": {
+      "mean_hit_rate": 0.4992708481668517,
+      "mean_test_ic": 0.01729042325593861,
+      "mean_test_icir": 0.10558498120271496,
+      "mean_test_rank_ic": 0.0011482529732221346,
+      "mean_top_decile_return": 0.027762600791634274,
+      "std_test_ic": 0.05456362106494394,
+      "win_count": 11,
+      "windows_completed": 11
+    }
+  },
+  "target_horizon": "20D",
+  "windows": [
+    {
+      "dates": {
+        "test": "2019-09 -> 2020-02",
+        "test_end": "2020-02-28",
+        "test_start": "2019-09-06",
+        "train": "2018-01 -> 2019-01",
+        "train_end": "2019-01-25",
+        "train_start": "2018-01-05",
+        "validation": "2019-03 -> 2019-08",
+        "validation_end": "2019-08-02",
+        "validation_start": "2019-03-01"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 0.001
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": -0.04978186446237796,
+            "scores_by_alpha": {
+              "0.001": -0.04978186446237796,
+              "0.01": -0.049783237755831926,
+              "0.1": -0.04979655555319944,
+              "1.0": -0.04989966840412385,
+              "10.0": -0.050240319031674786,
+              "100.0": -0.051033871533992525
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5153541517886127,
+            "ic": 0.014752906995264176,
+            "icir": 0.0829978716858114,
+            "long_short_return": 0.004916443302728539,
+            "rank_ic": -0.00928522193782389,
+            "top_decile_return": -0.0036943302108509704,
+            "turnover": 0.20666666666666664
+          },
+          "validation_metrics": {
+            "hit_rate": 0.48303193535975375,
+            "ic": -0.04978186446237796,
+            "icir": -0.32264362000656105,
+            "long_short_return": 0.014900559754937419,
+            "rank_ic": -0.05666457234210917,
+            "top_decile_return": 0.01695785723716493,
+            "turnover": 0.2033360236750067
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 15403,
+          "tickers": 598
+        },
+        "train": {
+          "dates": 55,
+          "rows": 32622,
+          "tickers": 608
+        },
+        "validation": {
+          "dates": 22,
+          "rows": 12995,
+          "tickers": 597
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2020-02-29",
+          "test_start": "2019-09-01",
+          "train_end": "2019-02-28",
+          "train_start": "2016-03-01",
+          "validation_end": "2019-08-31",
+          "validation_start": "2019-03-01"
+        },
+        "requested_window_id": "W1",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2019-08-02",
+            "gap_trading_days": 23,
+            "later_date": "2019-09-06",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2019-01-25",
+            "gap_trading_days": 23,
+            "later_date": "2019-03-01",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2019-08-02",
+            "gap_trading_days": 23,
+            "later_date": "2019-09-06",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W1"
+    },
+    {
+      "dates": {
+        "test": "2020-03 -> 2020-08",
+        "test_end": "2020-08-28",
+        "test_start": "2020-03-06",
+        "train": "2018-01 -> 2019-08",
+        "train_end": "2019-08-02",
+        "train_start": "2018-01-05",
+        "validation": "2019-09 -> 2020-01",
+        "validation_end": "2020-01-31",
+        "validation_start": "2019-09-06"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.043716444875903364,
+            "scores_by_alpha": {
+              "0.001": 0.04234508839688637,
+              "0.01": 0.04234506488274519,
+              "0.1": 0.04234487021853797,
+              "1.0": 0.04234617759139722,
+              "10.0": 0.042450672058680076,
+              "100.0": 0.043716444875903364
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5327364297705652,
+            "ic": 0.1000214218682739,
+            "icir": 0.4535906952206901,
+            "long_short_return": 0.05004136819934265,
+            "rank_ic": 0.06692083142878268,
+            "top_decile_return": 0.04091773166508396,
+            "turnover": 0.17246376811594202
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5168867055572612,
+            "ic": 0.043716444875903364,
+            "icir": 0.2407936498433187,
+            "long_short_return": 0.011796845774465624,
+            "rank_ic": 0.018029623697184485,
+            "top_decile_return": 0.003982879227006875,
+            "turnover": 0.1468253968253968
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 24,
+          "rows": 14296,
+          "tickers": 598
+        },
+        "train": {
+          "dates": 81,
+          "rows": 47971,
+          "tickers": 617
+        },
+        "validation": {
+          "dates": 22,
+          "rows": 13028,
+          "tickers": 597
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2020-08-31",
+          "test_start": "2020-03-01",
+          "train_end": "2019-08-31",
+          "train_start": "2016-09-01",
+          "validation_end": "2020-02-29",
+          "validation_start": "2019-09-01"
+        },
+        "requested_window_id": "W2",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2020-01-31",
+            "gap_trading_days": 23,
+            "later_date": "2020-03-06",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2019-08-02",
+            "gap_trading_days": 23,
+            "later_date": "2019-09-06",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2020-01-31",
+            "gap_trading_days": 23,
+            "later_date": "2020-03-06",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W2"
+    },
+    {
+      "dates": {
+        "test": "2020-09 -> 2021-02",
+        "test_end": "2021-02-26",
+        "test_start": "2020-09-04",
+        "train": "2018-01 -> 2020-01",
+        "train_end": "2020-01-31",
+        "train_start": "2018-01-05",
+        "validation": "2020-03 -> 2020-07",
+        "validation_end": "2020-07-31",
+        "validation_start": "2020-03-06"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.11815227725300044,
+            "scores_by_alpha": {
+              "0.001": 0.1171816385580889,
+              "0.01": 0.1171815377383602,
+              "0.1": 0.11718058049618851,
+              "1.0": 0.11717519511947225,
+              "10.0": 0.11724509482701975,
+              "100.0": 0.11815227725300044
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5328012322341245,
+            "ic": 0.1419056093076481,
+            "icir": 1.016716289094003,
+            "long_short_return": 0.052552080160894306,
+            "rank_ic": 0.12181509904136271,
+            "top_decile_return": 0.05267738601165597,
+            "turnover": 0.1326086956521739
+          },
+          "validation_metrics": {
+            "hit_rate": 0.538351795904666,
+            "ic": 0.11815227725300044,
+            "icir": 0.4860874510553439,
+            "long_short_return": 0.06043254415988275,
+            "rank_ic": 0.08660163359415264,
+            "top_decile_return": 0.049863365141468656,
+            "turnover": 0.17456140350877192
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 24,
+          "rows": 14283,
+          "tickers": 599
+        },
+        "train": {
+          "dates": 107,
+          "rows": 63369,
+          "tickers": 622
+        },
+        "validation": {
+          "dates": 20,
+          "rows": 11916,
+          "tickers": 598
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2021-02-28",
+          "test_start": "2020-09-01",
+          "train_end": "2020-02-29",
+          "train_start": "2017-03-01",
+          "validation_end": "2020-08-31",
+          "validation_start": "2020-03-01"
+        },
+        "requested_window_id": "W3",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2020-07-31",
+            "gap_trading_days": 24,
+            "later_date": "2020-09-04",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2020-01-31",
+            "gap_trading_days": 23,
+            "later_date": "2020-03-06",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2020-07-31",
+            "gap_trading_days": 24,
+            "later_date": "2020-09-04",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W3"
+    },
+    {
+      "dates": {
+        "test": "2021-03 -> 2021-08",
+        "test_end": "2021-08-27",
+        "test_start": "2021-03-05",
+        "train": "2018-01 -> 2020-07",
+        "train_end": "2020-07-31",
+        "train_start": "2018-01-05",
+        "validation": "2020-09 -> 2021-01",
+        "validation_end": "2021-01-29",
+        "validation_start": "2020-09-04"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.16722258508338966,
+            "scores_by_alpha": {
+              "0.001": 0.16649328966567975,
+              "0.01": 0.16649332749954282,
+              "0.1": 0.16649367864119233,
+              "1.0": 0.16649519738817695,
+              "10.0": 0.16649812657530547,
+              "100.0": 0.16722258508338966
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.49590713902308103,
+            "ic": 0.0318996563178756,
+            "icir": 0.18581902695813932,
+            "long_short_return": -0.0032650638179462267,
+            "rank_ic": -0.01900183338176049,
+            "top_decile_return": -0.004162714473259911,
+            "turnover": 0.11874999999999998
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5560131103454071,
+            "ic": 0.16722258508338966,
+            "icir": 1.3902661087614894,
+            "long_short_return": 0.06046884499531865,
+            "rank_ic": 0.16320905620192247,
+            "top_decile_return": 0.053573291824546135,
+            "turnover": 0.11491228070175437
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 25,
+          "rows": 14904,
+          "tickers": 603
+        },
+        "train": {
+          "dates": 131,
+          "rows": 77660,
+          "tickers": 628
+        },
+        "validation": {
+          "dates": 20,
+          "rows": 11899,
+          "tickers": 599
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2021-08-31",
+          "test_start": "2021-03-01",
+          "train_end": "2020-08-31",
+          "train_start": "2017-09-01",
+          "validation_end": "2021-02-28",
+          "validation_start": "2020-09-01"
+        },
+        "requested_window_id": "W4",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2021-01-29",
+            "gap_trading_days": 23,
+            "later_date": "2021-03-05",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2020-07-31",
+            "gap_trading_days": 24,
+            "later_date": "2020-09-04",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2021-01-29",
+            "gap_trading_days": 23,
+            "later_date": "2021-03-05",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W4"
+    },
+    {
+      "dates": {
+        "test": "2021-09 -> 2022-02",
+        "test_end": "2022-02-25",
+        "test_start": "2021-09-03",
+        "train": "2018-03 -> 2021-01",
+        "train_end": "2021-01-29",
+        "train_start": "2018-03-02",
+        "validation": "2021-03 -> 2021-07",
+        "validation_end": "2021-07-30",
+        "validation_start": "2021-03-05"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 0.001
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.0126425643548738,
+            "scores_by_alpha": {
+              "0.001": 0.0126425643548738,
+              "0.01": 0.01264221157959505,
+              "0.1": 0.012638696039099295,
+              "1.0": 0.012604852204319474,
+              "10.0": 0.012385634866102755,
+              "100.0": 0.012081399230710391
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.4741286863270778,
+            "ic": -0.02988710826507863,
+            "icir": -0.1969651446785398,
+            "long_short_return": -0.0070117664903475265,
+            "rank_ic": -0.05341276319864015,
+            "top_decile_return": -0.004487119663856599,
+            "turnover": 0.14444444444444446
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4922499201022691,
+            "ic": 0.0126425643548738,
+            "icir": 0.07415364035835775,
+            "long_short_return": -0.01082818780590564,
+            "rank_ic": -0.035683660528755316,
+            "top_decile_return": -0.01107234903568291,
+            "turnover": 0.12833333333333335
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 25,
+          "rows": 14920,
+          "tickers": 600
+        },
+        "train": {
+          "dates": 147,
+          "rows": 87180,
+          "tickers": 633
+        },
+        "validation": {
+          "dates": 21,
+          "rows": 12516,
+          "tickers": 602
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2022-02-28",
+          "test_start": "2021-09-01",
+          "train_end": "2021-02-28",
+          "train_start": "2018-03-01",
+          "validation_end": "2021-08-31",
+          "validation_start": "2021-03-01"
+        },
+        "requested_window_id": "W5",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2021-07-30",
+            "gap_trading_days": 24,
+            "later_date": "2021-09-03",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2021-01-29",
+            "gap_trading_days": 23,
+            "later_date": "2021-03-05",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2021-07-30",
+            "gap_trading_days": 24,
+            "later_date": "2021-09-03",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W5"
+    },
+    {
+      "dates": {
+        "test": "2022-03 -> 2022-08",
+        "test_end": "2022-08-26",
+        "test_start": "2022-03-04",
+        "train": "2018-09 -> 2021-07",
+        "train_end": "2021-07-30",
+        "train_start": "2018-09-07",
+        "validation": "2021-09 -> 2022-01",
+        "validation_end": "2022-01-28",
+        "validation_start": "2021-09-03"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 0.001
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": -0.00029764722250430345,
+            "scores_by_alpha": {
+              "0.001": -0.00029764722250430345,
+              "0.01": -0.00029772451353953086,
+              "0.1": -0.0002984931539097727,
+              "1.0": -0.0003057682965128935,
+              "10.0": -0.00035056765504430984,
+              "100.0": -0.0004073100141359008
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.4759080800593032,
+            "ic": -0.03561893228124782,
+            "icir": -0.18142641060875014,
+            "long_short_return": -0.00806036252301886,
+            "rank_ic": -0.04519418066330969,
+            "top_decile_return": -0.002032845941324083,
+            "turnover": 0.1798611111111111
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4886744297336098,
+            "ic": -0.00029764722250430345,
+            "icir": -0.002032045359310067,
+            "long_short_return": 0.04103248509107368,
+            "rank_ic": -0.02025352309047229,
+            "top_decile_return": 0.03988962928942438,
+            "turnover": 0.1408333333333333
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 25,
+          "rows": 14839,
+          "tickers": 599
+        },
+        "train": {
+          "dates": 146,
+          "rows": 86603,
+          "tickers": 629
+        },
+        "validation": {
+          "dates": 21,
+          "rows": 12538,
+          "tickers": 599
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2022-08-31",
+          "test_start": "2022-03-01",
+          "train_end": "2021-08-31",
+          "train_start": "2018-09-01",
+          "validation_end": "2022-02-28",
+          "validation_start": "2021-09-01"
+        },
+        "requested_window_id": "W6",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2022-01-28",
+            "gap_trading_days": 23,
+            "later_date": "2022-03-04",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2021-07-30",
+            "gap_trading_days": 24,
+            "later_date": "2021-09-03",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2022-01-28",
+            "gap_trading_days": 23,
+            "later_date": "2022-03-04",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W6"
+    },
+    {
+      "dates": {
+        "test": "2022-09 -> 2023-02",
+        "test_end": "2023-02-24",
+        "test_start": "2022-09-02",
+        "train": "2019-03 -> 2022-01",
+        "train_end": "2022-01-28",
+        "train_start": "2019-03-01",
+        "validation": "2022-03 -> 2022-07",
+        "validation_end": "2022-07-29",
+        "validation_start": "2022-03-04"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 10.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": -0.010796557967207953,
+            "scores_by_alpha": {
+              "0.001": -0.010879346185243206,
+              "0.01": -0.010879190943245999,
+              "0.1": -0.01087765098295704,
+              "1.0": -0.010863435265126712,
+              "10.0": -0.010796557967207953,
+              "100.0": -0.011085859993264113
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5131168831168831,
+            "ic": -0.0053311040725666035,
+            "icir": -0.020125777120379076,
+            "long_short_return": 0.0024159046518793525,
+            "rank_ic": 0.015226851448844059,
+            "top_decile_return": 0.0006377349560292209,
+            "turnover": 0.20600000000000002
+          },
+          "validation_metrics": {
+            "hit_rate": 0.49225708095964055,
+            "ic": -0.010796557967207953,
+            "icir": -0.051447361565326755,
+            "long_short_return": 0.0010646217095904363,
+            "rank_ic": -0.014457958918321391,
+            "top_decile_return": -0.0002623299741543745,
+            "turnover": 0.19416666666666665
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 15400,
+          "tickers": 597
+        },
+        "train": {
+          "dates": 146,
+          "rows": 86789,
+          "tickers": 623
+        },
+        "validation": {
+          "dates": 21,
+          "rows": 12463,
+          "tickers": 599
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2023-02-28",
+          "test_start": "2022-09-01",
+          "train_end": "2022-02-28",
+          "train_start": "2019-03-01",
+          "validation_end": "2022-08-31",
+          "validation_start": "2022-03-01"
+        },
+        "requested_window_id": "W7",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2022-07-29",
+            "gap_trading_days": 24,
+            "later_date": "2022-09-02",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2022-01-28",
+            "gap_trading_days": 23,
+            "later_date": "2022-03-04",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2022-07-29",
+            "gap_trading_days": 24,
+            "later_date": "2022-09-02",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W7"
+    },
+    {
+      "dates": {
+        "test": "2023-03 -> 2023-08",
+        "test_end": "2023-08-25",
+        "test_start": "2023-03-03",
+        "train": "2019-09 -> 2022-07",
+        "train_end": "2022-07-29",
+        "train_start": "2019-09-06",
+        "validation": "2022-09 -> 2023-01",
+        "validation_end": "2023-01-27",
+        "validation_start": "2022-09-02"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 10.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.0423526720221439,
+            "scores_by_alpha": {
+              "0.001": 0.04220819020286983,
+              "0.01": 0.04220880221184408,
+              "0.1": 0.042214797680767996,
+              "1.0": 0.04226398883215547,
+              "10.0": 0.0423526720221439,
+              "100.0": 0.04231351648501731
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.4952374518678646,
+            "ic": 0.022467677129628563,
+            "icir": 0.11918595106920117,
+            "long_short_return": 0.009278378214341828,
+            "rank_ic": 0.01935379237055982,
+            "top_decile_return": -0.002017312201801239,
+            "turnover": 0.19166666666666665
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5333538036385967,
+            "ic": 0.0423526720221439,
+            "icir": 0.15718236003782265,
+            "long_short_return": 0.01898817229237386,
+            "rank_ic": 0.06402048542368521,
+            "top_decile_return": 0.017455938992146536,
+            "turnover": 0.18095238095238095
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 25,
+          "rows": 14803,
+          "tickers": 596
+        },
+        "train": {
+          "dates": 145,
+          "rows": 86269,
+          "tickers": 622
+        },
+        "validation": {
+          "dates": 22,
+          "rows": 13027,
+          "tickers": 597
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2023-08-31",
+          "test_start": "2023-03-01",
+          "train_end": "2022-08-31",
+          "train_start": "2019-09-01",
+          "validation_end": "2023-02-28",
+          "validation_start": "2022-09-01"
+        },
+        "requested_window_id": "W8",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2023-01-27",
+            "gap_trading_days": 23,
+            "later_date": "2023-03-03",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2022-07-29",
+            "gap_trading_days": 24,
+            "later_date": "2022-09-02",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2023-01-27",
+            "gap_trading_days": 23,
+            "later_date": "2023-03-03",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W8"
+    },
+    {
+      "dates": {
+        "test": "2023-09 -> 2024-02",
+        "test_end": "2024-02-23",
+        "test_start": "2023-09-01",
+        "train": "2020-03 -> 2023-01",
+        "train_end": "2023-01-27",
+        "train_start": "2020-03-06",
+        "validation": "2023-03 -> 2023-07",
+        "validation_end": "2023-07-28",
+        "validation_start": "2023-03-03"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.02770789032102373,
+            "scores_by_alpha": {
+              "0.001": 0.026275752411093638,
+              "0.01": 0.026276353520320945,
+              "0.1": 0.026282315606190966,
+              "1.0": 0.026337447950050337,
+              "10.0": 0.026658296124497764,
+              "100.0": 0.02770789032102373
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.4791666666666667,
+            "ic": -0.03922025013809005,
+            "icir": -0.2242660126248195,
+            "long_short_return": 0.23822492067139114,
+            "rank_ic": -0.04044344893997649,
+            "top_decile_return": 0.23785849840065298,
+            "turnover": 0.14200000000000002
+          },
+          "validation_metrics": {
+            "hit_rate": 0.488497425997426,
+            "ic": 0.02770789032102373,
+            "icir": 0.14812188222925785,
+            "long_short_return": 0.005018826929626586,
+            "rank_ic": 0.02901889533827035,
+            "top_decile_return": -0.007246733725640065,
+            "turnover": 0.16166666666666668
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 15456,
+          "tickers": 598
+        },
+        "train": {
+          "dates": 145,
+          "rows": 86269,
+          "tickers": 620
+        },
+        "validation": {
+          "dates": 21,
+          "rows": 12432,
+          "tickers": 596
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2024-02-29",
+          "test_start": "2023-09-01",
+          "train_end": "2023-02-28",
+          "train_start": "2020-03-01",
+          "validation_end": "2023-08-31",
+          "validation_start": "2023-03-01"
+        },
+        "requested_window_id": "W9",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2023-07-28",
+            "gap_trading_days": 24,
+            "later_date": "2023-09-01",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2023-01-27",
+            "gap_trading_days": 23,
+            "later_date": "2023-03-03",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2023-07-28",
+            "gap_trading_days": 24,
+            "later_date": "2023-09-01",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W9"
+    },
+    {
+      "dates": {
+        "test": "2024-03 -> 2024-08",
+        "test_end": "2024-08-30",
+        "test_start": "2024-03-01",
+        "train": "2020-09 -> 2023-07",
+        "train_end": "2023-07-28",
+        "train_start": "2020-09-04",
+        "validation": "2023-09 -> 2024-01",
+        "validation_end": "2024-01-26",
+        "validation_start": "2023-09-01"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 0.001
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": -0.07059282623406093,
+            "scores_by_alpha": {
+              "0.001": -0.07059282623406093,
+              "0.01": -0.07059512730179086,
+              "0.1": -0.07061786626201084,
+              "1.0": -0.07082168222483944,
+              "10.0": -0.0718123055824676,
+              "100.0": -0.07273712152372837
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.49068003599434373,
+            "ic": 0.008189846455264679,
+            "icir": 0.09632401059529504,
+            "long_short_return": 0.003260647023146181,
+            "rank_ic": -0.010744347290273383,
+            "top_decile_return": -0.0019881142317297773,
+            "turnover": 0.172
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4654525977504017,
+            "ic": -0.07059282623406093,
+            "icir": -0.40185351513842416,
+            "long_short_return": 0.2697155826355919,
+            "rank_ic": -0.06778999377534319,
+            "top_decile_return": 0.26968186981309994,
+            "turnover": 0.1388888888888889
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 15558,
+          "tickers": 601
+        },
+        "train": {
+          "dates": 146,
+          "rows": 86778,
+          "tickers": 617
+        },
+        "validation": {
+          "dates": 22,
+          "rows": 13069,
+          "tickers": 596
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2024-08-31",
+          "test_start": "2024-03-01",
+          "train_end": "2023-08-31",
+          "train_start": "2020-09-01",
+          "validation_end": "2024-02-29",
+          "validation_start": "2023-09-01"
+        },
+        "requested_window_id": "W10",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2024-01-26",
+            "gap_trading_days": 23,
+            "later_date": "2024-03-01",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2023-07-28",
+            "gap_trading_days": 24,
+            "later_date": "2023-09-01",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2024-01-26",
+            "gap_trading_days": 23,
+            "later_date": "2024-03-01",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W10"
+    },
+    {
+      "dates": {
+        "test": "2024-09 -> 2025-02",
+        "test_end": "2025-02-28",
+        "test_start": "2024-09-06",
+        "train": "2021-03 -> 2024-01",
+        "train_end": "2024-01-26",
+        "train_start": "2021-03-05",
+        "validation": "2024-03 -> 2024-08",
+        "validation_end": "2024-08-02",
+        "validation_start": "2024-03-01"
+      },
+      "results": {
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 0.001
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.014767629450130491,
+            "scores_by_alpha": {
+              "0.001": 0.014767629450130491,
+              "0.01": 0.014764395938829021,
+              "0.1": 0.014732440126112452,
+              "1.0": 0.014446188031879336,
+              "10.0": 0.01308992286343507,
+              "100.0": 0.012637928758050075
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.48694257298684634,
+            "ic": -0.018985067501647166,
+            "icir": -0.17041570636078682,
+            "long_short_return": -0.009533941441878755,
+            "rank_ic": -0.03260399617232167,
+            "top_decile_return": -0.008320305602622534,
+            "turnover": 0.18302732240437158
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4962017623822546,
+            "ic": 0.014767629450130491,
+            "icir": 0.1961279505810101,
+            "long_short_return": 0.010475394473444238,
+            "rank_ic": 0.0064374573011708345,
+            "top_decile_return": 0.0013983647187681464,
+            "turnover": 0.19206349206349205
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 15585,
+          "tickers": 603
+        },
+        "train": {
+          "dates": 148,
+          "rows": 87935,
+          "tickers": 618
+        },
+        "validation": {
+          "dates": 22,
+          "rows": 13164,
+          "tickers": 601
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 20,
+        "requested_dates": {
+          "test_end": "2025-02-28",
+          "test_start": "2024-09-01",
+          "train_end": "2024-02-29",
+          "train_start": "2021-03-01",
+          "validation_end": "2024-08-31",
+          "validation_start": "2024-03-01"
+        },
+        "requested_window_id": "W11",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2024-08-02",
+            "gap_trading_days": 23,
+            "later_date": "2024-09-06",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2024-01-26",
+            "gap_trading_days": 23,
+            "later_date": "2024-03-01",
+            "minimum_required": 20,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2024-08-02",
+            "gap_trading_days": 23,
+            "later_date": "2024-09-06",
+            "minimum_required": 20,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W11"
+    }
+  ]
+}
