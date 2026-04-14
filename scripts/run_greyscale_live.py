@@ -51,6 +51,7 @@ from src.features.pipeline import FeaturePipeline
 from src.labels.forward_returns import compute_forward_returns
 from src.models.evaluation import information_coefficient, information_coefficient_series
 from src.portfolio.equal_weight import equal_weight_portfolio
+from src.portfolio.event_overlay import NullOverlay
 from src.portfolio.constraints import (
     PortfolioConstraints,
     apply_turnover_buffer,
@@ -207,7 +208,11 @@ def main(argv: list[str] | None = None) -> int:
     regime_adjusted_weights = apply_regime_to_model_weights(live_weights, regime_scalar)
     fusion_scores = combine_current_predictions(normalized_predictions, regime_adjusted_weights).rename(FUSION_NAME)
 
-    fused_scores_by_ticker = flatten_score_index(fusion_scores).sort_values(ascending=False)
+    overlay = NullOverlay()
+    fused_scores_by_ticker = overlay.apply(
+        flatten_score_index(fusion_scores),
+        pd.DataFrame(),
+    ).sort_values(ascending=False)
     model_scores_by_ticker = {
         model_name: flatten_score_index(series).sort_values(ascending=False)
         for model_name, series in raw_predictions.items()

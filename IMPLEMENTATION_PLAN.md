@@ -2026,6 +2026,13 @@ Step 5 (Tree overlay) ──→ IC 改善? ──Yes──→ 采用 Ridge+Tree-
 
 **预期：** +0.5% ~ +1.5% 净超额提升
 
+**Stage 0 实际结果 (2026-04-14)：** ✅ PASS (不退步)
+- S2.0.1 持有期: 20D(6.89%/Sharpe 0.513) ≈ 60D(6.88%/Sharpe 0.594), 保持 60D
+- S2.0.2 Confidence sizing: score_weighted(6.85%) > confidence(5.90%), 不采用
+- S2.0.3 模型一致性: 跳过 (Ridge-only)
+- S2.0.5 Event overlay: NullOverlay 架构就绪
+- **结论: 当前 60D + score_weighted 已是最优变现, 无需改动。直接进入 Stage 1。**
+
 ---
 
 #### Stage 1：日频验证 — 在当前 S&P 500 上（4-6 周）
