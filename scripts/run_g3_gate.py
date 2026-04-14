@@ -56,6 +56,7 @@ DEFAULT_COMPARISON_REPORT = "data/reports/walkforward_comparison_60d.json"
 DEFAULT_FUSION_REPORT = "data/reports/fusion_analysis_60d.json"
 DEFAULT_OUTPUT_PATH = "data/reports/g3_gate_results.json"
 DEFAULT_CHAMPION_KEY = "ic_weighted_fusion"
+DEFAULT_FUSION_REPORT_FORMAT = "auto"
 DEFAULT_TRACKING_URI = None
 DEFAULT_ALPHA = 0.05
 DEFAULT_IC_THRESHOLD = 0.03
@@ -75,17 +76,25 @@ def main(argv: list[str] | None = None) -> int:
     comparison = json.loads(comparison_path.read_text())
     fusion = json.loads(fusion_path.read_text())
     comparison_windows = select_windows(comparison.get("windows", []), limit=args.window_limit)
-    fusion_windows = select_windows(fusion.get("per_window", []), limit=args.window_limit)
-    if len(comparison_windows) != len(fusion_windows):
+    champion_report = normalize_champion_report(
+        fusion,
+        champion_key=args.champion_key,
+        report_format=args.fusion_report_format,
+        window_limit=args.window_limit,
+    )
+    fusion_windows = [record["raw_window"] for record in champion_report["window_records"]]
+    if len(comparison_windows) != len(champion_report["window_records"]):
         raise RuntimeError(
-            f"Window count mismatch comparison={len(comparison_windows)} fusion={len(fusion_windows)}.",
+            "Window count mismatch "
+            f"comparison={len(comparison_windows)} "
+            f"fusion={len(champion_report['window_records'])}.",
         )
+    validate_window_alignment(comparison_windows, fusion_windows)
 
-    champion_summary = fusion["summary"][args.champion_key]
-    mean_test_ic = float(champion_summary["mean_ic"])
+    mean_test_ic = champion_report["mean_ic"]
     window_ic_series = pd.Series(
-        [float(window[f"{args.champion_key}_ic"]) for window in fusion_windows],
-        index=[str(window["window_id"]) for window in fusion_windows],
+        [float(window["ic"]) for window in champion_report["window_records"]],
+        index=[str(window["window_id"]) for window in champion_report["window_records"]],
         name="window_ic",
         dtype=float,
     )
@@ -114,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
         "passed": bool(mean_test_ic > args.ic_threshold),
         "positive_windows": int((window_ic_series > 0.0).sum()),
         "n_windows": int(len(window_ic_series)),
-        "source": f"{fusion_path}:{args.champion_key}",
+        "source": f"{fusion_path}:{args.champion_key}:{champion_report['report_format']}",
     }
 
     ttest_result = run_ic_ttest(window_ic_series, alternative="greater", alpha=args.alpha)
@@ -204,6 +213,7 @@ def main(argv: list[str] | None = None) -> int:
         "artifacts": {
             "comparison_report": str(comparison_path),
             "fusion_report": str(fusion_path),
+            "fusion_report_format": champion_report["report_format"],
             "tracking_uri": tracking_uri,
         },
         "series_reconstruction": {
@@ -231,6 +241,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--comparison-report", default=DEFAULT_COMPARISON_REPORT)
     parser.add_argument("--fusion-report", default=DEFAULT_FUSION_REPORT)
+    parser.add_argument(
+        "--fusion-report-format",
+        choices=("auto", "fusion", "comparison"),
+        default=DEFAULT_FUSION_REPORT_FORMAT,
+    )
     parser.add_argument("--output", default=DEFAULT_OUTPUT_PATH)
     parser.add_argument("--champion-key", default=DEFAULT_CHAMPION_KEY)
     parser.add_argument("--all-features-path", default=DEFAULT_ALL_FEATURES_PATH)
@@ -263,6 +278,113 @@ def configure_logging() -> None:
         level="INFO",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level:<8} | {message}",
     )
+
+
+def normalize_champion_report(
+    payload: dict[str, Any],
+    *,
+    champion_key: str,
+    report_format: str,
+    window_limit: int | None,
+) -> dict[str, Any]:
+    resolved_format = detect_champion_report_format(payload, requested=report_format)
+    summary = payload.get("summary")
+    if not isinstance(summary, dict):
+        raise KeyError("Champion report is missing a summary payload.")
+    if champion_key not in summary:
+        raise KeyError(
+            f"Champion key {champion_key!r} is not present in report summary. "
+            f"Available keys: {sorted(summary.keys())}",
+        )
+
+    champion_summary = summary[champion_key]
+    if resolved_format == "fusion":
+        raw_windows = select_windows(payload.get("per_window", []), limit=window_limit)
+        mean_ic = float(champion_summary["mean_ic"])
+        window_records = [
+            {
+                "window_id": str(window["window_id"]),
+                "ic": float(window[f"{champion_key}_ic"]),
+                "raw_window": window,
+            }
+            for window in raw_windows
+        ]
+    else:
+        raw_windows = select_windows(payload.get("windows", []), limit=window_limit)
+        mean_ic = float(champion_summary["mean_test_ic"])
+        window_records = []
+        for window in raw_windows:
+            results = window.get("results", {})
+            champion_result = results.get(champion_key)
+            if not isinstance(champion_result, dict):
+                raise KeyError(
+                    f"Window {window.get('window_id')} is missing results for champion {champion_key!r}.",
+                )
+            test_metrics = champion_result.get("test_metrics", {})
+            if "ic" not in test_metrics:
+                raise KeyError(
+                    f"Window {window.get('window_id')} champion {champion_key!r} is missing test_metrics.ic.",
+                )
+            window_records.append(
+                {
+                    "window_id": str(window["window_id"]),
+                    "ic": float(test_metrics["ic"]),
+                    "raw_window": window,
+                },
+            )
+
+    if not window_records:
+        raise RuntimeError("Champion report does not contain any selected windows.")
+
+    return {
+        "report_format": resolved_format,
+        "mean_ic": mean_ic,
+        "summary": champion_summary,
+        "window_records": window_records,
+    }
+
+
+def detect_champion_report_format(payload: dict[str, Any], *, requested: str) -> str:
+    if requested == "fusion":
+        return "fusion"
+    if requested == "comparison":
+        return "comparison"
+    if isinstance(payload.get("per_window"), list):
+        return "fusion"
+    if isinstance(payload.get("windows"), list):
+        return "comparison"
+    raise RuntimeError(
+        "Unable to auto-detect fusion report format. "
+        "Expected either 'per_window' (fusion_analysis) or 'windows' (walkforward_comparison).",
+    )
+
+
+def validate_window_alignment(
+    comparison_windows: list[dict[str, Any]],
+    fusion_windows: list[dict[str, Any]],
+) -> None:
+    for position, (comparison_window, fusion_window) in enumerate(
+        zip(comparison_windows, fusion_windows, strict=True),
+        start=1,
+    ):
+        comparison_id = str(comparison_window.get("window_id", f"W{position}"))
+        fusion_id = str(fusion_window.get("window_id", f"W{position}"))
+        if comparison_id != fusion_id:
+            raise RuntimeError(
+                f"Window ID mismatch at position {position}: comparison={comparison_id} fusion={fusion_id}.",
+            )
+
+        comparison_dates = extract_window_dates(comparison_window)
+        fusion_dates = extract_window_dates(fusion_window)
+        if (
+            comparison_dates["test_start"] != fusion_dates["test_start"]
+            or comparison_dates["test_end"] != fusion_dates["test_end"]
+        ):
+            raise RuntimeError(
+                "Test window mismatch at position "
+                f"{position}: comparison=({comparison_dates['test_start']},{comparison_dates['test_end']}) "
+                f"fusion=({fusion_dates['test_start']},{fusion_dates['test_end']}).",
+            )
 
 
 def reconstruct_daily_artifacts(

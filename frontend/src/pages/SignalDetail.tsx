@@ -727,139 +727,115 @@ const SignalDetail = ({
         </button>
       </div>
 
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-center fade-in-up stagger-1">
-        <div className="flex items-start gap-6 min-w-0">
-          <div className="w-16 h-16 rounded-[24px] bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-2xl">
-            <span className="text-2xl font-black text-primary">{normalizedTicker[0]}</span>
+      <div className="flex flex-col gap-4">
+        {/* Row 1: Primary Entity Info */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center flex-shrink-0">
+              <span className="text-2xl font-black text-foreground">{normalizedTicker[0]}</span>
+            </div>
+            
+            <div className="flex items-center gap-3 min-w-0">
+              <h2 className="text-2xl font-black text-foreground tracking-tight flex-shrink-0">{detail?.ticker ?? normalizedTicker}</h2>
+              <span className="text-sm font-bold text-muted-foreground truncate max-w-[240px]">
+                · {detail?.company_name}
+              </span>
+              {detail?.sector && (
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border flex-shrink-0"
+                  style={{
+                    backgroundColor: getSectorColor(detail.sector).bg,
+                    color: getSectorColor(detail.sector).text,
+                    borderColor: getSectorColor(detail.sector).border,
+                  }}
+                >
+                  {detail.sector}
+                </span>
+              )}
+              {detail?.industry && (
+                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider bg-white/5 px-2 py-0.5 rounded border border-white/5 flex-shrink-0">
+                  {detail.industry}
+                </span>
+              )}
+            </div>
           </div>
 
-          {detailQuery.isLoading && !detail ? (
-            <div className="space-y-3 animate-pulse min-w-[300px]">
-              <div className="h-8 w-48 rounded-lg bg-muted" />
-              <div className="h-5 w-72 rounded-lg bg-muted" />
-              <div className="h-4 w-64 rounded-lg bg-muted" />
-            </div>
-          ) : (
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-3xl font-black text-foreground tracking-tight">{detail?.ticker ?? normalizedTicker}</h2>
-                {prediction && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full border shadow-xl ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/30 text-bull" : "bg-bear/10 border-bear/20 text-bear"}`}>
-                      <span className="text-xs font-black uppercase tracking-tighter">
-                        Score: {prediction.fusion_score.toFixed(4)}
-                      </span>
-                      <div className="w-1 h-1 rounded-full bg-current opacity-40" />
-                      <span className="text-xs font-black">
-                        Rank #{prediction.rank}
-                      </span>
-                      <div className="w-1 h-1 rounded-full bg-current opacity-40" />
-                      <span className="text-xs font-black">
-                        Top {prediction.percentile.toFixed(1)}%
-                      </span>
-                    </div>
-                    
-                    {/* Confidence Badge */}
-                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] border shadow-sm ${
-                      prediction.confidence === "high" ? "bg-bull/10 border-bull/30 text-bull" :
-                      prediction.confidence === "medium" ? "bg-amber-500/10 border-amber-500/30 text-amber-500" :
-                      "bg-bear/10 border-bear/30 text-bear"
-                    }`}>
-                      {prediction.confidence} confidence
-                    </div>
-
-                    <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 bg-muted/30 px-2.5 py-1 rounded-lg border border-white/5 shadow-inner">
-                      {Math.round(prediction.model_agreement * 100)}% Consensus
-                    </div>
-                  </div>
-                )}
-                {predictionQuery.isLoading && (
-                  <div className="h-7 w-48 bg-muted animate-pulse rounded-full" />
-                )}
-                {isPrediction404 && (
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full border bg-muted/30 border-white/5 text-muted-foreground/50 shadow-inner">
-                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">No Active Signal</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-3 mt-2">
-                <p className="text-sm font-bold text-muted-foreground tracking-wide">
-                  {detail?.company_name || "Loading entity information..."}
-                </p>
-                {detail?.sector && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                    <span
-                      className="text-[10px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded border shadow-sm"
-                      style={{
-                        backgroundColor: getSectorColor(detail.sector).bg,
-                        color: getSectorColor(detail.sector).text,
-                        borderColor: getSectorColor(detail.sector).border,
-                      }}
-                    >
-                      {detail.sector}
-                    </span>
-                  </div>
-                )}
-                {detail?.industry && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                    <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded border border-white/5">
-                      {detail.industry}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <p className="text-[10px] font-bold text-muted-foreground/40 mt-2 uppercase tracking-[0.2em]">
-                {detail?.ipo_date ? `Established ${formatDate(detail.ipo_date)} · ` : ""}
-                {latestPrice?.trade_date ? `Latest Update ${formatDate(latestPrice.trade_date)}` : "Awaiting exchange feed"}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="xl:ml-auto flex flex-col gap-4 xl:items-end">
-          {detailQuery.isLoading && !detail ? (
-            <div className="space-y-2 animate-pulse xl:text-right">
-              <div className="h-10 w-48 rounded-lg bg-muted" />
-              <div className="h-6 w-32 rounded-lg bg-muted" />
-            </div>
-          ) : (
-            <div className="xl:text-right">
-              <div className="text-4xl font-black text-foreground font-mono tracking-tighter number-animate drop-shadow-2xl">
+          <div className="flex items-center gap-6 flex-shrink-0">
+            <div className="text-right">
+              <div className="text-3xl font-black text-foreground font-mono tracking-tighter">
                 {formatCurrency(latestPrice?.close)}
               </div>
               <div
-                className={`text-sm font-black font-mono mt-1 flex items-center justify-end gap-2 ${
+                className={`text-sm font-bold font-mono mt-0.5 flex items-center justify-end gap-1.5 ${
                   getTrend(latestPrice?.change_pct) === "down" ? "text-bear" : "text-bull"
                 }`}
               >
                 {getTrend(latestPrice?.change_pct) === "up" ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                {formatCurrency(latestPrice?.change)} · {formatPercent(latestPrice?.change_pct)}
+                {formatCurrency(latestPrice?.change)} ({formatPercent(latestPrice?.change_pct)})
               </div>
             </div>
-          )}
+          </div>
+        </div>
 
-          <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-primary/5 border border-primary/20 shadow-inner">
-            <ShieldCheck size={14} className="text-primary opacity-60" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">
-              Model Verified Outcome
+        <div className="h-px bg-white/5" />
+
+        {/* Row 2: Signal Metadata */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {predictionQuery.isLoading && !prediction ? (
+              <div className="h-6 w-64 bg-muted animate-pulse rounded-lg" />
+            ) : prediction ? (
+              <>
+                <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border shadow-sm ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/20 text-bull" : "bg-bear/10 border-bear/20 text-bear"}`}>
+                  <Target size={12} />
+                  {prediction.fusion_score > 0 ? "Long Signal" : "Short Signal"}
+                </div>
+                
+                <span className="text-[11px] font-bold text-foreground font-mono">
+                  Score: {prediction.fusion_score.toFixed(4)}
+                </span>
+
+                <span className="text-[11px] font-bold text-muted-foreground/80">
+                  Rank #{prediction.rank} · Top {prediction.percentile.toFixed(1)}%
+                </span>
+
+                <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border ${
+                  prediction.confidence === "high" ? "bg-bull/10 border-bull/20 text-bull" :
+                  prediction.confidence === "medium" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                  "bg-bear/10 border-bear/20 text-bear"
+                }`}>
+                  {prediction.confidence} confidence
+                </div>
+
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                  {Math.round(prediction.model_agreement * 100)}% Consensus
+                </span>
+              </>
+            ) : isPrediction404 ? (
+              <div className="flex items-center gap-2 px-2 py-0.5 rounded-lg border bg-muted/30 border-white/5 text-muted-foreground/50">
+                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">No Active Signal</span>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex items-center gap-1.5 opacity-40">
+            <ShieldCheck size={12} className="text-muted-foreground" />
+            <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+              Model Verified Outcome · Institutional use only
             </span>
           </div>
         </div>
       </div>
 
-      <div className="h-px bg-white/5" />
-
-      <div className="flex gap-1.5 bg-muted/20 backdrop-blur-md rounded-2xl p-1.5 w-fit fade-in-up stagger-1 border border-white/5 shadow-inner">
+      <div className="flex gap-1 bg-muted rounded-xl p-1 w-fit mt-2">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 relative ${
+            className={`px-6 py-2 rounded-lg text-sm font-medium capitalize transition-all duration-200 relative ${
               activeTab === tab
-                ? "bg-card text-primary shadow-2xl border border-white/10 scale-[1.02]"
+                ? "bg-card text-foreground shadow-custom"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >

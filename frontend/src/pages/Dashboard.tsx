@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect, type CSSProperties } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Info, Layers, BarChart2 } from "lucide-react";
 import StatCard from "../components/StatCard";
@@ -146,6 +146,13 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
   const [isJelly, setIsJelly] = useState(false);
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const rangeSelectorRef = useRef<HTMLDivElement>(null);
+  const rangeButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [rangeSliderStyle, setRangeSliderStyle] = useState<CSSProperties>({
+    width: 0,
+    transform: "translateX(0px)",
+    opacity: 0,
+  });
 
   const selectedRange =
     DASHBOARD_RANGES.find((range) => range.key === selectedRangeKey) ?? DASHBOARD_RANGES[1];
@@ -222,6 +229,43 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
       setActiveTicker(topSignals[0].ticker);
     }
   }, [topSignals, chartTicker, activeTicker]);
+
+  useLayoutEffect(() => {
+    const updateRangeSlider = () => {
+      const selectedIndex = DASHBOARD_RANGES.findIndex((range) => range.key === selectedRangeKey);
+      const button = rangeButtonRefs.current[selectedIndex];
+
+      if (!button) {
+        setRangeSliderStyle((current) => ({ ...current, opacity: 0 }));
+        return;
+      }
+
+      setRangeSliderStyle({
+        width: button.offsetWidth,
+        transform: `translateX(${Math.max(0, button.offsetLeft - 4)}px)`,
+        opacity: 1,
+      });
+    };
+
+    updateRangeSlider();
+
+    const resizeObserver = new ResizeObserver(updateRangeSlider);
+    const container = rangeSelectorRef.current;
+    if (container) {
+      resizeObserver.observe(container);
+    }
+    rangeButtonRefs.current.forEach((button) => {
+      if (button) {
+        resizeObserver.observe(button);
+      }
+    });
+    window.addEventListener("resize", updateRangeSlider);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateRangeSlider);
+    };
+  }, [selectedRangeKey]);
 
   const handleTickerToChart = useCallback((ticker: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -339,14 +383,22 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
                 {indices?.end_date ? ` · through ${indices.end_date}` : ""}
               </p>
             </div>
-            <div className="flex items-center gap-1 bg-accent/50 p-1 rounded-lg">
-              {DASHBOARD_RANGES.map((range) => (
+            <div ref={rangeSelectorRef} className="relative flex items-center gap-1 bg-accent/50 p-1 rounded-lg">
+              <div
+                aria-hidden="true"
+                className="absolute bottom-1 left-1 top-1 rounded-md bg-card shadow-sm transition-all duration-300 ease-out"
+                style={rangeSliderStyle}
+              />
+              {DASHBOARD_RANGES.map((range, index) => (
                 <button
                   key={range.key}
+                  ref={(node) => {
+                    rangeButtonRefs.current[index] = node;
+                  }}
                   onClick={() => setSelectedRangeKey(range.key)}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                  className={`relative z-10 px-3 py-1 text-[10px] font-bold rounded-md transition-colors duration-300 ${
                     selectedRangeKey === range.key
-                      ? "bg-card text-foreground shadow-sm"
+                      ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >

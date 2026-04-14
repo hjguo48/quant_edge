@@ -38,6 +38,8 @@ const SignalRow = ({
     <div
       data-cmp="SignalRow"
       onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className="flex items-center gap-4 px-5 py-3.5 border-b border-border last:border-0 cursor-pointer transition-all duration-200"
     >
       {/* Ticker */}
@@ -82,7 +84,7 @@ const SignalRow = ({
 
       {/* Trend */}
       <div className="w-24 flex justify-center flex-shrink-0">
-        <MiniSparkline data={sparkData} positive={isPositive} width={80} height={32} />
+        <MiniSparkline data={sparkData} positive={isPositive} width={80} height={32} animated={hovered} />
       </div>
 
       {/* Sector */}

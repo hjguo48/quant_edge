@@ -18,6 +18,7 @@ from src.data.db.session import get_session_factory
 from src.features.fundamental import FUNDAMENTAL_FEATURE_NAMES, compute_fundamental_features
 from src.features.macro import MACRO_FEATURE_NAMES, compute_macro_features
 from src.features.preprocessing import preprocess_features
+from src.features.sector import SECTOR_RELATIVE_RETAINED, compute_sector_relative_from_raw_features
 from src.features.technical import TECHNICAL_FEATURE_NAMES, compute_technical_features
 
 COMPOSITE_FEATURE_NAMES = (
@@ -79,7 +80,10 @@ class FeaturePipeline:
                 as_of_ts.date(),
                 end,
             )
-        history_start = start - timedelta(days=400)
+        # Residual-momentum features need roughly 252 regression days plus a
+        # 60-day aggregation window, so the raw PIT pull needs a wider buffer
+        # than the original 400-calendar-day lookback.
+        history_start = start - timedelta(days=520)
 
         logger.info(
             "running feature pipeline for {} tickers from {} to {} as_of {}",
@@ -88,8 +92,9 @@ class FeaturePipeline:
             end,
             as_of_ts,
         )
+        price_tickers = tuple(dict.fromkeys([*normalized_tickers, "SPY"]))
         prices = get_prices_pit(
-            tickers=normalized_tickers,
+            tickers=price_tickers,
             start_date=history_start,
             end_date=end,
             as_of=as_of_ts,
@@ -100,12 +105,16 @@ class FeaturePipeline:
 
         prices["trade_date"] = pd.to_datetime(prices["trade_date"]).dt.date
         prices.sort_values(["ticker", "trade_date"], inplace=True)
-        output_prices = prices.loc[(prices["trade_date"] >= start) & (prices["trade_date"] <= end)].copy()
+        stock_prices = prices.loc[prices["ticker"].isin(normalized_tickers)].copy()
+        market_prices = prices.loc[prices["ticker"] == "SPY"].copy()
+        output_prices = stock_prices.loc[
+            (stock_prices["trade_date"] >= start) & (stock_prices["trade_date"] <= end)
+        ].copy()
         if output_prices.empty:
             logger.warning("feature pipeline has no prices inside the requested output window")
             return _empty_feature_frame()
 
-        technical = compute_technical_features(prices)
+        technical = compute_technical_features(stock_prices, market_prices_df=market_prices)
         technical = technical.loc[
             (technical["trade_date"] >= start)
             & (technical["trade_date"] <= end)
@@ -134,6 +143,18 @@ class FeaturePipeline:
         base_features = pd.concat([technical, fundamentals, macro], ignore_index=True)
         composite = compute_composite_features(base_features)
         all_features = pd.concat([base_features, composite], ignore_index=True)
+
+        # S1.4: Sector-relative features (computed from raw fundamentals before rank normalization)
+        sector_rel_frames: list[pd.DataFrame] = []
+        for td in sorted(set(fundamentals["trade_date"].unique()) if not fundamentals.empty else []):
+            td_date = td if isinstance(td, date) else td.date() if hasattr(td, "date") else td
+            cross_section = all_features.loc[all_features["trade_date"] == td]
+            sector_rel = compute_sector_relative_from_raw_features(cross_section, td_date)
+            if not sector_rel.empty:
+                sector_rel_frames.append(sector_rel)
+        if sector_rel_frames:
+            all_features = pd.concat([all_features, *sector_rel_frames], ignore_index=True)
+
         # TODO(phase1-w3-w4): IMPLEMENTATION_PLAN 3.10 IC-based feature screening
         # remains notebook/report work and is intentionally outside this pipeline.
         processed = preprocess_features(all_features)

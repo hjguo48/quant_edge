@@ -408,6 +408,113 @@ def test_compute_fundamental_features_uses_pit_shares_for_market_cap_dependent_f
     assert feature_map["ev_ebitda"] == pytest.approx((5000.0 + 35.0 - 5.0) / (18.0 + 19.0 + 20.0 + 21.0))
 
 
+def test_compute_fundamental_features_includes_accruals_and_asset_growth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pit_frame = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "fiscal_period": fiscal_period,
+                "metric_name": metric_name,
+                "metric_value": metric_value,
+                "event_time": event_time,
+            }
+            for fiscal_period, event_time, metric_values in [
+                (
+                    "2023Q1",
+                    date(2023, 3, 31),
+                    {
+                        "revenue": 100.0,
+                        "net_income": 8.0,
+                        "total_assets": 100.0,
+                        "total_liabilities": 40.0,
+                        "weighted_average_shares_outstanding": 100.0,
+                        "operating_cash_flow": 7.0,
+                        "ebitda": 15.0,
+                        "eps": 1.0,
+                        "cash": 5.0,
+                    },
+                ),
+                (
+                    "2023Q2",
+                    date(2023, 6, 30),
+                    {
+                        "revenue": 105.0,
+                        "net_income": 9.0,
+                        "total_assets": 110.0,
+                        "total_liabilities": 42.0,
+                        "weighted_average_shares_outstanding": 100.0,
+                        "operating_cash_flow": 8.0,
+                        "ebitda": 16.0,
+                        "eps": 1.1,
+                        "cash": 5.0,
+                    },
+                ),
+                (
+                    "2023Q3",
+                    date(2023, 9, 30),
+                    {
+                        "revenue": 110.0,
+                        "net_income": 10.0,
+                        "total_assets": 120.0,
+                        "total_liabilities": 44.0,
+                        "weighted_average_shares_outstanding": 100.0,
+                        "operating_cash_flow": 8.5,
+                        "ebitda": 17.0,
+                        "eps": 1.2,
+                        "cash": 5.0,
+                    },
+                ),
+                (
+                    "2023Q4",
+                    date(2023, 12, 31),
+                    {
+                        "revenue": 120.0,
+                        "net_income": 12.0,
+                        "total_assets": 130.0,
+                        "total_liabilities": 46.0,
+                        "weighted_average_shares_outstanding": 100.0,
+                        "operating_cash_flow": 10.0,
+                        "ebitda": 18.0,
+                        "eps": 1.3,
+                        "cash": 5.0,
+                    },
+                ),
+                (
+                    "2024Q1",
+                    date(2024, 3, 31),
+                    {
+                        "revenue": 125.0,
+                        "net_income": 16.0,
+                        "total_assets": 140.0,
+                        "total_liabilities": 50.0,
+                        "weighted_average_shares_outstanding": 100.0,
+                        "operating_cash_flow": 12.0,
+                        "ebitda": 20.0,
+                        "eps": 1.4,
+                        "cash": 5.0,
+                    },
+                ),
+            ]
+            for metric_name, metric_value in metric_values.items()
+        ],
+    )
+    prices = pd.DataFrame(
+        [
+            {"ticker": "AAA", "trade_date": date(2024, 5, 15), "close": 50.0},
+        ],
+    )
+
+    monkeypatch.setattr(fundamental_module, "get_fundamentals_pit", lambda *args, **kwargs: pit_frame)
+
+    features = compute_fundamental_features("AAA", date(2024, 5, 15), prices)
+    feature_map = {row.feature_name: row.feature_value for row in features.itertuples(index=False)}
+
+    assert feature_map["accruals"] == pytest.approx((16.0 - 12.0) / 140.0)
+    assert feature_map["asset_growth"] == pytest.approx((140.0 - 100.0) / 100.0)
+
+
 def test_compute_fundamental_features_ignore_current_stock_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -554,6 +661,8 @@ def test_compute_technical_features_includes_expected_outputs(
     ].iloc[0]
 
     assert "macd_histogram" in set(features["feature_name"])
+    assert "residual_momentum" in set(features["feature_name"])
+    assert "idio_vol" in set(features["feature_name"])
     assert latest_ret_5d == pytest.approx((179.5 - 174.5) / 174.5)
 
 
@@ -622,6 +731,87 @@ def test_compute_technical_features_turnover_rate_uses_pit_shares_by_trade_date(
     assert turnover_day_two == pytest.approx(5.0)
 
 
+def test_compute_technical_features_loads_spy_market_proxy_for_residual_features(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    trade_dates = pd.bdate_range("2023-01-02", periods=330).date
+    market_returns = np.array([0.0008 + 0.0004 * np.sin(idx / 11.0) for idx in range(len(trade_dates))], dtype=float)
+    residual_component = np.array([0.0015 * np.sin(idx / 7.0) for idx in range(len(trade_dates))], dtype=float)
+    stock_returns = 0.0004 + 1.2 * market_returns + residual_component
+
+    def build_price_frame(ticker: str, returns: np.ndarray, base_price: float) -> pd.DataFrame:
+        close = base_price * np.cumprod(1.0 + returns)
+        open_ = np.concatenate([[base_price], close[:-1]])
+        return pd.DataFrame(
+            {
+                "ticker": ticker,
+                "trade_date": trade_dates,
+                "open": open_,
+                "high": close * 1.01,
+                "low": close * 0.99,
+                "close": close,
+                "adj_close": close,
+                "volume": 1_000_000.0,
+                "knowledge_time": [
+                    pd.Timestamp(trade_date).tz_localize("UTC") + pd.Timedelta(days=1)
+                    for trade_date in trade_dates
+                ],
+            },
+        )
+
+    stock_prices = build_price_frame("AAA", stock_returns, 100.0)
+    spy_prices = build_price_frame("SPY", market_returns, 400.0)
+    requested_tickers: list[str] = []
+
+    monkeypatch.setattr(
+        technical_module,
+        "_load_pit_shares_outstanding",
+        lambda date_pairs: pd.DataFrame(columns=["ticker", "trade_date", "pit_shares_outstanding"]),
+    )
+
+    def fake_get_prices_pit(*, tickers: list[str], start_date: date, end_date: date, as_of: datetime) -> pd.DataFrame:
+        requested_tickers.extend(tickers)
+        assert tickers == ["SPY"]
+        assert start_date == trade_dates[0]
+        assert end_date == trade_dates[-1]
+        assert as_of.tzinfo is not None
+        return spy_prices
+
+    monkeypatch.setattr(technical_module, "get_prices_pit", fake_get_prices_pit)
+
+    features = compute_technical_features(stock_prices)
+    latest_date = trade_dates[-1]
+    residual_momentum = features.loc[
+        (features["ticker"] == "AAA")
+        & (features["trade_date"] == latest_date)
+        & (features["feature_name"] == "residual_momentum"),
+        "feature_value",
+    ].iloc[0]
+    idio_vol = features.loc[
+        (features["ticker"] == "AAA")
+        & (features["trade_date"] == latest_date)
+        & (features["feature_name"] == "idio_vol"),
+        "feature_value",
+    ].iloc[0]
+
+    market_series = pd.Series(market_returns)
+    stock_series = pd.Series(stock_returns)
+    x_mean = market_series.rolling(252, min_periods=252).mean()
+    y_mean = stock_series.rolling(252, min_periods=252).mean()
+    xy_mean = (market_series * stock_series).rolling(252, min_periods=252).mean()
+    xx_mean = (market_series * market_series).rolling(252, min_periods=252).mean()
+    beta = (xy_mean - (x_mean * y_mean)) / (xx_mean - (x_mean * x_mean))
+    alpha = y_mean - beta * x_mean
+    residuals = stock_series - (alpha + beta * market_series)
+    expected_residual_momentum = residuals.rolling(60, min_periods=60).sum().iloc[-1]
+    expected_idio_vol = residuals.rolling(60, min_periods=60).std(ddof=0).iloc[-1]
+
+    assert requested_tickers == ["SPY"]
+    assert residual_momentum == pytest.approx(expected_residual_momentum)
+    assert idio_vol == pytest.approx(expected_idio_vol)
+    assert idio_vol > 0.0
+
+
 def test_compute_composite_features_outputs_expected_feature_names() -> None:
     base_features = pd.DataFrame(
         [
@@ -657,9 +847,9 @@ def test_compute_composite_features_outputs_expected_feature_names() -> None:
     assert "macro_risk_on" in set(composite["feature_name"])
 
 
-def test_feature_registry_pre_registers_75_features() -> None:
+def test_feature_registry_pre_registers_79_features() -> None:
     registry = FeatureRegistry()
-    assert len(registry.list_features()) == 75
+    assert len(registry.list_features()) == 79
 
 
 def test_compute_macro_features_uses_baa_minus_aaa_credit_spread(

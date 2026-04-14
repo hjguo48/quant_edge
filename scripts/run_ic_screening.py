@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import lru_cache
 import gc
 import json
+import os
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 import sys
 from typing import Any
+import uuid
 
 from loguru import logger
 import numpy as np
@@ -46,6 +49,7 @@ AS_OF_DATE = date(2026, 3, 31)
 LABEL_BUFFER_DAYS = 120
 FEATURE_BATCH_SIZE = 25
 FEATURE_PROGRESS_INTERVAL = 50
+DEFAULT_MAX_WORKERS = min(12, max(1, (os.cpu_count() or 1) - 1))
 IC_THRESHOLD = 0.01
 HORIZON_DAYS = 5
 SIGN_CONSISTENCY_THRESHOLD = 0.6
@@ -106,6 +110,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("as_of must be on or after feature_end_date.")
     if args.batch_size <= 0:
         raise ValueError("batch_size must be positive.")
+    if args.max_workers <= 0:
+        raise ValueError("max_workers must be positive.")
 
     feature_output_path = REPO_ROOT / args.feature_output
     label_output_path = REPO_ROOT / args.label_output
@@ -130,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
         feature_end=feature_end,
         as_of=as_of,
         batch_size=args.batch_size,
+        max_workers=args.max_workers,
         progress_interval=args.progress_interval,
         feature_output_path=feature_output_path,
         batch_dir=batch_dir,
@@ -171,6 +178,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--as-of", default=AS_OF_DATE.isoformat())
     parser.add_argument("--label-buffer-days", type=int, default=LABEL_BUFFER_DAYS)
     parser.add_argument("--batch-size", type=int, default=FEATURE_BATCH_SIZE)
+    parser.add_argument("--max-workers", type=int, default=DEFAULT_MAX_WORKERS)
     parser.add_argument("--progress-interval", type=int, default=FEATURE_PROGRESS_INTERVAL)
     parser.add_argument("--horizon", type=int, default=HORIZON_DAYS)
     parser.add_argument("--ic-threshold", type=float, default=IC_THRESHOLD)
@@ -220,7 +228,12 @@ def install_runtime_optimizations() -> None:
     pipeline_module.compute_fundamental_features = compute_fundamental_features_fast
     pipeline_module.compute_macro_features = compute_macro_features_cached
     pipeline_module.preprocess_features = preprocess_candidate_features
-    logger.info("installed runtime optimizations for fundamental PIT reuse, macro caching, and candidate-only preprocessing")
+    pipeline_module.FeaturePipeline.run = run_feature_pipeline_fast
+    logger.info(
+        "installed runtime optimizations for batch-level fundamentals preload, "
+        "single-query SPY reuse, macro caching, candidate-only preprocessing, "
+        "and fast screening pipeline execution",
+    )
 
 
 def preprocess_candidate_features(features_df: pd.DataFrame, method: str = "rank") -> pd.DataFrame:
@@ -244,6 +257,8 @@ def compute_fundamental_features_fast(
     ticker: str,
     as_of: date | datetime,
     prices_df: pd.DataFrame,
+    *,
+    raw_pit: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     if prices_df.empty:
         return fundamental_module._empty_feature_frame()
@@ -259,10 +274,11 @@ def compute_fundamental_features_fast(
     if prepared_prices.empty:
         return fundamental_module._empty_feature_frame()
 
-    raw_pit = load_raw_fundamentals_history(
-        ticker=ticker.upper(),
-        max_trade_date=prepared_prices["trade_date"].max(),
-    )
+    if raw_pit is None:
+        raw_pit = load_raw_fundamentals_history(
+            ticker=ticker.upper(),
+            max_trade_date=prepared_prices["trade_date"].max(),
+        )
     active_rows: dict[tuple[str, str], dict[str, Any]] = {}
     active_frame = fundamental_module._empty_feature_frame()
     current_history = pd.DataFrame()
@@ -314,68 +330,134 @@ def compute_fundamental_features_fast(
     return feature_frame
 
 
+def run_feature_pipeline_fast(
+    self: FeaturePipeline,
+    tickers: list[str] | tuple[str, ...],
+    start_date: date | datetime,
+    end_date: date | datetime,
+    as_of: date | datetime,
+) -> pd.DataFrame:
+    normalized_tickers = tuple(dict.fromkeys(ticker.strip().upper() for ticker in tickers if ticker))
+    if not normalized_tickers:
+        raise ValueError("At least one ticker is required.")
+
+    start = pipeline_module._coerce_date(start_date)
+    end = pipeline_module._coerce_date(end_date)
+    as_of_ts = pipeline_module._coerce_as_of_datetime(as_of)
+    if as_of_ts.date() < end:
+        raise ValueError("as_of must be on or after end_date for PIT feature generation.")
+
+    history_start = start - timedelta(days=520)
+    price_tickers = tuple(dict.fromkeys([*normalized_tickers, "SPY"]))
+    logger.info(
+        "running fast feature pipeline for {} tickers from {} to {} as_of {}",
+        len(normalized_tickers),
+        start,
+        end,
+        as_of_ts,
+    )
+    prices = get_prices_pit(
+        tickers=price_tickers,
+        start_date=history_start,
+        end_date=end,
+        as_of=as_of_ts,
+    )
+    if prices.empty:
+        logger.warning("fast feature pipeline found no PIT prices for requested tickers")
+        return pipeline_module._empty_feature_frame()
+
+    prices["trade_date"] = pd.to_datetime(prices["trade_date"]).dt.date
+    prices.sort_values(["ticker", "trade_date"], inplace=True)
+    stock_prices = prices.loc[prices["ticker"].isin(normalized_tickers)].copy()
+    market_prices = prices.loc[prices["ticker"] == "SPY"].copy()
+    output_prices = stock_prices.loc[
+        (stock_prices["trade_date"] >= start) & (stock_prices["trade_date"] <= end)
+    ].copy()
+    if output_prices.empty:
+        logger.warning("fast feature pipeline has no prices inside the requested output window")
+        return pipeline_module._empty_feature_frame()
+
+    technical = pipeline_module.compute_technical_features(
+        stock_prices,
+        market_prices_df=market_prices,
+    )
+    technical = technical.loc[
+        (technical["trade_date"] >= start)
+        & (technical["trade_date"] <= end)
+        & (technical["ticker"].isin(normalized_tickers))
+    ].copy()
+
+    raw_fundamentals = load_raw_fundamentals_history_batch(
+        tickers=normalized_tickers,
+        max_trade_date=output_prices["trade_date"].max(),
+    )
+    raw_fundamentals_by_ticker = {
+        str(ticker).upper(): frame.reset_index(drop=True)
+        for ticker, frame in raw_fundamentals.groupby("ticker", sort=False)
+    }
+    empty_raw_history = empty_raw_fundamentals_history()
+
+    fundamental_frames: list[pd.DataFrame] = []
+    for ticker in normalized_tickers:
+        ticker_prices = output_prices.loc[output_prices["ticker"] == ticker]
+        if ticker_prices.empty:
+            continue
+        fundamental_frames.append(
+            compute_fundamental_features_fast(
+                ticker=ticker,
+                as_of=as_of_ts,
+                prices_df=ticker_prices,
+                raw_pit=raw_fundamentals_by_ticker.get(ticker, empty_raw_history),
+            ),
+        )
+    fundamentals = (
+        pd.concat(fundamental_frames, ignore_index=True)
+        if fundamental_frames
+        else pipeline_module._empty_feature_frame()
+    )
+
+    macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
+    base_features = pd.concat([technical, fundamentals, macro], ignore_index=True)
+    composite = pipeline_module.compute_composite_features(base_features)
+    all_features = pd.concat([base_features, composite], ignore_index=True)
+
+    sector_rel_frames: list[pd.DataFrame] = []
+    for td in sorted(set(fundamentals["trade_date"].unique()) if not fundamentals.empty else []):
+        td_date = td if isinstance(td, date) else td.date() if hasattr(td, "date") else td
+        cross_section = all_features.loc[all_features["trade_date"] == td]
+        sector_rel = pipeline_module.compute_sector_relative_from_raw_features(cross_section, td_date)
+        if not sector_rel.empty:
+            sector_rel_frames.append(sector_rel)
+    if sector_rel_frames:
+        all_features = pd.concat([all_features, *sector_rel_frames], ignore_index=True)
+
+    processed = pipeline_module.preprocess_features(all_features)
+    batch_id = str(uuid.uuid4())
+    self.last_batch_id = batch_id
+    processed.attrs["batch_id"] = batch_id
+    logger.info("fast feature pipeline completed batch {} with {} rows", batch_id, len(processed))
+    return processed
+
+
 def calculate_feature_snapshot_from_history(*, history: pd.DataFrame, price: float) -> dict[str, float]:
-    features = {feature_name: np.nan for feature_name in fundamental_module.FUNDAMENTAL_FEATURE_NAMES}
-    if history.empty:
-        return features
-
-    latest = history.iloc[-1]
-    shares_outstanding = fundamental_module._latest_metric(history, "weighted_average_shares_outstanding")
-    market_cap = fundamental_module._market_cap(price, shares_outstanding)
-    equity = fundamental_module._safe_subtract(latest.get("total_assets"), latest.get("total_liabilities"))
-    revenue_ttm = fundamental_module._ttm(history, "revenue")
-    eps_ttm = fundamental_module._ttm(history, "eps")
-    operating_cash_flow_ttm = fundamental_module._ttm(history, "operating_cash_flow")
-    free_cash_flow_ttm = fundamental_module._free_cash_flow_ttm(history, operating_cash_flow_ttm)
-    ebitda_ttm = fundamental_module._ttm(history, "ebitda")
-    dividend_per_share = fundamental_module._first_non_nan(
-        latest.get("annual_dividend"),
-        latest.get("dividend_per_share"),
-    )
-    if pd.notna(dividend_per_share) and pd.isna(latest.get("annual_dividend")):
-        dividend_per_share = dividend_per_share * 4
-    cash = fundamental_module._first_non_nan(latest.get("cash"), latest.get("cash_and_cash_equivalents"))
-    consensus_eps = fundamental_module._first_non_nan(latest.get("consensus_eps"), latest.get("eps_consensus"))
-    total_debt = fundamental_module._first_non_nan(latest.get("total_debt"), latest.get("total_liabilities"))
-
-    revenue_per_share = (
-        revenue_ttm / shares_outstanding
-        if pd.notna(revenue_ttm) and shares_outstanding is not None and shares_outstanding > 0
-        else np.nan
-    )
-
-    features["pe_ratio"] = fundamental_module._safe_divide(price, eps_ttm)
-    features["pb_ratio"] = fundamental_module._safe_divide(price, latest.get("book_value_per_share"))
-    features["ps_ratio"] = fundamental_module._safe_divide(price, revenue_per_share)
-    enterprise_value = fundamental_module._safe_add(market_cap, total_debt)
-    enterprise_value = fundamental_module._safe_subtract(enterprise_value, cash)
-    features["ev_ebitda"] = fundamental_module._safe_divide(enterprise_value, ebitda_ttm)
-    features["fcf_yield"] = fundamental_module._safe_divide(free_cash_flow_ttm, market_cap)
-    features["dividend_yield"] = fundamental_module._safe_divide(dividend_per_share, price)
-    features["roe"] = fundamental_module._safe_divide(latest.get("net_income"), equity)
-    features["roa"] = fundamental_module._safe_divide(latest.get("net_income"), latest.get("total_assets"))
-    features["gross_margin"] = fundamental_module._safe_divide(latest.get("gross_profit"), latest.get("revenue"))
-    features["operating_margin"] = fundamental_module._safe_divide(
-        latest.get("operating_income"),
-        latest.get("revenue"),
-    )
-    features["revenue_growth_yoy"] = fundamental_module._yoy_growth(history, "revenue")
-    features["earnings_growth_yoy"] = fundamental_module._yoy_growth(history, "net_income")
-    features["debt_to_equity"] = fundamental_module._safe_divide(total_debt, equity)
-    features["current_ratio"] = fundamental_module._safe_divide(
-        latest.get("current_assets"),
-        latest.get("current_liabilities"),
-    )
-    eps_surprise_denom = abs(consensus_eps) if pd.notna(consensus_eps) else np.nan
-    features["eps_surprise"] = (
-        fundamental_module._safe_divide(latest.get("eps") - consensus_eps, eps_surprise_denom)
-        if pd.notna(latest.get("eps")) and pd.notna(consensus_eps)
-        else np.nan
-    )
-    return features
+    return fundamental_module._calculate_feature_snapshot_from_history(history=history, price=price)
 
 
 def load_raw_fundamentals_history(*, ticker: str, max_trade_date: date) -> pd.DataFrame:
+    batch = load_raw_fundamentals_history_batch(
+        tickers=[ticker.upper()],
+        max_trade_date=max_trade_date,
+    )
+    if batch.empty:
+        return empty_raw_fundamentals_history()
+    return batch.loc[batch["ticker"] == ticker.upper()].reset_index(drop=True)
+
+
+def load_raw_fundamentals_history_batch(*, tickers: list[str] | tuple[str, ...], max_trade_date: date) -> pd.DataFrame:
+    normalized_tickers = tuple(dict.fromkeys(str(ticker).upper() for ticker in tickers if ticker))
+    if not normalized_tickers:
+        return empty_raw_fundamentals_history()
+
     cutoff = datetime.combine(max_trade_date, time.max, tzinfo=timezone.utc)
     statement = (
         sa.select(
@@ -390,7 +472,7 @@ def load_raw_fundamentals_history(*, ticker: str, max_trade_date: date) -> pd.Da
             FundamentalsPIT.source,
         )
         .where(
-            FundamentalsPIT.ticker == ticker.upper(),
+            FundamentalsPIT.ticker.in_(normalized_tickers),
             FundamentalsPIT.metric_name.in_(fundamental_module._PIT_METRIC_NAMES),
             FundamentalsPIT.knowledge_time <= cutoff,
             FundamentalsPIT.event_time <= max_trade_date,
@@ -408,24 +490,28 @@ def load_raw_fundamentals_history(*, ticker: str, max_trade_date: date) -> pd.Da
 
     frame = pd.DataFrame(rows)
     if frame.empty:
-        return pd.DataFrame(
-            columns=[
-                "id",
-                "ticker",
-                "fiscal_period",
-                "metric_name",
-                "metric_value",
-                "event_time",
-                "knowledge_time",
-                "is_restated",
-                "source",
-            ],
-        )
+        return empty_raw_fundamentals_history()
 
     frame["metric_value"] = pd.to_numeric(frame["metric_value"], errors="coerce")
     frame["knowledge_time"] = pd.to_datetime(frame["knowledge_time"], utc=True)
     frame["event_time"] = pd.to_datetime(frame["event_time"]).dt.date
     return frame
+
+
+def empty_raw_fundamentals_history() -> pd.DataFrame:
+    return pd.DataFrame(
+        columns=[
+            "id",
+            "ticker",
+            "fiscal_period",
+            "metric_name",
+            "metric_value",
+            "event_time",
+            "knowledge_time",
+            "is_restated",
+            "source",
+        ],
+    )
 
 
 def build_or_load_feature_cache(
@@ -435,6 +521,7 @@ def build_or_load_feature_cache(
     feature_end: date,
     as_of: date,
     batch_size: int,
+    max_workers: int,
     progress_interval: int,
     feature_output_path: Path,
     batch_dir: Path,
@@ -475,10 +562,10 @@ def build_or_load_feature_cache(
         write_json_atomic(manifest_path, expected_manifest)
 
     batch_specs = build_batch_specs(tickers=manifest_tickers, batch_size=manifest_batch_size, batch_dir=batch_dir)
-    pipeline = FeaturePipeline()
-    completed_tickers = count_completed_tickers(batch_specs=batch_specs)
+    completed_tickers = 0 if force_rebuild else count_completed_tickers(batch_specs=batch_specs)
 
     if force_rebuild or not feature_output_path.exists():
+        pending_specs: list[tuple[int, dict[str, Any]]] = []
         for batch_index, batch_spec in enumerate(batch_specs, start=1):
             if batch_spec["path"].exists() and not force_rebuild:
                 logger.info(
@@ -488,30 +575,58 @@ def build_or_load_feature_cache(
                     batch_spec["path"],
                 )
                 continue
+            pending_specs.append((batch_index, batch_spec))
 
-            batch_tickers = batch_spec["tickers"]
+        worker_count = min(max_workers, max(1, len(pending_specs)))
+        if pending_specs:
             logger.info(
-                "running feature batch {}/{} for {} tickers ({} -> {})",
-                batch_index,
-                len(batch_specs),
-                len(batch_tickers),
-                batch_tickers[0],
-                batch_tickers[-1],
+                "building {} pending feature batches with up to {} worker processes",
+                len(pending_specs),
+                worker_count,
             )
-            features = pipeline.run(
-                tickers=batch_tickers,
-                start_date=feature_start,
-                end_date=feature_end,
-                as_of=as_of,
-            )
-            filtered = prepare_feature_batch(features)
-            write_parquet_atomic(filtered, batch_spec["path"])
-            completed_tickers += len(batch_tickers)
-            if completed_tickers % progress_interval == 0 or completed_tickers == len(tickers):
-                logger.info("feature progress: processed {}/{} tickers", completed_tickers, len(tickers))
-            del features
-            del filtered
-            gc.collect()
+        if worker_count <= 1:
+            for batch_index, batch_spec in pending_specs:
+                result = build_feature_batch_worker(
+                    batch_index=batch_index,
+                    total_batches=len(batch_specs),
+                    batch_tickers=batch_spec["tickers"],
+                    feature_start=feature_start,
+                    feature_end=feature_end,
+                    as_of=as_of,
+                    batch_path=str(batch_spec["path"]),
+                )
+                completed_tickers += int(result["ticker_count"])
+                if completed_tickers % progress_interval == 0 or completed_tickers == len(tickers):
+                    logger.info("feature progress: processed {}/{} tickers", completed_tickers, len(tickers))
+        elif pending_specs:
+            with ProcessPoolExecutor(max_workers=worker_count) as executor:
+                future_to_spec = {
+                    executor.submit(
+                        build_feature_batch_worker,
+                        batch_index=batch_index,
+                        total_batches=len(batch_specs),
+                        batch_tickers=batch_spec["tickers"],
+                        feature_start=feature_start,
+                        feature_end=feature_end,
+                        as_of=as_of,
+                        batch_path=str(batch_spec["path"]),
+                    ): (batch_index, batch_spec)
+                    for batch_index, batch_spec in pending_specs
+                }
+                for future in as_completed(future_to_spec):
+                    batch_index, batch_spec = future_to_spec[future]
+                    result = future.result()
+                    completed_tickers += int(result["ticker_count"])
+                    logger.info(
+                        "completed feature batch {}/{} at {} rows={} tickers={}",
+                        batch_index,
+                        len(batch_specs),
+                        batch_spec["path"],
+                        result["row_count"],
+                        result["ticker_count"],
+                    )
+                    if completed_tickers % progress_interval == 0 or completed_tickers == len(tickers):
+                        logger.info("feature progress: processed {}/{} tickers", completed_tickers, len(tickers))
 
         combine_feature_batches(batch_specs=batch_specs, output_path=feature_output_path)
     else:
@@ -525,6 +640,46 @@ def build_or_load_feature_cache(
         feature_summary["feature_count"],
     )
     return feature_summary
+
+
+def build_feature_batch_worker(
+    *,
+    batch_index: int,
+    total_batches: int,
+    batch_tickers: list[str],
+    feature_start: date,
+    feature_end: date,
+    as_of: date,
+    batch_path: str,
+) -> dict[str, Any]:
+    install_runtime_optimizations()
+    pipeline = FeaturePipeline()
+    logger.info(
+        "running feature batch {}/{} for {} tickers ({} -> {})",
+        batch_index,
+        total_batches,
+        len(batch_tickers),
+        batch_tickers[0],
+        batch_tickers[-1],
+    )
+    features = pipeline.run(
+        tickers=batch_tickers,
+        start_date=feature_start,
+        end_date=feature_end,
+        as_of=as_of,
+    )
+    filtered = prepare_feature_batch(features)
+    write_parquet_atomic(filtered, Path(batch_path))
+    row_count = int(len(filtered))
+    ticker_count = int(len(batch_tickers))
+    del features
+    del filtered
+    gc.collect()
+    return {
+        "batch_path": batch_path,
+        "row_count": row_count,
+        "ticker_count": ticker_count,
+    }
 
 
 def build_manifest(

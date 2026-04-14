@@ -1,6 +1,6 @@
 {
   "fallback_tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r86.db",
-  "generated_at_utc": "2026-04-05T22:48:14.288690+00:00",
+  "generated_at_utc": "2026-04-14T03:25:55.766250+00:00",
   "horizon_days": 60,
   "models": {
     "lightgbm": {
@@ -71,45 +71,35 @@
         "rank_ic": 0.05539027634126628,
         "top_decile_return": 0.03908278463855215,
         "turnover": 0.17867924528301887
-      }
+      },
+      "phase_e_status": "disabled_for_fusion_keep_artifact_for_compatibility"
     },
     "ridge": {
       "abs_test_ic_diff": 0.0,
       "artifact_path": "/home/jiahao/quant_edge/data/models/fusion_ridge_60d.pkl",
       "best_hyperparams": {
-        "alpha": 0.001
+        "alpha": 100.0
       },
-      "feature_count": 29,
+      "feature_count": 18,
       "feature_names": [
-        "vol_60d",
-        "atr_14",
-        "low_52w_ratio",
-        "gk_vol",
-        "vol_20d",
-        "vol_rank",
-        "bb_width",
+        "is_missing_dividend_yield",
         "value_mom_pb",
-        "quality_value_roe_pb",
-        "pb_ratio",
-        "ev_ebitda",
-        "current_ratio",
-        "fcf_yield",
-        "dividend_yield",
+        "gk_vol",
         "revenue_growth_yoy",
-        "ps_ratio",
-        "adx_14",
-        "amihud",
-        "high_52w_ratio",
-        "roa",
-        "profitability_combo",
-        "debt_to_equity",
-        "roe",
-        "value_mom_pe",
-        "pe_ratio",
-        "quality_value_roa_pe",
-        "earnings_growth_yoy",
-        "operating_margin",
-        "stoch_d"
+        "asset_growth",
+        "is_missing_ret_5d",
+        "vol_rank",
+        "vol_60d",
+        "is_missing_ret_10d",
+        "residual_momentum",
+        "low_52w_ratio",
+        "dividend_yield",
+        "bb_width",
+        "is_missing_gk_vol",
+        "is_missing_vol_60d",
+        "is_missing_residual_momentum",
+        "is_missing_value_mom_pb",
+        "is_missing_revenue_growth_yoy"
       ],
       "mlflow_run": {
         "experiment_id": "1",
@@ -118,23 +108,30 @@
         "tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r86.db"
       },
       "reference_test_metrics": {
-        "hit_rate": 0.4981944137371951,
-        "ic": -0.02170702390585088,
-        "icir": -0.17251683275373192,
-        "long_short_return": -0.004936628010368403,
-        "rank_ic": -0.02062254748510115,
-        "top_decile_return": -0.015185781872568572,
-        "turnover": 0.27492017416545717
+        "ic": 0.058412243720453325,
+        "icir": 0.42987564191225175,
+        "rank_ic": 0.02830784032021425,
+        "top_decile_return": 0.026122299006294404,
+        "hit_rate": 0.5162806718480125,
+        "turnover": null,
+        "long_short_return": null,
+        "windows_completed": 11,
+        "positive_windows": 11,
+        "source": "Phase E v2 walk-forward summary"
       },
       "test_metrics": {
-        "hit_rate": 0.4981944137371951,
-        "ic": -0.02170702390585088,
-        "icir": -0.17251683275373192,
-        "long_short_return": -0.004936628010368403,
-        "rank_ic": -0.02062254748510115,
-        "top_decile_return": -0.015185781872568572,
-        "turnover": 0.27492017416545717
-      }
+        "ic": 0.058412243720453325,
+        "icir": 0.42987564191225175,
+        "rank_ic": 0.02830784032021425,
+        "top_decile_return": 0.026122299006294404,
+        "hit_rate": 0.5162806718480125,
+        "turnover": null,
+        "long_short_return": null,
+        "windows_completed": 11,
+        "positive_windows": 11,
+        "source": "Phase E v2 walk-forward summary"
+      },
+      "phase_e_status": "active_production_model"
     },
     "xgboost": {
       "abs_test_ic_diff": 0.0,
@@ -204,7 +201,8 @@
         "rank_ic": 0.15085109064578794,
         "top_decile_return": 0.06802418351177118,
         "turnover": 0.28939042089985484
-      }
+      },
+      "phase_e_status": "disabled_for_fusion_keep_artifact_for_compatibility"
     }
   },
   "rebalance_weekday": 4,
@@ -215,87 +213,76 @@
     "unknown": 1.0
   },
   "retained_features": [
-    "vol_60d",
-    "atr_14",
-    "low_52w_ratio",
-    "gk_vol",
-    "vol_20d",
-    "vol_rank",
-    "bb_width",
+    "is_missing_dividend_yield",
     "value_mom_pb",
-    "quality_value_roe_pb",
-    "pb_ratio",
-    "ev_ebitda",
-    "current_ratio",
-    "fcf_yield",
-    "dividend_yield",
+    "gk_vol",
     "revenue_growth_yoy",
-    "ps_ratio",
-    "adx_14",
-    "amihud",
-    "high_52w_ratio",
-    "roa",
-    "profitability_combo",
-    "debt_to_equity",
-    "roe",
-    "value_mom_pe",
-    "pe_ratio",
-    "quality_value_roa_pe",
-    "earnings_growth_yoy",
-    "operating_margin",
-    "stoch_d"
+    "asset_growth",
+    "is_missing_ret_5d",
+    "vol_rank",
+    "vol_60d",
+    "is_missing_ret_10d",
+    "residual_momentum",
+    "low_52w_ratio",
+    "dividend_yield",
+    "bb_width",
+    "is_missing_gk_vol",
+    "is_missing_vol_60d",
+    "is_missing_residual_momentum",
+    "is_missing_value_mom_pb",
+    "is_missing_revenue_growth_yoy"
   ],
   "row_counts": {
+    "train": {
+      "dates": 140,
+      "rows": 75968,
+      "tickers": 576
+    },
+    "validation": {
+      "dates": 14,
+      "rows": 7398,
+      "tickers": 533
+    },
     "test": {
       "dates": 26,
       "rows": 13569,
       "tickers": 529
     },
-    "train": {
-      "dates": 152,
-      "rows": 82430,
-      "tickers": 579
-    },
     "train_plus_validation": {
-      "dates": 178,
-      "rows": 96141,
-      "tickers": 583
-    },
-    "validation": {
-      "dates": 26,
-      "rows": 13711,
-      "tickers": 534
+      "dates": 154,
+      "rows": 83366,
+      "tickers": 576
     }
   },
   "seed_weights": {
-    "lightgbm": 0.35536666592571287,
-    "ridge": 0.25469836741574375,
-    "xgboost": 0.3899349666585434
+    "ridge": 1.0,
+    "xgboost": 0.0,
+    "lightgbm": 0.0
   },
   "source_artifacts": {
-    "comparison_report": "/home/jiahao/quant_edge/data/reports/walkforward_comparison_60d.json",
+    "comparison_report": "/home/jiahao/quant_edge/data/reports/walkforward_comparison_60d_ridge_v2.json",
     "feature_matrix": "/home/jiahao/quant_edge/data/features/walkforward_feature_matrix_60d.parquet",
     "fusion_report": "/home/jiahao/quant_edge/data/reports/fusion_analysis_60d.json",
-    "ic_report": "/home/jiahao/quant_edge/data/features/ic_screening_report_60d.csv",
+    "ic_report": "/home/jiahao/quant_edge/data/features/ic_screening_report_v2_60d.csv",
     "label_cache": "/home/jiahao/quant_edge/data/labels/forward_returns_60d.parquet",
     "regime_report": "/home/jiahao/quant_edge/data/reports/regime_analysis_60d.json"
   },
   "tracking_uri": "http://127.0.0.1:5001",
   "window_dates": {
-    "test_end": "2025-02-28",
-    "test_start": "2024-09-01",
-    "train_end": "2024-02-29",
-    "train_start": "2021-03-01",
-    "validation_end": "2024-08-31",
-    "validation_start": "2024-03-01"
+    "train_start": "2021-03-05",
+    "train_end": "2023-12-01",
+    "validation_start": "2024-03-01",
+    "validation_end": "2024-06-07",
+    "test_start": "2024-09-06",
+    "test_end": "2025-02-28"
   },
   "window_id": "W11",
   "turnover_controls": {
     "enabled": true,
     "weighting_scheme": "score_weighted",
     "selection_pct": 0.25,
-    "sell_buffer_pct": 0.40,
-    "weight_shrinkage": 0.50,
+    "sell_buffer_pct": 0.4,
+    "weight_shrinkage": 0.5,
     "no_trade_zone": 0.005,
     "min_trade_weight": 0.005,
     "turnover_penalty_lambda": 0.0,
@@ -316,5 +303,28 @@
     "n_bins": 10,
     "psi_alert_threshold": 0.25,
     "fill_rate_change_threshold": 0.05
+  },
+  "validation": {
+    "ic": 0.058,
+    "icir": 0.43,
+    "positive_windows": "11/11",
+    "feature_count": 18,
+    "source": "Phase E v2"
+  },
+  "phase_e_upgrade": {
+    "upgraded_at_utc": "2026-04-14T03:25:55.766250+00:00",
+    "source": "Phase E v2",
+    "strategy": "ridge_only",
+    "reason": "60D Ridge v2 selected as production champion",
+    "retained_feature_count": 18,
+    "walkforward_mean_ic": 0.058412243720453325,
+    "walkforward_mean_icir": 0.42987564191225175,
+    "positive_windows": 11,
+    "windows_completed": 11,
+    "bundle_seed_weights": {
+      "ridge": 1.0,
+      "xgboost": 0.0,
+      "lightgbm": 0.0
+    }
   }
 }

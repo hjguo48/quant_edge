@@ -314,13 +314,13 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           <div className="w-px h-6 bg-white/5 mx-1 flex-shrink-0" />
 
           {/* Direction Toggle */}
-          <div className="flex gap-1 bg-muted/50 p-1 rounded-xl border border-white/5 flex-shrink-0">
+          <div className="flex gap-1 bg-muted p-1 rounded-xl flex-shrink-0">
             {DIRECTIONS.map((d) => (
               <button
                 key={d}
                 onClick={() => setDirection(d)}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-medium transition-all border ${
-                  direction === d ? "bg-card text-primary shadow-xl border-white/5 font-bold" : "text-muted-foreground hover:text-foreground border-transparent"
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                  direction === d ? "bg-card text-foreground shadow-custom" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {d}
@@ -364,13 +364,13 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
               {sort === "conf_asc" ? <SortAsc size={14} /> : <SortDesc size={14} />}
             </button>
             
-            <div className="flex gap-1 bg-muted/50 p-1 rounded-xl border border-white/5">
+            <div className="flex gap-1 bg-muted p-1 rounded-xl">
               {SORT_OPTIONS.filter(o => !o.key.startsWith("conf")).map((option) => (
                 <button
                   key={option.key}
                   onClick={() => setSort(option.key)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[9px] font-medium transition-all border ${
-                    sort === option.key ? "bg-card text-primary shadow-lg border-white/10 font-bold" : "text-muted-foreground hover:text-foreground border-transparent"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                    sort === option.key ? "bg-card text-foreground shadow-custom" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {option.label}
@@ -418,7 +418,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           </div>
         ) : paginated.length > 0 ? (
           paginated.map((s, i) => (
-            <div key={s.ticker} className="flex items-center group/row border-b border-white/[0.03] last:border-0 hover:bg-primary/[0.02] transition-colors">
+            <div key={s.ticker} className="flex items-center group/row border-b border-white/[0.03] last:border-0 hover:bg-accent/50 transition-colors">
               <button
                 onClick={(e) => { e.stopPropagation(); toggleWatchlist(s.ticker); }}
                 className={`ml-6 transition-all duration-300 ${watchlist.includes(s.ticker) ? "text-primary scale-125 drop-shadow-[0_0_8px_rgba(0,200,5,0.4)]" : "text-muted-foreground/30 hover:text-foreground opacity-100 group-hover/row:opacity-100"}`}

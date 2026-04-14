@@ -24,6 +24,8 @@ FUNDAMENTAL_FEATURE_NAMES = (
     "debt_to_equity",
     "current_ratio",
     "eps_surprise",
+    "accruals",
+    "asset_growth",
 )
 
 _PIT_METRIC_NAMES = (
@@ -57,6 +59,15 @@ def compute_fundamental_features(
     as_of: date | datetime,
     prices_df: pd.DataFrame,
 ) -> pd.DataFrame:
+    """Compute PIT-safe fundamental features, including accruals and asset growth.
+
+    New additions:
+    - `accruals`: Sloan (1996), implemented as
+      `(net_income - operating_cash_flow) / total_assets`.
+    - `asset_growth`: Cooper, Gulen & Schill (2008), implemented as
+      year-over-year growth in total assets using the latest reported quarter
+      versus the quarter four filings earlier.
+    """
     if prices_df.empty:
         return _empty_feature_frame()
 
@@ -119,6 +130,15 @@ def _calculate_feature_snapshot(
         return features
 
     history = _build_pit_history(pit_frame)
+    return _calculate_feature_snapshot_from_history(history=history, price=price)
+
+
+def _calculate_feature_snapshot_from_history(
+    *,
+    history: pd.DataFrame,
+    price: float,
+) -> dict[str, float]:
+    features = {feature_name: np.nan for feature_name in FUNDAMENTAL_FEATURE_NAMES}
     if history.empty:
         return features
 
@@ -166,7 +186,8 @@ def _calculate_feature_snapshot(
         if pd.notna(latest.get("eps")) and pd.notna(consensus_eps)
         else np.nan
     )
-
+    features["accruals"] = _accruals(history)
+    features["asset_growth"] = _asset_growth(history)
     return features
 
 
@@ -205,6 +226,26 @@ def _yoy_growth(history: pd.DataFrame, metric_name: str) -> float:
     if pd.isna(current) or pd.isna(prior) or prior == 0:
         return np.nan
     return float((current - prior) / abs(prior))
+
+
+def _accruals(history: pd.DataFrame) -> float:
+    """Sloan (1996) accrual anomaly using PIT quarterly fundamentals."""
+    if history.empty:
+        return np.nan
+    latest = history.iloc[-1]
+    accrual_numerator = _safe_subtract(latest.get("net_income"), latest.get("operating_cash_flow"))
+    return _safe_divide(accrual_numerator, latest.get("total_assets"))
+
+
+def _asset_growth(history: pd.DataFrame) -> float:
+    """Cooper, Gulen & Schill (2008) asset growth using t versus t-4 quarters."""
+    if "total_assets" not in history.columns or len(history) < 5:
+        return np.nan
+    current = pd.to_numeric(history["total_assets"], errors="coerce").iloc[-1]
+    prior = pd.to_numeric(history["total_assets"], errors="coerce").iloc[-5]
+    if pd.isna(current) or pd.isna(prior) or prior == 0:
+        return np.nan
+    return float((current - prior) / prior)
 
 
 def _latest_metric(history: pd.DataFrame, metric_name: str) -> float:

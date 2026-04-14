@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CandlestickChart, TrendingUp, RefreshCcw } from "lucide-react";
 import { fetchApi } from "../hooks/useApi";
@@ -138,11 +138,18 @@ const KLineChart = ({
   const chartAreaRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fallbackCandlesRef = useRef<Candle[] | null>(null);
+  const rangeSelectorRef = useRef<HTMLDivElement>(null);
+  const rangeButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [selectedRange, setSelectedRange] = useState<RangeKey>(defaultRange);
   const [chartMode, setChartMode] = useState<ChartMode>("candlestick");
   const [chartWidth, setChartWidth] = useState(0);
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [rangeSliderStyle, setRangeSliderStyle] = useState<CSSProperties>({
+    width: 0,
+    transform: "translateX(0px)",
+    opacity: 0,
+  });
 
   useEffect(() => {
     setSelectedRange(defaultRange);
@@ -170,6 +177,43 @@ const KLineChart = ({
 
   useEffect(() => {
     setHoverState(null);
+  }, [selectedRange]);
+
+  useLayoutEffect(() => {
+    const updateRangeSlider = () => {
+      const selectedIndex = RANGE_OPTIONS.findIndex((option) => option.key === selectedRange);
+      const button = rangeButtonRefs.current[selectedIndex];
+
+      if (!button) {
+        setRangeSliderStyle((current) => ({ ...current, opacity: 0 }));
+        return;
+      }
+
+      setRangeSliderStyle({
+        width: button.offsetWidth,
+        transform: `translateX(${Math.max(0, button.offsetLeft - 4)}px)`,
+        opacity: 1,
+      });
+    };
+
+    updateRangeSlider();
+
+    const resizeObserver = new ResizeObserver(updateRangeSlider);
+    const container = rangeSelectorRef.current;
+    if (container) {
+      resizeObserver.observe(container);
+    }
+    rangeButtonRefs.current.forEach((button) => {
+      if (button) {
+        resizeObserver.observe(button);
+      }
+    });
+    window.addEventListener("resize", updateRangeSlider);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateRangeSlider);
+    };
   }, [selectedRange]);
 
   if (!fallbackCandlesRef.current) {
@@ -456,51 +500,59 @@ const KLineChart = ({
 
         <div className="flex items-center gap-3 flex-wrap">
           {/* Chart Type Toggle */}
-          <div className="relative grid grid-cols-2 items-center rounded-lg bg-muted p-1">
+          <div className="relative grid grid-cols-2 items-center rounded-lg bg-accent/50 p-1">
             <div
               aria-hidden="true"
-              className="absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-[10px] bg-card shadow-sm transition-transform duration-300 ease-out"
+              className="absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-md bg-card shadow-sm transition-transform duration-300 ease-out"
               style={{ transform: chartModeTranslate }}
             />
             <button
               onClick={() => setChartMode("candlestick")}
-              className={`relative z-10 flex h-8 w-9 items-center justify-center rounded-[10px] transition-colors duration-300 ${
+              className={`relative z-10 flex h-6 w-7 items-center justify-center rounded-md transition-colors duration-300 ${
                 chartMode === "candlestick" ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
               title="Candlestick"
               aria-label="Candlestick chart"
             >
-              <CandlestickChart size={14} />
+              <CandlestickChart size={12} />
             </button>
             <button
               onClick={() => setChartMode("line")}
-              className={`relative z-10 flex h-8 w-9 items-center justify-center rounded-[10px] transition-colors duration-300 ${
+              className={`relative z-10 flex h-6 w-7 items-center justify-center rounded-md transition-colors duration-300 ${
                 chartMode === "line" ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
               title="Line Chart"
               aria-label="Line chart"
             >
-              <TrendingUp size={14} />
+              <TrendingUp size={12} />
             </button>
           </div>
 
           <div className="w-px h-4 bg-border" />
 
           {/* Range Selector */}
-          <div className="flex items-center gap-1">
-            {RANGE_OPTIONS.map((option) => (
+          <div ref={rangeSelectorRef} className="relative flex items-center gap-1 bg-accent/50 p-1 rounded-lg">
+            <div
+              aria-hidden="true"
+              className="absolute bottom-1 top-1 left-1 rounded-md bg-card shadow-sm transition-all duration-300 ease-out"
+              style={rangeSliderStyle}
+            />
+            {RANGE_OPTIONS.map((option, index) => (
               <button
                 key={option.key}
+                ref={(node) => {
+                  rangeButtonRefs.current[index] = node;
+                }}
                 onClick={() => {
                   if (option.key === selectedRange) return;
                   setIsTransitioning(true);
                   setSelectedRange(option.key);
                   setTimeout(() => setIsTransitioning(false), 350);
                 }}
-                className={`min-w-[2rem] text-center text-xs px-2 py-1 rounded-md transition-all duration-200 ${
+                className={`relative z-10 px-3 py-1 text-[10px] font-bold rounded-md transition-colors duration-300 ${
                   selectedRange === option.key
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {option.label}
