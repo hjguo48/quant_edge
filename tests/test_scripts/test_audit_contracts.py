@@ -299,6 +299,10 @@ def test_universe_audit_contract(tmp_path, monkeypatch) -> None:
                 "rows": 1205,
                 "tickers": 605,
             },
+            "select ticker, effective_date, end_date": [
+                {"ticker": "AAPL", "effective_date": date(2026, 4, 1), "end_date": None},
+                {"ticker": "MSFT", "effective_date": date(2026, 4, 1), "end_date": None},
+            ],
         }
     )
     monkeypatch.setattr(audit_universe, "get_engine", lambda: fake_engine)
@@ -307,6 +311,7 @@ def test_universe_audit_contract(tmp_path, monkeypatch) -> None:
         "resolve_active_universe",
         lambda latest_trade_date, as_of: (["AAPL", "MSFT"], "universe_membership"),
     )
+    monkeypatch.setattr(audit_universe, "get_universe_pit", lambda as_of, index_name="SP500": ["AAPL", "MSFT"])
     monkeypatch.setattr(audit_universe, "summarize_issues", _fake_issue_summary)
     monkeypatch.setattr(audit_universe, "write_json_report", _noop_write)
 
