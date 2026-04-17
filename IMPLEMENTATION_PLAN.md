@@ -149,7 +149,7 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 
 ---
 
-### Week 2: 数据真值与特征一致性审计 [🔄 IN PROGRESS — audit 完成, 2.5 修复进行中]
+### Week 2: 数据真值与特征一致性审计 [✅ DONE 2026-04-17 — audit + 2.5 修复全部完成]
 
 **目标**：研究数据底座清干净，再扩新特征。
 
@@ -166,7 +166,7 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - [✅] `data/reports/universe_audit_20260417.json`
 - [✅] `data/reports/benchmark_audit_20260417.json`
 
-**Gate**: 训练与服务特征定义统一，日频价格真值可回放 — **未通过** (见 Week 2.5 修复)
+**Gate**: 训练与服务特征定义统一，日频价格真值可回放 — **✅ 通过** (Week 2.5 P0-P3 全部完成)
 
 ---
 
@@ -199,17 +199,21 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - pre-SPY excess_return 全部 NULL, 10D null 原因可解释
 - V5 60D IC sanity: 0.0623 → 0.0594 (退化 4.6%, 通过 10% tolerance)
 
-**P3 Universe PIT 回填** [⏳ 待派]
-- `universe_membership` 历史回填 (2016→2026) 或冻结 research∩live overlap 子集
-- 解决 live=604 vs research=710 偏差
+**P3 Universe PIT 回填** [✅ 2026-04-17 commit d9dd839]
+- Scheme A 完整回填: FMP 503 current + 1279 历史 change events → 706 PIT interval rows
+- universe_membership 覆盖 2016-01-01 ~ 2026-04-01 (3144 行, 711 tickers)
+- governed universe 下 live=610, research=610, diff=0
+- V5 60D IC 不变 (0% degradation)
 
-**Week 2.5 Gate (Week 3 启动前必须全部 pass)**:
-1. Live 19/19 required features 全部可见 ✅ (P1 完成)
-2. parquet/feature_store 同 cutoff 下字段/行/时间戳一致 ✅ (P1 完成)
-3. 1D/5D/10D/20D 标签已去 pre-SPY 污染, null excess_return 可解释 ✅ (P2 完成)
-4. knowledge_time T+1 违反在训练窗口内清零 ✅ (P2 完成, pit_violations=0)
-5. Universe 历史 PIT 回填或 overlap 冻结完成 ⏳ (P3)
-6. V5 champion sanity 复跑, 60D IC 不退化 >10% ✅ (P2 完成, 退化 4.6%)
+**Week 2.5 Gate (Week 3 启动前必须全部 pass)** — **✅ 6/6 通过**:
+1. ✅ Live 19/19 required features 全部可见 (P1)
+2. ✅ parquet/feature_store 同 cutoff 下字段/行/时间戳一致 (P1)
+3. ✅ 1D/5D/10D/20D 标签已去 pre-SPY 污染, null excess_return 可解释 (P2)
+4. ✅ knowledge_time T+1 违反在训练窗口内清零 (P2, pit_violations=0)
+5. ✅ Universe 历史 PIT 回填完成 (P3, Scheme A, 2016-01-01 ~ 2026-04-01)
+6. ✅ V5 champion sanity 复跑, 60D IC 不退化 >10% (P2 4.6% + P3 0%)
+
+**→ Week 2 Gate 通过, 可 merge 到 main 并进入 Week 3**
 
 ---
 
