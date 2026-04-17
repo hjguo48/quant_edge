@@ -129,10 +129,12 @@ def build_report(output_path: Path) -> dict:
     split_actions["ex_date"] = pd.to_datetime(split_actions["ex_date"])
     anomalies["trade_date"] = pd.to_datetime(anomalies["trade_date"])
     enriched_anomalies = []
+    explained_adjustments = []
     uncovered_count = 0
     action_groups = {ticker: group.reset_index(drop=True) for ticker, group in split_actions.groupby("ticker")}
     for row in anomalies.itertuples(index=False):
         nearest = None
+        cumulative = None
         group = action_groups.get(row.ticker)
         if group is not None and not group.empty:
             deltas = (group["ex_date"] - row.trade_date).abs().dt.days
@@ -144,18 +146,40 @@ def build_report(output_path: Path) -> dict:
                 "ratio": candidate["ratio"],
                 "day_distance": int(deltas.loc[idx]),
             }
+            future_group = group.loc[group["ex_date"] > row.trade_date]
+            if not future_group.empty:
+                cumulative_ratio = float(future_group["ratio"].prod())
+                expected_factor = None
+                if cumulative_ratio != 0:
+                    expected_factor = 1.0 / cumulative_ratio
+                if expected_factor is not None:
+                    relative_error = abs(float(row.adj_ratio) - expected_factor)
+                    cumulative = {
+                        "future_split_count": int(len(future_group)),
+                        "future_split_ratio_product": cumulative_ratio,
+                        "expected_adj_close_to_close_ratio": expected_factor,
+                        "abs_error": relative_error,
+                        "explains_adjustment": relative_error < 1e-4,
+                    }
+        record = {
+            "ticker": row.ticker,
+            "trade_date": row.trade_date,
+            "close": row.close,
+            "adj_close": row.adj_close,
+            "adj_close_to_close_ratio": row.adj_ratio,
+            "volume": row.volume,
+            "knowledge_time": row.knowledge_time,
+            "nearest_corporate_action": nearest,
+            "cumulative_future_split_adjustment": cumulative,
+        }
+        if cumulative is not None and cumulative["explains_adjustment"]:
+            explained_adjustments.append(record)
+            continue
         if nearest is None or nearest["day_distance"] > 14:
             uncovered_count += 1
         enriched_anomalies.append(
             {
-                "ticker": row.ticker,
-                "trade_date": row.trade_date,
-                "close": row.close,
-                "adj_close": row.adj_close,
-                "adj_close_to_close_ratio": row.adj_ratio,
-                "volume": row.volume,
-                "knowledge_time": row.knowledge_time,
-                "nearest_corporate_action": nearest,
+                **record,
             }
         )
 
@@ -205,7 +229,7 @@ def build_report(output_path: Path) -> dict:
     payload = {
         "metadata": {
             "说明": "审计 stock_prices、corporate_actions 与 SPY 基准时间覆盖，识别价格真值与 PIT 风险。",
-            "price_rule": "当前 stock_prices.close 为原始日线 close，adj_close 直接取 Polygon adjusted close 快照；corporate_actions 表不反向驱动 adj_close。",
+            "price_rule": "当前 stock_prices.close 为原始日线 close，adj_close 直接取 Polygon adjusted close 快照；adj_close 允许反映未来 corporate actions 的累计调整，因此需区分“被未来 split 完整解释的历史比率”与真正未解释异常。",
             "knowledge_time_rule": "代码中的 Polygon historical 模式使用 trade_date + 1 calendar day 的 market close 时间，而不是严格的下一个工作日。",
         },
         "summary": {
@@ -217,11 +241,13 @@ def build_report(output_path: Path) -> dict:
         "issues": issues,
         "warnings": warnings,
         "split_anomalies": enriched_anomalies,
+        "explained_adjusted_rows": explained_adjustments,
         "zero_volume_rows": zero_volume.to_dict(orient="records"),
         "pit_violations": pit_violations.to_dict(orient="records"),
         "corporate_action_coverage": {
             "split_rows": int(len(split_actions)),
             "anomaly_count": int(len(enriched_anomalies)),
+            "explained_by_future_split_adjustment": int(len(explained_adjustments)),
             "anomalies_without_near_split_14d": int(uncovered_count),
         },
         "spy_summary": {

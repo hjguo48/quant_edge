@@ -966,7 +966,14 @@ def test_feature_pipeline_save_to_parquet_includes_batch_id(
     output_path = pipeline.save_to_parquet(features, batch_id="batch-123", output_dir=str(tmp_path))
 
     assert output_path == tmp_path / "batch-123.parquet"
-    assert captured["columns"] == ["ticker", "trade_date", "feature_name", "feature_value", "batch_id"]
+    assert captured["columns"] == [
+        "ticker",
+        "trade_date",
+        "feature_name",
+        "feature_value",
+        "is_filled",
+        "batch_id",
+    ]
     assert captured["batch_values"] == ["batch-123"]
     assert captured["index"] is False
     assert "batch_id" not in features.columns

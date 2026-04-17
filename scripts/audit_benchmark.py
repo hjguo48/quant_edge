@@ -150,11 +150,29 @@ def analyze_labels(spy_start: date) -> dict:
         total_rows = dataset.count_rows()
         pre_spy_rows = dataset.count_rows(filter=ds.field("trade_date") < spy_start)
         null_excess_rows = dataset.count_rows(filter=ds.field("excess_return").is_null())
+        schema_names = set(dataset.schema.names)
+        columns = ["trade_date", "excess_return"]
+        if "invalid_reason" in schema_names:
+            columns.append("invalid_reason")
+        frame = dataset.to_table(columns=columns).to_pandas()
+        frame["trade_date"] = pd.to_datetime(frame["trade_date"]).dt.date
+        pre_spy_nonnull_excess_rows = int(
+            frame.loc[frame["trade_date"] < spy_start, "excess_return"].notna().sum(),
+        )
+        if "invalid_reason" in frame.columns:
+            invalid_reason_counts = {
+                str(key): int(value)
+                for key, value in frame["invalid_reason"].value_counts(dropna=True).to_dict().items()
+            }
+        else:
+            invalid_reason_counts = {}
         impact[horizon] = {
             "path": rel_path,
             "total_rows": int(total_rows),
             "rows_before_spy_start": int(pre_spy_rows),
             "null_excess_return_rows": int(null_excess_rows),
+            "pre_spy_nonnull_excess_rows": int(pre_spy_nonnull_excess_rows),
+            "invalid_reason_counts": invalid_reason_counts,
         }
     return impact
 
