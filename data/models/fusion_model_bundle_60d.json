@@ -1,8 +1,13 @@
 {
+  "cutoff_date": "2025-06-30",
   "fallback_tracking_uri": "sqlite:////home/jiahao/quant_edge/mlruns_r86.db",
+  "feature_fingerprint": "6a77ef8be35f9de3583514e28afca3aae3ff3953f7ac75b5266b4bfd8a80fdaa",
+  "generated_at": "2026-04-17T09:23:22.585732+00:00",
   "generated_at_utc": "2026-04-16T02:37:47.684251+00:00",
+  "generator_git_hash": "07330e7a62f6936fc37210f6b23597a771f7f81e",
   "horizon_days": 60,
   "model_bundle_version": "s2_stage1_v5_no_analyst_60d_ridge",
+  "model_type": "ridge_only",
   "models": {
     "lightgbm": {
       "abs_test_ic_diff": 0.0,
@@ -243,6 +248,27 @@
     "mid": 0.8,
     "unknown": 1.0
   },
+  "required_features": [
+    "is_missing_overnight_gap",
+    "curve_inverted_x_growth",
+    "high_vix_x_beta",
+    "is_missing_dividend_yield",
+    "trend_confirmation",
+    "revenue_growth_yoy",
+    "is_missing_insider_net_buy_ratio",
+    "asset_growth",
+    "low_52w_ratio",
+    "is_missing_narrow_leadership_score",
+    "vol_60d",
+    "vol_rank",
+    "atr_14",
+    "is_missing_atr_14",
+    "is_missing_low_52w_ratio",
+    "is_missing_high_vix_x_beta",
+    "is_missing_trend_confirmation",
+    "is_missing_curve_inverted_x_growth",
+    "is_missing_vol_60d"
+  ],
   "retained_features": [
     "is_missing_overnight_gap",
     "curve_inverted_x_growth",
@@ -354,6 +380,7 @@
     "t_stat": 2.169249869607583,
     "windows_completed": 13
   },
+  "version": "v5_no_analyst",
   "window_dates": {
     "test_end": "2025-02-28",
     "test_start": "2024-09-06",

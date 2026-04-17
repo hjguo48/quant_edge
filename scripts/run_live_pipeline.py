@@ -28,6 +28,7 @@ from src.data.db.session import get_engine, get_session_factory
 from src.features.pipeline import FeaturePipeline
 from src.labels.forward_returns import compute_forward_returns
 from src.models.champion_challenger import ChampionChallengerRunner
+from src.models.bundle_validator import BundleSchemaError, BundleValidator
 from src.models.evaluation import information_coefficient_series
 from src.models.registry import ModelRegistry
 from src.portfolio.equal_weight import equal_weight_portfolio
@@ -38,6 +39,7 @@ from src.risk.signal_risk import SignalRiskMonitor
 from src.universe.active import get_active_universe
 
 DEFAULT_OUTPUT_PATH = REPO_ROOT / "data/reports/day0_live_pipeline.json"
+DEFAULT_BUNDLE_PATH = REPO_ROOT / "data/models/fusion_model_bundle_60d.json"
 BENCHMARK_TICKER = "SPY"
 DEFAULT_MODEL_NAME = "ridge_60d"
 DEFAULT_SELECTION_PCT = 0.10
@@ -59,6 +61,19 @@ def main(argv: list[str] | None = None) -> int:
     install_runtime_optimizations()
     started = time.perf_counter()
     as_of = datetime.now(timezone.utc)
+
+    bundle_validator = BundleValidator(DEFAULT_BUNDLE_PATH)
+    session_factory = get_session_factory()
+    with session_factory() as session:
+        try:
+            bundle_validation = bundle_validator.assert_valid(session)
+        except BundleSchemaError as exc:
+            logger.error(
+                "Bundle schema validation failed for {}: {}",
+                DEFAULT_BUNDLE_PATH,
+                exc,
+            )
+            raise
 
     db_state = load_db_state(as_of=as_of)
     if db_state["latest_pit_trade_date"] is None:
@@ -84,6 +99,13 @@ def main(argv: list[str] | None = None) -> int:
     model_features = list(champion.metadata.features)
     if not model_features:
         raise RuntimeError("Champion metadata.features is empty.")
+    logger.info(
+        "Validated live bundle {} (version={}, required_features={}, fingerprint={})",
+        DEFAULT_BUNDLE_PATH,
+        bundle_validation.metadata.get("version"),
+        bundle_validation.metadata.get("required_feature_count"),
+        bundle_validation.metadata.get("computed_fingerprint"),
+    )
 
     horizon_days = parse_horizon_days(champion.metadata.horizon)
     feature_start = live_trade_date - timedelta(days=args.history_lookback_days)
