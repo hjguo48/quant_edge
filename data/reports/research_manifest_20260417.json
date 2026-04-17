@@ -1,0 +1,151 @@
+{
+  "as_of": "2026-04-17",
+  "branch": "feature/s2-v5.1-research-protocol",
+  "scripts_version": {
+    "git_head": "ccb106aafed528226e3cf7b73087ac77280ac784"
+  },
+  "current_state_pointer": "configs/research/current_state.yaml",
+  "data_snapshot": {
+    "stock_prices": {
+      "rows": 1743608,
+      "tickers": 724,
+      "date_range": [
+        "2015-01-02",
+        "2026-04-16"
+      ]
+    },
+    "fundamentals_pit": {
+      "rows": 549717,
+      "tickers": 693,
+      "date_range": [
+        "2015-01-02",
+        "2026-03-31"
+      ]
+    },
+    "earnings_estimates": {
+      "rows": 28417,
+      "tickers": 677,
+      "date_range": [
+        "2015-01-02",
+        "2026-04-14"
+      ]
+    },
+    "analyst_estimates": {
+      "rows": 5019,
+      "tickers": 632,
+      "date_range": [
+        "2019-12-29",
+        "2029-12-31"
+      ],
+      "note": "forward-looking only; historical backtest coverage is limited"
+    },
+    "short_interest": {
+      "rows": 122377,
+      "tickers": 696,
+      "date_range": [
+        "2017-12-29",
+        "2026-03-31"
+      ]
+    },
+    "insider_trades": {
+      "rows": 526063,
+      "tickers": 722,
+      "date_range": [
+        "2015-01-02",
+        "2026-04-13"
+      ],
+      "date_field": "filing_date"
+    },
+    "sec_filings": {
+      "rows": 971592,
+      "tickers": 643,
+      "date_range": [
+        "2009-01-15",
+        "2026-04-13"
+      ],
+      "date_field": "filing_date"
+    },
+    "news_sentiment": {
+      "rows": 2116,
+      "tickers": 86,
+      "date_range": [
+        "2024-07-02T18:06:24+00:00",
+        "2026-04-13T18:56:00+00:00"
+      ]
+    },
+    "macro_series_pit": {
+      "rows": 21656,
+      "series": 6,
+      "date_range": [
+        "2015-01-01",
+        "2026-04-16"
+      ]
+    },
+    "feature_store": {
+      "rows": 3736476,
+      "tickers": 609,
+      "features": 176,
+      "date_range": [
+        "2026-03-03",
+        "2026-04-13"
+      ]
+    },
+    "universe_membership": {
+      "rows": 2438,
+      "tickers": 610,
+      "date_range": [
+        "2026-01-01",
+        "2026-04-01"
+      ]
+    }
+  },
+  "feature_parquet_paths": {
+    "all_features": [
+      "data/features/all_features_v5.parquet",
+      "data/features/all_features_v6.parquet"
+    ],
+    "ic_reports": [
+      "data/features/ic_screening_report_v5_5d.csv",
+      "data/features/ic_screening_report_v5_60d.csv",
+      "data/features/ic_screening_report_v5_60d_true.csv",
+      "data/features/ic_screening_report_v5_no_analyst_60d.csv",
+      "data/features/ic_screening_report_v6_60d.csv"
+    ],
+    "walkforward_feature_matrices": [
+      "data/features/walkforward_feature_matrix_1d_v5_13w.parquet",
+      "data/features/walkforward_feature_matrix_20d_v5.parquet",
+      "data/features/walkforward_feature_matrix_5d_v5_13w.parquet",
+      "data/features/walkforward_feature_matrix_5d_v5_opt.parquet",
+      "data/features/walkforward_feature_matrix_60d_v5.parquet",
+      "data/features/walkforward_feature_matrix_60d_v5_13w.parquet",
+      "data/features/walkforward_feature_matrix_60d_v5_no_analyst.parquet",
+      "data/features/walkforward_feature_matrix_60d_v5_true.parquet",
+      "data/features/walkforward_feature_matrix_60d_v6.parquet"
+    ]
+  },
+  "model_artifacts": {
+    "live_bundle": "data/models/fusion_model_bundle_60d.json",
+    "live_ridge_artifact": "data/models/fusion_ridge_60d_v5_no_analyst.pkl",
+    "live_walkforward_report": "data/reports/walkforward_comparison_60d_v5_no_analyst.json",
+    "live_g3_gate_report": "data/reports/g3_gate_v5_no_analyst.json",
+    "live_greyscale_report": "data/reports/greyscale/week_05.json"
+  },
+  "active_experiments": [
+    {
+      "name": "V6 60D",
+      "status": "completed",
+      "result": "regression_case",
+      "mean_test_ic": 0.04644062191070808,
+      "report_path": "data/reports/walkforward_comparison_60d_v6.json",
+      "ic_report_path": "data/features/ic_screening_report_v6_60d.csv"
+    },
+    {
+      "name": "V5 60D true screening",
+      "status": "completed",
+      "result": "weaker_than_live_baseline",
+      "mean_test_ic": 0.04580833495912794,
+      "report_path": "data/reports/walkforward_comparison_60d_v5_true.json",
+      "ic_report_path": "data/features/ic_screening_report_v5_60d_true.csv"
+    }
+  ]
+}

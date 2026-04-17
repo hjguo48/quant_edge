@@ -1,0 +1,20 @@
+# 各 horizon 的当前 champion 与候选升级队列。
+as_of: 2026-04-17
+
+champions:
+  60D:
+    current: v5_no_analyst
+    candidates: []
+  20D:
+    current: null
+    candidates: []
+  10D:
+    current: null
+    candidates: []
+  5D:
+    current: null
+    candidates: []
+  1D:
+    current: null
+    candidates: []
+

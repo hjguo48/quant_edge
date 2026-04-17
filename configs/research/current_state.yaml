@@ -1,0 +1,28 @@
+# 当前 live champion 的唯一真相来源。
+as_of: 2026-04-17
+
+live_champion:
+  # 当前灰度中实际运行的版本标签。
+  version: v5_no_analyst
+  # 当前主策略 horizon。
+  horizon: 60D
+  # 当前主模型。
+  model: Ridge
+  # 当前 bundle 使用的 retained feature 数量。
+  features: 19
+  # 当前 walk-forward 核心指标。
+  ic: 0.0623
+  t_stat: 2.17
+  p_value: 0.0254
+  # 当前 gate 结论。
+  g3_gate: 6/6 PASS
+  # 当前线上 bundle 与模型 artifact。
+  bundle_path: data/models/fusion_model_bundle_60d.json
+  artifact_path: data/models/fusion_ridge_60d_v5_no_analyst.pkl
+  # 当前主回测与 gate 报告。
+  walkforward_report: data/reports/walkforward_comparison_60d_v5_no_analyst.json
+  g3_gate_report: data/reports/g3_gate_v5_no_analyst.json
+  # 当前部署状态与最近灰度输出。
+  deploy_status: live
+  last_greyscale_report: data/reports/greyscale/week_05.json
+
