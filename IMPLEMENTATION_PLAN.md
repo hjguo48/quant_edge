@@ -217,9 +217,19 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 
 ---
 
-### Week 3: Massive Minute Aggregates 入库 [🔄 STARTING — branch: feature/s2-v5.1-week3-minute-aggs]
+### Week 3: Massive Minute Aggregates 入库 [🔄 IN PROGRESS — Week 3.0 smoke + A-plus gate DONE, 待 3.1 全量]
 
 **目标**：5D/1D 获得专属数据层。
+
+**已完成子任务** (branch: feature/s2-v5.1-week3-minute-aggs, PR #2 draft):
+- [✅ commit e1b6fbc] Week 3.0 smoke — Polygon minute ingest + stock_minute_aggs hypertable + 3 intraday features, 10 ticker × 5 日 = 19550 行
+- [✅ commit 7646295] Week 3.0.5 B-lite 三向对账诊断 — 24 样本, 归因 polygon_daily_vs_minute (vendor 差异, 本地 0bp)
+- [✅ commit e33d905] Week 3.0.6 A-plus gate + C-partial 血缘 + minute 内部一致性 — smoke pass=true, 53 warning 落 price_reconciliation_events
+
+**待做子任务**:
+- [ ] Week 3.1 全量回填 2019-01 ~ 2026-04 governed universe
+- [ ] Week 3.2 首批 9 个 intraday 特征 (补 6 个: open_30m_ret / last_30m_ret / realized_vol_1d / volume_curve_surprise / close_to_vwap / transactions_count_zscore)
+- [ ] Week 3.3 Gate 验证 (覆盖率 >95% / minute↔day A-plus / 特征质量三件套)
 
 **任务**：
 - 新建 `src/data/polygon_minute.py`
