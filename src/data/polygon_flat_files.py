@@ -288,19 +288,28 @@ class PolygonFlatFilesClient(DataSource):
     @staticmethod
     def _regular_session_mask(minute_ts_et: pd.Series, minute_ts_utc: pd.Series) -> pd.Series:
         # Polygon bar `t` = START of minute window [t, t+1min).
-        # Regular ⇔ t ∈ [session_open, session_close). Using per-date session_close
-        # handles early-close days (13:00 ET) correctly, consistent with
-        # polygon_minute._is_regular_session_bar.
+        # Regular ⇔ t ∈ [session_open, session_close). Both bounds are needed:
+        # - session_open excludes pre-market bars (04:00-09:29 ET)
+        # - session_close excludes post-close bars (16:00+ ET, or early-close 13:00+)
+        # Consistent with polygon_minute._is_regular_session_bar.
         dates_et = minute_ts_et.dt.date
+        session_open_map: dict = {}
         session_close_map: dict = {}
         for day in dates_et.unique():
             ts = pd.Timestamp(day)
             if XNYS.is_session(ts):
+                session_open_map[day] = pd.Timestamp(XNYS.session_open(ts))
                 session_close_map[day] = pd.Timestamp(XNYS.session_close(ts))
             else:
+                session_open_map[day] = pd.NaT
                 session_close_map[day] = pd.NaT
+        session_opens = dates_et.map(session_open_map)
         session_closes = dates_et.map(session_close_map)
-        return session_closes.notna() & (minute_ts_utc < session_closes)
+        return (
+            session_closes.notna()
+            & (minute_ts_utc >= session_opens)
+            & (minute_ts_utc < session_closes)
+        )
 
     @staticmethod
     def _next_session_close(trade_day: date) -> datetime:

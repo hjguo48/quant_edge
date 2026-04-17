@@ -81,6 +81,36 @@ def test_flat_file_client_downloads_and_parses_regular_session_rows() -> None:
     assert set(pd.to_datetime(result.frame["knowledge_time"], utc=True).dt.strftime("%Y-%m-%d %H:%M:%S%z")) == {"2026-01-06 21:00:00+0000"}
 
 
+def test_flat_file_client_excludes_pre_market_and_post_close_bars() -> None:
+    # Both bounds of [session_open, session_close) must be enforced.
+    ts_0400 = pd.Timestamp("2026-01-05 04:00", tz="America/New_York").tz_convert("UTC").value  # pre-market
+    ts_0929 = pd.Timestamp("2026-01-05 09:29", tz="America/New_York").tz_convert("UTC").value  # pre-market
+    ts_0930 = pd.Timestamp("2026-01-05 09:30", tz="America/New_York").tz_convert("UTC").value  # regular
+    ts_1559 = pd.Timestamp("2026-01-05 15:59", tz="America/New_York").tz_convert("UTC").value  # regular
+    ts_1600 = pd.Timestamp("2026-01-05 16:00", tz="America/New_York").tz_convert("UTC").value  # post-close
+    csv_text = "\n".join(
+        [
+            "ticker,window_start,open,high,low,close,volume,transactions",
+            f"AAPL,{ts_0400},99,100,98,99.5,100,1",
+            f"AAPL,{ts_0929},99.5,100,99,99.8,200,2",
+            f"AAPL,{ts_0930},100,101,99,100.5,1000,10",
+            f"AAPL,{ts_1559},101,102,100,101.5,2000,20",
+            f"AAPL,{ts_1600},101.5,102,101,101.8,1500,15",
+        ],
+    )
+    client = PolygonFlatFilesClient(
+        access_key="access",
+        secret_key="secret",
+        s3_client=_FakeS3Client(_gzip_csv(csv_text)),
+    )
+    result = client.load_day(date(2026, 1, 5), universe_tickers=["AAPL"])
+
+    assert result.rows_raw == 5
+    assert result.rows_kept == 2  # only 09:30 and 15:59
+    bars_et = pd.to_datetime(result.frame["minute_ts"]).dt.tz_convert("America/New_York").dt.strftime("%H:%M").tolist()
+    assert bars_et == ["09:30", "15:59"]
+
+
 def test_flat_file_client_builds_expected_s3_key() -> None:
     client = PolygonFlatFilesClient(access_key="access", secret_key="secret", s3_client=_FakeS3Client(b""))
 
