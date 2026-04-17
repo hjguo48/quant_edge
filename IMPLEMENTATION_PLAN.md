@@ -225,6 +225,7 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - [✅ commit e1b6fbc] Week 3.0 smoke — Polygon minute ingest + stock_minute_aggs hypertable + 3 intraday features, 10 ticker × 5 日 = 19550 行
 - [✅ commit 7646295] Week 3.0.5 B-lite 三向对账诊断 — 24 样本, 归因 polygon_daily_vs_minute (vendor 差异, 本地 0bp)
 - [✅ commit e33d905] Week 3.0.6 A-plus gate + C-partial 血缘 + minute 内部一致性 — smoke pass=true, 53 warning 落 price_reconciliation_events
+- [✅ commit 0180812] Week 3.0.7 P1/P2 hotfix (Codex auto-review) — 修 t=16:00 post-close 误入 regular session, health_check 周末误报. close bp 13.63→6.87, 清理 50 条污染数据.
 
 **待做子任务**:
 - [ ] Week 3.1 全量回填 2019-01 ~ 2026-04 governed universe
