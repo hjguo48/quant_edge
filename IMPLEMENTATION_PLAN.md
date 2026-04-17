@@ -191,11 +191,13 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - 测试调用 build_report() + mock 外部依赖, 不连 DB
 - 4/4 pass, JSON 字段漂移会立即失败
 
-**P2 价格真值 + 标签重建** [⏳ 待派]
-- 修 20747 条 split 异常 / 407 零成交 / 2435 条 T+1 违规
-- 在干净价格上重建 1D/5D/10D/20D excess_return labels
-- SPY pre-2016-04-18 区间截断
-- 10D null excess_return 可解释
+**P2 价格真值 + 标签重建** [✅ 2026-04-17 commit 3317a37]
+- pit_violations: 2435 → 0
+- zero_volume: 407 → 0
+- split_anomalies: 20747 → 0 (17 tickers 重拉 Polygon + 123 条由 corporate_actions 解释)
+- 1D/5D/10D/20D/60D labels 在修正价格上重建, 加 is_valid_excess + invalid_reason
+- pre-SPY excess_return 全部 NULL, 10D null 原因可解释
+- V5 60D IC sanity: 0.0623 → 0.0594 (退化 4.6%, 通过 10% tolerance)
 
 **P3 Universe PIT 回填** [⏳ 待派]
 - `universe_membership` 历史回填 (2016→2026) 或冻结 research∩live overlap 子集
@@ -204,10 +206,10 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 **Week 2.5 Gate (Week 3 启动前必须全部 pass)**:
 1. Live 19/19 required features 全部可见 ✅ (P1 完成)
 2. parquet/feature_store 同 cutoff 下字段/行/时间戳一致 ✅ (P1 完成)
-3. 1D/5D/10D/20D 标签已去 pre-SPY 污染, null excess_return 可解释 ⏳ (P2)
-4. knowledge_time T+1 违反在训练窗口内清零 ⏳ (P2)
+3. 1D/5D/10D/20D 标签已去 pre-SPY 污染, null excess_return 可解释 ✅ (P2 完成)
+4. knowledge_time T+1 违反在训练窗口内清零 ✅ (P2 完成, pit_violations=0)
 5. Universe 历史 PIT 回填或 overlap 冻结完成 ⏳ (P3)
-6. V5 champion sanity 复跑, 60D IC 不退化 >10% ⏳ (P2/P3 完成后)
+6. V5 champion sanity 复跑, 60D IC 不退化 >10% ✅ (P2 完成, 退化 4.6%)
 
 ---
 
