@@ -97,6 +97,26 @@ class StockMinuteAggs(Base):
     batch_id: Mapped[str] = mapped_column(String(36), nullable=False)
 
 
+class PriceReconciliationEvent(Base):
+    __tablename__ = "price_reconciliation_events"
+    __table_args__ = (
+        sa.Index("idx_price_reconciliation_events_trade_date", "trade_date"),
+        sa.Index("idx_price_reconciliation_events_severity", "severity"),
+        sa.Index("idx_price_reconciliation_events_batch_id", "batch_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ticker: Mapped[str] = mapped_column(String(10), nullable=False)
+    trade_date: Mapped[date] = mapped_column(Date, nullable=False)
+    field: Mapped[str] = mapped_column(String(20), nullable=False)
+    stock_prices_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 8))
+    minute_agg_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 8))
+    delta_bp: Mapped[Decimal | None] = mapped_column(Numeric(20, 8))
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    batch_id: Mapped[str] = mapped_column(String(36), nullable=False)
+
+
 class FundamentalsPIT(Base):
     __tablename__ = "fundamentals_pit"
     __table_args__ = (
