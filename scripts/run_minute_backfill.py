@@ -304,7 +304,7 @@ def run_backfill(args: argparse.Namespace) -> dict[str, Any]:
             "dry_run": bool(args.dry_run),
             "resume": bool(args.resume),
             "universe_from_membership": bool(args.universe_from_membership),
-            "universe_size": len(universe_tickers),
+            "universe_size": len(universe_tickers) if universe_tickers is not None else None,
         },
         "processed": processed,
         "errors": errors,
