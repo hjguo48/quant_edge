@@ -149,23 +149,63 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 
 ---
 
-### Week 2: 数据真值与特征一致性审计
+### Week 2: 数据真值与特征一致性审计 [🔄 IN PROGRESS — audit 完成, 2.5 修复进行中]
 
 **目标**：研究数据底座清干净，再扩新特征。
 
 **任务**：
-- `feature_store` (176) vs `parquet` (238) parity audit
-- `stock_prices` split/adjustment/PIT 规则审计
-- benchmark 与 SPY 起始日审计
-- active universe 规则固定
-- 对齐 Massive day aggregates 与 stock_prices
+- [✅ 2026-04-17 commit 07330e7] `feature_store` (176) vs `parquet` (238) parity audit
+- [✅ 2026-04-17 commit 07330e7] `stock_prices` split/adjustment/PIT 规则审计
+- [✅ 2026-04-17 commit 07330e7] benchmark 与 SPY 起始日审计
+- [✅ 2026-04-17 commit 07330e7] active universe 规则固定 (audit 产出, universe 历史回填在 P3)
+- [ ] 对齐 Massive day aggregates 与 stock_prices (Week 3 做)
 
 **产出**：
-- `data/reports/feature_parity_audit.json`
-- `data/reports/price_truth_audit.json`
-- `data/reports/universe_audit.json`
+- [✅] `data/reports/feature_parity_audit_20260417.json`
+- [✅] `data/reports/price_truth_audit_20260417.json`
+- [✅] `data/reports/universe_audit_20260417.json`
+- [✅] `data/reports/benchmark_audit_20260417.json`
 
-**Gate**: 训练与服务特征定义统一，日频价格真值可回放
+**Gate**: 训练与服务特征定义统一，日频价格真值可回放 — **未通过** (见 Week 2.5 修复)
+
+---
+
+### Week 2.5: 审计问题修复 (Gate 前必做)
+
+**目标**: Week 2 审计暴露的 4 类结构性问题必须修复才能通过 Gate 进 Week 3。
+
+**P0 止血** [✅ 2026-04-17 commit db3586c]
+- Live bundle fail-closed 护栏: BundleValidator + schema check + SHA256 指纹封印
+- 3 个 live 入口 (run_live_pipeline / run_greyscale_live / DAG validate_bundle_schema) 均 fail-closed
+- 结果: bundle 特征缺失时直接 raise, 不再用 NaN 顶上
+
+**P1 数据统一** [✅ 2026-04-17 commit b2e2d28]
+- parquet ↔ feature_store single source of truth: `scripts/build_feature_matrix.py` + `prepare_feature_export_frame()`
+- 13 个 live 缺失特征补齐 (bundle_missing_feature_count=0)
+- DAG update_features_cache 改用统一 exporter
+- ProcessPoolExecutor spawn context 修复 DB 连接串扰
+- 结果: 50 样本 parquet/store 值 1e-8 内一致, validate_bundle_schema 通过
+
+**P1.5 Audit output contract 测试** [⏳ 待派]
+- 给 4 个 audit script 加最小 schema 测试, 防止 JSON 输出字段漂移
+
+**P2 价格真值 + 标签重建** [⏳ 待派]
+- 修 20747 条 split 异常 / 407 零成交 / 2435 条 T+1 违规
+- 在干净价格上重建 1D/5D/10D/20D excess_return labels
+- SPY pre-2016-04-18 区间截断
+- 10D null excess_return 可解释
+
+**P3 Universe PIT 回填** [⏳ 待派]
+- `universe_membership` 历史回填 (2016→2026) 或冻结 research∩live overlap 子集
+- 解决 live=604 vs research=710 偏差
+
+**Week 2.5 Gate (Week 3 启动前必须全部 pass)**:
+1. Live 19/19 required features 全部可见 ✅ (P1 完成)
+2. parquet/feature_store 同 cutoff 下字段/行/时间戳一致 ✅ (P1 完成)
+3. 1D/5D/10D/20D 标签已去 pre-SPY 污染, null excess_return 可解释 ⏳ (P2)
+4. knowledge_time T+1 违反在训练窗口内清零 ⏳ (P2)
+5. Universe 历史 PIT 回填或 overlap 冻结完成 ⏳ (P3)
+6. V5 champion sanity 复跑, 60D IC 不退化 >10% ⏳ (P2/P3 完成后)
 
 ---
 
