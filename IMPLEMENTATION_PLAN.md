@@ -186,8 +186,10 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - ProcessPoolExecutor spawn context 修复 DB 连接串扰
 - 结果: 50 样本 parquet/store 值 1e-8 内一致, validate_bundle_schema 通过
 
-**P1.5 Audit output contract 测试** [⏳ 待派]
-- 给 4 个 audit script 加最小 schema 测试, 防止 JSON 输出字段漂移
+**P1.5 Audit output contract 测试** [✅ 2026-04-17 commit a5ecbe8]
+- 4 个 audit script 的最小 schema 测试 (tests/test_scripts/test_audit_contracts.py)
+- 测试调用 build_report() + mock 外部依赖, 不连 DB
+- 4/4 pass, JSON 字段漂移会立即失败
 
 **P2 价格真值 + 标签重建** [⏳ 待派]
 - 修 20747 条 split 异常 / 407 零成交 / 2435 条 T+1 违规
