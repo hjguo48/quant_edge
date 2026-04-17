@@ -5,9 +5,12 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from src.features.alternative import ALTERNATIVE_FEATURE_NAMES
 from src.features.fundamental import FUNDAMENTAL_FEATURE_NAMES, compute_fundamental_features
 from src.features.macro import MACRO_FEATURE_NAMES, compute_macro_features
 from src.features.pipeline import COMPOSITE_FEATURE_NAMES, compute_composite_features
+from src.features.pipeline import compute_alternative_features_batch
+from src.features.sector_rotation import SECTOR_ROTATION_FEATURE_NAMES, compute_sector_rotation_features
 from src.features.technical import TECHNICAL_FEATURE_NAMES, compute_technical_features
 
 
@@ -57,6 +60,10 @@ class FeatureRegistry:
             self.register(name, "fundamental", description, compute_fundamental_features)
         for name, description in _MACRO_FEATURE_METADATA.items():
             self.register(name, "macro", description, compute_macro_features)
+        for name, (category, description) in _ALTERNATIVE_FEATURE_METADATA.items():
+            self.register(name, category, description, compute_alternative_features_batch)
+        for name, description in _SECTOR_ROTATION_FEATURE_METADATA.items():
+            self.register(name, "sector_rotation", description, compute_sector_rotation_features)
         for name, description in _COMPOSITE_FEATURE_METADATA.items():
             self.register(name, "composite", description, compute_composite_features)
 
@@ -94,6 +101,11 @@ _TECHNICAL_FEATURE_METADATA = {
     "cci_20": "20-day commodity channel index.",
     "residual_momentum": "Blitz, Huij & Martens (2011) 60-day sum of SPY market-model residual returns using a 252-day regression window.",
     "idio_vol": "Ang, Hodrick, Xing & Zhang (2006) 60-day standard deviation of SPY market-model residual returns using a 252-day regression window.",
+    "stock_beta_252": "Rolling 252-day beta to SPY from the PIT-safe market model.",
+    "residual_ret_5d": "Five-day return net of rolling SPY beta exposure.",
+    "residual_ret_10d": "Ten-day return net of rolling SPY beta exposure.",
+    "vol_scaled_reversal_5d": "Negative five-day return divided by annualized 20-day volatility.",
+    "above_20dma": "Binary flag for close above the trailing 20-day moving average.",
 }
 
 _FUNDAMENTAL_FEATURE_METADATA = {
@@ -129,11 +141,180 @@ _MACRO_FEATURE_METADATA = {
     "market_ret_20d": "MACRO_REGIME: trailing 20-day return of SPY.",
 }
 
+_ALTERNATIVE_FEATURE_METADATA = {
+    "earnings_surprise_latest": (
+        "earnings",
+        "Most recent quarterly EPS surprise versus estimate using PIT-visible earnings history.",
+    ),
+    "earnings_surprise_avg_4q": (
+        "earnings",
+        "Average EPS surprise across the latest four PIT-visible quarters.",
+    ),
+    "earnings_beat_streak": (
+        "earnings",
+        "Consecutive quarterly EPS beats in the latest PIT-visible history.",
+    ),
+    "earnings_surprise_recency": (
+        "earnings",
+        "Latest EPS surprise decayed by days since the latest PIT-visible fiscal earnings date.",
+    ),
+    "earnings_beat_recency": (
+        "earnings",
+        "EPS beat streak decayed by days since the latest PIT-visible fiscal earnings date.",
+    ),
+    "earnings_surprise_recency_20d": (
+        "earnings",
+        "Latest EPS surprise decayed with a 20-day event half-life proxy.",
+    ),
+    "earnings_beat_recency_30d": (
+        "earnings",
+        "Beat streak decayed with a 30-day event half-life proxy.",
+    ),
+    "surprise_flip_qoq": (
+        "earnings",
+        "Change in latest EPS surprise versus the prior fiscal quarter surprise.",
+    ),
+    "surprise_vs_history": (
+        "earnings",
+        "Latest EPS surprise minus the recent four-quarter average surprise.",
+    ),
+    "pead_setup": (
+        "earnings",
+        "Post-earnings drift setup using decayed surprise and positive five-day momentum.",
+    ),
+    "eps_revision_direction": (
+        "analyst",
+        "Direction of the latest quarterly EPS consensus revision.",
+    ),
+    "revenue_revision_pct": (
+        "analyst",
+        "Percentage change in the latest quarterly revenue consensus versus the prior quarter target.",
+    ),
+    "analyst_coverage": (
+        "analyst",
+        "Number of analysts contributing to the current quarterly EPS consensus.",
+    ),
+    "short_interest_ratio": (
+        "short_interest",
+        "Latest days-to-cover or short-interest ratio from PIT-visible short-interest filings.",
+    ),
+    "short_interest_change": (
+        "short_interest",
+        "Change in short interest versus the prior reported settlement period.",
+    ),
+    "short_interest_sector_rel": (
+        "short_interest",
+        "Sector-relative z-score of the latest PIT-visible days-to-cover reading.",
+    ),
+    "short_interest_change_20d": (
+        "short_interest",
+        "Bi-weekly change in days-to-cover over the latest reporting interval.",
+    ),
+    "short_interest_abnormal_1y": (
+        "short_interest",
+        "Latest days-to-cover normalized by the stock's trailing one-year history.",
+    ),
+    "short_squeeze_setup": (
+        "short_interest",
+        "High short-interest names with positive short-term price and volume pressure.",
+    ),
+    "crowding_unwind_risk": (
+        "short_interest",
+        "High short-interest names in negative 20-day drawdowns.",
+    ),
+    "insider_net_buy_ratio": (
+        "insider",
+        "Net insider buy ratio over the trailing 90-day PIT-visible filing window.",
+    ),
+    "insider_buy_value": (
+        "insider",
+        "Total dollar value of insider purchases over the trailing 90-day PIT-visible filing window.",
+    ),
+    "insider_cluster_buy": (
+        "insider",
+        "Binary flag for three or more distinct insider buyers in the trailing 90-day PIT-visible window.",
+    ),
+    "insider_buy_intensity_20d": (
+        "insider",
+        "Role-weighted decayed insider purchases over 20 days scaled by market capitalization.",
+    ),
+    "insider_net_intensity_60d": (
+        "insider",
+        "Role-weighted decayed insider net buying over 60 days scaled by market capitalization.",
+    ),
+    "insider_cluster_buy_30d_w": (
+        "insider",
+        "Decayed weighted count of distinct insider buyers over the trailing 30 days.",
+    ),
+    "insider_abnormal_buy_90d": (
+        "insider",
+        "Current 90-day insider buy intensity relative to the stock's own historical baseline.",
+    ),
+    "insider_role_skew_30d": (
+        "insider",
+        "CEO/CFO buy intensity minus director/officer sell intensity over the trailing 30 days.",
+    ),
+    "days_since_last_8k": (
+        "sec_filing",
+        "Days since the latest PIT-visible 8-K filing.",
+    ),
+    "days_since_last_10q": (
+        "sec_filing",
+        "Days since the latest PIT-visible 10-Q filing.",
+    ),
+    "days_since_last_10k": (
+        "sec_filing",
+        "Days since the latest PIT-visible 10-K filing.",
+    ),
+    "recent_8k_count_5d": (
+        "sec_filing",
+        "Number of PIT-visible 8-K filings over the trailing 5 days.",
+    ),
+    "recent_8k_count_20d": (
+        "sec_filing",
+        "Number of PIT-visible 8-K filings over the trailing 20 days.",
+    ),
+    "recent_8k_count_60d": (
+        "sec_filing",
+        "Number of PIT-visible 8-K filings over the trailing 60 days.",
+    ),
+    "has_recent_8k_5d": (
+        "sec_filing",
+        "Binary indicator for at least one PIT-visible 8-K in the trailing 5 days.",
+    ),
+    "filing_burst_20d": (
+        "sec_filing",
+        "Count of PIT-visible SEC filings of all types over the trailing 20 days.",
+    ),
+    "overnight_gap": (
+        "daily",
+        "Current open versus previous close gap using PIT-visible daily bars.",
+    ),
+    "volume_surge": (
+        "daily",
+        "Current volume divided by the trailing 20-session average volume.",
+    ),
+}
+
+_SECTOR_ROTATION_FEATURE_METADATA = {
+    "sector_rel_ret_5d": "Sector ETF five-day return relative to SPY assigned by the stock's sector.",
+    "sector_volume_surge": "Sector ETF volume divided by its trailing 20-day average volume.",
+    "sector_pressure": "Rolling z-scored sector-relative return multiplied by sector ETF volume surge.",
+    "stock_vs_sector_20d": "Stock 20-day return minus its mapped sector ETF 20-day return.",
+    "sector_pressure_x_divergence": "Sector pressure interacted with the stock's 20-day divergence from its sector ETF.",
+}
+
 _COMPOSITE_FEATURE_METADATA = {
     "ret_vol_interaction_20d": "20-day return interacted with 20-day volume ratio.",
     "ret_vol_interaction_60d": "60-day return interacted with 20-day volume ratio.",
     "mom_vol_adj_20d": "20-day return adjusted by 20-day volatility.",
     "mom_vol_adj_60d": "60-day return adjusted by 60-day volatility.",
+    "breadth_pct_above_20dma": "Stock above-20DMA participation relative to the cross-sectional breadth rate.",
+    "return_dispersion_20d": "Stock 20-day relative return scaled by cross-sectional 20-day return dispersion.",
+    "narrow_leadership_score": "Narrow-leadership context interacted with stock relative 20-day return.",
+    "high_vix_x_beta": "Positive rolling VIX z-score interacted with stock 252-day beta.",
+    "credit_widening_x_leverage": "Positive 20-day credit-spread widening interacted with debt-to-equity.",
+    "curve_inverted_x_growth": "Negative yield-curve slope interacted with negative revenue growth.",
     "value_mom_pe": "Momentum combined with P/E valuation.",
     "value_mom_pb": "Momentum combined with P/B valuation.",
     "quality_value_roe_pb": "ROE adjusted by P/B valuation.",
@@ -152,7 +333,9 @@ _COMPOSITE_FEATURE_METADATA = {
     "macro_risk_on": "MACRO_REGIME composite: curve slope minus credit spread risk-on composite.",
 }
 
-assert len(TECHNICAL_FEATURE_NAMES) == 32
+assert len(TECHNICAL_FEATURE_NAMES) == 37
 assert len(FUNDAMENTAL_FEATURE_NAMES) == 17
 assert len(MACRO_FEATURE_NAMES) == 10
-assert len(COMPOSITE_FEATURE_NAMES) == 20
+assert len(ALTERNATIVE_FEATURE_NAMES) == 38
+assert len(SECTOR_ROTATION_FEATURE_NAMES) == 5
+assert len(COMPOSITE_FEATURE_NAMES) == 26

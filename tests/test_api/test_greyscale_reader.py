@@ -73,6 +73,38 @@ def report_dir(tmp_path: Path) -> Path:
         },
     }
     (tmp_path / "week_02.json").write_text(json.dumps(report_w2))
+    g3_gate = {
+        "checks": {
+            "bootstrap_ci_positive": {
+                "annualized_excess_estimate": 0.12,
+                "annualized_excess_ci_lower": 0.02,
+                "annualized_excess_ci_upper": 0.22,
+                "sharpe_estimate": 0.70,
+                "sharpe_ci_lower": 0.10,
+                "sharpe_ci_upper": 1.10,
+                "n_observations": 278,
+                "ci_level": 0.95,
+            },
+        },
+    }
+    (tmp_path / "g3_gate_phase_e_v2.json").write_text(json.dumps(g3_gate))
+    quintiles = {
+        "data_source": "walk_forward_quintile_bootstrap",
+        "ci_level": 0.95,
+        "quintiles": {
+            "1": {
+                "annualized_excess": {"estimate": 0.18, "ci_lower": 0.08, "ci_upper": 0.28},
+                "sharpe": {"estimate": 0.90, "ci_lower": 0.20, "ci_upper": 1.40},
+                "n_observations": 278,
+            },
+            "4": {
+                "annualized_excess": {"estimate": 0.04, "ci_lower": -0.02, "ci_upper": 0.10},
+                "sharpe": {"estimate": 0.20, "ci_lower": -0.30, "ci_upper": 0.70},
+                "n_observations": 278,
+            },
+        },
+    }
+    (tmp_path / "quintile_expected_returns.json").write_text(json.dumps(quintiles))
     return tmp_path
 
 
@@ -154,3 +186,28 @@ def test_invalidate_cache_reads_new_file(report_dir: Path) -> None:
 
     reader.invalidate_cache()
     assert reader.get_latest_report()["week_number"] == 4
+
+
+def test_expected_returns_falls_back_to_g3_gate(report_dir: Path) -> None:
+    reader = GreyscaleReader(
+        report_dir=report_dir,
+        g3_gate_results_path=report_dir / "g3_gate_phase_e_v2.json",
+        quintile_expected_returns_path=report_dir / "quintile_expected_returns.json",
+    )
+    payload = reader.get_expected_returns()
+    assert payload is not None
+    assert payload["data_source"] == "g3_gate_bootstrap"
+    assert payload["annualized_excess"]["estimate"] == pytest.approx(0.12)
+
+
+def test_expected_returns_uses_quintile_report_when_requested(report_dir: Path) -> None:
+    reader = GreyscaleReader(
+        report_dir=report_dir,
+        g3_gate_results_path=report_dir / "g3_gate_phase_e_v2.json",
+        quintile_expected_returns_path=report_dir / "quintile_expected_returns.json",
+    )
+    payload = reader.get_expected_returns(quintile=1)
+    assert payload is not None
+    assert payload["data_source"] == "walk_forward_quintile_bootstrap"
+    assert payload["annualized_excess"]["estimate"] == pytest.approx(0.18)
+    assert payload["sharpe"]["estimate"] == pytest.approx(0.90)

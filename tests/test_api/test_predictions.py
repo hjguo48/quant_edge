@@ -73,6 +73,38 @@ def report_dir(tmp_path: Path) -> Path:
     }
     (tmp_path / "week_02.json").write_text(json.dumps(report_week_2))
     (tmp_path / "week_03.json").write_text(json.dumps(report_week_3))
+    g3_gate = {
+        "checks": {
+            "bootstrap_ci_positive": {
+                "annualized_excess_estimate": 0.12,
+                "annualized_excess_ci_lower": 0.02,
+                "annualized_excess_ci_upper": 0.22,
+                "sharpe_estimate": 0.70,
+                "sharpe_ci_lower": 0.10,
+                "sharpe_ci_upper": 1.10,
+                "n_observations": 278,
+                "ci_level": 0.95,
+            },
+        },
+    }
+    (tmp_path / "g3_gate_phase_e_v2.json").write_text(json.dumps(g3_gate))
+    quintiles = {
+        "data_source": "walk_forward_quintile_bootstrap",
+        "ci_level": 0.95,
+        "quintiles": {
+            "1": {
+                "annualized_excess": {"estimate": 0.18, "ci_lower": 0.08, "ci_upper": 0.28},
+                "sharpe": {"estimate": 0.90, "ci_lower": 0.20, "ci_upper": 1.40},
+                "n_observations": 278,
+            },
+            "4": {
+                "annualized_excess": {"estimate": 0.04, "ci_lower": -0.02, "ci_upper": 0.10},
+                "sharpe": {"estimate": 0.20, "ci_lower": -0.30, "ci_upper": 0.70},
+                "n_observations": 278,
+            },
+        },
+    }
+    (tmp_path / "quintile_expected_returns.json").write_text(json.dumps(quintiles))
     return tmp_path
 
 
@@ -86,10 +118,10 @@ def sector_map() -> dict[str, str | None]:
 
 
 class FakeResult:
-    def __init__(self, rows: list[tuple[str, str | None]]) -> None:
+    def __init__(self, rows: list[tuple[str, str | None, str | None]]) -> None:
         self._rows = rows
 
-    def all(self) -> list[tuple[str, str | None]]:
+    def all(self) -> list[tuple[str, str | None, str | None]]:
         return self._rows
 
 
@@ -100,7 +132,12 @@ class FakeAsyncSession:
 
     async def execute(self, statement: object) -> FakeResult:
         self.statements.append(statement)
-        return FakeResult(list(self._sector_map.items()))
+        return FakeResult(
+            [
+                (ticker, sector, f"{ticker} Inc." if sector is not None else None)
+                for ticker, sector in self._sector_map.items()
+            ],
+        )
 
 
 @pytest.fixture()
@@ -120,8 +157,16 @@ def client(report_dir: Path, db_session: FakeAsyncSession) -> TestClient:
 
     with (
         patch.object(predictions_router, "GREYSCALE_REPORT_DIR", report_dir),
-        patch.object(predictions_router, "_READER", None),
-        patch.object(predictions_router, "_READER_DIR", None),
+        patch.object(
+            predictions_router,
+            "_READER",
+            predictions_router.GreyscaleReader(
+                report_dir=report_dir,
+                g3_gate_results_path=report_dir / "g3_gate_phase_e_v2.json",
+                quintile_expected_returns_path=report_dir / "quintile_expected_returns.json",
+            ),
+        ),
+        patch.object(predictions_router, "_READER_DIR", report_dir),
         TestClient(app) as client,
     ):
         yield client
@@ -138,13 +183,12 @@ def test_get_latest_predictions(client: TestClient, db_session: FakeAsyncSession
     assert payload["week_number"] == 3
     assert payload["universe_size"] == 503
     assert len(payload["predictions"]) == 4
-    assert payload["predictions"][0] == {
-        "ticker": "BKNG",
-        "score": pytest.approx(13.21),
-        "rank": 1,
-        "percentile": 100.0,
-        "sector": "Consumer Discretionary",
-    }
+    assert payload["predictions"][0]["ticker"] == "BKNG"
+    assert payload["predictions"][0]["score"] == pytest.approx(13.21)
+    assert payload["predictions"][0]["rank"] == 1
+    assert payload["predictions"][0]["percentile"] == 100.0
+    assert payload["predictions"][0]["sector"] == "Consumer Discretionary"
+    assert payload["predictions"][0]["company_name"] == "BKNG Inc."
     assert payload["predictions"][-1]["sector"] is None
     assert len(db_session.statements) == 1
     assert " IN " in str(db_session.statements[0]).upper()
@@ -189,3 +233,27 @@ def test_get_signal_history(client: TestClient) -> None:
     assert payload["ticker"] == "BKNG"
     assert [point["week"] for point in payload["history"]] == [2, 3]
     assert all(point["rank"] == 1 for point in payload["history"])
+
+
+def test_get_expected_returns_global_fallback(client: TestClient) -> None:
+    response = client.get("/api/predictions/expected-returns")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["data_source"] == "g3_gate_bootstrap"
+    assert payload["annualized_excess"]["estimate"] == pytest.approx(0.12)
+
+
+def test_get_ticker_expected_return_uses_quintile_payload(client: TestClient) -> None:
+    top_response = client.get("/api/predictions/BKNG/expected-return")
+    low_response = client.get("/api/predictions/AAPL/expected-return")
+
+    assert top_response.status_code == 200
+    assert low_response.status_code == 200
+
+    top_payload = top_response.json()
+    low_payload = low_response.json()
+    assert top_payload["quintile"] == 1
+    assert low_payload["quintile"] == 4
+    assert top_payload["data_source"] == "walk_forward_quintile_bootstrap"
+    assert top_payload["annualized_excess"]["estimate"] == pytest.approx(0.18)
+    assert low_payload["annualized_excess"]["estimate"] == pytest.approx(0.04)

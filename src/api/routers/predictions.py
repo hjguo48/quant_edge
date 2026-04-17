@@ -225,7 +225,8 @@ async def get_ticker_expected_return(ticker: str) -> TickerExpectedReturnRespons
     if detail is None:
         raise HTTPException(status_code=404, detail=f"No prediction found for ticker '{normalized_ticker}'")
 
-    expected_returns = reader.get_expected_returns()
+    quintile = _percentile_to_quintile(detail.get("percentile"))
+    expected_returns = reader.get_expected_returns(quintile=quintile)
     if expected_returns is None:
         raise HTTPException(status_code=404, detail="No expected-return data available")
 
@@ -233,7 +234,7 @@ async def get_ticker_expected_return(ticker: str) -> TickerExpectedReturnRespons
         ticker=normalized_ticker,
         signal_date=detail.get("signal_date"),
         percentile=detail.get("percentile"),
-        quintile=_percentile_to_quintile(detail.get("percentile")),
+        quintile=quintile,
         data_source=expected_returns["data_source"],
         ci_level=expected_returns["ci_level"],
         n_observations=expected_returns["n_observations"],

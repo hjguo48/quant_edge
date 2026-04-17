@@ -32,7 +32,7 @@ def test_resolve_windows_with_embargo_passes_all_configured_windows() -> None:
         embargo_days=60,
     )
 
-    assert len(resolved_windows) == 11
+    assert len(resolved_windows) == len(WINDOWS)
 
     for requested_window, effective_window in zip(WINDOWS, resolved_windows, strict=True):
         diagnostics = build_window_split_diagnostics(

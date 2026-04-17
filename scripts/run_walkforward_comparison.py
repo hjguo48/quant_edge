@@ -86,6 +86,8 @@ class WindowSpec:
 
 
 WINDOWS: tuple[WindowSpec, ...] = (
+    WindowSpec("W-1", date(2016, 3, 1), date(2018, 2, 28), date(2018, 3, 1), date(2018, 8, 31), date(2018, 9, 1), date(2019, 2, 28)),
+    WindowSpec("W0", date(2016, 3, 1), date(2018, 8, 31), date(2018, 9, 1), date(2019, 2, 28), date(2019, 3, 1), date(2019, 8, 31)),
     WindowSpec("W1", date(2016, 3, 1), date(2019, 2, 28), date(2019, 3, 1), date(2019, 8, 31), date(2019, 9, 1), date(2020, 2, 29)),
     WindowSpec("W2", date(2016, 9, 1), date(2019, 8, 31), date(2019, 9, 1), date(2020, 2, 29), date(2020, 3, 1), date(2020, 8, 31)),
     WindowSpec("W3", date(2017, 3, 1), date(2020, 2, 29), date(2020, 3, 1), date(2020, 8, 31), date(2020, 9, 1), date(2021, 2, 28)),

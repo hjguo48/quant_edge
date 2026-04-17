@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sys
@@ -18,18 +18,36 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts.run_ic_screening import write_json_atomic
 from scripts.run_single_window_validation import configure_logging, current_git_branch, json_safe
+from scripts.run_horizon_fusion import (
+    extract_ridge_alpha,
+    parse_horizon_days,
+    prepare_horizon_artifacts,
+    rebuild_ridge_predictions,
+    select_report_windows,
+    slice_all_splits,
+)
+from scripts.run_turnover_optimization import simulate_score_weighted_controlled
+from scripts.run_walkforward_comparison import LABEL_BUFFER_DAYS, REBALANCE_WEEKDAY, parse_date
 from src.backtest.cost_model import AlmgrenChrissCostModel
 from src.backtest.engine import build_universe_by_date
-from src.backtest.execution import PortfolioBacktestResult, simulate_portfolio
+from src.backtest.execution import PortfolioBacktestResult, prepare_execution_price_frame, simulate_portfolio
+from src.data.db.pit import get_prices_pit
 from src.stats.bootstrap import bootstrap_return_statistics, sharpe_ratio
 from src.stats.spa import run_spa_fallback
 
-EXPECTED_BRANCH = "feature/alpha-enhancement"
+ALLOWED_BRANCHES = {"feature/alpha-enhancement", "feature/s2-stage0-monetization"}
 DEFAULT_PREDICTIONS_PATH = "data/backtest/extended_walkforward_predictions.parquet"
 DEFAULT_PRICES_PATH = "data/backtest/extended_walkforward_prices.parquet"
 DEFAULT_WALKFORWARD_REPORT_PATH = "data/reports/extended_walkforward.json"
 DEFAULT_COST_CALIBRATION_REPORT_PATH = "data/reports/portfolio_optimization_comparison.json"
 DEFAULT_REPORT_PATH = "data/reports/holding_period_experiment.json"
+DEFAULT_COMPARISON_REPORT_PATH = "data/reports/walkforward_comparison_60d_ridge_v2.json"
+DEFAULT_BUNDLE_PATH = "data/models/fusion_model_bundle_60d.json"
+DEFAULT_ALL_FEATURES_PATH = "data/features/all_features_v2.parquet"
+DEFAULT_FEATURE_MATRIX_CACHE_PATH = "data/features/walkforward_feature_matrix_60d_v2.parquet"
+DEFAULT_LABEL_CACHE_PATH = "data/labels/forward_returns_60d.parquet"
+DEFAULT_PHASE_E_PRICE_CACHE_PATH = "data/backtest/phase_e_ridge_v2_prices.parquet"
+DEFAULT_PHASE_E_REPORT_PATH = "data/reports/s2_holding_period_comparison.json"
 BENCHMARK_TICKER = "SPY"
 DEFAULT_SELECTION_PCT = 0.20
 DEFAULT_SELL_BUFFER_PCT = 0.25
@@ -39,6 +57,7 @@ DEFAULT_MIN_HOLDINGS = 20
 DEFAULT_ETA = 0.426
 DEFAULT_GAMMA = 0.942
 HOLDING_PERIOD_ORDER = ("1W", "2W", "4W", "8W")
+PHASE_E_HOLDING_PERIOD_ORDER = ("20D", "40D", "60D")
 SELL_BUFFER_OPTIONS: tuple[tuple[str, float | None], ...] = (
     ("0%", None),
     ("25%", 0.25),
@@ -52,8 +71,14 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging()
 
     branch = current_git_branch()
-    if branch != EXPECTED_BRANCH:
-        raise RuntimeError(f"This script must run on branch {EXPECTED_BRANCH}. Found {branch!r}.")
+    if branch not in ALLOWED_BRANCHES:
+        raise RuntimeError(
+            f"This script must run on one of {sorted(ALLOWED_BRANCHES)}. Found {branch!r}.",
+        )
+
+    prediction_source = resolve_prediction_source(args)
+    if prediction_source == "comparison":
+        return run_phase_e_holding_period_experiment(args, branch)
 
     predictions_frame = pd.read_parquet(REPO_ROOT / args.predictions_path)
     prices = pd.read_parquet(REPO_ROOT / args.prices_path)
@@ -219,11 +244,27 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Compare 1W/2W/4W/8W holding periods for the 8-window 60D Ridge predictions using calibrated execution costs.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument(
+        "--prediction-source",
+        choices=("auto", "legacy", "comparison"),
+        default="auto",
+    )
     parser.add_argument("--predictions-path", default=DEFAULT_PREDICTIONS_PATH)
     parser.add_argument("--prices-path", default=DEFAULT_PRICES_PATH)
     parser.add_argument("--walkforward-report-path", default=DEFAULT_WALKFORWARD_REPORT_PATH)
     parser.add_argument("--cost-calibration-report-path", default=DEFAULT_COST_CALIBRATION_REPORT_PATH)
     parser.add_argument("--report-path", default=DEFAULT_REPORT_PATH)
+    parser.add_argument("--comparison-report")
+    parser.add_argument("--bundle-path", default=DEFAULT_BUNDLE_PATH)
+    parser.add_argument("--all-features-path", default=DEFAULT_ALL_FEATURES_PATH)
+    parser.add_argument("--feature-matrix-cache-path", default=DEFAULT_FEATURE_MATRIX_CACHE_PATH)
+    parser.add_argument("--label-cache-path", default=DEFAULT_LABEL_CACHE_PATH)
+    parser.add_argument("--phase-e-price-cache-path", default=DEFAULT_PHASE_E_PRICE_CACHE_PATH)
+    parser.add_argument("--phase-e-report-path", default=DEFAULT_PHASE_E_REPORT_PATH)
+    parser.add_argument("--as-of")
+    parser.add_argument("--label-buffer-days", type=int, default=LABEL_BUFFER_DAYS)
+    parser.add_argument("--rebalance-weekday", type=int, default=REBALANCE_WEEKDAY)
+    parser.add_argument("--holding-periods", default="20D,40D,60D")
     parser.add_argument("--benchmark-ticker", default=BENCHMARK_TICKER)
     parser.add_argument("--selection-pct", type=float, default=DEFAULT_SELECTION_PCT)
     parser.add_argument("--sell-buffer-pct", type=float, default=DEFAULT_SELL_BUFFER_PCT)
@@ -270,8 +311,9 @@ def run_holding_period_experiment(
     holding_period: str,
     prediction_bundle: dict[str, pd.Series],
     window_metadata: dict[str, dict[str, Any]],
-    prices: pd.DataFrame,
-    universe_by_date: dict[pd.Timestamp, set[str]],
+    prices: pd.DataFrame | None,
+    execution: pd.DataFrame | None,
+    universe_by_date: dict[pd.Timestamp, set[str]] | None,
     benchmark_ticker: str,
     cost_model: AlmgrenChrissCostModel,
     scheme_config: dict[str, Any],
@@ -285,19 +327,39 @@ def run_holding_period_experiment(
             predictions=predictions,
             holding_period=holding_period,
         )
-        portfolio = simulate_portfolio(
-            predictions=filtered_predictions,
-            prices=prices,
-            cost_model=cost_model,
-            weighting_scheme=str(scheme_config["weighting_scheme"]),
-            benchmark_ticker=benchmark_ticker,
-            universe_by_date=universe_by_date,
-            selection_pct=float(scheme_config["selection_pct"]),
-            sell_buffer_pct=scheme_config["sell_buffer_pct"],
-            min_trade_weight=float(scheme_config["min_trade_weight"]),
-            max_weight=float(scheme_config["max_weight"]),
-            min_holdings=int(scheme_config["min_holdings"]),
-        )
+        if str(scheme_config["weighting_scheme"]) == "score_weighted":
+            if execution is None:
+                raise RuntimeError("execution price frame is required for score_weighted holding-period tests.")
+            portfolio = simulate_score_weighted_controlled(
+                predictions=filtered_predictions,
+                execution=execution,
+                cost_model=cost_model,
+                benchmark_ticker=benchmark_ticker,
+                selection_pct=float(scheme_config["selection_pct"]),
+                sell_buffer_pct=scheme_config.get("sell_buffer_pct"),
+                min_trade_weight=float(scheme_config["min_trade_weight"]),
+                max_weight=float(scheme_config["max_weight"]),
+                min_holdings=int(scheme_config["min_holdings"]),
+                weight_shrinkage=float(scheme_config.get("weight_shrinkage", 0.0)),
+                no_trade_zone=float(scheme_config.get("no_trade_zone", 0.0)),
+                turnover_penalty_lambda=float(scheme_config.get("turnover_penalty_lambda", 0.0)),
+            )
+        else:
+            if prices is None:
+                raise RuntimeError("prices are required for legacy holding-period experiment mode.")
+            portfolio = simulate_portfolio(
+                predictions=filtered_predictions,
+                prices=prices,
+                cost_model=cost_model,
+                weighting_scheme=str(scheme_config["weighting_scheme"]),
+                benchmark_ticker=benchmark_ticker,
+                universe_by_date=universe_by_date,
+                selection_pct=float(scheme_config["selection_pct"]),
+                sell_buffer_pct=scheme_config["sell_buffer_pct"],
+                min_trade_weight=float(scheme_config["min_trade_weight"]),
+                max_weight=float(scheme_config["max_weight"]),
+                min_holdings=int(scheme_config["min_holdings"]),
+            )
         metadata = window_metadata[window_id]
         window_payload = build_window_payload(
             window_id=window_id,
@@ -343,6 +405,10 @@ def select_signal_dates(
         return signal_dates
 
     normalized = pd.DatetimeIndex(signal_dates).sort_values().unique()
+    if holding_period.endswith("D"):
+        holding_days = int(holding_period.removesuffix("D"))
+        step = max(1, int(round(holding_days / 5.0)))
+        return normalized[::step]
     if holding_period == "1W":
         return normalized
     if holding_period == "2W":
@@ -688,6 +754,255 @@ def empty_cost_breakdown() -> dict[str, float]:
         "gap_penalty": 0.0,
         "total": 0.0,
     }
+
+
+def resolve_prediction_source(args: argparse.Namespace) -> str:
+    if args.prediction_source != "auto":
+        return str(args.prediction_source)
+    return "comparison" if args.comparison_report else "legacy"
+
+
+def run_phase_e_holding_period_experiment(args: argparse.Namespace, branch: str) -> int:
+    comparison_path = REPO_ROOT / (
+        args.comparison_report or DEFAULT_COMPARISON_REPORT_PATH
+    )
+    report_payload = json.loads(comparison_path.read_text())
+    as_of = parse_date(args.as_of) if args.as_of else parse_date(str(report_payload["as_of"]))
+    benchmark_ticker = str(
+        report_payload.get("split_config", {}).get("calendar_ticker", args.benchmark_ticker),
+    ).upper()
+    rebalance_weekday = int(args.rebalance_weekday)
+    holding_periods = parse_phase_e_holding_periods(args.holding_periods)
+
+    prediction_bundle, window_metadata, comparison_windows, horizon_days = reconstruct_phase_e_prediction_bundle(
+        comparison_path=comparison_path,
+        all_features_path=REPO_ROOT / args.all_features_path,
+        feature_matrix_cache_path=REPO_ROOT / args.feature_matrix_cache_path,
+        label_cache_path=REPO_ROOT / args.label_cache_path,
+        as_of=as_of,
+        label_buffer_days=args.label_buffer_days,
+        benchmark_ticker=benchmark_ticker,
+        rebalance_weekday=rebalance_weekday,
+    )
+    prices = build_or_load_phase_e_prices(
+        prediction_bundle=prediction_bundle,
+        benchmark_ticker=benchmark_ticker,
+        comparison_windows=comparison_windows,
+        as_of=as_of,
+        cache_path=REPO_ROOT / args.phase_e_price_cache_path,
+    )
+    execution = prepare_execution_price_frame(prices)
+
+    bundle = json.loads((REPO_ROOT / args.bundle_path).read_text())
+    scheme_config = build_phase_e_score_weighted_config(bundle.get("turnover_controls", {}))
+    cost_params = load_calibrated_cost_parameters(REPO_ROOT / args.cost_calibration_report_path)
+    cost_model = AlmgrenChrissCostModel(
+        eta=float(cost_params["eta"]),
+        gamma=float(cost_params["gamma"]),
+        commission_per_share=float(cost_params["commission_per_share"]),
+        min_spread_bps=float(cost_params["min_spread_bps"]),
+    )
+
+    holding_period_reports: dict[str, dict[str, Any]] = {}
+    comparison_rows: list[dict[str, Any]] = []
+    for holding_period in holding_periods:
+        logger.info("running Phase E holding-period experiment {}", holding_period)
+        payload = run_holding_period_experiment(
+            holding_period=holding_period,
+            prediction_bundle=prediction_bundle,
+            window_metadata=window_metadata,
+            prices=None,
+            execution=execution,
+            universe_by_date=None,
+            benchmark_ticker=benchmark_ticker,
+            cost_model=cost_model,
+            scheme_config=scheme_config,
+        )
+        holding_period_reports[holding_period] = payload
+        comparison_rows.append(
+            {
+                "holding_period": holding_period,
+                "annualized_net_excess": float(payload["aggregate"]["annualized_net_excess"]),
+                "annualized_gross_excess": float(payload["aggregate"]["annualized_gross_excess"]),
+                "sharpe": float(payload["aggregate"]["sharpe"]),
+                "average_turnover": float(payload["aggregate"]["average_turnover"]),
+                "total_cost_drag": float(payload["aggregate"]["total_cost_drag"]),
+                "rebalance_count": int(payload["aggregate"]["rebalance_count"]),
+            },
+        )
+
+    comparison_rows.sort(key=lambda row: row["annualized_net_excess"], reverse=True)
+    report = {
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "git_branch": branch,
+        "script": "scripts/run_holding_period_experiment.py",
+        "mode": "phase_e_comparison_report",
+        "inputs": {
+            "comparison_report": str(comparison_path),
+            "bundle_path": str(REPO_ROOT / args.bundle_path),
+            "all_features_path": str(REPO_ROOT / args.all_features_path),
+            "feature_matrix_cache_path": str(REPO_ROOT / args.feature_matrix_cache_path),
+            "label_cache_path": str(REPO_ROOT / args.label_cache_path),
+            "phase_e_price_cache_path": str(REPO_ROOT / args.phase_e_price_cache_path),
+            "cost_calibration_report_path": str(REPO_ROOT / args.cost_calibration_report_path),
+            "as_of": as_of.isoformat(),
+            "benchmark_ticker": benchmark_ticker,
+            "rebalance_weekday": rebalance_weekday,
+            "horizon_days": horizon_days,
+        },
+        "phase_e_summary": {
+            "mean_test_ic": float(report_payload["summary"]["ridge"]["mean_test_ic"]),
+            "mean_test_icir": float(report_payload["summary"]["ridge"]["mean_test_icir"]),
+            "positive_windows": int(report_payload["summary"]["ridge"]["win_count"]),
+            "windows_completed": int(report_payload["summary"]["ridge"]["windows_completed"]),
+            "retained_feature_count": int(report_payload["retained_feature_count"]),
+        },
+        "score_weighted_config": scheme_config,
+        "schedule_assumptions": {
+            "20D": "Every 4th weekly signal date (~20 trading days).",
+            "40D": "Every 8th weekly signal date (~40 trading days).",
+            "60D": "Every 12th weekly signal date (~60 trading days).",
+        },
+        "comparison_matrix": comparison_rows,
+        "holding_periods": {
+            holding_period: make_report_safe_payload(payload)
+            for holding_period, payload in holding_period_reports.items()
+        },
+        "best_holding_period": comparison_rows[0]["holding_period"] if comparison_rows else None,
+    }
+    output_path = REPO_ROOT / args.phase_e_report_path
+    write_json_atomic(output_path, json_safe(report))
+    logger.info("saved Phase E holding-period report to {}", output_path)
+    return 0
+
+
+def parse_phase_e_holding_periods(raw: str) -> list[str]:
+    parts = [item.strip().upper() for item in str(raw).split(",") if item.strip()]
+    if not parts:
+        raise ValueError("holding_periods must not be empty")
+    unsupported = sorted(set(parts) - set(PHASE_E_HOLDING_PERIOD_ORDER))
+    if unsupported:
+        raise ValueError(f"Unsupported holding periods: {unsupported}")
+    return parts
+
+
+def build_phase_e_score_weighted_config(turnover_cfg: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "weighting_scheme": "score_weighted",
+        "selection_pct": float(turnover_cfg.get("selection_pct", 0.25)),
+        "sell_buffer_pct": float(turnover_cfg.get("sell_buffer_pct", 0.40)),
+        "min_trade_weight": float(turnover_cfg.get("min_trade_weight", 0.005)),
+        "max_weight": float(turnover_cfg.get("max_weight", 0.05)),
+        "min_holdings": int(turnover_cfg.get("min_holdings", 20)),
+        "weight_shrinkage": float(turnover_cfg.get("weight_shrinkage", 0.0)),
+        "no_trade_zone": float(turnover_cfg.get("no_trade_zone", 0.0)),
+        "turnover_penalty_lambda": float(turnover_cfg.get("turnover_penalty_lambda", 0.0)),
+    }
+
+
+def reconstruct_phase_e_prediction_bundle(
+    *,
+    comparison_path: Path,
+    all_features_path: Path,
+    feature_matrix_cache_path: Path,
+    label_cache_path: Path,
+    as_of: date,
+    label_buffer_days: int,
+    benchmark_ticker: str,
+    rebalance_weekday: int,
+) -> tuple[dict[str, pd.Series], dict[str, dict[str, Any]], list[dict[str, Any]], int]:
+    report_payload = json.loads(comparison_path.read_text())
+    comparison_windows = select_report_windows(report_payload, limit=None)
+    horizon_days = parse_horizon_days(report_payload)
+    artifacts = prepare_horizon_artifacts(
+        label=f"{horizon_days}D",
+        horizon_days=horizon_days,
+        report_path=comparison_path,
+        report_payload=report_payload,
+        windows=comparison_windows,
+        all_features_path=all_features_path,
+        feature_matrix_cache_path=feature_matrix_cache_path,
+        label_cache_path=label_cache_path,
+        as_of=as_of,
+        label_buffer_days=label_buffer_days,
+        benchmark_ticker=benchmark_ticker,
+        rebalance_weekday=rebalance_weekday,
+    )
+
+    prediction_bundle: dict[str, pd.Series] = {}
+    window_metadata: dict[str, dict[str, Any]] = {}
+    for window in comparison_windows:
+        dates = {
+            key: parse_date(str(window["dates"][key]))
+            for key in (
+                "train_start",
+                "train_end",
+                "validation_start",
+                "validation_end",
+                "test_start",
+                "test_end",
+            )
+        }
+        split = slice_all_splits(
+            X=artifacts.feature_matrix,
+            y=artifacts.labels,
+            dates=dates,
+            rebalance_weekday=rebalance_weekday,
+        )
+        alpha = extract_ridge_alpha(window)
+        _, test_pred = rebuild_ridge_predictions(
+            train_X=split["train_X"],
+            train_y=split["train_y"],
+            validation_X=split["validation_X"],
+            validation_y=split["validation_y"],
+            test_X=split["test_X"],
+            alpha=alpha,
+        )
+        window_id = str(window["window_id"])
+        prediction_bundle[window_id] = test_pred.sort_index()
+        window_metadata[window_id] = {
+            "train_period": str(window["dates"]["train"]),
+            "validation_period": str(window["dates"]["validation"]),
+            "test_period": str(window["dates"]["test"]),
+            "test_metrics": dict(window["results"]["ridge"]["test_metrics"]),
+            "best_hyperparams": alpha,
+        }
+
+    return prediction_bundle, window_metadata, comparison_windows, horizon_days
+
+
+def build_or_load_phase_e_prices(
+    *,
+    prediction_bundle: dict[str, pd.Series],
+    benchmark_ticker: str,
+    comparison_windows: list[dict[str, Any]],
+    as_of: date,
+    cache_path: Path,
+) -> pd.DataFrame:
+    if cache_path.exists():
+        logger.info("loading cached Phase E price history from {}", cache_path)
+        return pd.read_parquet(cache_path)
+
+    tickers = sorted(
+        {
+            str(ticker).upper()
+            for predictions in prediction_bundle.values()
+            for ticker in predictions.index.get_level_values("ticker")
+        },
+    )
+    start_date = min(parse_date(str(window["dates"]["test_start"])) for window in comparison_windows)
+    end_date = max(parse_date(str(window["dates"]["test_end"])) for window in comparison_windows) + timedelta(days=14)
+    prices = get_prices_pit(
+        tickers=[*tickers, benchmark_ticker.upper()],
+        start_date=start_date,
+        end_date=end_date,
+        as_of=as_of,
+    )
+    if prices.empty:
+        raise RuntimeError("No PIT prices available for Phase E holding-period experiment.")
+    prices.to_parquet(cache_path, index=False)
+    logger.info("cached Phase E price history to {}", cache_path)
+    return prices
 
 
 if __name__ == "__main__":
