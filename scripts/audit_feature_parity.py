@@ -317,7 +317,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Audit feature parity between live feature_store and research parquet.")
     parser.add_argument(
         "--parquet-path",
-        default="data/features/all_features_v5.parquet",
+        default="data/features/all_features.parquet",
         help="Research feature parquet to compare against the live feature_store.",
     )
     parser.add_argument(

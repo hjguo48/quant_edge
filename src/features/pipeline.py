@@ -57,6 +57,50 @@ COMPOSITE_FEATURE_NAMES = (
     "breadth_momentum",
     "macro_risk_on",
 )
+FEATURE_EXPORT_COLUMNS = ["ticker", "trade_date", "feature_name", "feature_value", "is_filled"]
+
+
+def prepare_feature_export_frame(features_df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize pipeline output into the canonical export contract.
+
+    This frame is the single source for both parquet research caches and
+    feature_store writes. Any path that persists features should use this exact
+    transformation first.
+    """
+    required_columns = {"ticker", "trade_date", "feature_name", "feature_value"}
+    missing = sorted(required_columns - set(features_df.columns))
+    if missing:
+        raise ValueError(f"features_df is missing required columns for export: {missing}")
+
+    frame = features_df.loc[:, [column for column in FEATURE_EXPORT_COLUMNS if column in features_df.columns]].copy()
+    frame["ticker"] = frame["ticker"].astype(str).str.upper()
+    frame["trade_date"] = pd.to_datetime(frame["trade_date"]).dt.date
+    frame["feature_name"] = frame["feature_name"].astype(str)
+    frame["feature_value"] = pd.to_numeric(frame["feature_value"], errors="coerce")
+    if "is_filled" not in frame.columns:
+        frame["is_filled"] = False
+    else:
+        frame["is_filled"] = frame["is_filled"].fillna(False).astype(bool)
+    frame = frame[FEATURE_EXPORT_COLUMNS]
+    frame.sort_values(["trade_date", "ticker", "feature_name"], inplace=True)
+    frame.drop_duplicates(["trade_date", "ticker", "feature_name"], keep="last", inplace=True)
+    frame.reset_index(drop=True, inplace=True)
+    return frame
+
+
+def feature_store_records_from_frame(frame: pd.DataFrame, *, batch_id: str) -> list[dict[str, object]]:
+    prepared = prepare_feature_export_frame(frame)
+    return [
+        {
+            "ticker": str(row.ticker).upper(),
+            "calc_date": _coerce_date(row.trade_date),
+            "feature_name": str(row.feature_name),
+            "feature_value": _to_decimal(row.feature_value),
+            "is_filled": bool(getattr(row, "is_filled", False)),
+            "batch_id": batch_id,
+        }
+        for row in prepared.itertuples(index=False)
+    ]
 
 
 class FeaturePipeline:
@@ -199,27 +243,18 @@ class FeaturePipeline:
     ) -> int:
         if features_df.empty:
             return 0
+        prepared = prepare_feature_export_frame(features_df)
 
         session_factory = get_session_factory()
         rows_saved = 0
         with session_factory() as session:
             try:
-                for start in range(0, len(features_df), batch_size):
-                    batch = features_df.iloc[start : start + batch_size]
-                    records = [
-                        {
-                            "ticker": str(row.ticker).upper(),
-                            # calc_date stores the market date for the feature row. The
-                            # actual availability time remains governed by PIT input
-                            # knowledge_time and the batch's as_of cutoff used in run().
-                            "calc_date": _coerce_date(row.trade_date),
-                            "feature_name": str(row.feature_name),
-                            "feature_value": _to_decimal(row.feature_value),
-                            "is_filled": bool(getattr(row, "is_filled", False)),
-                            "batch_id": batch_id,
-                        }
-                        for row in batch.itertuples(index=False)
-                    ]
+                for start in range(0, len(prepared), batch_size):
+                    batch = prepared.iloc[start : start + batch_size]
+                    # calc_date stores the market date for the feature row. The
+                    # actual availability time remains governed by PIT input
+                    # knowledge_time and the batch's as_of cutoff used in run().
+                    records = feature_store_records_from_frame(batch, batch_id=batch_id)
                     statement = insert(FeatureStore).values(records)
                     upsert = statement.on_conflict_do_update(
                         constraint="uq_feature_store_batch",
@@ -248,7 +283,7 @@ class FeaturePipeline:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
         file_path = output_path / f"{batch_id}.parquet"
-        parquet_frame = features_df.copy()
+        parquet_frame = prepare_feature_export_frame(features_df)
         parquet_frame["batch_id"] = batch_id
         try:
             parquet_frame.to_parquet(file_path, index=False)

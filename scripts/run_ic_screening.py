@@ -5,6 +5,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import lru_cache
 import gc
 import json
+import multiprocessing as mp
 import os
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -658,7 +659,10 @@ def build_or_load_feature_cache(
                 if completed_tickers % progress_interval == 0 or completed_tickers == len(tickers):
                     logger.info("feature progress: processed {}/{} tickers", completed_tickers, len(tickers))
         elif pending_specs:
-            with ProcessPoolExecutor(max_workers=worker_count) as executor:
+            with ProcessPoolExecutor(
+                max_workers=worker_count,
+                mp_context=mp.get_context("spawn"),
+            ) as executor:
                 future_to_spec = {
                     executor.submit(
                         build_feature_batch_worker,
