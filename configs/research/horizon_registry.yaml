@@ -1,0 +1,36 @@
+# 统一定义各 horizon 的研究协议，避免脚本各自写死。
+as_of: 2026-04-17
+
+global_defaults:
+  # 统一 walk-forward 结构。
+  train_window: 3y
+  validation_window: 6mo
+  test_window: 6mo
+  rolling_step: 6mo
+  # 周五调仓，和当前 live/greyscale 一致。
+  rebalance_weekday: 4
+  # 统一成本模型基线。
+  cost_model: Almgren-Chriss default
+
+horizons:
+  1D:
+    label_type: forward_returns_1d_open_to_open_excess
+    purge_days: 1
+    embargo_days: 1
+    role: execution_risk_throttle
+  5D:
+    label_type: forward_returns_5d_open_to_open_excess
+    purge_days: 5
+    embargo_days: 5
+    role: event_microstructure_overlay
+  20D:
+    label_type: forward_returns_20d_open_to_open_excess
+    purge_days: 20
+    embargo_days: 20
+    role: revision_crowding_adjustment
+  60D:
+    label_type: forward_returns_60d_close_to_close_excess
+    purge_days: 60
+    embargo_days: 60
+    role: core_alpha
+

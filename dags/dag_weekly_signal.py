@@ -25,6 +25,7 @@ try:
     from airflow import DAG
     from airflow.exceptions import AirflowException
     from airflow.operators.python import PythonOperator
+    from airflow.utils.trigger_rule import TriggerRule
 except ModuleNotFoundError:  # pragma: no cover - local import fallback outside Airflow runtime.
     class AirflowException(Exception):
         pass
@@ -48,6 +49,9 @@ except ModuleNotFoundError:  # pragma: no cover - local import fallback outside 
 
         def __rshift__(self, other: Any) -> Any:
             return other
+
+    class TriggerRule:  # type: ignore[override]
+        ALL_DONE = "all_done"
 
 LOGGER = logging.getLogger(__name__)
 BENCHMARK_TICKER = "SPY"
@@ -658,6 +662,35 @@ def compute_features(**context: Any) -> dict[str, Any]:
     return _run_task("compute_features", _compute_features_impl, **context)
 
 
+def _validate_bundle_schema_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    from src.data.db.session import get_session_factory
+    from src.models.bundle_validator import BundleSchemaError, BundleValidator
+
+    bundle_path = _artifact_path(repo_root, DEFAULT_BUNDLE_PATH)
+    validator = BundleValidator(bundle_path)
+    session_factory = get_session_factory()
+    with session_factory() as session:
+        try:
+            result = validator.assert_valid(session)
+        except BundleSchemaError as exc:
+            raise RuntimeError(
+                f"Bundle schema validation failed for {bundle_path}: {exc}",
+            ) from exc
+
+    return _result(
+        "validate_bundle_schema",
+        "ok",
+        bundle_path=str(bundle_path),
+        version=result.metadata.get("version"),
+        required_feature_count=int(result.metadata.get("required_feature_count", 0) or 0),
+        feature_fingerprint=result.metadata.get("computed_fingerprint"),
+    )
+
+
+def validate_bundle_schema(**context: Any) -> dict[str, Any]:
+    return _run_task("validate_bundle_schema", _validate_bundle_schema_impl, **context)
+
+
 def _model_inference_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     import pandas as pd
 
@@ -896,6 +929,10 @@ with DAG(
         task_id="compute_features",
         python_callable=compute_features,
     )
+    validate_bundle_schema_task = PythonOperator(
+        task_id="validate_bundle_schema",
+        python_callable=validate_bundle_schema,
+    )
     model_inference_task = PythonOperator(
         task_id="model_inference",
         python_callable=model_inference,
@@ -907,6 +944,14 @@ with DAG(
     greyscale_monitor_task = PythonOperator(
         task_id="greyscale_monitor",
         python_callable=greyscale_monitor,
+        trigger_rule=TriggerRule.ALL_DONE,
     )
 
-    check_data_freshness_task >> compute_features_task >> model_inference_task >> signal_risk_check_task >> greyscale_monitor_task
+    (
+        check_data_freshness_task
+        >> compute_features_task
+        >> validate_bundle_schema_task
+        >> model_inference_task
+        >> signal_risk_check_task
+        >> greyscale_monitor_task
+    )

@@ -26,6 +26,27 @@ interface StockPricesResponse {
   }>;
 }
 
+interface IntradayAggregate {
+  t: number;
+  o?: number | null;
+  h?: number | null;
+  l?: number | null;
+  c?: number | null;
+  v?: number | null;
+}
+
+interface IntradayResponse {
+  ticker?: string;
+  status?: string;
+  results?: IntradayAggregate[];
+  resultsCount?: number;
+}
+
+interface IntradayRequestConfig {
+  path: string;
+  isIntraday: boolean;
+}
+
 type RangeKey = "1D" | "1W" | "1M" | "3M" | "1Y" | "5Y" | "All";
 type ChartMode = "candlestick" | "line";
 
@@ -57,6 +78,14 @@ const RANGE_OPTIONS: RangeOption[] = [
   { key: "5Y", label: "5Y", days: 1260 },
   { key: "All", label: "All", days: 2520 },
 ];
+
+const MOTION_CSS = `
+@keyframes kline-live-flash {
+  0% { opacity: 0; transform: scale(0.88); }
+  25% { opacity: 0.85; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(1.22); }
+}
+`;
 
 function generateCandles(n: number): Candle[] {
   const generated: Candle[] = [];
@@ -97,29 +126,177 @@ function mapPricesToCandles(payload?: StockPricesResponse): Candle[] {
   
   return payload.prices
     .filter((price) => {
-      // Be more lenient: only require close to show a point
-      const close = price.close ?? price.adj_close;
+      const close = price.adj_close ?? price.close;
       return typeof close === "number" && Number.isFinite(close);
     })
-    .map((price) => ({
-      time: price.trade_date,
-      open: Number(price.open ?? price.close ?? 0),
-      high: Number(price.high ?? price.close ?? 0),
-      low: Number(price.low ?? price.close ?? 0),
-      close: Number(price.close ?? price.adj_close ?? 0),
-      volume: Number(price.volume ?? 0),
+    .map((price) => {
+      const adjRatio = (price.adj_close && price.close && price.close !== 0)
+        ? Number(price.adj_close) / Number(price.close)
+        : 1;
+      return {
+        time: price.trade_date,
+        open: Number((price.open ?? price.close ?? 0)) * adjRatio,
+        high: Number((price.high ?? price.close ?? 0)) * adjRatio,
+        low: Number((price.low ?? price.close ?? 0)) * adjRatio,
+        close: Number(price.adj_close ?? price.close ?? 0),
+        volume: Number(price.volume ?? 0),
+      };
+    });
+}
+
+function mapIntradayToCandles(payload?: IntradayResponse): Candle[] {
+  if (!payload?.results) return [];
+
+  return payload.results
+    .filter((bar) => typeof bar.t === "number" && typeof bar.c === "number" && Number.isFinite(bar.c))
+    .map((bar) => ({
+      time: new Date(bar.t).toISOString(),
+      open: Number(bar.o ?? bar.c ?? 0),
+      high: Number(bar.h ?? bar.c ?? 0),
+      low: Number(bar.l ?? bar.c ?? 0),
+      close: Number(bar.c ?? 0),
+      volume: Number(bar.v ?? 0),
     }));
 }
 
-function formatTradeDate(value: string): string {
+function formatTradeDate(value: string, range: RangeKey): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
+
+  if (range === "1D") {
+    return parsed.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+
+  if (range === "1W" || range === "1M") {
+    const m = parsed.getMonth() + 1;
+    const d = parsed.getDate();
+    const time = parsed.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `${m}/${d} ${time}`;
+  }
 
   return parsed.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
+}
+
+function formatAxisLabel(value: string, range: RangeKey): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  if (range === "1D") {
+    // 分钟级: 只显示 HH:MM
+    return parsed.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+
+  if (range === "1W") {
+    // 小时级: 显示 M/D H:00
+    const m = parsed.getMonth() + 1;
+    const d = parsed.getDate();
+    const h = parsed.getHours().toString().padStart(2, "0");
+    return `${m}/${d} ${h}:00`;
+  }
+
+  if (range === "1M") {
+    // 小时级: 显示 M/D H:00
+    const m = parsed.getMonth() + 1;
+    const d = parsed.getDate();
+    const h = parsed.getHours().toString().padStart(2, "0");
+    return `${m}/${d} ${h}:00`;
+  }
+
+  // 3M+ 日线: 显示 Mon D
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function selectAxisLabelIndices(count: number, maxLabels: number): number[] {
+  if (count <= 0) return [];
+  if (count <= maxLabels) return Array.from({ length: count }, (_, index) => index);
+
+  const step = (count - 1) / Math.max(maxLabels - 1, 1);
+  const indices = new Set<number>();
+  for (let labelIndex = 0; labelIndex < maxLabels; labelIndex += 1) {
+    indices.add(Math.round(labelIndex * step));
+  }
+  return Array.from(indices).sort((left, right) => left - right);
+}
+
+function easeOutCubic(progress: number): number {
+  return 1 - Math.pow(1 - progress, 3);
+}
+
+function getRefetchInterval(range: RangeKey): number {
+  if (range === "1D") return 30_000;
+  if (range === "1W" || range === "1M") return 60_000;
+  return 300_000;
+}
+
+function formatMarketDate(date: Date): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date);
+}
+
+function subtractTradingDays(reference: Date, tradingDays: number): Date {
+  const result = new Date(reference);
+  let remaining = tradingDays;
+
+  while (remaining > 0) {
+    result.setDate(result.getDate() - 1);
+    const weekday = result.getDay();
+    if (weekday !== 0 && weekday !== 6) {
+      remaining -= 1;
+    }
+  }
+
+  return result;
+}
+
+function buildIntradayRequestConfig(ticker: string, range: RangeKey): IntradayRequestConfig | null {
+  const normalizedTicker = ticker.trim().toUpperCase();
+  if (!normalizedTicker) return null;
+
+  if (range === "1D") {
+    return {
+      isIntraday: true,
+      path: `/api/market/intraday?ticker=${normalizedTicker}&multiplier=1&timespan=minute`,
+    };
+  }
+
+  if (range === "1W" || range === "1M") {
+    const today = new Date();
+    const lookbackDays = range === "1W" ? 4 : 20;
+    const fromDate = formatMarketDate(subtractTradingDays(today, lookbackDays));
+    const toDate = formatMarketDate(today);
+    return {
+      isIntraday: true,
+      path:
+        `/api/market/intraday?ticker=${normalizedTicker}` +
+        `&multiplier=1&timespan=hour&from_date=${fromDate}&to_date=${toDate}`,
+    };
+  }
+
+  return null;
 }
 
 function formatVolume(value: number): string {
@@ -145,11 +322,14 @@ const KLineChart = ({
   const [chartWidth, setChartWidth] = useState(0);
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [intradayRevealProgress, setIntradayRevealProgress] = useState(1);
+  const [intradayFlash, setIntradayFlash] = useState(false);
   const [rangeSliderStyle, setRangeSliderStyle] = useState<CSSProperties>({
     width: 0,
     transform: "translateX(0px)",
     opacity: 0,
   });
+  const intradaySignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
     setSelectedRange(defaultRange);
@@ -221,26 +401,91 @@ const KLineChart = ({
   }
 
   const selectedDays = getDaysForRange(selectedRange);
+  const intradayRequest = ticker ? buildIntradayRequestConfig(ticker, selectedRange) : null;
+  const isIntradayMode = intradayRequest?.isIntraday ?? false;
   const fallbackCandles = !ticker && !candles?.length ? fallbackCandlesRef.current ?? [] : [];
 
   const pricesQuery = useQuery<StockPricesResponse, Error>({
     queryKey: ["klineChartPrices", ticker, selectedDays],
     queryFn: () => fetchApi<StockPricesResponse>(`/api/stocks/${ticker}/prices?days=${selectedDays}`),
-    enabled: Boolean(ticker),
+    enabled: Boolean(ticker) && !isIntradayMode,
     staleTime: 60_000,
     retry: false,
     placeholderData: (previousData) => previousData,
+    refetchInterval: !isIntradayMode ? getRefetchInterval(selectedRange) : false,
+    refetchIntervalInBackground: false,
   });
 
-  const liveCandles = useMemo(() => mapPricesToCandles(pricesQuery.data), [pricesQuery.data]);
+  const intradayQuery = useQuery<IntradayResponse, Error>({
+    queryKey: ["klineChartIntraday", ticker, selectedRange, intradayRequest?.path],
+    queryFn: () => fetchApi<IntradayResponse>(intradayRequest?.path ?? ""),
+    enabled: Boolean(ticker) && isIntradayMode,
+    staleTime: 10_000,
+    retry: false,
+    placeholderData: (previousData) => previousData,
+    refetchInterval: isIntradayMode ? getRefetchInterval(selectedRange) : false,
+    refetchIntervalInBackground: false,
+  });
+
+  const liveCandles = useMemo(
+    () => (isIntradayMode ? mapIntradayToCandles(intradayQuery.data) : mapPricesToCandles(pricesQuery.data)),
+    [intradayQuery.data, isIntradayMode, pricesQuery.data],
+  );
+  const activeQuery = isIntradayMode ? intradayQuery : pricesQuery;
   const data = liveCandles.length > 0 ? liveCandles : (candles?.length ? candles : (ticker ? [] : fallbackCandles));
+
+  useEffect(() => {
+    if (liveCandles.length === 0) {
+      intradaySignatureRef.current = null;
+      setIntradayFlash(false);
+      return;
+    }
+
+    const lastCandle = liveCandles[liveCandles.length - 1];
+    const signature = `${liveCandles.length}:${lastCandle.time}:${lastCandle.close}:${lastCandle.volume}`;
+    if (intradaySignatureRef.current === null) {
+      intradaySignatureRef.current = signature;
+      return;
+    }
+    if (intradaySignatureRef.current === signature) {
+      return;
+    }
+
+    intradaySignatureRef.current = signature;
+    setIntradayFlash(true);
+    const timeoutId = window.setTimeout(() => setIntradayFlash(false), 650);
+    return () => window.clearTimeout(timeoutId);
+  }, [liveCandles]);
+
+  useEffect(() => {
+    if (data.length === 0) {
+      setIntradayRevealProgress(1);
+      return;
+    }
+
+    let animationFrame = 0;
+    const start = performance.now();
+    const durationMs = 900;
+    setIntradayRevealProgress(0);
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / durationMs);
+      setIntradayRevealProgress(easeOutCubic(progress));
+      if (progress < 1) {
+        animationFrame = window.requestAnimationFrame(tick);
+      }
+    };
+
+    animationFrame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [chartMode, liveCandles.length, selectedRange, ticker]);
 
   const metrics = useMemo(() => {
     if (!chartWidth || data.length === 0) return null;
 
     const width = chartWidth;
-    const padding = { left: 12, right: 56, top: 16, bottom: 4 };
-    const volumeHeight = 40;
+    const padding = { left: 12, right: 56, top: 16, bottom: 22 };
+    const volumeHeight = 44;
     const chartHeight = height - volumeHeight - 10;
     const plotWidth = Math.max(0, width - padding.left - padding.right);
     const count = Math.max(data.length, 1);
@@ -266,6 +511,33 @@ const KLineChart = ({
     };
   }, [chartWidth, data, height]);
 
+  const lastCandle = data.length > 0 ? data[data.length - 1] : null;
+  const firstCandle = data.length > 0 ? data[0] : null;
+  const totalChange =
+    lastCandle && firstCandle ? ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100 : 0;
+  const isPositive = totalChange >= 0;
+
+  const latestMarker = useMemo(() => {
+    if (!metrics || !lastCandle || data.length === 0) return null;
+
+    const lastIndex = data.length - 1;
+    const x = metrics.padding.left + lastIndex * metrics.spacing + metrics.spacing / 2;
+    const priceToY = (price: number) =>
+      metrics.padding.top +
+      (1 - (price - metrics.minPrice) / metrics.priceRange) *
+        (metrics.chartHeight - metrics.padding.top - metrics.padding.bottom);
+    const y = priceToY(lastCandle.close);
+    const openY = priceToY(lastCandle.open);
+
+    return {
+      x,
+      y,
+      bodyTop: Math.min(y, openY),
+      bodyHeight: Math.max(6, Math.abs(openY - y)),
+      color: isPositive ? "#00C805" : "#FF5252",
+    };
+  }, [data.length, isPositive, lastCandle, metrics]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !metrics || data.length === 0) return;
@@ -286,7 +558,8 @@ const KLineChart = ({
       (1 - (price - metrics.minPrice) / metrics.priceRange) *
         (metrics.chartHeight - metrics.padding.top - metrics.padding.bottom);
 
-    const volumeTop = metrics.chartHeight + 10;
+    const volumeTop = metrics.chartHeight + 8;
+    const revealSweep = intradayRevealProgress * data.length;
 
     // Draw Grid
     ctx.strokeStyle = "rgba(255,255,255,0.04)";
@@ -305,13 +578,16 @@ const KLineChart = ({
     const themeColor = isOverallPositive ? "#00C805" : "#FF5252";
 
     if (chartMode === "line") {
+      const visibleCount = Math.max(2, Math.ceil(intradayRevealProgress * data.length));
+      const visibleData = data.slice(0, visibleCount);
+
       // Draw Area
       const gradient = ctx.createLinearGradient(0, metrics.padding.top, 0, metrics.chartHeight);
       gradient.addColorStop(0, `${themeColor}33`);
       gradient.addColorStop(1, `${themeColor}00`);
       
       ctx.beginPath();
-      data.forEach((candle, index) => {
+      visibleData.forEach((candle, index) => {
         const x = metrics.padding.left + index * metrics.spacing + metrics.spacing / 2;
         const y = toY(candle.close);
         if (index === 0) ctx.moveTo(x, y);
@@ -320,12 +596,14 @@ const KLineChart = ({
       
       // Close the path for filling
       const firstX = metrics.padding.left + metrics.spacing / 2;
-      const lastX = metrics.padding.left + (data.length - 1) * metrics.spacing + metrics.spacing / 2;
+      const lastX = metrics.padding.left + (visibleData.length - 1) * metrics.spacing + metrics.spacing / 2;
       ctx.lineTo(lastX, metrics.chartHeight);
       ctx.lineTo(firstX, metrics.chartHeight);
       ctx.closePath();
       ctx.fillStyle = gradient;
+      ctx.globalAlpha = 0.55 + intradayRevealProgress * 0.45;
       ctx.fill();
+      ctx.globalAlpha = 1;
 
       // Draw Line
       ctx.beginPath();
@@ -333,7 +611,7 @@ const KLineChart = ({
       ctx.lineWidth = 2;
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
-      data.forEach((candle, index) => {
+      visibleData.forEach((candle, index) => {
         const x = metrics.padding.left + index * metrics.spacing + metrics.spacing / 2;
         const y = toY(candle.close);
         if (index === 0) ctx.moveTo(x, y);
@@ -343,15 +621,22 @@ const KLineChart = ({
     } else {
       // Draw Candlesticks
       data.forEach((candle, index) => {
+        const reveal = Math.max(0, Math.min(1, revealSweep - index));
+        if (reveal <= 0) return;
         const x = metrics.padding.left + index * metrics.spacing + metrics.spacing / 2;
         const isBullish = candle.close >= candle.open;
         const color = isBullish ? "#00C805" : "#FF5252";
+        const easedReveal = easeOutCubic(reveal);
 
         ctx.strokeStyle = color;
         ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.35 + easedReveal * 0.65;
         ctx.beginPath();
-        ctx.moveTo(x, toY(candle.high));
-        ctx.lineTo(x, toY(candle.low));
+        const lowY = toY(candle.low);
+        const highY = toY(candle.high);
+        const animatedHighY = lowY - (lowY - highY) * easedReveal;
+        ctx.moveTo(x, animatedHighY);
+        ctx.lineTo(x, lowY);
         ctx.stroke();
 
         const bodyTop = toY(Math.max(candle.open, candle.close));
@@ -359,17 +644,26 @@ const KLineChart = ({
         const bodyHeight = Math.max(1, bodyBottom - bodyTop);
 
         ctx.fillStyle = color;
-        ctx.fillRect(x - metrics.candleWidth / 2, bodyTop, metrics.candleWidth, bodyHeight);
+        const animatedBodyTop = bodyBottom - bodyHeight * easedReveal;
+        ctx.fillRect(
+          x - metrics.candleWidth / 2,
+          animatedBodyTop,
+          metrics.candleWidth,
+          Math.max(1, bodyBottom - animatedBodyTop),
+        );
+        ctx.globalAlpha = 1;
       });
     }
 
     // Draw Volume (Always)
     data.forEach((candle, index) => {
+      const reveal = Math.max(0, Math.min(1, revealSweep - index));
+      if (reveal <= 0) return;
       const x = metrics.padding.left + index * metrics.spacing + metrics.spacing / 2;
       const isBullish = candle.close >= candle.open;
       const color = isBullish ? "#00C805" : "#FF5252";
       
-      const volumeBarHeight = (candle.volume / metrics.maxVolume) * (metrics.volumeHeight - 8);
+      const volumeBarHeight = (candle.volume / metrics.maxVolume) * (metrics.volumeHeight - 8) * easeOutCubic(reveal);
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.35;
       ctx.fillRect(
@@ -390,6 +684,8 @@ const KLineChart = ({
       const y = metrics.padding.top + (index / 4) * (metrics.chartHeight - metrics.padding.top - metrics.padding.bottom);
       ctx.fillText(`$${price.toFixed(1)}`, width - metrics.padding.right + 24, y - 2);
     }
+
+    // X-axis labels removed per user request
 
     const activeIndex = hoverState?.index ?? data.length - 1;
     const activeCandle = data[activeIndex];
@@ -425,27 +721,29 @@ const KLineChart = ({
     } else {
       const isBullish = activeCandle.close >= activeCandle.open;
       const currentThemeColor = chartMode === "line" ? themeColor : (isBullish ? "#00C805" : "#FF5252");
-      
-      ctx.strokeStyle = currentThemeColor;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(metrics.padding.left, activeY);
-      ctx.lineTo(width - metrics.padding.right, activeY);
-      ctx.stroke();
-      ctx.setLineDash([]);
 
-      const badgeWidth = 56;
-      ctx.fillStyle = currentThemeColor;
-      ctx.beginPath();
-      ctx.roundRect(width - metrics.padding.right - badgeWidth + 6, activeY - 9, badgeWidth, 18, 4);
-      ctx.fill();
-      ctx.fillStyle = "#0D1421";
-      ctx.font = "bold 10px Inter, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(`$${activeCandle.close.toFixed(2)}`, width - metrics.padding.right - badgeWidth / 2 + 6, activeY + 4);
+      if (chartMode === "candlestick") {
+        ctx.strokeStyle = currentThemeColor;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(metrics.padding.left, activeY);
+        ctx.lineTo(width - metrics.padding.right, activeY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const badgeWidth = 56;
+        ctx.fillStyle = currentThemeColor;
+        ctx.beginPath();
+        ctx.roundRect(width - metrics.padding.right - badgeWidth + 6, activeY - 9, badgeWidth, 18, 4);
+        ctx.fill();
+        ctx.fillStyle = "#0D1421";
+        ctx.font = "bold 10px Inter, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`$${activeCandle.close.toFixed(2)}`, width - metrics.padding.right - badgeWidth / 2 + 6, activeY + 4);
+      }
     }
-  }, [data, height, hoverState, metrics, chartMode]);
+  }, [chartMode, data, height, hoverState, intradayRevealProgress, isIntradayMode, metrics, selectedRange]);
 
   const handleMouseMove = (event: MouseEvent<HTMLCanvasElement>) => {
     if (!metrics) return;
@@ -467,31 +765,30 @@ const KLineChart = ({
     setHoverState({ index: nextIndex, x, y });
   };
 
-  const isInitialLoading = pricesQuery.isLoading && liveCandles.length === 0 && !candles?.length && Boolean(ticker);
-  const hasError = pricesQuery.isError && data.length === 0 && Boolean(ticker);
+  const isInitialLoading = activeQuery.isLoading && liveCandles.length === 0 && !candles?.length && Boolean(ticker);
+  const hasError = activeQuery.isError && data.length === 0 && Boolean(ticker);
   const activeCandle = hoverState ? data[hoverState.index] : null;
-  const lastCandle = data.length > 0 ? data[data.length - 1] : null;
-  const firstCandle = data.length > 0 ? data[0] : null;
-  const totalChange =
-    lastCandle && firstCandle ? ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100 : 0;
-  const isPositive = totalChange >= 0;
   const chartModeTranslate = chartMode === "candlestick" ? "translateX(0%)" : "translateX(100%)";
   const tooltipLeft =
     hoverState && metrics ? Math.max(12, Math.min(hoverState.x + 14, metrics.width - 176)) : 0;
   const tooltipTop = hoverState ? Math.max(12, Math.min(hoverState.y + 14, height - 126)) : 0;
+  const displayedPrice = lastCandle?.close ?? null;
 
   return (
     <div data-cmp="KLineChart" className="bg-card rounded-xl border border-border p-4">
+      <style>{MOTION_CSS}</style>
       <div className="flex items-center justify-between mb-3 gap-3">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-base font-bold text-foreground">{ticker}</span>
-          <span className={`text-sm font-bold ${isPositive ? "text-bull" : "text-bear"} font-mono`}>
-            {lastCandle ? `$${lastCandle.close.toFixed(2)}` : "—"}
+          <span
+            className={`text-sm font-bold ${isPositive ? "text-bull" : "text-bear"} font-mono tracking-tight`}
+          >
+            {displayedPrice !== null ? `$${displayedPrice.toFixed(2)}` : "—"}
           </span>
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${isPositive ? "tag-bull" : "tag-bear"}`}>
             {totalChange >= 0 ? "+" : ""}{totalChange.toFixed(2)}%
           </span>
-          {pricesQuery.isFetching && !isInitialLoading && (
+          {activeQuery.isFetching && !isInitialLoading && (
             <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground animate-pulse">
               Refreshing
             </span>
@@ -562,7 +859,7 @@ const KLineChart = ({
         </div>
       </div>
 
-      <div ref={chartAreaRef} className={`relative transition-all duration-500 ease-out origin-center ${isTransitioning ? "opacity-60 scale-[0.985]" : "opacity-100 scale-100"}`}>
+      <div ref={chartAreaRef} className={`relative transition-all duration-500 ease-out origin-center ${isTransitioning ? "opacity-20 scale-[0.985]" : "opacity-100 scale-100"}`}>
         {isInitialLoading ? (
           <div className="flex items-center justify-center rounded-lg bg-surface animate-pulse" style={{ height }}>
             <span className="text-sm text-muted-foreground">Loading price history…</span>
@@ -571,10 +868,10 @@ const KLineChart = ({
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface px-4 text-center" style={{ height }}>
             <span className="text-sm text-bear mb-2">Failed to load price history.</span>
             <p className="text-[10px] text-muted-foreground mb-3 max-w-[200px]">
-              {pricesQuery.error?.message || "Internal server error"}
+              {activeQuery.error?.message || "Internal server error"}
             </p>
             <button 
-              onClick={() => pricesQuery.refetch()}
+              onClick={() => activeQuery.refetch()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-accent transition-colors"
             >
               <RefreshCcw size={12} />
@@ -587,6 +884,37 @@ const KLineChart = ({
           </div>
         ) : (
           <>
+            {chartMode === "line" && latestMarker && (
+              <>
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute rounded-full"
+                  style={{
+                    left: latestMarker.x - 4,
+                    top: latestMarker.y - 4,
+                    width: 8,
+                    height: 8,
+                    background: latestMarker.color,
+                    boxShadow: `0 0 10px ${latestMarker.color}`,
+                    opacity: 0.92,
+                  }}
+                />
+                {intradayFlash && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute rounded-full"
+                    style={{
+                      left: latestMarker.x - 10,
+                      top: latestMarker.y - 10,
+                      width: 20,
+                      height: 20,
+                      border: `1px solid ${latestMarker.color}`,
+                      animation: "kline-live-flash 650ms ease-out forwards",
+                    }}
+                  />
+                )}
+              </>
+            )}
             <canvas
               key={chartMode}
               ref={canvasRef}
@@ -607,7 +935,7 @@ const KLineChart = ({
                 }}
               >
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-1.5">
-                  {formatTradeDate(activeCandle.time)}
+                  {formatTradeDate(activeCandle.time, selectedRange)}
                 </div>
                 <div className="space-y-1">
                   {chartMode === "candlestick" && (

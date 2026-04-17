@@ -50,10 +50,11 @@ from scripts.run_regime_analysis import classify_vix, load_macro_series
 from scripts.run_single_window_validation import fill_feature_matrix, long_to_feature_matrix, restore_feature_matrix_index
 from scripts.run_walkforward_comparison import json_safe
 from src.data.db.pit import get_prices_pit
-from src.data.db.session import get_engine
+from src.data.db.session import get_engine, get_session_factory
 from src.features.pipeline import FeaturePipeline
 from src.labels.forward_returns import compute_forward_returns
 from src.models.evaluation import information_coefficient, information_coefficient_series
+from src.models.bundle_validator import BundleSchemaError, BundleValidator
 from src.portfolio.equal_weight import equal_weight_portfolio
 from src.portfolio.event_overlay import NullOverlay
 from src.portfolio.constraints import (
@@ -95,13 +96,34 @@ def main(argv: list[str] | None = None) -> int:
     report_dir = REPO_ROOT / args.report_dir
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    bundle = json.loads((REPO_ROOT / args.bundle_path).read_text())
+    bundle_path = REPO_ROOT / args.bundle_path
+    validator = BundleValidator(bundle_path)
+    session_factory = get_session_factory()
+    with session_factory() as session:
+        try:
+            validation = validator.assert_valid(session)
+        except BundleSchemaError as exc:
+            logger.error(
+                "Bundle schema validation failed for {}: {}",
+                bundle_path,
+                exc,
+            )
+            raise
+
+    bundle = json.loads(bundle_path.read_text())
     retained_features = list(bundle["retained_features"])
     seed_weights = normalize_weight_dict_local(bundle["seed_weights"])
     active_model_names = select_active_model_names(seed_weights)
     models = load_models(bundle, model_names=active_model_names)
     regime_weights = normalize_weight_dict_local(bundle.get("regime_weights", {}), fill_unknown=True)
     output_path = resolve_output_path(report_dir=report_dir, explicit=args.output_path)
+    logger.info(
+        "Validated live bundle {} (version={}, required_features={}, fingerprint={})",
+        bundle_path,
+        validation.metadata.get("version"),
+        validation.metadata.get("required_feature_count"),
+        validation.metadata.get("computed_fingerprint"),
+    )
 
     db_state = load_db_state(as_of=as_of)
     live_trade_date = db_state["latest_pit_trade_date"]

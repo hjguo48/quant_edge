@@ -1059,10 +1059,8 @@ def store_to_db(**context: Any) -> dict[str, Any]:
 
 
 def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
-    import pandas as pd
-
     from scripts._data_ops import get_tracked_tickers
-    from scripts.run_ic_screening import install_runtime_optimizations, write_parquet_atomic
+    from scripts.build_feature_matrix import export_feature_panel
     from src.data.db.session import get_engine
     from src.features.pipeline import FeaturePipeline
 
@@ -1125,16 +1123,9 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
 
     latest_feature_dt = date.fromisoformat(latest_feature_date) if latest_feature_date else None
     stale_cache_gap_days = None
-    reseeded_recent_window = False
     if latest_feature_date is not None:
         refresh_start = latest_feature_dt + timedelta(days=1)
         stale_cache_gap_days = (latest_pit_trade_date - latest_feature_dt).days
-        if stale_cache_gap_days > DEFAULT_FEATURE_BOOTSTRAP_DAYS:
-            refresh_start = max(
-                min_trade_date,
-                latest_pit_trade_date - timedelta(days=DEFAULT_FEATURE_BOOTSTRAP_DAYS),
-            )
-            reseeded_recent_window = True
     else:
         refresh_start = max(min_trade_date, latest_pit_trade_date - timedelta(days=DEFAULT_FEATURE_BOOTSTRAP_DAYS))
     if refresh_start > latest_pit_trade_date:
@@ -1149,52 +1140,19 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
             pipeline_class=pipeline.__class__.__name__,
         )
 
-    install_runtime_optimizations()
-    features_long = pipeline.run(
-        tickers=tracked_tickers,
+    target_path = _runtime_feature_path(repo_root, prefer_fallback=False)
+    export_summary = export_feature_panel(
         start_date=refresh_start,
         end_date=latest_pit_trade_date,
         as_of=as_of,
+        output_path=target_path,
+        batch_size=25,
+        max_workers=8,
+        progress_interval=100,
+        sync_feature_store=True,
+        clear_store_range_flag=True,
     )
-    if features_long.empty:
-        raise RuntimeError(
-            "FeaturePipeline returned no rows for the requested refresh window "
-            f"{refresh_start.isoformat()} -> {latest_pit_trade_date.isoformat()}",
-        )
-
-    batch_id = str(features_long.attrs.get("batch_id") or pipeline.last_batch_id or "")
-    if not batch_id:
-        raise RuntimeError("FeaturePipeline did not expose a batch_id for the refreshed feature slice.")
-
-    feature_store_rows_saved = int(pipeline.save_to_store(features_long, batch_id=batch_id))
-    refreshed = features_long.loc[:, ["ticker", "trade_date", "feature_name", "feature_value"]].copy()
-    refreshed["trade_date"] = pd.to_datetime(refreshed["trade_date"])
-    refreshed["ticker"] = refreshed["ticker"].astype(str).str.upper()
-
-    existing_path = None if feature_path is None else Path(feature_path)
-    target_path = _runtime_feature_path(repo_root, prefer_fallback=reseeded_recent_window)
-    if not reseeded_recent_window and existing_path is not None and existing_path.exists():
-        existing = pd.read_parquet(
-            existing_path,
-            columns=["ticker", "trade_date", "feature_name", "feature_value"],
-        )
-        existing["trade_date"] = pd.to_datetime(existing["trade_date"])
-        existing = existing.loc[existing["trade_date"] < pd.Timestamp(refresh_start)].copy()
-        combined = pd.concat([existing, refreshed], ignore_index=True)
-    else:
-        combined = refreshed
-
-    combined["feature_name"] = combined["feature_name"].astype(str)
-    combined["feature_value"] = pd.to_numeric(combined["feature_value"], errors="coerce")
-    combined.sort_values(["trade_date", "ticker", "feature_name"], inplace=True)
-    combined.drop_duplicates(["trade_date", "ticker", "feature_name"], keep="last", inplace=True)
-    write_parquet_atomic(combined, target_path)
-
-    latest_feature_date_after = (
-        pd.to_datetime(combined["trade_date"]).max().date().isoformat()
-        if not combined.empty
-        else None
-    )
+    latest_feature_date_after = export_summary["end_date"]
     return _result(
         "update_features_cache",
         "ok",
@@ -1205,12 +1163,12 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
         latest_feature_date_after=latest_feature_date_after,
         feature_path=str(target_path),
         pipeline_class=pipeline.__class__.__name__,
-        batch_id=batch_id,
+        batch_id=export_summary["slice_summaries"][-1]["batch_id"] if export_summary["slice_summaries"] else None,
         stale_cache_gap_days=stale_cache_gap_days,
-        reseeded_recent_window=reseeded_recent_window,
-        feature_rows_generated=int(len(features_long)),
-        feature_store_rows_saved=feature_store_rows_saved,
-        cache_rows_after=int(len(combined)),
+        reseeded_recent_window=False,
+        feature_rows_generated=int(export_summary["feature_rows_total"]),
+        feature_store_rows_saved=int(export_summary["feature_store_rows_saved"]),
+        cache_rows_after=int(export_summary["parquet_rows_total"]),
     )
 
 
