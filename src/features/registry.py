@@ -7,6 +7,7 @@ import pandas as pd
 
 from src.features.alternative import ALTERNATIVE_FEATURE_NAMES
 from src.features.fundamental import FUNDAMENTAL_FEATURE_NAMES, compute_fundamental_features
+from src.features.intraday import INTRADAY_FEATURE_NAMES, compute_intraday_features
 from src.features.macro import MACRO_FEATURE_NAMES, compute_macro_features
 from src.features.pipeline import COMPOSITE_FEATURE_NAMES, compute_composite_features
 from src.features.pipeline import compute_alternative_features_batch
@@ -66,6 +67,8 @@ class FeatureRegistry:
             self.register(name, "sector_rotation", description, compute_sector_rotation_features)
         for name, description in _COMPOSITE_FEATURE_METADATA.items():
             self.register(name, "composite", description, compute_composite_features)
+        for name, description in _INTRADAY_FEATURE_METADATA.items():
+            self.register(name, "intraday", description, compute_intraday_features)
 
 
 _TECHNICAL_FEATURE_METADATA = {
@@ -302,6 +305,12 @@ _SECTOR_ROTATION_FEATURE_METADATA = {
     "sector_pressure": "Rolling z-scored sector-relative return multiplied by sector ETF volume surge.",
     "stock_vs_sector_20d": "Stock 20-day return minus its mapped sector ETF 20-day return.",
     "sector_pressure_x_divergence": "Sector pressure interacted with the stock's 20-day divergence from its sector ETF.",
+}
+
+_INTRADAY_FEATURE_METADATA = {
+    "gap_pct": "Open versus prior daily close return using the first regular-session minute bar.",
+    "overnight_ret": "Alias for the regular-session opening gap versus the prior close.",
+    "intraday_ret": "Regular-session close versus open return derived from minute aggregates.",
 }
 
 _COMPOSITE_FEATURE_METADATA = {

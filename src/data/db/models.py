@@ -1,4 +1,4 @@
-"""Core ORM models; stock_prices, feature_store, and predictions require create_hypertable()."""
+"""Core ORM models; time-series tables require create_hypertable()."""
 
 from __future__ import annotations
 
@@ -69,6 +69,32 @@ class StockPrice(Base):
     volume: Mapped[int | None] = mapped_column(BigInteger)
     knowledge_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     source: Mapped[str | None] = mapped_column(String(20))
+
+
+class StockMinuteAggs(Base):
+    __tablename__ = "stock_minute_aggs"
+    __table_args__ = (
+        sa.Index("idx_stock_minute_aggs_trade_date", "trade_date"),
+        sa.Index("idx_stock_minute_aggs_knowledge_time", "knowledge_time"),
+    )
+
+    # TimescaleDB hypertables require any unique constraint to include the
+    # partition key, so the ORM identity is the `(ticker, minute_ts)` pair
+    # rather than a standalone surrogate `id`.
+    ticker: Mapped[str] = mapped_column(String(10), primary_key=True)
+    minute_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    id: Mapped[int | None] = mapped_column(BigInteger, sa.Identity(), nullable=False, index=True)
+    trade_date: Mapped[date] = mapped_column(Date, nullable=False)
+    open: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    high: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    low: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    close: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    volume: Mapped[int | None] = mapped_column(BigInteger)
+    vwap: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    transactions: Mapped[int | None] = mapped_column(BigInteger)
+    event_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    knowledge_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    batch_id: Mapped[str] = mapped_column(String(36), nullable=False)
 
 
 class FundamentalsPIT(Base):

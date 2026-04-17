@@ -42,6 +42,7 @@ phase1-week2 = [
 phase1-week3 = [
     # Planned for Phase 1 Week 3
     "pyarrow>=15.0",
+    "exchange-calendars>=4.0",
     "pandas-ta>=0.3; python_version >= '3.12'",
 ]
 phase1-week5 = [
