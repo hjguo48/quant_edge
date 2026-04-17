@@ -217,7 +217,7 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 
 ---
 
-### Week 3: Massive Minute Aggregates 入库
+### Week 3: Massive Minute Aggregates 入库 [🔄 STARTING — branch: feature/s2-v5.1-week3-minute-aggs]
 
 **目标**：5D/1D 获得专属数据层。
 
