@@ -160,17 +160,21 @@ def main(argv: list[str] | None = None) -> int:
         "method": "daily_cross_sectional_ic_proxy",
     }
 
+    champion_daily_ic = select_champion_daily_ic(reconstruction, champion_key=args.champion_key)
+    zero_ic_null = pd.Series(0.0, index=champion_daily_ic.index, name="zero_ic_null")
     spa_result = run_spa_fallback(
-        reconstruction["ridge_daily_ic"],
-        {"new_fusion": reconstruction["fusion_daily_ic"]},
-        benchmark_name="ridge_proxy",
+        zero_ic_null,
+        {f"{args.champion_key}_champion": champion_daily_ic},
+        benchmark_name="zero_ic_null",
         alpha=args.alpha,
     )
     primary_comparison = spa_result.comparisons[0] if spa_result.comparisons else None
     check_5 = {
         **spa_result.to_dict(),
         "passed": bool(spa_result.significant),
-        "benchmark_proxy": "ridge_from_r8.2",
+        "benchmark_proxy": "zero_ic_null",
+        "null_hypothesis": f"{args.champion_key} champion daily cross-sectional IC <= 0",
+        "method": "single_champion_spa_fallback_vs_zero_ic_null",
     }
     if primary_comparison is not None:
         check_5["comparison"] = primary_comparison.to_dict()
@@ -385,6 +389,24 @@ def validate_window_alignment(
                 f"{position}: comparison=({comparison_dates['test_start']},{comparison_dates['test_end']}) "
                 f"fusion=({fusion_dates['test_start']},{fusion_dates['test_end']}).",
             )
+
+
+def select_champion_daily_ic(reconstruction: dict[str, pd.Series], *, champion_key: str) -> pd.Series:
+    normalized = champion_key.lower()
+    if normalized == "ridge":
+        return reconstruction["ridge_daily_ic"]
+    if "fusion" in normalized:
+        return reconstruction["fusion_daily_ic"]
+    available = {
+        "ridge": "ridge_daily_ic",
+        "fusion": "fusion_daily_ic",
+        "ic_weighted_fusion": "fusion_daily_ic",
+        "equal_weight_fusion": "fusion_daily_ic",
+    }
+    raise KeyError(
+        f"No reconstructed daily IC series available for champion {champion_key!r}. "
+        f"Available mappings: {sorted(available)}.",
+    )
 
 
 def reconstruct_daily_artifacts(

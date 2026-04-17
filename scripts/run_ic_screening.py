@@ -33,6 +33,9 @@ import src.features.preprocessing as preprocessing_module
 from src.features.fundamental import FUNDAMENTAL_FEATURE_NAMES
 from src.features.macro import MACRO_FEATURE_NAMES
 from src.features.pipeline import COMPOSITE_FEATURE_NAMES, FeaturePipeline
+from src.features.alternative import ALTERNATIVE_FEATURE_NAMES
+from src.features.sector import load_sector_map_pit
+from src.features.sector_rotation import SECTOR_ROTATION_FEATURE_NAMES
 from src.features.technical import TECHNICAL_FEATURE_NAMES
 from src.labels.forward_returns import compute_forward_returns
 from src.models.evaluation import icir, information_coefficient, rank_information_coefficient
@@ -69,12 +72,55 @@ BASE_CANDIDATE_FEATURE_NAMES = (
     *TECHNICAL_FEATURE_NAMES,
     *FUNDAMENTAL_FEATURE_NAMES,
     *MACRO_FEATURE_NAMES,
+    *ALTERNATIVE_FEATURE_NAMES,
+    *SECTOR_ROTATION_FEATURE_NAMES,
     *COMPOSITE_FEATURE_NAMES,
 )
 BASE_FEATURE_DOMAIN_BY_NAME = {
     **{name: "technical" for name in TECHNICAL_FEATURE_NAMES},
     **{name: "fundamental" for name in FUNDAMENTAL_FEATURE_NAMES},
     **{name: "macro" for name in MACRO_FEATURE_NAMES},
+    **{
+        "earnings_surprise_latest": "earnings",
+        "earnings_surprise_avg_4q": "earnings",
+        "earnings_beat_streak": "earnings",
+        "earnings_surprise_recency": "earnings",
+        "earnings_beat_recency": "earnings",
+        "eps_revision_direction": "analyst",
+        "revenue_revision_pct": "analyst",
+        "analyst_coverage": "analyst",
+        "short_interest_ratio": "short_interest",
+        "short_interest_change": "short_interest",
+        "insider_net_buy_ratio": "insider",
+        "insider_buy_value": "insider",
+        "insider_cluster_buy": "insider",
+        "insider_buy_intensity_20d": "insider",
+        "insider_net_intensity_60d": "insider",
+        "insider_cluster_buy_30d_w": "insider",
+        "insider_abnormal_buy_90d": "insider",
+        "insider_role_skew_30d": "insider",
+        "overnight_gap": "daily",
+        "volume_surge": "daily",
+        "earnings_surprise_recency_20d": "earnings",
+        "earnings_beat_recency_30d": "earnings",
+        "surprise_flip_qoq": "earnings",
+        "surprise_vs_history": "earnings",
+        "pead_setup": "earnings",
+        "short_interest_sector_rel": "short_interest",
+        "short_interest_change_20d": "short_interest",
+        "short_interest_abnormal_1y": "short_interest",
+        "short_squeeze_setup": "short_interest",
+        "crowding_unwind_risk": "short_interest",
+        "days_since_last_8k": "sec_filing",
+        "days_since_last_10q": "sec_filing",
+        "days_since_last_10k": "sec_filing",
+        "recent_8k_count_5d": "sec_filing",
+        "recent_8k_count_20d": "sec_filing",
+        "recent_8k_count_60d": "sec_filing",
+        "has_recent_8k_5d": "sec_filing",
+        "filing_burst_20d": "sec_filing",
+    },
+    **{name: "sector_rotation" for name in SECTOR_ROTATION_FEATURE_NAMES},
     **{name: "composite" for name in COMPOSITE_FEATURE_NAMES},
 }
 CANDIDATE_FEATURE_NAMES = (
@@ -94,6 +140,13 @@ MODEL_FEATURE_LIMITS = {
     "lightgbm": TREE_FEATURE_LIMIT,
 }
 FEATURE_SERIES_CACHE: dict[tuple[str, tuple[str, ...]], pd.Series] = {}
+CROSS_SECTIONAL_CONTEXT_FEATURES = (
+    "breadth_pct_above_20dma",
+    "return_dispersion_20d",
+    "narrow_leadership_score",
+    "short_interest_sector_rel",
+)
+BENCHMARK_TICKER = "SPY"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -231,7 +284,7 @@ def install_runtime_optimizations() -> None:
     pipeline_module.FeaturePipeline.run = run_feature_pipeline_fast
     logger.info(
         "installed runtime optimizations for batch-level fundamentals preload, "
-        "single-query SPY reuse, macro caching, candidate-only preprocessing, "
+        "alternative-data batch reuse, single-query SPY reuse, macro caching, candidate-only preprocessing, "
         "and fast screening pipeline execution",
     )
 
@@ -416,8 +469,14 @@ def run_feature_pipeline_fast(
         else pipeline_module._empty_feature_frame()
     )
 
+    alternative = pipeline_module.compute_alternative_features_batch(
+        prices_df=stock_prices,
+        output_start=start,
+        output_end=end,
+        as_of=as_of_ts,
+    )
     macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
-    base_features = pd.concat([technical, fundamentals, macro], ignore_index=True)
+    base_features = pd.concat([technical, fundamentals, alternative, macro], ignore_index=True)
     composite = pipeline_module.compute_composite_features(base_features)
     all_features = pd.concat([base_features, composite], ignore_index=True)
 
@@ -628,6 +687,13 @@ def build_or_load_feature_cache(
                     if completed_tickers % progress_interval == 0 or completed_tickers == len(tickers):
                         logger.info("feature progress: processed {}/{} tickers", completed_tickers, len(tickers))
 
+        repair_cross_sectional_context_feature_batches(
+            batch_specs=batch_specs,
+            tickers=manifest_tickers,
+            feature_start=feature_start,
+            feature_end=feature_end,
+            as_of=as_of,
+        )
         combine_feature_batches(batch_specs=batch_specs, output_path=feature_output_path)
     else:
         logger.info("using existing feature cache at {}", feature_output_path)
@@ -729,6 +795,164 @@ def prepare_feature_batch(features: pd.DataFrame) -> pd.DataFrame:
     filtered.sort_values(["trade_date", "ticker", "feature_name"], inplace=True)
     filtered.reset_index(drop=True, inplace=True)
     return filtered
+
+
+def repair_cross_sectional_context_feature_batches(
+    *,
+    batch_specs: list[dict[str, Any]],
+    tickers: list[str],
+    feature_start: date,
+    feature_end: date,
+    as_of: date,
+) -> None:
+    """Replace batch-local breadth/context rows with full-universe values.
+
+    The three breadth context features depend on date-level cross-sectional
+    statistics. Computing them inside each ticker batch makes them batch-local
+    approximations. This repair step runs after all batches are built and
+    rewrites those feature rows with values computed over the full screening
+    universe.
+    """
+    target_features = set(CROSS_SECTIONAL_CONTEXT_FEATURES)
+    target_features.update(f"{MISSING_INDICATOR_PREFIX}{name}" for name in CROSS_SECTIONAL_CONTEXT_FEATURES)
+    if not target_features.intersection(CANDIDATE_FEATURE_NAMES):
+        return
+
+    repaired_frames: list[pd.DataFrame] = []
+    base_context_features = tuple(
+        feature_name
+        for feature_name in CROSS_SECTIONAL_CONTEXT_FEATURES
+        if feature_name != "short_interest_sector_rel"
+    )
+    if base_context_features:
+        repaired_frames.append(
+            build_full_universe_context_features(
+                tickers=tickers,
+                feature_start=feature_start,
+                feature_end=feature_end,
+                as_of=as_of,
+                feature_names=base_context_features,
+            ),
+        )
+    if "short_interest_sector_rel" in CROSS_SECTIONAL_CONTEXT_FEATURES:
+        repaired_frames.append(
+            build_full_universe_short_interest_context(
+                batch_specs=batch_specs,
+            ),
+        )
+    repaired = pd.concat([frame for frame in repaired_frames if not frame.empty], ignore_index=True)
+    if repaired.empty:
+        logger.warning("skipped cross-sectional context feature repair because no replacement rows were built")
+        return
+
+    logger.info(
+        "repairing {} cross-sectional context feature rows across {} batches using full-universe statistics",
+        len(repaired),
+        len(batch_specs),
+    )
+    for batch_spec in batch_specs:
+        batch_path = batch_spec["path"]
+        batch_tickers = set(str(ticker).upper() for ticker in batch_spec["tickers"])
+        existing = pd.read_parquet(batch_path)
+        replacement = repaired.loc[repaired["ticker"].isin(batch_tickers)].copy()
+        filtered = existing.loc[~existing["feature_name"].isin(target_features)].copy()
+        merged = pd.concat([filtered, replacement], ignore_index=True)
+        merged.sort_values(["trade_date", "ticker", "feature_name"], inplace=True)
+        merged.reset_index(drop=True, inplace=True)
+        write_parquet_atomic(merged, batch_path)
+
+
+def build_full_universe_context_features(
+    *,
+    tickers: list[str],
+    feature_start: date,
+    feature_end: date,
+    as_of: date,
+    feature_names: tuple[str, ...],
+) -> pd.DataFrame:
+    normalized_tickers = [str(ticker).upper() for ticker in tickers]
+    as_of_ts = datetime.combine(as_of, time.max, tzinfo=timezone.utc)
+    prices = get_prices_pit(
+        tickers=[*normalized_tickers, BENCHMARK_TICKER],
+        start_date=feature_start - timedelta(days=90),
+        end_date=feature_end,
+        as_of=as_of_ts,
+    )
+    if prices.empty:
+        return pd.DataFrame(columns=FEATURE_COLUMNS)
+
+    prepared = prices.copy()
+    prepared["ticker"] = prepared["ticker"].astype(str).str.upper()
+    prepared["trade_date"] = pd.to_datetime(prepared["trade_date"]).dt.date
+    for column in ["close", "adj_close"]:
+        prepared[column] = pd.to_numeric(prepared[column], errors="coerce")
+    prepared.sort_values(["ticker", "trade_date"], inplace=True)
+    prepared["price"] = prepared["adj_close"].fillna(prepared["close"])
+
+    spy = prepared.loc[prepared["ticker"] == BENCHMARK_TICKER, ["trade_date", "price"]].copy()
+    spy["market_ret_20d"] = spy["price"].pct_change(20)
+    spy = spy[["trade_date", "market_ret_20d"]]
+
+    stock = prepared.loc[prepared["ticker"].isin(normalized_tickers)].copy()
+    if stock.empty:
+        return pd.DataFrame(columns=FEATURE_COLUMNS)
+
+    stock["ret_20d"] = stock.groupby("ticker")["price"].pct_change(20)
+    stock["sma_20"] = stock.groupby("ticker")["close"].transform(lambda values: values.rolling(20, min_periods=20).mean())
+    stock["above_20dma"] = np.where(stock["sma_20"].notna(), (stock["close"] > stock["sma_20"]).astype(float), np.nan)
+    stock = stock.loc[(stock["trade_date"] >= feature_start) & (stock["trade_date"] <= feature_end)].copy()
+
+    context = stock.groupby("trade_date").agg(
+        breadth=("above_20dma", "mean"),
+        median_ret_20d=("ret_20d", "median"),
+        dispersion_20d=("ret_20d", lambda values: values.std(ddof=0)),
+    )
+    stock = stock.merge(context, on="trade_date", how="left").merge(spy, on="trade_date", how="left")
+    relative_ret = stock["ret_20d"] - stock["median_ret_20d"]
+    dispersion = stock["dispersion_20d"].replace(0, np.nan)
+    stock["breadth_pct_above_20dma"] = stock["above_20dma"] - stock["breadth"]
+    stock["return_dispersion_20d"] = relative_ret / dispersion
+    stock["narrow_leadership_score"] = (stock["market_ret_20d"] - stock["median_ret_20d"]) * (relative_ret / dispersion)
+
+    raw = stock.melt(
+        id_vars=["ticker", "trade_date"],
+        value_vars=list(feature_names),
+        var_name="feature_name",
+        value_name="feature_value",
+    )
+    processed = preprocess_candidate_features(raw)
+    return prepare_feature_batch(processed)
+
+
+def build_full_universe_short_interest_context(*, batch_specs: list[dict[str, Any]]) -> pd.DataFrame:
+    frames: list[pd.DataFrame] = []
+    for batch_spec in batch_specs:
+        frame = pd.read_parquet(batch_spec["path"], columns=FEATURE_COLUMNS)
+        subset = frame.loc[frame["feature_name"] == "short_interest_ratio"].copy()
+        if not subset.empty:
+            frames.append(subset)
+    if not frames:
+        return pd.DataFrame(columns=FEATURE_COLUMNS)
+
+    combined = pd.concat(frames, ignore_index=True)
+    combined["ticker"] = combined["ticker"].astype(str).str.upper()
+    combined["trade_date"] = pd.to_datetime(combined["trade_date"]).dt.date
+    combined["feature_value"] = pd.to_numeric(combined["feature_value"], errors="coerce")
+    sector_map = load_sector_map_pit(combined["trade_date"].max())
+    combined["sector"] = combined["ticker"].map(sector_map)
+    stats = (
+        combined.groupby(["trade_date", "sector"], dropna=False)["feature_value"]
+        .agg(["mean", "std"])
+        .reset_index()
+        .rename(columns={"mean": "_sector_mean", "std": "_sector_std"})
+    )
+    merged = combined.merge(stats, on=["trade_date", "sector"], how="left")
+    denominator = merged["_sector_std"].replace(0, np.nan)
+    raw = merged.loc[:, ["ticker", "trade_date"]].copy()
+    raw["feature_name"] = "short_interest_sector_rel"
+    raw["feature_value"] = (merged["feature_value"] - merged["_sector_mean"]) / denominator
+    processed = preprocess_candidate_features(raw)
+    return prepare_feature_batch(processed)
 
 
 def combine_feature_batches(*, batch_specs: list[dict[str, Any]], output_path: Path) -> None:
