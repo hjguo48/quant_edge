@@ -85,6 +85,7 @@ def test_feature_pipeline_runs_end_to_end_with_mocked_pit_sources(
     monkeypatch.setattr(macro_module, "_load_macro_histories", fake_load_macro_histories)
     monkeypatch.setattr(macro_module, "_sp500_breadth", lambda as_of: 0.55)
     monkeypatch.setattr(macro_module, "_market_return", lambda as_of, benchmark_ticker, horizon: 0.03)
+    monkeypatch.setattr(pipeline_module, "compute_alternative_features_batch", _fake_alternative_features_batch)
 
     pipeline = FeaturePipeline()
     result = pipeline.run(
@@ -99,10 +100,10 @@ def test_feature_pipeline_runs_end_to_end_with_mocked_pit_sources(
     assert set(result["ticker"]) == set(tickers)
     assert result["trade_date"].min() >= date(2024, 10, 1)
     assert result["trade_date"].max() <= date(2024, 10, 31)
-    assert {"ret_20d", "pe_ratio", "vix", "risk_sentiment", "is_missing_pe_ratio"}.issubset(
+    assert {"ret_20d", "pe_ratio", "vix", "risk_sentiment", "earnings_surprise_latest", "is_missing_pe_ratio"}.issubset(
         set(result["feature_name"]),
     )
-    assert result["feature_name"].nunique() >= 150
+    assert result["feature_name"].nunique() >= 170
     assert result["feature_value"].isna().mean() < 0.10
 
     ranked_slice = result.loc[result["feature_name"].isin(["ret_20d", "pe_ratio", "vix"]), "feature_value"]
@@ -182,4 +183,61 @@ def _build_fundamentals_history(tickers: list[str]) -> pd.DataFrame:
                         "source": "test",
                     },
                 )
+    return pd.DataFrame(rows)
+
+
+def _fake_alternative_features_batch(
+    *,
+    prices_df: pd.DataFrame,
+    output_start: date,
+    output_end: date,
+    as_of: date | datetime,
+) -> pd.DataFrame:
+    output = prices_df.loc[
+        (pd.to_datetime(prices_df["trade_date"]).dt.date >= output_start)
+        & (pd.to_datetime(prices_df["trade_date"]).dt.date <= output_end),
+        ["ticker", "trade_date"],
+    ].drop_duplicates()
+    rows: list[dict[str, object]] = []
+    for row in output.itertuples(index=False):
+        rows.extend(
+            [
+                {
+                    "ticker": row.ticker,
+                    "trade_date": row.trade_date,
+                    "feature_name": "earnings_surprise_latest",
+                    "feature_value": 0.1,
+                },
+                {
+                    "ticker": row.ticker,
+                    "trade_date": row.trade_date,
+                    "feature_name": "analyst_coverage",
+                    "feature_value": 12.0,
+                },
+                {
+                    "ticker": row.ticker,
+                    "trade_date": row.trade_date,
+                    "feature_name": "short_interest_ratio",
+                    "feature_value": 2.5,
+                },
+                {
+                    "ticker": row.ticker,
+                    "trade_date": row.trade_date,
+                    "feature_name": "insider_cluster_buy",
+                    "feature_value": 0.0,
+                },
+                {
+                    "ticker": row.ticker,
+                    "trade_date": row.trade_date,
+                    "feature_name": "overnight_gap",
+                    "feature_value": 0.01,
+                },
+                {
+                    "ticker": row.ticker,
+                    "trade_date": row.trade_date,
+                    "feature_name": "volume_surge",
+                    "feature_value": 1.1,
+                },
+            ],
+        )
     return pd.DataFrame(rows)

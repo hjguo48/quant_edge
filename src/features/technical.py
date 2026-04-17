@@ -46,6 +46,11 @@ TECHNICAL_FEATURE_NAMES = (
     "cci_20",
     "residual_momentum",
     "idio_vol",
+    "stock_beta_252",
+    "residual_ret_5d",
+    "residual_ret_10d",
+    "vol_scaled_reversal_5d",
+    "above_20dma",
 )
 
 _ANNUALIZATION_FACTOR = sqrt(252.0)
@@ -281,7 +286,7 @@ def _compute_ticker_features(group: pd.DataFrame) -> pd.DataFrame:
     group["adx_14"] = _adx(group, 14)
     group["stoch_k"], group["stoch_d"] = _stochastic(group, 14, 3)
     group["cci_20"] = _cci(group, 20)
-    residual_returns = _market_model_residuals(returns_1d, group["market_return_1d"])
+    residual_returns, stock_beta = _market_model_residuals_and_beta(returns_1d, group["market_return_1d"])
     group["residual_momentum"] = residual_returns.rolling(
         _RESIDUAL_FEATURE_WINDOW,
         min_periods=_RESIDUAL_FEATURE_WINDOW,
@@ -290,6 +295,12 @@ def _compute_ticker_features(group: pd.DataFrame) -> pd.DataFrame:
         _RESIDUAL_FEATURE_WINDOW,
         min_periods=_RESIDUAL_FEATURE_WINDOW,
     ).std(ddof=0)
+    group["stock_beta_252"] = stock_beta
+    group["residual_ret_5d"] = group["ret_5d"] - (stock_beta * group["market_return_5d"])
+    group["residual_ret_10d"] = group["ret_10d"] - (stock_beta * group["market_return_10d"])
+    group["vol_scaled_reversal_5d"] = -_safe_divide(group["ret_5d"], group["vol_20d"])
+    sma_20 = group["close"].rolling(20, min_periods=20).mean()
+    group["above_20dma"] = np.where(sma_20.notna(), (group["close"] > sma_20).astype(float), np.nan)
 
     return group
 
@@ -303,6 +314,8 @@ def _attach_market_returns(
     if market_returns.empty:
         frame = prices_df.copy()
         frame["market_return_1d"] = np.nan
+        frame["market_return_5d"] = np.nan
+        frame["market_return_10d"] = np.nan
         return frame
     return prices_df.merge(market_returns, on="trade_date", how="left")
 
@@ -313,7 +326,7 @@ def _load_market_returns(
     market_prices_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     if prices_df.empty:
-        return pd.DataFrame(columns=["trade_date", "market_return_1d"])
+        return pd.DataFrame(columns=["trade_date", "market_return_1d", "market_return_5d", "market_return_10d"])
 
     benchmark_rows = prices_df.loc[prices_df["ticker"] == _MARKET_PROXY_TICKER].copy()
     if market_prices_df is not None and not market_prices_df.empty:
@@ -323,7 +336,7 @@ def _load_market_returns(
         if not fetched_benchmark.empty:
             benchmark_rows = pd.concat([benchmark_rows, fetched_benchmark], ignore_index=True)
     if benchmark_rows.empty:
-        return pd.DataFrame(columns=["trade_date", "market_return_1d"])
+        return pd.DataFrame(columns=["trade_date", "market_return_1d", "market_return_5d", "market_return_10d"])
 
     benchmark = _prepare_prices(benchmark_rows)
     benchmark = benchmark.loc[
@@ -332,7 +345,9 @@ def _load_market_returns(
     ].sort_values("trade_date")
     benchmark_price = benchmark["adj_close"].fillna(benchmark["close"])
     benchmark["market_return_1d"] = benchmark_price.pct_change()
-    return benchmark[["trade_date", "market_return_1d"]]
+    benchmark["market_return_5d"] = benchmark_price.pct_change(5)
+    benchmark["market_return_10d"] = benchmark_price.pct_change(10)
+    return benchmark[["trade_date", "market_return_1d", "market_return_5d", "market_return_10d"]]
 
 
 def _fetch_market_proxy_prices(prices_df: pd.DataFrame) -> pd.DataFrame:
@@ -366,6 +381,20 @@ def _market_model_residuals(
     *,
     regression_window: int = _MARKET_MODEL_WINDOW,
 ) -> pd.Series:
+    residuals, _ = _market_model_residuals_and_beta(
+        stock_returns,
+        market_returns,
+        regression_window=regression_window,
+    )
+    return residuals
+
+
+def _market_model_residuals_and_beta(
+    stock_returns: pd.Series,
+    market_returns: pd.Series,
+    *,
+    regression_window: int = _MARKET_MODEL_WINDOW,
+) -> tuple[pd.Series, pd.Series]:
     x = pd.to_numeric(market_returns, errors="coerce")
     y = pd.to_numeric(stock_returns, errors="coerce")
     rolling_count = (x.notna() & y.notna()).rolling(regression_window, min_periods=regression_window).sum()
@@ -378,7 +407,12 @@ def _market_model_residuals(
     beta = covariance / variance.replace(0, np.nan)
     alpha = y_mean - beta * x_mean
     residuals = y - (alpha + beta * x)
-    return residuals.where(rolling_count >= regression_window)
+    valid = rolling_count >= regression_window
+    return residuals.where(valid), beta.where(valid)
+
+
+def _safe_divide(left: pd.Series, right: pd.Series) -> pd.Series:
+    return left / right.replace(0, np.nan)
 
 
 def _average_true_range(group: pd.DataFrame, window: int) -> pd.Series:

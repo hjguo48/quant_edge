@@ -160,13 +160,15 @@ def test_winsorize_features_clips_extreme_values() -> None:
     assert clipped_outlier < 50.0
 
 
-def test_compute_forward_returns_calculates_excess_returns() -> None:
+def test_compute_forward_returns_calculates_1d_open_to_open_excess_returns() -> None:
     prices = pd.DataFrame(
         [
-            {"ticker": "AAA", "trade_date": date(2024, 1, 1), "adj_close": 100.0, "close": 100.0},
-            {"ticker": "AAA", "trade_date": date(2024, 1, 2), "adj_close": 110.0, "close": 110.0},
-            {"ticker": "SPY", "trade_date": date(2024, 1, 1), "adj_close": 200.0, "close": 200.0},
-            {"ticker": "SPY", "trade_date": date(2024, 1, 2), "adj_close": 210.0, "close": 210.0},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 1), "open": 100.0, "adj_close": 100.0, "close": 100.0},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 2), "open": 110.0, "adj_close": 111.0, "close": 111.0},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 3), "open": 121.0, "adj_close": 122.0, "close": 122.0},
+            {"ticker": "SPY", "trade_date": date(2024, 1, 1), "open": 200.0, "adj_close": 200.0, "close": 200.0},
+            {"ticker": "SPY", "trade_date": date(2024, 1, 2), "open": 210.0, "adj_close": 211.0, "close": 211.0},
+            {"ticker": "SPY", "trade_date": date(2024, 1, 3), "open": 214.2, "adj_close": 215.0, "close": 215.0},
         ],
     )
 
@@ -178,7 +180,59 @@ def test_compute_forward_returns_calculates_excess_returns() -> None:
     ].iloc[0]
 
     assert aaa_row["forward_return"] == pytest.approx(0.10)
-    assert aaa_row["excess_return"] == pytest.approx(0.05)
+    assert aaa_row["excess_return"] == pytest.approx(0.08)
+
+
+def test_compute_forward_returns_calculates_5d_open_to_open_excess_returns() -> None:
+    aaa_opens = [100.0, 102.0, 103.0, 104.0, 105.0, 107.0, 112.35]
+    spy_opens = [200.0, 202.0, 203.0, 204.0, 205.0, 206.0, 210.12]
+    trade_dates = pd.date_range("2024-01-01", periods=len(aaa_opens), freq="D")
+    prices = pd.DataFrame(
+        [
+            {
+                "ticker": ticker,
+                "trade_date": trade_date.date(),
+                "open": open_price,
+                "adj_close": open_price,
+                "close": open_price,
+            }
+            for ticker, opens in [("AAA", aaa_opens), ("SPY", spy_opens)]
+            for trade_date, open_price in zip(trade_dates, opens, strict=True)
+        ],
+    )
+
+    labels = compute_forward_returns(prices, horizons=[5], benchmark_ticker="SPY")
+    aaa_row = labels.loc[
+        (labels["ticker"] == "AAA")
+        & (labels["trade_date"] == date(2024, 1, 1))
+        & (labels["horizon"] == 5),
+    ].iloc[0]
+
+    assert aaa_row["forward_return"] == pytest.approx(0.1014705882352941)
+    assert aaa_row["excess_return"] == pytest.approx(0.06127256843331384)
+
+
+def test_compute_forward_returns_preserves_close_to_close_for_longer_horizons() -> None:
+    prices = pd.DataFrame(
+        [
+            {"ticker": "AAA", "trade_date": date(2024, 1, 1), "adj_close": 100.0, "close": 100.0},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 2), "adj_close": 110.0, "close": 110.0},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 3), "adj_close": 121.0, "close": 121.0},
+            {"ticker": "SPY", "trade_date": date(2024, 1, 1), "adj_close": 200.0, "close": 200.0},
+            {"ticker": "SPY", "trade_date": date(2024, 1, 2), "adj_close": 210.0, "close": 210.0},
+            {"ticker": "SPY", "trade_date": date(2024, 1, 3), "adj_close": 220.0, "close": 220.0},
+        ],
+    )
+
+    labels = compute_forward_returns(prices, horizons=[2], benchmark_ticker="SPY")
+    aaa_row = labels.loc[
+        (labels["ticker"] == "AAA")
+        & (labels["trade_date"] == date(2024, 1, 1))
+        & (labels["horizon"] == 2),
+    ].iloc[0]
+
+    assert aaa_row["forward_return"] == pytest.approx(0.21)
+    assert aaa_row["excess_return"] == pytest.approx(0.11)
 
 
 def test_compute_fundamental_features_returns_nan_for_missing_liabilities(
@@ -820,6 +874,8 @@ def test_compute_composite_features_outputs_expected_feature_names() -> None:
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "volume_ratio_20d", "feature_value": 1.5},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "vol_20d", "feature_value": 0.1},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "vol_60d", "feature_value": 0.2},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "stock_beta_252", "feature_value": 1.2},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "above_20dma", "feature_value": 1.0},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "momentum_rank_60d", "feature_value": 0.9},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "pe_ratio", "feature_value": 10.0},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "pb_ratio", "feature_value": 1.5},
@@ -834,22 +890,27 @@ def test_compute_composite_features_outputs_expected_feature_names() -> None:
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "macd_histogram", "feature_value": 0.01},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "stoch_d", "feature_value": 80.0},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "market_ret_20d", "feature_value": 0.03},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "vix", "feature_value": 25.0},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "vix_change_5d", "feature_value": 0.01},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "credit_spread", "feature_value": 1.2},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "credit_spread_change", "feature_value": 0.1},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "yield_spread_10y2y", "feature_value": 0.5},
             {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "sp500_breadth", "feature_value": 0.55},
+            {"ticker": "AAA", "trade_date": date(2024, 1, 2), "feature_name": "revenue_growth_yoy", "feature_value": 0.2},
         ],
     )
 
     composite = compute_composite_features(base_features)
 
-    assert len(composite["feature_name"].unique()) == 20
+    assert len(composite["feature_name"].unique()) == 26
     assert "macro_risk_on" in set(composite["feature_name"])
+    assert "narrow_leadership_score" in set(composite["feature_name"])
+    assert "credit_widening_x_leverage" in set(composite["feature_name"])
 
 
-def test_feature_registry_pre_registers_79_features() -> None:
+def test_feature_registry_pre_registers_all_default_features() -> None:
     registry = FeatureRegistry()
-    assert len(registry.list_features()) == 79
+    assert len(registry.list_features()) == 133
 
 
 def test_compute_macro_features_uses_baa_minus_aaa_credit_spread(
