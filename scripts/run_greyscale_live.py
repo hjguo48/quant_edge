@@ -14,8 +14,12 @@ from loguru import logger
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
-import shap
 from sqlalchemy import text
+
+try:
+    import shap
+except ImportError:  # pragma: no cover - optional runtime dependency in Airflow
+    shap = None
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
@@ -63,6 +67,7 @@ from src.risk.data_risk import DataRiskMonitor
 from src.risk.operational_risk import OperationalRiskMonitor
 from src.risk.portfolio_risk import PortfolioRiskEngine, compute_turnover
 from src.risk.signal_risk import SignalRiskMonitor
+from src.universe.active import get_active_universe
 
 DEFAULT_BUNDLE_PATH = "data/models/fusion_model_bundle_60d.json"
 DEFAULT_REPORT_DIR = "data/reports/greyscale"
@@ -91,9 +96,10 @@ def main(argv: list[str] | None = None) -> int:
     report_dir.mkdir(parents=True, exist_ok=True)
 
     bundle = json.loads((REPO_ROOT / args.bundle_path).read_text())
-    models = load_models(bundle)
     retained_features = list(bundle["retained_features"])
     seed_weights = normalize_weight_dict_local(bundle["seed_weights"])
+    active_model_names = select_active_model_names(seed_weights)
+    models = load_models(bundle, model_names=active_model_names)
     regime_weights = normalize_weight_dict_local(bundle.get("regime_weights", {}), fill_unknown=True)
     output_path = resolve_output_path(report_dir=report_dir, explicit=args.output_path)
 
@@ -122,12 +128,12 @@ def main(argv: list[str] | None = None) -> int:
     realized_ic_frame = build_realized_ic_frame(
         reports=existing_reports,
         realized_labels=realized_labels,
-        model_names=list(MODEL_NAMES),
+        model_names=active_model_names,
     )
     live_weights, weight_source, historical_live_ic_frame = resolve_live_weights(
         realized_ic_frame=realized_ic_frame,
         seed_weights=seed_weights,
-        model_names=list(MODEL_NAMES),
+        model_names=active_model_names,
         rolling_window=args.signal_lookback_points,
         temperature=float(bundle.get("fusion_temperature", args.temperature)),
     )
@@ -363,7 +369,7 @@ def main(argv: list[str] | None = None) -> int:
             "window_id": str(bundle["window_id"]),
             "horizon_days": int(bundle["horizon_days"]),
             "retained_feature_count": int(len(retained_features)),
-            "models": {name: bundle["models"][name]["artifact_path"] for name in MODEL_NAMES},
+            "models": {name: bundle["models"][name]["artifact_path"] for name in active_model_names},
         },
         "feature_pipeline": {
             "start_date": feature_start.isoformat(),
@@ -508,9 +514,14 @@ def parse_as_of(value: str | None) -> datetime:
     return datetime.combine(date.fromisoformat(value), datetime.max.time(), tzinfo=timezone.utc)
 
 
-def load_models(bundle: dict[str, Any]) -> dict[str, Any]:
+def select_active_model_names(weights: dict[str, float]) -> list[str]:
+    active = [name for name in MODEL_NAMES if abs(float(weights.get(name, 0.0))) > 1e-12]
+    return active or list(MODEL_NAMES)
+
+
+def load_models(bundle: dict[str, Any], *, model_names: list[str] | None = None) -> dict[str, Any]:
     models: dict[str, Any] = {}
-    for model_name in MODEL_NAMES:
+    for model_name in (model_names or list(MODEL_NAMES)):
         artifact_path = _resolve_bundle_artifact_path(Path(bundle["models"][model_name]["artifact_path"]))
         with artifact_path.open("rb") as handle:
             models[model_name] = pickle.load(handle)
@@ -557,26 +568,11 @@ def extract_week_number(path: Path) -> int:
 
 
 def load_live_universe(*, trade_date: date, as_of: datetime, benchmark_ticker: str) -> list[str]:
-    engine = get_engine()
-    with engine.connect() as conn:
-        rows = conn.execute(
-            text(
-                """
-                select distinct ticker
-                from stock_prices
-                where trade_date = :trade_date
-                  and knowledge_time <= :as_of
-                  and upper(ticker) <> :benchmark
-                order by ticker
-                """,
-            ),
-            {
-                "trade_date": trade_date,
-                "as_of": as_of,
-                "benchmark": benchmark_ticker.upper(),
-            },
-        ).scalars().all()
-    return [str(ticker).upper() for ticker in rows]
+    return get_active_universe(
+        trade_date,
+        as_of=as_of,
+        benchmark_ticker=benchmark_ticker,
+    )
 
 
 def apply_universe_filters(
@@ -809,8 +805,11 @@ def combine_current_predictions(
     weights: dict[str, float],
 ) -> pd.Series:
     weighted = None
-    for model_name in MODEL_NAMES:
-        component = normalized_predictions[model_name] * float(weights[model_name])
+    for model_name, predictions in normalized_predictions.items():
+        weight = float(weights.get(model_name, 0.0))
+        if abs(weight) <= 1e-12:
+            continue
+        component = predictions * weight
         weighted = component if weighted is None else weighted.add(component, fill_value=0.0)
     if weighted is None:
         raise RuntimeError("No normalized model predictions were available for fusion.")
@@ -1046,8 +1045,9 @@ def build_signal_risk_state(
 
 def compute_pairwise_rank_correlations(model_scores_by_ticker: dict[str, pd.Series]) -> dict[str, float]:
     correlations: dict[str, float] = {}
-    for left_idx, left_name in enumerate(MODEL_NAMES):
-        for right_name in MODEL_NAMES[left_idx + 1 :]:
+    model_names = [name for name in MODEL_NAMES if name in model_scores_by_ticker]
+    for left_idx, left_name in enumerate(model_names):
+        for right_name in model_names[left_idx + 1 :]:
             aligned = pd.concat(
                 [
                     model_scores_by_ticker[left_name].rename("left"),
@@ -1072,6 +1072,9 @@ def _patch_shap_xgb_loader() -> None:
     wrapped string).  SHAP <= 0.49 does ``float(base_score)`` which raises
     ``ValueError``.  This one-time patch strips the brackets before conversion.
     """
+    if shap is None:
+        return
+
     try:
         from shap.explainers._tree import XGBTreeModelLoader
     except ImportError:
@@ -1117,6 +1120,9 @@ def compute_shap_for_top_tickers(
     max_tickers: int = 100,
 ) -> dict[str, dict[str, Any]]:
     """Compute SHAP values for tree models on the top-ranked live tickers."""
+
+    if shap is None:
+        return {}
 
     if feature_matrix.empty:
         return {}

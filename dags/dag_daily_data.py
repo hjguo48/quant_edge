@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 import logging
 import os
 from pathlib import Path
+import subprocess
 import sys
 from typing import Any
 
@@ -165,6 +166,10 @@ def _fundamentals_fetch_enabled() -> bool:
     return os.environ.get("QUANTEDGE_ENABLE_FUNDAMENTALS_FETCH", "").lower() in {"1", "true", "yes"}
 
 
+def _alternative_fetch_enabled() -> bool:
+    return os.environ.get("QUANTEDGE_ENABLE_ALTERNATIVE_FETCH", "1").lower() in {"1", "true", "yes"}
+
+
 def _serialize_date(value: date | None) -> str | None:
     return value.isoformat() if value is not None else None
 
@@ -273,22 +278,31 @@ def _load_fundamentals_state(conn: Any) -> dict[str, Any]:
 
 
 def _load_active_universe_tickers(conn: Any, *, trade_date: date) -> list[str]:
+    from src.universe.active import get_active_universe
+
+    return get_active_universe(trade_date)
+
+
+def _sync_universe_membership_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     from sqlalchemy import text
 
-    rows = conn.execute(
-        text(
-            """
-            select distinct ticker
-            from universe_membership
-            where index_name = 'SP500'
-              and effective_date <= :trade_date
-              and (end_date is null or end_date > :trade_date)
-            order by ticker
-            """,
-        ),
-        {"trade_date": trade_date},
-    ).scalars().all()
-    return [str(ticker).upper() for ticker in rows if ticker]
+    from src.data.db.session import get_engine
+    from src.universe.active import ensure_monthly_universe_membership
+
+    with get_engine().connect() as conn:
+        latest_trade_date = conn.execute(text("select max(trade_date) from stock_prices")).scalar() or date.today()
+
+    refresh = ensure_monthly_universe_membership(latest_trade_date)
+    return _result(
+        "sync_universe_membership",
+        "ok",
+        trade_date=latest_trade_date.isoformat(),
+        **refresh,
+    )
+
+
+def sync_universe_membership(**context: Any) -> dict[str, Any]:
+    return _run_task("sync_universe_membership", _sync_universe_membership_impl, **context)
 
 
 def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
@@ -296,10 +310,11 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
     from src.config import settings
     from src.data.db.session import get_engine
     from src.data.sources.polygon import PolygonDataSource
+    from src.features.sector_rotation import SECTOR_ROTATION_ETF_TICKERS
 
     live_fetch_enabled = _live_fetch_enabled()
     as_of = datetime.now(timezone.utc)
-    tracked_tickers = get_tracked_tickers()
+    tracked_tickers = sorted(set(get_tracked_tickers()) | set(SECTOR_ROTATION_ETF_TICKERS))
     if not tracked_tickers:
         raise RuntimeError("No active tracked tickers are available in stocks.")
 
@@ -766,6 +781,86 @@ def fetch_fundamentals(**context: Any) -> dict[str, Any]:
     return _run_task("fetch_fundamentals", _fetch_fundamentals_impl, **context)
 
 
+def _fetch_alternative_data_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    from src.config import settings
+
+    enabled = _alternative_fetch_enabled()
+    if not enabled:
+        return _result("fetch_alternative_data", "skipped", reason="alternative_fetch_disabled")
+
+    end_date = datetime.now(timezone.utc).date().isoformat()
+    available_sources: list[str] = []
+    missing_providers: list[str] = []
+    if settings.FMP_API_KEY:
+        available_sources.extend(["earnings", "insider", "analyst"])
+    else:
+        missing_providers.append("FMP_API_KEY")
+    if settings.POLYGON_API_KEY:
+        available_sources.append("short-interest")
+    else:
+        missing_providers.append("POLYGON_API_KEY")
+
+    if not available_sources:
+        return _result(
+            "fetch_alternative_data",
+            "skipped",
+            reason="missing_api_keys",
+            missing_providers=missing_providers,
+        )
+
+    script_path = repo_root / "scripts" / "backfill_earnings_and_news.py"
+    source_results: list[dict[str, Any]] = []
+    failures: list[str] = []
+    for source in available_sources:
+        command = [
+            sys.executable,
+            str(script_path),
+            "--source",
+            source,
+            "--incremental",
+            "--current-universe",
+            "--end",
+            end_date,
+        ]
+        completed = subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        stderr_lines = [line for line in completed.stderr.strip().splitlines() if line.strip()]
+        stdout_lines = [line for line in completed.stdout.strip().splitlines() if line.strip()]
+        preview = stderr_lines[-5:] if stderr_lines else stdout_lines[-5:]
+        source_payload = {
+            "source": source,
+            "returncode": int(completed.returncode),
+            "log_preview": preview,
+        }
+        source_results.append(source_payload)
+        if completed.returncode != 0:
+            failures.append(source)
+
+    if failures:
+        raise RuntimeError(
+            "Alternative data incremental refresh failed for sources: " + ", ".join(failures),
+        )
+
+    return _result(
+        "fetch_alternative_data",
+        "ok",
+        source_count=len(available_sources),
+        sources=available_sources,
+        end_date=end_date,
+        source_results=source_results,
+        missing_providers=missing_providers,
+    )
+
+
+def fetch_alternative_data(**context: Any) -> dict[str, Any]:
+    return _run_task("fetch_alternative_data", _fetch_alternative_data_impl, **context)
+
+
 def _check_quality_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     import pandas as pd
     from sqlalchemy import text
@@ -1136,9 +1231,17 @@ with DAG(
     fetch_prices_task = PythonOperator(task_id="fetch_prices", python_callable=fetch_prices)
     fetch_vix_task = PythonOperator(task_id="fetch_vix", python_callable=fetch_vix)
     fetch_macro_task = PythonOperator(task_id="fetch_macro", python_callable=fetch_macro)
+    sync_universe_membership_task = PythonOperator(
+        task_id="sync_universe_membership",
+        python_callable=sync_universe_membership,
+    )
     fetch_fundamentals_task = PythonOperator(
         task_id="fetch_fundamentals",
         python_callable=fetch_fundamentals,
+    )
+    fetch_alternative_data_task = PythonOperator(
+        task_id="fetch_alternative_data",
+        python_callable=fetch_alternative_data,
     )
     check_quality_task = PythonOperator(task_id="check_quality", python_callable=check_quality)
     store_to_db_task = PythonOperator(task_id="store_to_db", python_callable=store_to_db)
@@ -1148,7 +1251,15 @@ with DAG(
     )
 
     fetch_prices_task >> store_to_db_task
-    [store_to_db_task, fetch_vix_task] >> update_features_cache_task
+    store_to_db_task >> sync_universe_membership_task
+    sync_universe_membership_task >> [fetch_fundamentals_task, fetch_alternative_data_task]
+    [
+        store_to_db_task,
+        fetch_vix_task,
+        fetch_macro_task,
+        fetch_fundamentals_task,
+        fetch_alternative_data_task,
+    ] >> update_features_cache_task
     update_features_cache_task >> check_quality_task
 
 

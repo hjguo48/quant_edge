@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 import json
+import math
 import logging
 import os
 from pathlib import Path
@@ -312,42 +313,12 @@ def _load_g4_summary(repo_root: Path) -> dict[str, Any] | None:
 
 
 def _load_live_universe(*, trade_date: Any) -> tuple[list[str], str]:
-    from sqlalchemy import text
+    from src.universe.active import resolve_active_universe
 
-    from src.data.db.session import get_engine
-
-    engine = get_engine()
-    with engine.connect() as conn:
-        membership_rows = conn.execute(
-            text(
-                """
-                select distinct ticker
-                from universe_membership
-                where index_name = 'SP500'
-                  and effective_date <= :trade_date
-                  and (end_date is null or end_date > :trade_date)
-                  and upper(ticker) <> :exclude_ticker
-                order by ticker
-                """,
-            ),
-            {"trade_date": trade_date, "exclude_ticker": BENCHMARK_TICKER},
-        ).scalars().all()
-        if membership_rows:
-            return [str(ticker).upper() for ticker in membership_rows], "universe_membership"
-
-        stock_rows = conn.execute(
-            text(
-                """
-                select ticker
-                from stocks
-                where ticker is not null
-                  and upper(ticker) <> :exclude_ticker
-                order by ticker
-                """,
-            ),
-            {"exclude_ticker": BENCHMARK_TICKER},
-        ).scalars().all()
-    return [str(ticker).upper() for ticker in stock_rows], "stocks_fallback"
+    return resolve_active_universe(
+        trade_date,
+        benchmark_ticker=BENCHMARK_TICKER,
+    )
 
 
 def _load_feature_matrix(repo_root: Path):
@@ -483,10 +454,13 @@ def _check_data_freshness_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         or db_state.get("universe_membership_live_count")
         or 0,
     )
-    if latest_pit_trade_ticker_count < expected_universe_size:
+    coverage_tolerance = max(5, math.ceil(expected_universe_size * 0.01)) if expected_universe_size else 0
+    minimum_required_coverage = max(expected_universe_size - coverage_tolerance, 0)
+    if latest_pit_trade_ticker_count < minimum_required_coverage:
         raise RuntimeError(
             "weekly_signal_pipeline price coverage is incomplete for the latest PIT trade date: "
-            f"visible_tickers={latest_pit_trade_ticker_count} expected_universe={expected_universe_size}",
+            f"visible_tickers={latest_pit_trade_ticker_count} expected_universe={expected_universe_size} "
+            f"minimum_required={minimum_required_coverage}",
         )
 
     latest_report = _load_latest_greyscale_report(repo_root)
@@ -512,6 +486,7 @@ def _check_data_freshness_impl(*, repo_root: Path, context: dict[str, Any]) -> d
         previous_signal_snapshot_date=latest_snapshot_date,
         previous_snapshot_current=not stale,
         expected_live_universe_count=expected_universe_size,
+        minimum_required_live_universe_count=minimum_required_coverage,
         universe_membership_live_count=int(db_state.get("universe_membership_live_count", 0) or 0),
     )
 

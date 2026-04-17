@@ -19,17 +19,25 @@ class GreyscaleReader:
         self,
         report_dir: Path | str,
         g3_gate_results_path: Path | str | None = None,
+        quintile_expected_returns_path: Path | str | None = None,
     ) -> None:
         self._report_dir = Path(report_dir)
         self._g3_gate_results_path = (
             Path(g3_gate_results_path)
             if g3_gate_results_path is not None
-            else Path("data/reports/g3_gate_results.json")
+            else Path("data/reports/g3_gate_phase_e_v2.json")
+        )
+        self._quintile_expected_returns_path = (
+            Path(quintile_expected_returns_path)
+            if quintile_expected_returns_path is not None
+            else Path("data/reports/quintile_expected_returns.json")
         )
         self._cache: dict[int, dict[str, Any]] = {}
         self._snapshot: tuple[tuple[str, int, int], ...] | None = None
         self._bootstrap_cache: dict[str, Any] | None = None
         self._bootstrap_snapshot: tuple[int, int] | None = None
+        self._quintile_cache: dict[str, Any] | None = None
+        self._quintile_snapshot: tuple[int, int] | None = None
 
     def _build_snapshot(self) -> tuple[tuple[str, int, int], ...]:
         if not self._report_dir.is_dir():
@@ -111,11 +119,28 @@ class GreyscaleReader:
         self._bootstrap_snapshot = snapshot
         return report
 
+    def _load_quintile_expected_returns(self) -> dict[str, Any] | None:
+        snapshot = self._build_file_snapshot(self._quintile_expected_returns_path)
+        if snapshot is None:
+            self._quintile_cache = None
+            self._quintile_snapshot = None
+            return None
+
+        if self._quintile_snapshot == snapshot and self._quintile_cache is not None:
+            return self._quintile_cache
+
+        report = self._load_json_file(self._quintile_expected_returns_path)
+        self._quintile_cache = report
+        self._quintile_snapshot = snapshot
+        return report
+
     def invalidate_cache(self) -> None:
         self._cache.clear()
         self._snapshot = None
         self._bootstrap_cache = None
         self._bootstrap_snapshot = None
+        self._quintile_cache = None
+        self._quintile_snapshot = None
 
     def get_latest_report(self) -> dict[str, Any] | None:
         reports = self._load_all()
@@ -335,7 +360,30 @@ class GreyscaleReader:
             "ci_level": self._maybe_float(bootstrap.get("ci_level")),
         }
 
-    def get_expected_returns(self) -> dict[str, Any] | None:
+    def get_expected_returns(self, quintile: int | None = None) -> dict[str, Any] | None:
+        if quintile is not None:
+            report = self._load_quintile_expected_returns()
+            if report is not None:
+                quintile_payload = report.get("quintiles", {}).get(str(int(quintile)))
+                if isinstance(quintile_payload, dict):
+                    return {
+                        "data_source": str(
+                            report.get("data_source", "walk_forward_quintile_bootstrap"),
+                        ),
+                        "ci_level": self._maybe_float(report.get("ci_level")),
+                        "n_observations": self._maybe_int(quintile_payload.get("n_observations")),
+                        "annualized_excess": {
+                            "estimate": float(quintile_payload["annualized_excess"]["estimate"]),
+                            "ci_lower": float(quintile_payload["annualized_excess"]["ci_lower"]),
+                            "ci_upper": float(quintile_payload["annualized_excess"]["ci_upper"]),
+                        },
+                        "sharpe": {
+                            "estimate": float(quintile_payload["sharpe"]["estimate"]),
+                            "ci_lower": float(quintile_payload["sharpe"]["ci_lower"]),
+                            "ci_upper": float(quintile_payload["sharpe"]["ci_upper"]),
+                        },
+                    }
+
         report = self._load_g3_gate_results()
         if report is None:
             return None

@@ -1,0 +1,203 @@
+我先把它整理成一份能直接放进 backlog、按周推进且可验收的执行清单，并顺手对齐你当前仓库结构、现有脚本和真实瓶颈。
+
+我已经把仓库主结构和脚本目录对上了，接下来会把清单直接锚定到 src/、scripts/、data/、dags/ 里的具体入口，并写清完成标准。
+
+我也把现有脚本入口和 DAG 名称对上了，下面会按“先补哪些数据家族、对应跑哪些脚本、产出什么 artifact、验收线怎么判”给你一份可直接排期的清单。
+
+Thought for 13m 40s
+
+下面这版我按 “直接进 GitHub issue / backlog 就能开工” 的方式写。默认目标只有三个：
+
+先把 IC → 成本后净收益 这条链闭环。
+让 1D/5D 和 20D/60D 彻底分开研究，不再共用同一套核心特征。
+所有新增数据先过 family ablation，再进模型和组合层。
+
+这样排，是因为你当前最强证据仍在 60D Ridge，而 1D/5D/20D 还大量沿用 60D 特征；同时 production-style post-cost 回测还没完成，feature_store 和 parquet 也还有不一致问题。仓库里已经有 screening、walk-forward、G3、tree comparison、portfolio comparison、fusion、greyscale/live monitor 等脚本入口，足够复用，不需要重写框架。
+
+先建 4 个控制文件
+
+把下面 4 个文件先建出来，后面所有任务都围绕它们走。
+
+ configs/research/horizon_registry.yaml
+内容：1D / 5D / 20D / 60D 的 label 定义、purge/embargo、训练/验证/测试窗口、cost assumptions、portfolio protocol。
+完成标准：screening、walkforward、G3、portfolio 四类脚本都引用同一份配置。
+ configs/research/family_registry.yaml
+把所有特征强制分进 9 个 family：
+price_momentum / liquidity_microstructure / fundamental_quality / analyst_expectations / options_implied / shorting_crowding / macro_regime / network_industry / event_text。
+完成标准：任一特征都能唯一映射到一个 family；新增特征默认先放 family，再入库。
+ configs/research/current_champion.yaml
+字段至少包括：horizon / model / feature_set / train_end / latest_oos_ic / latest_net_excess / turnover / deploy_status / rollback_rule。
+完成标准：以后不再靠多个 md/json 分散描述“当前 champion”。
+ data/reports/research_manifest_<date>.json
+记录这次实验使用的数据快照、feature parquet、模型版本、脚本入口、输出 artifact。
+完成标准：任何一次结论都能从 manifest 回放。
+Phase 0：先把研究协议固定住
+ 冻结一个统一的 post-cost truth table 协议。
+至少包含 4 个组合层：
+equal_weight_top_decile、score_weighted、score_weighted + buffer、sector/beta-neutral constrained optimizer。
+输出统一指标：gross excess / cost drag / net excess / turnover / max drawdown / ADV participation。
+完成标准：以后所有 horizon、所有模型，统一只在这张 truth table 上决胜。
+关联脚本：run_portfolio_comparison.py、run_portfolio_optimization_comparison.py、run_turnover_optimization.py。
+ 做一次 feature parity audit。
+直接解决你报告里那个 feature_store 176 vs parquet 238 的问题。
+输出：data/reports/feature_parity_audit_<date>.json。
+完成标准：逐列确认 name / dtype / null_rate / lag rule / PIT rule / source table，并列出“只在研究侧存在”的列。
+ 新增 scripts/run_family_ablation.py。
+我在仓库脚本目录里看到了 screening、comparison、regime、portfolio、fusion 等入口，但没有看到一个明确做 family ablation 的专用入口；这一步值得单独脚本化。
+输出：data/reports/family_ablation_<horizon>_<date>.json。
+完成标准：支持 only-one-family 和 leave-one-family-out 两种模式。
+Phase 1：先补免费、立刻能上手的数据
+
+你现在最该先吃掉的是 免费且能显著改善 crowding / stress / regime 的数据层，而不是先买最贵的数据。FINRA 有日度 short sale volume；SEC 有 FTD 和 13F 结构化数据；Chicago Fed 有 NFCI/ANFCI；FRED 有 STLFSI4 和 ICE BofA OAS。它们都能直接补你当前最缺的“拥挤 / 供给约束 / 风险价格 / 金融条件”层。
+
+ 新建 src/data/finra_short_sale.py
+拉 Daily Short Sale Volume。
+新表建议：short_sale_volume_daily。
+最小字段：trade_date, ticker, short_volume, total_volume_proxy, venue, ingest_ts。
+新特征：short_sale_ratio_1d/5d、short_sale_accel_5d、short_sale_ratio_sector_rel。
+完成标准：覆盖你的 active universe，缺失率和滞后规则清楚。
+ 新建 src/data/sec_ftd.py
+拉 Fails-to-Deliver。
+新表建议：ftd_pit。
+新特征：ftd_to_float、ftd_shock_1m、ftd_persistence。
+完成标准：按 settlement date 对齐，不偷看后半月文件发布时间。
+ 新建 src/data/sec_13f.py
+拉 Form 13F Data Sets。
+新表建议：holdings_13f_pit。
+新特征：inst_ownership_pct、ownership_change_qoq、common_owner_overlap。
+完成标准：明确 13F 的披露滞后，只按可见时点使用。
+ 扩展 macro_series_pit
+增加：NFCI、ANFCI、STLFSI4、ICE BofA HY OAS，以及 BB / B / CCC 子级别如果你的拉取链路稳定。
+新特征只先做两类：
+level / zscore，以及 macro × stock characteristic 交互。
+完成标准：先不上“裸宏观排序”，只上 regime 和 interaction。
+ 若你已有稳定历史源，再补 VIX1D 和 implied correlation。
+这两个更适合做短端 regime tag，而不是直接做横截面主排序。
+完成标准：拿得到连续历史再入库，拿不到就先放候选池，不要硬拼。
+Phase 2：按 horizon 重新做特征，不再共用 60D 核心集
+
+你报告里已经说明，不同 horizon 应该用不同特征和模型；而现在 1D/5D/20D 还在大量复用 60D 特征。下面这一步是最关键的重构。
+
+1D / 5D 特征清单
+ 把 label 拆成两套：
+close_to_close 和 overnight / intraday。
+完成标准：1D 至少有一版不再只看 close-to-close。
+ 在 src/features/technical 或新增 src/features/microstructure.py 中加入：
+gap_pct、gap_fill_score、close_open_return、open_close_return、volume_shock、amihud_proxy、short_sale_ratio_1d/5d、ftd_shock。
+完成标准：1D/5D 的核心特征集里，liquidity_microstructure + shorting_crowding 占比明显高于 60D。
+ 用你已经实现的 SEC / earnings / event 特征，专门做一版 5D event-drift family：
+earnings_surprise_recency、pead_setup、filing_burst、sec_recency、event_cluster_score。
+完成标准：5D 不再只是“60D 特征缩短版”。
+20D / 60D 特征清单
+ 在现有 fundamentals 上补一版更“质量化”的 family：
+gross_profitability、operating_profitability、accrual_quality、investment / asset_growth、quality composite。
+完成标准：60D 至少有一版“质量/盈利能力专属特征集”。
+ 用新接的免费数据补一版 crowding/stress family：
+days_to_cover_proxy、short_interest_delta、ftd_persistence、ownership_crowding、financial_conditions_x_quality、credit_spread_x_distress。
+完成标准：20D/60D 至少各有一版包含 crowding + macro interaction 的 challenger。
+ 所有 family 都做 base 和 with_missing_flag 两版。
+完成标准：任何 is_missing 留下来的列都要能解释“缺失本身有经济含义”，否则删除；不要再把 vendor bias 当 alpha。
+Phase 3：实验顺序固定为 “family → model → portfolio”
+
+这一步你不要再反过来做。先比 family，再比模型，最后比组合层。
+
+ 跑 run_ic_screening.py，但必须按 4 个 horizon 独立跑：
+1D / 5D / 20D / 60D。
+产出：top_features_<horizon>.csv。
+完成标准：每个 horizon 都有独立 top list，不再拿 60D 结果外推。
+ 跑 run_family_ablation.py。
+先做两张表：
+only-one-family：单独上某个 family 有多少增量。
+leave-one-family-out：拿掉某个 family 损失多少。
+完成标准：你能明确回答“当前项目最值钱的 3 个 family 是什么”。
+ 跑 run_extended_walkforward.py / run_walkforward_comparison.py。
+规则：每个 horizon 只用自己的 feature set。
+完成标准：输出 4 份 walkforward_<horizon>.json。
+ 跑 run_tree_comparison.py。
+规则建议：
+60D 只让 Ridge / ElasticNet 做主线，树模型只做 challenger；
+20D 可以允许 shallow tree；
+1D/5D 再单独测 tree 是否有边际价值。
+完成标准：不再问“树模型好不好”，而是回答“树模型在哪个 horizon 有净增量”。
+ 跑 run_g3_gate.py，但把输入改成 每个 horizon 的 champion。
+完成标准：每个 horizon 都有自己的 gate 结果，而不是只盯 60D。
+你现有 Step 1 的总门槛依然保留：至少一个 horizon 成本后年化超额 > 5%。
+Phase 4：把“研究赢了”变成“净收益可用”
+
+你报告里最关键的问题不是 alpha 有没有，而是 proxy 和 post-cost script 差了 44 个百分点。所以这里必须单独成 phase。
+
+ 跑 run_portfolio_comparison.py。
+每个 horizon 至少比较：
+equal_weight_top_decile vs score_weighted。
+完成标准：先确认净收益差异来自哪里，是 turnover、集中度还是 cost model。
+ 跑 run_portfolio_optimization_comparison.py。
+比较：
+score_weighted + buffer
+sector/beta-neutral constrained optimizer
+hold-and-trim。
+完成标准：输出统一 truth table，不再拿单一脚本结果做结论。
+ 跑 run_turnover_optimization.py。
+目标不是把 turnover 压到最低，而是找 IC retained / cost drag 的最优折中。
+完成标准：给每个 horizon 一个明确的 turnover budget。
+ 跑 run_regime_analysis.py。
+重点看 W5 / W6 / W11 这类弱窗口，在加了 stress/crowding 特征后是否变得可 gating。
+完成标准：输出 normal / cautious / defensive 三档 gating 规则，而不是简单 on/off。
+Phase 5：只在“单 horizon 先成立”后再做融合
+
+你自己的结论已经说明：多 horizon 不是信号平均，简单加权融合会让 IC 下降。仓库里虽然有 run_horizon_fusion.py 和 run_ic_weighted_fusion.py，但我的建议是前者保留、后者暂缓。
+
+ 先选出每个 horizon 的单独 champion。
+完成标准：每个 horizon 都有
+feature set + model + walkforward + G3 + post-cost truth table。
+ 再做 decision-layer fusion：
+60D = core ranking
+20D = ranking adjustment
+5D = event overlay
+1D = execution timing / risk throttle。
+完成标准：不做简单 score average，不做简单 IC-weighted average。
+ 只有当单 horizon champion 全都过关后，才运行 run_horizon_fusion.py。
+完成标准：fusion 的评估标准仍然是 net truth table，不是裸 IC。
+并行采购轨：按 ROI 排序
+
+你报告里已经把 FMP analyst grades → Zacks / I/B/E/S → 期权 IV 放进后续扩展。结合官方数据页，我建议你把采购顺序固定成下面这样：
+1) I/B/E/S 级别 analyst history → 2) OptionMetrics IvyDB → 3) Securities Finance → 4) NYSE Daily TAQ（仅当 1D 仍是主目标）。LSEG 的 I/B/E/S 覆盖 analyst detail / consensus / actual / guidance 且历史长；OptionMetrics IvyDB US 提供自 1996 年起的期权价格、IV、Greeks 和标准化波动面；S&P Global Securities Finance 提供借券供给、需求、费率、使用率和点时历史；NYSE Daily TAQ 提供自 1993 年起的 trades、quotes 和 NBBO。
+
+ 先做 FMP analyst grades 的免费试验。
+完成标准：只验证“revision/recommendation 方向性有没有增量”，不要在这层做最终结论。
+ 立项 I/B/E/S。
+第一批特征只做：
+eps_rev、revenue_rev、revision_breadth、estimate_age、dispersion、target_price_revision、recommendation_change。
+完成标准：先打 20D/60D，再看 5D。
+ 立项 OptionMetrics IvyDB。
+第一批特征只做：
+atm_iv、put_call_skew、call_put_iv_spread、term_slope_7_30_60d、iv_change。
+完成标准：先打 5D/20D，不先做 raw option flow。
+ 立项 Securities Finance。
+第一批特征只做：
+borrow_fee、utilization、lendable_supply、on_loan_pct。
+完成标准：只要这层一到位，就和 short interest / FTD / options skew 做联合 family。
+ 只有当 1D 仍是你的重点目标时，再立项 NYSE Daily TAQ。
+完成标准：TAQ 到位前，不要把 1D 当核心 alpha 主战场。
+你可以直接复制到 issue tracker 的验收门
+ 每个 horizon 都有：
+top_features.csv、family_ablation.json、walkforward.json、g3_gate.json、post_cost_truth_table.json
+ 每个进入候选池的模型都必须满足：
+有独立 horizon 特征集
+有 family ablation
+有 post-cost truth table
+有 rollback 条件
+ 任何数据源上线前都必须有：
+PIT 规则
+发布时间/可见时点
+null report
+coverage report
+lag rule
+ 任何 horizon 在进入 fusion 前都必须先单独为正：
+先单兵成立，再谈融合。
+现在先不要做的 4 件事
+ 暂停扩大 generic news_sentiment。
+ 暂停泛化 10-K/10-Q NLP 大工程。
+ 暂停把更复杂模型当主线。
+ 暂停简单 signal averaging / IC-weighted fusion。
+
+因为你当前最缺的不是“更多花样”，而是 更干净的 PIT 数据、horizon 专属特征、以及统一的成本后裁判。

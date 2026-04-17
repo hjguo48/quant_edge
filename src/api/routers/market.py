@@ -3,14 +3,17 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, TypeVar
+from zoneinfo import ZoneInfo
 
+import httpx
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from src.config import settings
 from src.api.deps import get_db, get_redis
 from src.api.schemas.market import (
     IndexPriceBar,
@@ -39,6 +42,8 @@ CACHE_TTL_SECONDS = 300
 LATEST_TRADE_DATE_CACHE_KEY = "quantedge:market:latest_trade_date"
 OVERVIEW_CACHE_PREFIX = "quantedge:market:overview"
 SECTORS_CACHE_PREFIX = "quantedge:market:sectors"
+POLYGON_INTRADAY_BASE_URL = "https://api.polygon.io/v2/aggs/ticker"
+MARKET_TZ = ZoneInfo("America/New_York")
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -81,6 +86,33 @@ def _to_percent(change_ratio: Any) -> float | None:
     if value is None:
         return None
     return value * 100.0
+
+
+def _resolve_intraday_date(raw_date: str | None) -> str:
+    if raw_date:
+        return date.fromisoformat(raw_date).isoformat()
+    return datetime.now(MARKET_TZ).date().isoformat()
+
+
+def _resolve_intraday_range(
+    *,
+    raw_date: str | None,
+    raw_from_date: str | None,
+    raw_to_date: str | None,
+) -> tuple[str, str]:
+    if raw_from_date or raw_to_date:
+        resolved_to = date.fromisoformat(raw_to_date).isoformat() if raw_to_date else _resolve_intraday_date(None)
+        resolved_from = (
+            date.fromisoformat(raw_from_date).isoformat()
+            if raw_from_date
+            else resolved_to
+        )
+        if resolved_from > resolved_to:
+            raise HTTPException(status_code=400, detail="from_date must be on or before to_date")
+        return resolved_from, resolved_to
+
+    resolved_date = _resolve_intraday_date(raw_date)
+    return resolved_date, resolved_date
 
 
 async def _load_cached_model(redis: Redis, key: str, model_cls: type[ModelT]) -> ModelT | None:
@@ -615,3 +647,56 @@ async def get_market_sectors(
         await _store_cached_model(redis, _sectors_cache_key(end_date, days), response)
 
     return response
+
+
+@router.get(
+    "/intraday",
+    summary="Intraday aggregated bars from Polygon",
+)
+async def get_intraday(
+    ticker: str = Query(..., min_length=1, description="Ticker symbol."),
+    multiplier: int = Query(default=1, ge=1),
+    timespan: str = Query(default="minute"),
+    date: str | None = Query(default=None, description="Trading date in YYYY-MM-DD. Defaults to today in ET."),
+    from_date: str | None = Query(default=None, description="Range start date in YYYY-MM-DD."),
+    to_date: str | None = Query(default=None, description="Range end date in YYYY-MM-DD."),
+) -> dict[str, Any]:
+    if not settings.POLYGON_API_KEY:
+        raise HTTPException(status_code=503, detail="POLYGON_API_KEY is not configured")
+
+    normalized_ticker = ticker.strip().upper()
+    resolved_from_date, resolved_to_date = _resolve_intraday_range(
+        raw_date=date,
+        raw_from_date=from_date,
+        raw_to_date=to_date,
+    )
+    url = (
+        f"{POLYGON_INTRADAY_BASE_URL}/{normalized_ticker}/range/"
+        f"{multiplier}/{timespan}/{resolved_from_date}/{resolved_to_date}"
+    )
+    params = {
+        "adjusted": "true",
+        "limit": 50_000,
+        "sort": "asc",
+        "apiKey": settings.POLYGON_API_KEY,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.get(url, params=params)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Polygon request failed: {exc}") from exc
+
+    if response.status_code >= 400:
+        detail: Any
+        try:
+            payload = response.json()
+            detail = payload.get("error") or payload.get("message") or payload
+        except ValueError:
+            detail = response.text or f"Polygon returned status {response.status_code}"
+        raise HTTPException(status_code=response.status_code, detail=detail)
+
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail="Polygon returned invalid JSON") from exc

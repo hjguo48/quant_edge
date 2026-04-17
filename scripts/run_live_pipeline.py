@@ -35,6 +35,7 @@ from src.risk.data_risk import DataRiskMonitor
 from src.risk.operational_risk import OperationalRiskMonitor
 from src.risk.portfolio_risk import PortfolioRiskEngine, compute_sector_weights, sector_weight_deviation
 from src.risk.signal_risk import SignalRiskMonitor
+from src.universe.active import get_active_universe
 
 DEFAULT_OUTPUT_PATH = REPO_ROOT / "data/reports/day0_live_pipeline.json"
 BENCHMARK_TICKER = "SPY"
@@ -64,7 +65,11 @@ def main(argv: list[str] | None = None) -> int:
         raise RuntimeError("No PIT-visible prices are available in stock_prices.")
 
     live_trade_date = db_state["latest_pit_trade_date"]
-    live_universe = load_live_universe(exclude_ticker=BENCHMARK_TICKER)
+    live_universe = load_live_universe(
+        trade_date=live_trade_date,
+        as_of=as_of,
+        exclude_ticker=BENCHMARK_TICKER,
+    )
     if not live_universe:
         raise RuntimeError("No live tickers were available in stocks after excluding SPY.")
 
@@ -387,7 +392,7 @@ def load_db_state(*, as_of: datetime) -> dict[str, Any]:
                 conn.execute(
                     text(
                         """
-                        select count(*)
+                        select count(distinct ticker)
                         from universe_membership
                         where index_name = 'SP500'
                           and effective_date <= :trade_date
@@ -459,22 +464,12 @@ def load_db_state(*, as_of: datetime) -> dict[str, Any]:
     }
 
 
-def load_live_universe(*, exclude_ticker: str) -> list[str]:
-    engine = get_engine()
-    with engine.connect() as conn:
-        rows = conn.execute(
-            text(
-                """
-                select ticker
-                from stocks
-                where ticker is not null
-                  and upper(ticker) <> :exclude_ticker
-                order by ticker
-                """,
-            ),
-            {"exclude_ticker": exclude_ticker.upper()},
-        ).scalars().all()
-    return [str(ticker).upper() for ticker in rows]
+def load_live_universe(*, trade_date: date, as_of: datetime, exclude_ticker: str) -> list[str]:
+    return get_active_universe(
+        trade_date,
+        as_of=as_of,
+        benchmark_ticker=exclude_ticker,
+    )
 
 
 def load_sector_map() -> dict[str, str]:
