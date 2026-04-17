@@ -3,6 +3,8 @@
 minute_layer:
   # 分钟层唯一真相来源。
   source_of_truth: stock_minute_aggs
+  # 分钟层 ingestion 主入口。
+  ingestion_source: polygon_flat_files
   # 分钟层当前允许驱动的下游。
   used_for:
     - intraday_features
