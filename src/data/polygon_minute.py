@@ -72,8 +72,16 @@ class PolygonMinuteClient(DataSource):
         raise NotImplementedError("Minute aggregates incremental fetch is not part of the Week 3.0 smoke path.")
 
     def health_check(self) -> bool:
+        # Use last XNYS session (not date.today()) so weekends/holidays don't
+        # produce false-negative "unhealthy" results.
+        today = pd.Timestamp(date.today())
+        last_session = (
+            today
+            if XNYS.is_session(today)
+            else XNYS.previous_session(today)
+        ).date()
         try:
-            recent = self.get_minute_aggs("SPY", date.today(), date.today())
+            recent = self.get_minute_aggs("SPY", last_session, last_session)
         except Exception as exc:
             logger.warning("polygon_minute health check failed: {}", exc)
             return False
@@ -240,11 +248,17 @@ class PolygonMinuteClient(DataSource):
 
     @staticmethod
     def _is_regular_session_bar(minute_ts_utc: pd.Timestamp) -> bool:
+        # Polygon bar `t` is the START of a 1-minute window [t, t+1min).
+        # Regular session bar ⇔ t ∈ [session_open, session_close).
+        # Using XNYS.session_open/close instead of hardcoded 09:30/16:00 handles
+        # early-close days (e.g. 13:00 ET close on day after Thanksgiving).
         minute_ts_et = minute_ts_utc.tz_convert(EASTERN)
-        minute_time = minute_ts_et.time()
-        if minute_time < REGULAR_SESSION_START or minute_time > REGULAR_SESSION_END:
+        session_label = pd.Timestamp(minute_ts_et.date())
+        if not XNYS.is_session(session_label):
             return False
-        return XNYS.is_session(pd.Timestamp(minute_ts_et.date()))
+        session_open = XNYS.session_open(session_label)
+        session_close = XNYS.session_close(session_label)
+        return session_open <= minute_ts_utc < session_close
 
     def _get_http_session(self) -> Any:
         if self._http_session is not None:
