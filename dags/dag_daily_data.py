@@ -1174,6 +1174,7 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
         batch_size=25,
         max_workers=8,
         progress_interval=100,
+        allow_missing_intraday=True,
         sync_feature_store=True,
         clear_store_range_flag=True,
     )

@@ -17,6 +17,7 @@ dependencies = [
     # Phase 1 Week 1: data processing
     "pandas>=2.2",
     "numpy>=1.26",
+    "exchange-calendars>=4.0",
     # Phase 1 Week 1: configuration
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
@@ -42,7 +43,6 @@ phase1-week2 = [
 phase1-week3 = [
     # Planned for Phase 1 Week 3
     "pyarrow>=15.0",
-    "exchange-calendars>=4.0",
     "pandas-ta>=0.3; python_version >= '3.12'",
     # Phase 1 Week 3: Polygon flat files via S3
     "boto3>=1.34",

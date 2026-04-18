@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 import importlib
+import inspect
 import sys
 from types import SimpleNamespace
 
@@ -419,6 +420,14 @@ def test_update_features_cache_independent_when_flag_off(monkeypatch: pytest.Mon
     update_task = module.dag.get_task("update_features_cache")
 
     assert not any(task_id.startswith("minute_incremental.") for task_id in update_task.upstream_task_ids)
+
+
+def test_update_features_cache_passes_allow_missing_intraday(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="false")
+
+    source = inspect.getsource(module._update_features_cache_impl)
+
+    assert "allow_missing_intraday=True" in source
 
 
 def _load_daily_data_module(monkeypatch: pytest.MonkeyPatch, *, enabled: str):
