@@ -229,10 +229,10 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - [🔄 commit 63ec8e2] Week 3.1 脚手架完成 — flat_files client + migration 005 (compression + state table) + backfill runner + verify. 停在 S3 credential gate, 等 POLYGON_S3_KEY/SECRET.
 
 **待做子任务**:
-- [ ] Week 3.1 完成全量回填 2016-04 → 2026-04-16 (governed PIT universe, Polygon flat files)
-- [ ] Week 3.2 首批 9 个 intraday 特征 (补 6 个: open_30m_ret / last_30m_ret / realized_vol_1d / volume_curve_surprise / close_to_vwap / transactions_count_zscore)
-- [ ] Week 3.3 Gate 验证 (覆盖率 >95% / minute↔day A-plus / 特征质量三件套)
-- [ ] Week 3.A — dag_daily_data `minute_incremental` TaskGroup (仅原始 minute 增量 + QC + watermark, 不挂默认成功路径)
+- [🔄 running] Week 3.1 全量回填 2016-04 → 2026-04-16 (后台 setsid 跑 2024→2016 按年分片)
+- [✅ commit c220dfb] Week 3.2 补 6 个 intraday 特征 (共 9 个, registry 136→142, 44 tests pass)
+- [✅ commit bd3decb] Week 3.A dag_daily_data minute_incremental TaskGroup (feature flag OFF 默认, Step A 完成)
+- [ ] Week 3.3 Gate 验证 (覆盖率 >95% / minute↔day A-plus / 特征质量三件套) — 等 3.1 完成后派
 
 **任务**：
 - 新建 `src/data/polygon_minute.py`
