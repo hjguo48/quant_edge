@@ -193,6 +193,19 @@ def test_validate_minute_to_day_consistency_no_crash_on_partial_overlap() -> Non
     assert result["warning_event_count"] == 1
 
 
+def test_aggregate_minute_to_daily_vwap_is_volume_weighted() -> None:
+    minute_df = pd.DataFrame(
+        [
+            {"ticker": "AAA", "trade_date": date(2026, 1, 5), "minute_ts": pd.Timestamp("2026-01-05 14:30", tz="UTC"), "open": 100.0, "high": 100.1, "low": 99.9, "close": 100.0, "volume": 1000.0, "vwap": 100.0, "transactions": 10},
+            {"ticker": "AAA", "trade_date": date(2026, 1, 5), "minute_ts": pd.Timestamp("2026-01-05 14:31", tz="UTC"), "open": 110.0, "high": 110.1, "low": 109.9, "close": 110.0, "volume": 9000.0, "vwap": 110.0, "transactions": 20},
+        ],
+    )
+
+    aggregated = smoke_module.aggregate_minute_to_daily(minute_df)
+
+    assert aggregated.iloc[0]["vwap"] == pytest.approx(109.0)
+
+
 def test_validate_minute_to_day_consistency_warning_mask_aligned_with_nan_first() -> None:
     trade_day = date(2026, 1, 5)
     minute_df = pd.concat(

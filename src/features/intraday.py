@@ -43,18 +43,26 @@ def aggregate_minute_to_daily(minute_df: pd.DataFrame) -> pd.DataFrame:
             ],
         )
 
-    aggregated = (
-        frame.groupby(["ticker", "trade_date"], as_index=False)
-        .agg(
-            open=("open", "first"),
-            high=("high", "max"),
-            low=("low", "min"),
-            close=("close", "last"),
-            volume=("volume", "sum"),
-            vwap=("vwap", "mean"),
-            transactions=("transactions", "sum"),
-        )
+    frame = frame.copy()
+    frame["volume"] = pd.to_numeric(frame["volume"], errors="coerce")
+    frame["vwap"] = pd.to_numeric(frame["vwap"], errors="coerce")
+    frame["_vwap_x_volume"] = frame["vwap"] * frame["volume"]
+    grouped = frame.groupby(["ticker", "trade_date"], as_index=False)
+    aggregated = grouped.agg(
+        open=("open", "first"),
+        high=("high", "max"),
+        low=("low", "min"),
+        close=("close", "last"),
+        volume=("volume", "sum"),
+        transactions=("transactions", "sum"),
+        vwap_numerator=("_vwap_x_volume", lambda series: series.sum(min_count=1)),
     )
+    aggregated["vwap"] = np.where(
+        pd.to_numeric(aggregated["volume"], errors="coerce").fillna(0.0) > 0.0,
+        pd.to_numeric(aggregated["vwap_numerator"], errors="coerce") / pd.to_numeric(aggregated["volume"], errors="coerce"),
+        np.nan,
+    )
+    aggregated.drop(columns=["vwap_numerator"], inplace=True)
     return aggregated
 
 
@@ -114,7 +122,12 @@ def compute_close_to_vwap(minute_bars: pd.DataFrame) -> tuple[float, bool]:
     day_close = float(closes.iloc[-1])
     if pd.isna(day_close):
         return np.nan, True
-    day_vwap = float((closes * volumes).sum() / volumes.sum())
+    minute_vwaps = pd.to_numeric(minute_bars["vwap"], errors="coerce")
+    weighted_vwaps = minute_vwaps * volumes
+    day_vwap_numerator = weighted_vwaps.sum(min_count=1)
+    if pd.isna(day_vwap_numerator):
+        return np.nan, True
+    day_vwap = float(day_vwap_numerator / volumes.sum())
     if not np.isfinite(day_vwap) or day_vwap == 0.0:
         return np.nan, True
     return float((day_close - day_vwap) / day_vwap), False

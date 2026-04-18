@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from hashlib import md5
 import gzip
 import io
@@ -18,6 +18,8 @@ from src.data.sources.polygon import normalize_polygon_ticker
 
 DEFAULT_BUCKET = "flatfiles"
 DEFAULT_PREFIX = "us_stocks_sip/minute_aggs_v1"
+FLAT_FILE_PUBLISH_CUTOFF_HOUR_ET = 11
+FLAT_FILE_PUBLISH_CUTOFF_MINUTE_ET = 30
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,20 @@ class FlatFileLoadResult:
     rows_kept: int
     tickers_loaded: int
     frame: pd.DataFrame
+
+
+def is_flat_file_available(trading_date: date, *, now_utc: datetime | None = None) -> bool:
+    trade_day = pd.Timestamp(trading_date)
+    if not XNYS.is_session(trade_day):
+        return False
+    next_session = XNYS.next_session(trade_day)
+    cutoff_local = datetime.combine(
+        next_session.date(),
+        time(hour=FLAT_FILE_PUBLISH_CUTOFF_HOUR_ET, minute=FLAT_FILE_PUBLISH_CUTOFF_MINUTE_ET),
+        tzinfo=EASTERN,
+    )
+    now = now_utc or datetime.now(timezone.utc)
+    return now >= cutoff_local.astimezone(timezone.utc)
 
 
 class PolygonFlatFilesClient(DataSource):
@@ -93,15 +109,23 @@ class PolygonFlatFilesClient(DataSource):
     ) -> pd.DataFrame:
         raise NotImplementedError("Minute flat-file incremental fetch is orchestrated by run_minute_backfill.py.")
 
-    def health_check(self) -> bool:
-        today = pd.Timestamp(date.today())
-        probe_day = today if XNYS.is_session(today) else XNYS.date_to_session(today, direction="previous")
-        try:
-            self.head_day(probe_day.date())
-        except Exception as exc:
-            logger.warning("polygon_flat_files health check failed: {}", exc)
-            return False
-        return True
+    def health_check(self, *, now_utc: datetime | None = None) -> bool:
+        now = now_utc or datetime.now(timezone.utc)
+        today = pd.Timestamp(now.date())
+        for offset in range(0, 10):
+            candidate = (today - pd.Timedelta(days=offset)).date()
+            candidate_ts = pd.Timestamp(candidate)
+            if not XNYS.is_session(candidate_ts):
+                continue
+            if not is_flat_file_available(candidate, now_utc=now):
+                continue
+            try:
+                self.head_day(candidate)
+            except Exception as exc:
+                logger.warning("polygon_flat_files health check failed: {}", exc)
+                return False
+            return True
+        return False
 
     def build_s3_key(self, trading_date: date | datetime) -> str:
         trade_day = self.coerce_date(trading_date)

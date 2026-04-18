@@ -17,33 +17,43 @@ import dags.task_groups.minute_incremental as minute_module
 
 
 def test_resolve_minute_dates_to_sync_finds_uncompleted_days() -> None:
-    result = minute_module.resolve_minute_dates_to_sync(
-        reference_date=date(2026, 4, 17),
-        state_rows=[
-            {"trading_date": date(2026, 4, 13), "status": "completed"},
-            {"trading_date": date(2026, 4, 14), "status": "failed"},
-            {"trading_date": date(2026, 4, 15), "status": "completed"},
-            {"trading_date": date(2026, 4, 16), "status": "skipped_holiday"},
-            {"trading_date": date(2026, 4, 17), "status": "in_progress"},
-        ],
-    )
+    original = minute_module.is_flat_file_available
+    minute_module.is_flat_file_available = lambda trading_date, now_utc=None: True
+    try:
+        result = minute_module.resolve_minute_dates_to_sync(
+            reference_date=date(2026, 4, 17),
+            state_rows=[
+                {"trading_date": date(2026, 4, 13), "status": "completed"},
+                {"trading_date": date(2026, 4, 14), "status": "failed"},
+                {"trading_date": date(2026, 4, 15), "status": "completed"},
+                {"trading_date": date(2026, 4, 16), "status": "skipped_holiday"},
+                {"trading_date": date(2026, 4, 17), "status": "in_progress"},
+            ],
+        )
+    finally:
+        minute_module.is_flat_file_available = original
 
     assert result["status"] == "ok"
     assert result["dates_to_sync"] == ["2026-04-14", "2026-04-17"]
 
 
 def test_resolve_minute_dates_excludes_today_session_when_market_not_closed() -> None:
-    result = minute_module.resolve_minute_dates_to_sync(
-        current_time=datetime(2026, 4, 17, 10, 0, tzinfo=timezone.utc),
-        state_rows=[
-            {"trading_date": date(2026, 4, 9), "status": "completed"},
-            {"trading_date": date(2026, 4, 10), "status": "completed"},
-            {"trading_date": date(2026, 4, 13), "status": "completed"},
-            {"trading_date": date(2026, 4, 14), "status": "completed"},
-            {"trading_date": date(2026, 4, 15), "status": "completed"},
-            {"trading_date": date(2026, 4, 16), "status": "failed"},
-        ],
-    )
+    original = minute_module.is_flat_file_available
+    minute_module.is_flat_file_available = lambda trading_date, now_utc=None: True
+    try:
+        result = minute_module.resolve_minute_dates_to_sync(
+            current_time=datetime(2026, 4, 17, 10, 0, tzinfo=timezone.utc),
+            state_rows=[
+                {"trading_date": date(2026, 4, 9), "status": "completed"},
+                {"trading_date": date(2026, 4, 10), "status": "completed"},
+                {"trading_date": date(2026, 4, 13), "status": "completed"},
+                {"trading_date": date(2026, 4, 14), "status": "completed"},
+                {"trading_date": date(2026, 4, 15), "status": "completed"},
+                {"trading_date": date(2026, 4, 16), "status": "failed"},
+            ],
+        )
+    finally:
+        minute_module.is_flat_file_available = original
 
     assert result["reference_date"] == "2026-04-16"
     assert "2026-04-17" not in result["candidate_session_dates"]
@@ -51,21 +61,59 @@ def test_resolve_minute_dates_excludes_today_session_when_market_not_closed() ->
 
 
 def test_resolve_minute_dates_uses_previous_when_today_not_session() -> None:
-    result = minute_module.resolve_minute_dates_to_sync(
-        current_time=datetime(2026, 4, 18, 10, 0, tzinfo=timezone.utc),
-        state_rows=[
-            {"trading_date": date(2026, 4, 10), "status": "completed"},
-            {"trading_date": date(2026, 4, 13), "status": "completed"},
-            {"trading_date": date(2026, 4, 14), "status": "completed"},
-            {"trading_date": date(2026, 4, 15), "status": "completed"},
-            {"trading_date": date(2026, 4, 16), "status": "completed"},
-            {"trading_date": date(2026, 4, 17), "status": "failed"},
-        ],
-    )
+    original = minute_module.is_flat_file_available
+    minute_module.is_flat_file_available = lambda trading_date, now_utc=None: True
+    try:
+        result = minute_module.resolve_minute_dates_to_sync(
+            current_time=datetime(2026, 4, 18, 10, 0, tzinfo=timezone.utc),
+            state_rows=[
+                {"trading_date": date(2026, 4, 10), "status": "completed"},
+                {"trading_date": date(2026, 4, 13), "status": "completed"},
+                {"trading_date": date(2026, 4, 14), "status": "completed"},
+                {"trading_date": date(2026, 4, 15), "status": "completed"},
+                {"trading_date": date(2026, 4, 16), "status": "completed"},
+                {"trading_date": date(2026, 4, 17), "status": "failed"},
+            ],
+        )
+    finally:
+        minute_module.is_flat_file_available = original
 
     assert result["reference_date"] == "2026-04-17"
     assert "2026-04-18" not in result["candidate_session_dates"]
     assert result["dates_to_sync"] == ["2026-04-17"]
+
+
+def test_resolve_minute_dates_to_sync_excludes_non_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(minute_module, "is_flat_file_available", lambda trading_date, now_utc=None: False)
+
+    result = minute_module.resolve_minute_dates_to_sync(
+        current_time=datetime(2026, 4, 17, 6, 0, tzinfo=timezone.utc),
+        state_rows=[
+            {"trading_date": date(2026, 4, 15), "status": "completed"},
+            {"trading_date": date(2026, 4, 16), "status": "failed"},
+        ],
+    )
+
+    assert result["status"] == "skipped"
+    assert result["dates_to_sync"] == []
+
+
+def test_resolve_minute_dates_to_sync_returns_available_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        minute_module,
+        "is_flat_file_available",
+        lambda trading_date, now_utc=None: trading_date == date(2026, 4, 16),
+    )
+
+    result = minute_module.resolve_minute_dates_to_sync(
+        current_time=datetime(2026, 4, 17, 18, 0, tzinfo=timezone.utc),
+        state_rows=[
+            {"trading_date": date(2026, 4, 15), "status": "completed"},
+            {"trading_date": date(2026, 4, 16), "status": "failed"},
+        ],
+    )
+
+    assert result["dates_to_sync"] == ["2026-04-16"]
 
 
 def test_sync_polygon_minute_incremental_calls_run_minute_backfill(tmp_path) -> None:

@@ -61,6 +61,10 @@ COMPOSITE_FEATURE_NAMES = (
 FEATURE_EXPORT_COLUMNS = ["ticker", "trade_date", "feature_name", "feature_value", "is_filled"]
 
 
+class IntradayHistoryError(RuntimeError):
+    """Raised when intraday minute history is required but unavailable."""
+
+
 def prepare_feature_export_frame(features_df: pd.DataFrame) -> pd.DataFrame:
     """Normalize pipeline output into the canonical export contract.
 
@@ -114,6 +118,8 @@ class FeaturePipeline:
         start_date: date | datetime,
         end_date: date | datetime,
         as_of: date | datetime,
+        *,
+        allow_missing_intraday: bool = False,
     ) -> pd.DataFrame:
         """Generate PIT-safe features for market dates in the requested window.
 
@@ -209,6 +215,7 @@ class FeaturePipeline:
             start_trade_date=start - timedelta(days=90),
             end_trade_date=end,
             as_of=as_of_ts,
+            allow_missing=allow_missing_intraday,
         )
         intraday = compute_intraday_features(
             minute_df=minute_history,
@@ -552,6 +559,7 @@ def load_intraday_minute_history(
     start_trade_date: date,
     end_trade_date: date,
     as_of: date | datetime,
+    allow_missing: bool = False,
 ) -> pd.DataFrame:
     normalized_tickers = tuple(dict.fromkeys(str(ticker).upper() for ticker in tickers if ticker))
     if not normalized_tickers:
@@ -586,10 +594,14 @@ def load_intraday_minute_history(
         with session_factory() as session:
             rows = session.execute(statement).mappings().all()
     except Exception as exc:
-        logger.warning("intraday minute preload skipped because query failed: {}", exc)
-        return pd.DataFrame(
-            columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
-        )
+        if allow_missing:
+            logger.error("minute_history_missing (allow_missing=True): {}", exc)
+            return pd.DataFrame(
+                columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+            )
+        raise IntradayHistoryError(
+            f"minute history unavailable for {','.join(normalized_tickers)} {start_trade_date}~{end_trade_date}: {exc}",
+        ) from exc
 
     if not rows:
         return pd.DataFrame(

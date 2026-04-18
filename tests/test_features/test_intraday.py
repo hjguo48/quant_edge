@@ -140,12 +140,13 @@ def test_close_to_vwap_happy_path() -> None:
         {
             "close": [100.0, 102.0, 104.0],
             "volume": [1.0, 2.0, 1.0],
+            "vwap": [99.0, 101.0, 103.0],
         },
     )
 
     value, is_filled = compute_close_to_vwap(minute_bars)
 
-    expected_vwap = (100.0 * 1.0 + 102.0 * 2.0 + 104.0 * 1.0) / 4.0
+    expected_vwap = (99.0 * 1.0 + 101.0 * 2.0 + 103.0 * 1.0) / 4.0
     assert value == pytest.approx((104.0 - expected_vwap) / expected_vwap)
     assert is_filled is False
 
@@ -155,6 +156,7 @@ def test_close_to_vwap_zero_volume() -> None:
         {
             "close": [100.0, 101.0, 102.0],
             "volume": [0.0, 0.0, 0.0],
+            "vwap": [100.0, 101.0, 102.0],
         },
     )
 
@@ -169,6 +171,7 @@ def test_close_to_vwap_flags_is_filled_on_nan_close() -> None:
         {
             "close": [100.0, 101.0, np.nan],
             "volume": [1.0, 2.0, 3.0],
+            "vwap": [100.0, 101.0, 102.0],
         },
     )
 
@@ -176,6 +179,23 @@ def test_close_to_vwap_flags_is_filled_on_nan_close() -> None:
 
     assert np.isnan(value)
     assert is_filled is True
+
+
+def test_close_to_vwap_uses_volume_weighted_minute_vwap() -> None:
+    minute_bars = pd.DataFrame(
+        {
+            "close": [111.0, 111.0],
+            "volume": [1000.0, 9000.0],
+            "vwap": [100.0, 110.0],
+        },
+    )
+
+    value, is_filled = compute_close_to_vwap(minute_bars)
+
+    expected_vwap = (100.0 * 1000.0 + 110.0 * 9000.0) / 10000.0
+    assert expected_vwap == pytest.approx(109.0)
+    assert value == pytest.approx((111.0 - expected_vwap) / expected_vwap)
+    assert is_filled is False
 
 
 def test_transactions_count_zscore_happy_path() -> None:

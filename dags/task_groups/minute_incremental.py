@@ -26,6 +26,7 @@ from scripts.run_intraday_smoke import (
 )
 from src.data.db.models import StockMinuteAggs
 from src.data.db.session import get_engine
+from src.data.polygon_flat_files import is_flat_file_available
 
 LOGGER = logging.getLogger(__name__)
 XNYS = xcals.get_calendar("XNYS")
@@ -120,12 +121,17 @@ def resolve_minute_dates_to_sync(
         for trade_day in session_dates
         if known_rows.get(trade_day) not in {"completed", "skipped_holiday"}
     ]
+    available_dates = [
+        trade_day
+        for trade_day in pending_dates
+        if is_flat_file_available(trade_day, now_utc=current_time)
+    ]
     return {
-        "status": "ok" if pending_dates else "skipped",
+        "status": "ok" if available_dates else "skipped",
         "reference_date": reference.isoformat(),
         "lookback_days": int(lookback_days),
         "candidate_session_dates": [trade_day.isoformat() for trade_day in session_dates],
-        "dates_to_sync": [trade_day.isoformat() for trade_day in pending_dates],
+        "dates_to_sync": [trade_day.isoformat() for trade_day in available_dates],
     }
 
 

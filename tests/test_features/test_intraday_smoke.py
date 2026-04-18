@@ -54,4 +54,6 @@ def test_aggregate_minute_to_daily_uses_first_last_max_min_and_sums() -> None:
     assert row["low"] == 9.9
     assert row["close"] == 10.5
     assert row["volume"] == 600
+    expected_vwap = (10.05 * 100 + 10.3 * 200 + 10.45 * 300) / 600
+    assert row["vwap"] == pytest.approx(expected_vwap)
     assert row["transactions"] == 60

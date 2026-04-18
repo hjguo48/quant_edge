@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 import gzip
 import io
 
@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 import src.data.polygon_flat_files as polygon_flat_files_module
-from src.data.polygon_flat_files import PolygonFlatFilesClient
+from src.data.polygon_flat_files import PolygonFlatFilesClient, is_flat_file_available
 from src.data.sources.base import DataSourceTransientError
 
 
@@ -151,14 +151,21 @@ def test_classify_s3_error_handles_exc_without_response() -> None:
         )
 
 
-def test_flat_files_health_check_uses_last_session(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_is_flat_file_available_false_before_cutoff() -> None:
+    now_utc = datetime(2026, 4, 20, 14, 0, tzinfo=timezone.utc)  # 10:00 ET Monday
+
+    assert is_flat_file_available(date(2026, 4, 17), now_utc=now_utc) is False
+
+
+def test_is_flat_file_available_true_after_cutoff() -> None:
+    now_utc = datetime(2026, 4, 20, 16, 0, tzinfo=timezone.utc)  # 12:00 ET Monday
+
+    assert is_flat_file_available(date(2026, 4, 17), now_utc=now_utc) is True
+
+
+def test_flat_files_health_check_skips_unavailable_day(monkeypatch: pytest.MonkeyPatch) -> None:
     client = PolygonFlatFilesClient(access_key="access", secret_key="secret", s3_client=_FakeS3Client(b""))
     captured_days: list[date] = []
-
-    class FakeDate(date):
-        @classmethod
-        def today(cls) -> "FakeDate":
-            return cls(2026, 1, 3)
 
     def fake_head_day(trading_date):
         captured_days.append(pd.Timestamp(trading_date).date())
@@ -168,8 +175,12 @@ def test_flat_files_health_check_uses_last_session(monkeypatch: pytest.MonkeyPat
             etag="etag",
         )
 
-    monkeypatch.setattr(polygon_flat_files_module, "date", FakeDate)
     monkeypatch.setattr(client, "head_day", fake_head_day)
+    monkeypatch.setattr(
+        polygon_flat_files_module,
+        "is_flat_file_available",
+        lambda trading_date, now_utc=None: trading_date == date(2025, 12, 31),
+    )
 
-    assert client.health_check() is True
-    assert captured_days == [date(2026, 1, 2)]
+    assert client.health_check(now_utc=datetime(2026, 1, 3, 12, 0, tzinfo=timezone.utc)) is True
+    assert captured_days == [date(2025, 12, 31)]
