@@ -592,24 +592,24 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
     for field, spec in field_specs.items():
         minute_values = pd.to_numeric(overlap[f"{field}_minute"], errors="coerce").astype(float)
         daily_values = pd.to_numeric(overlap[f"{field}_daily"], errors="coerce").astype(float)
-        rel_diffs = []
-        bp_diffs = []
+        rel_diff = pd.Series(index=overlap.index, dtype="float64")
+        bp_diff = pd.Series(index=overlap.index, dtype="float64")
         nan_pairs = 0
-        for minute_value, daily_value in zip(minute_values.tolist(), daily_values.tolist()):
+        for idx, minute_value, daily_value in zip(overlap.index.tolist(), minute_values.tolist(), daily_values.tolist()):
             if pd.isna(minute_value) or pd.isna(daily_value):
                 nan_pairs += 1
+                rel_diff.loc[idx] = pd.NA
+                bp_diff.loc[idx] = pd.NA
                 continue
             denominator = abs(float(daily_value)) if float(daily_value) != 0 else None
-            rel_diffs.append(abs(float(minute_value) - float(daily_value)) / denominator if denominator else 0.0)
-            bp_diffs.append(bp_delta(float(minute_value), float(daily_value)))
-        rel_diff = pd.Series(rel_diffs)
-        bp_diff = pd.Series(bp_diffs, dtype="float64")
-        max_rel_diff = float(rel_diff.max()) if not rel_diff.empty else 0.0
+            rel_diff.loc[idx] = abs(float(minute_value) - float(daily_value)) / denominator if denominator else 0.0
+            bp_diff.loc[idx] = bp_delta(float(minute_value), float(daily_value))
+        max_rel_diff = float(rel_diff.dropna().max()) if not rel_diff.dropna().empty else 0.0
         max_bp = float(bp_diff.max()) if not bp_diff.dropna().empty else 0.0
         field_pass = nan_pairs == 0 and max_bp <= spec["threshold_bp"]
         if nan_pairs > 0:
             blocker_pass = False
-        elif spec["severity"] == "blocker":
+        if spec["severity"] == "blocker":
             blocker_pass &= field_pass
         else:
             flagged_mask = bp_diff > spec["threshold_bp"]

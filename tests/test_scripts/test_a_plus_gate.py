@@ -193,6 +193,34 @@ def test_validate_minute_to_day_consistency_no_crash_on_partial_overlap() -> Non
     assert result["warning_event_count"] == 1
 
 
+def test_validate_minute_to_day_consistency_warning_mask_aligned_with_nan_first() -> None:
+    trade_day = date(2026, 1, 5)
+    minute_df = pd.concat(
+        [
+            _minute_rows_for_day(ticker="AAA", trade_day=trade_day, close_price=101.0),
+            _minute_rows_for_day(ticker="BBB", trade_day=trade_day, close_price=102.0),
+            _minute_rows_for_day(ticker="CCC", trade_day=trade_day, close_price=103.0),
+        ],
+        ignore_index=True,
+    )
+    minute_df.loc[minute_df["ticker"] == "AAA", "close"] = float("nan")
+    daily_df = pd.concat(
+        [
+            _daily_row(ticker="AAA", trade_day=trade_day, close_price=101.0),
+            _daily_row(ticker="BBB", trade_day=trade_day, close_price=103.0),
+            _daily_row(ticker="CCC", trade_day=trade_day, close_price=103.001),
+        ],
+        ignore_index=True,
+    )
+
+    result = validate_minute_to_day_consistency(minute_df, daily_df)
+
+    assert result["fields"]["close"]["nan_pairs"] == 1
+    assert result["warning_event_count"] == 1
+    assert result["warning_events"][0]["ticker"] == "BBB"
+    assert result["warning_events"][0]["field"] == "close"
+
+
 def test_minute_internal_consistency_gap() -> None:
     minute_df = _minute_rows_for_day().drop(index=[0, 1, 2, 3]).reset_index(drop=True)
 
