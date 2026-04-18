@@ -71,20 +71,29 @@ def is_trading_day(trade_day: date) -> bool:
 
 
 def load_universe_whitelist_for_date(trading_date: date, *, index_name: str = "SP500") -> list[str]:
+    """Return historical union of tickers ever in the index.
+
+    TEMPORARY FALLBACK: universe_membership has a P3 data bug where
+    always-in-index tickers lack historical anchor rows. True PIT filtering can
+    return zero tickers for pre-2026 dates. Until that backfill is repaired, we
+    return the union of distinct tickers regardless of trading_date.
+
+    The feature/label layer still applies PIT universe filtering downstream.
+    This fallback only controls which tickers enter the raw stock_minute_aggs
+    storage layer.
+    """
     query = sa.text(
         """
         select distinct ticker
         from universe_membership
         where index_name = :index_name
-          and effective_date <= :trading_date
-          and (end_date is null or end_date > :trading_date)
         order by ticker
         """,
     )
     with get_engine().connect() as conn:
         tickers = conn.execute(
             query,
-            {"index_name": index_name, "trading_date": trading_date},
+            {"index_name": index_name},
         ).scalars().all()
     return [str(ticker).upper() for ticker in tickers]
 

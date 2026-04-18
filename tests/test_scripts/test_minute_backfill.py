@@ -154,7 +154,7 @@ def test_writer_idempotence_same_day_twice(monkeypatch: pytest.MonkeyPatch) -> N
     assert len(writer.keys) == 1
 
 
-def test_load_universe_whitelist_for_date_filters_pit_correctly(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_universe_whitelist_for_date_returns_union_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeResult:
         def __init__(self, values):
             self._values = values
@@ -173,12 +173,7 @@ def test_load_universe_whitelist_for_date_filters_pit_correctly(monkeypatch: pyt
             return False
 
         def execute(self, statement, params=None):
-            trade_day = params["trading_date"]
-            if trade_day == date(2025, 3, 15):
-                return FakeResult(["AAPL", "MSFT"])
-            if trade_day == date(2025, 7, 15):
-                return FakeResult(["MSFT"])
-            return FakeResult([])
+            return FakeResult(["AAPL", "MSFT"])
 
     class FakeEngine:
         def connect(self):
@@ -187,11 +182,11 @@ def test_load_universe_whitelist_for_date_filters_pit_correctly(monkeypatch: pyt
     monkeypatch.setattr(minute_backfill_module, "get_engine", lambda: FakeEngine())
 
     assert load_universe_whitelist_for_date(date(2025, 3, 15)) == ["AAPL", "MSFT"]
-    assert load_universe_whitelist_for_date(date(2025, 7, 15)) == ["MSFT"]
-    assert load_universe_whitelist_for_date(date(2015, 12, 1)) == []
+    assert load_universe_whitelist_for_date(date(2025, 7, 15)) == ["AAPL", "MSFT"]
+    assert load_universe_whitelist_for_date(date(2015, 12, 1)) == ["AAPL", "MSFT"]
 
 
-def test_run_backfill_calls_pit_universe_per_day(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_backfill_calls_union_universe_per_day(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_universes: list[tuple[date, list[str] | None]] = []
 
     monkeypatch.setattr(
@@ -203,7 +198,7 @@ def test_run_backfill_calls_pit_universe_per_day(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(
         minute_backfill_module,
         "load_universe_whitelist_for_date",
-        lambda trading_date: ["AAPL"] if trading_date == date(2026, 1, 5) else ["MSFT", "NVDA"],
+        lambda trading_date: ["AAPL", "MSFT", "NVDA"],
     )
     monkeypatch.setattr(minute_backfill_module, "PolygonFlatFilesClient", lambda min_request_interval=0.0: object())
     monkeypatch.setattr(
@@ -228,8 +223,8 @@ def test_run_backfill_calls_pit_universe_per_day(monkeypatch: pytest.MonkeyPatch
 
     assert summary["summary"]["completed_days"] == 2
     assert seen_universes == [
-        (date(2026, 1, 5), ["AAPL"]),
-        (date(2026, 1, 6), ["MSFT", "NVDA"]),
+        (date(2026, 1, 5), ["AAPL", "MSFT", "NVDA"]),
+        (date(2026, 1, 6), ["AAPL", "MSFT", "NVDA"]),
     ]
 
 
