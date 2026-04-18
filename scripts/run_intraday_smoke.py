@@ -425,13 +425,20 @@ def validate_minute_internal_consistency(minute_frame: pd.DataFrame) -> dict[str
         "sample": gap_failures[:10],
     }
 
+    open_values = pd.to_numeric(frame["open"], errors="coerce")
+    high_values = pd.to_numeric(frame["high"], errors="coerce")
+    low_values = pd.to_numeric(frame["low"], errors="coerce")
+    close_values = pd.to_numeric(frame["close"], errors="coerce")
+    nan_ohlc_mask = pd.concat([open_values, high_values, low_values, close_values], axis=1).isna().any(axis=1)
     ohlc_invalid = frame.loc[
-        (pd.to_numeric(frame["high"], errors="coerce") < pd.concat([pd.to_numeric(frame["open"], errors="coerce"), pd.to_numeric(frame["close"], errors="coerce")], axis=1).max(axis=1))
-        | (pd.to_numeric(frame["low"], errors="coerce") > pd.concat([pd.to_numeric(frame["open"], errors="coerce"), pd.to_numeric(frame["close"], errors="coerce")], axis=1).min(axis=1))
+        nan_ohlc_mask
+        | (high_values < pd.concat([open_values, close_values], axis=1).max(axis=1))
+        | (low_values > pd.concat([open_values, close_values], axis=1).min(axis=1))
     ].copy()
     ohlc_check = {
         "pass": ohlc_invalid.empty,
         "failure_count": int(len(ohlc_invalid)),
+        "nan_ohlc_count": int(nan_ohlc_mask.sum()),
         "sample": ohlc_invalid.loc[:, ["ticker", "trade_date", "minute_ts", "open", "high", "low", "close"]]
         .head(10)
         .to_dict(orient="records"),
@@ -577,15 +584,16 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
     summary: dict[str, Any] = {}
     blocker_pass = True
     warning_events: list[dict[str, Any]] = []
+    total_nan_pairs = 0
     for field, spec in field_specs.items():
         minute_values = pd.to_numeric(merged[f"{field}_minute"], errors="coerce").astype(float)
         daily_values = pd.to_numeric(merged[f"{field}_daily"], errors="coerce").astype(float)
         rel_diffs = []
         bp_diffs = []
+        nan_pairs = 0
         for minute_value, daily_value in zip(minute_values.tolist(), daily_values.tolist()):
             if pd.isna(minute_value) or pd.isna(daily_value):
-                rel_diffs.append(0.0)
-                bp_diffs.append(None)
+                nan_pairs += 1
                 continue
             denominator = abs(float(daily_value)) if float(daily_value) != 0 else None
             rel_diffs.append(abs(float(minute_value) - float(daily_value)) / denominator if denominator else 0.0)
@@ -594,8 +602,10 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
         bp_diff = pd.Series(bp_diffs, dtype="float64")
         max_rel_diff = float(rel_diff.max()) if not rel_diff.empty else 0.0
         max_bp = float(bp_diff.max()) if not bp_diff.dropna().empty else 0.0
-        field_pass = max_bp <= spec["threshold_bp"]
-        if spec["severity"] == "blocker":
+        field_pass = nan_pairs == 0 and max_bp <= spec["threshold_bp"]
+        if nan_pairs > 0:
+            blocker_pass = False
+        elif spec["severity"] == "blocker":
             blocker_pass &= field_pass
         else:
             flagged = merged.loc[bp_diff > spec["threshold_bp"], ["ticker", "trade_date", f"{field}_daily", f"{field}_minute"]].copy()
@@ -612,12 +622,14 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
                         "severity": "warning",
                     },
                 )
+        total_nan_pairs += nan_pairs
         summary[field] = {
             "max_abs_rel_diff": max_rel_diff,
             "max_abs_bp": max_bp,
             "threshold_bp": float(spec["threshold_bp"]),
             "severity": spec["severity"],
             "pass": bool(field_pass),
+            "nan_pairs": int(nan_pairs),
         }
     concentrated_warning_days: list[dict[str, Any]] = []
     if warning_events:
@@ -640,6 +652,7 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
         "pass": bool(blocker_pass),
         "row_count": int(len(merged)),
         "fields": summary,
+        "nan_pair_count": int(total_nan_pairs),
         "warning_events": warning_events,
         "warning_event_count": int(len(warning_events)),
         "concentrated_warning_days": concentrated_warning_days,

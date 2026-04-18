@@ -93,6 +93,44 @@ def test_warning_only_on_close() -> None:
     assert result["warning_events"][0]["field"] == "close"
 
 
+def test_validate_minute_to_day_consistency_flags_all_nan_as_blocker() -> None:
+    minute_df = _minute_rows_for_day()
+    minute_df["close"] = float("nan")
+    daily_df = _daily_row()
+
+    result = validate_minute_to_day_consistency(minute_df, daily_df)
+
+    assert result["pass"] is False
+    assert result["fields"]["close"]["pass"] is False
+    assert result["fields"]["close"]["nan_pairs"] == 1
+    assert result["nan_pair_count"] >= 1
+
+
+def test_validate_minute_to_day_consistency_counts_partial_nan() -> None:
+    trade_days = [date(2026, 1, 5 + offset) for offset in range(10)]
+    minute_df = pd.concat(
+        [
+            _minute_rows_for_day(ticker="AAA", trade_day=trade_day)
+            for trade_day in trade_days
+        ],
+        ignore_index=True,
+    )
+    minute_df.loc[minute_df["trade_date"] == trade_days[0], "close"] = float("nan")
+    daily_df = pd.concat(
+        [
+            _daily_row(ticker="AAA", trade_day=trade_day)
+            for trade_day in trade_days
+        ],
+        ignore_index=True,
+    )
+
+    result = validate_minute_to_day_consistency(minute_df, daily_df)
+
+    assert result["pass"] is False
+    assert result["fields"]["close"]["nan_pairs"] == 1
+    assert result["nan_pair_count"] == 1
+
+
 def test_minute_internal_consistency_gap() -> None:
     minute_df = _minute_rows_for_day().drop(index=[0, 1, 2, 3]).reset_index(drop=True)
 
@@ -110,6 +148,17 @@ def test_minute_internal_consistency_overlap() -> None:
 
     assert result["pass"] is False
     assert result["checks"]["no_overlap"]["pass"] is False
+
+
+def test_validate_minute_internal_consistency_flags_nan_ohlc() -> None:
+    minute_df = _minute_rows_for_day()
+    minute_df.loc[0, "high"] = float("nan")
+
+    result = validate_minute_internal_consistency(minute_df)
+
+    assert result["pass"] is False
+    assert result["checks"]["ohlc_internal_consistency"]["pass"] is False
+    assert result["checks"]["ohlc_internal_consistency"]["nan_ohlc_count"] == 1
 
 
 class _FakeSession:
