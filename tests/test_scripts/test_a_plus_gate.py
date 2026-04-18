@@ -174,6 +174,25 @@ def test_validate_minute_to_day_consistency_pass_with_full_overlap() -> None:
     assert result["pass"] is True
 
 
+def test_validate_minute_to_day_consistency_no_crash_on_partial_overlap() -> None:
+    minute_df = pd.concat(
+        [
+            _minute_rows_for_day(ticker="AAA", trade_day=date(2026, 1, 5), close_price=101.0),
+            _minute_rows_for_day(ticker="BBB", trade_day=date(2026, 1, 5), close_price=102.0),
+        ],
+        ignore_index=True,
+    )
+    daily_df = _daily_row(ticker="AAA", trade_day=date(2026, 1, 5), close_price=101.25)
+
+    result = validate_minute_to_day_consistency(minute_df, daily_df)
+
+    assert result["pass"] is False
+    assert result["overlap_count"] == 1
+    assert result["minute_only_count"] == 1
+    assert result["fields"]["close"]["pass"] is False
+    assert result["warning_event_count"] == 1
+
+
 def test_minute_internal_consistency_gap() -> None:
     minute_df = _minute_rows_for_day().drop(index=[0, 1, 2, 3]).reset_index(drop=True)
 

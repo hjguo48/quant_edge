@@ -19,11 +19,6 @@ try:
 except ImportError:
     pendulum = None
 
-from dags.task_groups.minute_incremental import (
-    build_minute_incremental_task_group,
-    minute_incremental_enabled,
-)
-
 LOGGER = logging.getLogger(__name__)
 DEFAULT_FEATURES_PATH = "data/features/all_features.parquet"
 LEGACY_FEATURES_PATH = "/opt/airflow/daily_features/all_features.parquet"
@@ -31,6 +26,19 @@ FAST_VIX_SERIES = ("VIXCLS",)
 SLOW_MACRO_SERIES = ("DGS10", "DGS2", "BAA10Y", "AAA10Y", "FEDFUNDS")
 DEFAULT_PRICE_BOOTSTRAP_DAYS = 30
 DEFAULT_FEATURE_BOOTSTRAP_DAYS = 30
+
+
+def minute_incremental_enabled() -> bool:
+    raw = os.environ.get("ENABLE_MINUTE_INCREMENTAL")
+    if raw is not None:
+        return raw.lower() in {"1", "true", "yes", "on"}
+    try:
+        from airflow.models import Variable
+
+        value = Variable.get("ENABLE_MINUTE_INCREMENTAL", default_var="false")
+    except Exception:
+        value = "false"
+    return str(value).lower() in {"1", "true", "yes", "on"}
 
 
 def _dag_start_datetime(year: int, month: int, day: int) -> datetime:
@@ -1228,6 +1236,8 @@ with DAG(
     store_to_db_task >> sync_universe_membership_task
     sync_universe_membership_task >> [fetch_fundamentals_task, fetch_alternative_data_task]
     if minute_incremental_enabled():
+        from dags.task_groups.minute_incremental import build_minute_incremental_task_group
+
         minute_incremental_group = build_minute_incremental_task_group(dag=dag)
         sync_universe_membership_task >> minute_incremental_group
     [

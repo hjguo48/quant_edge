@@ -230,6 +230,27 @@ def test_minute_incremental_group_not_instantiated_when_flag_off(monkeypatch: py
     assert not any(task_id.startswith("minute_incremental.") for task_id in module.dag.task_ids)
 
 
+def test_dag_import_ok_without_exchange_calendars(monkeypatch: pytest.MonkeyPatch) -> None:
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001
+        if name == "exchange_calendars":
+            raise ImportError("simulated missing exchange_calendars")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setenv("ENABLE_MINUTE_INCREMENTAL", "false")
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    sys.modules.pop("dags.dag_daily_data", None)
+    importlib.invalidate_caches()
+
+    module = importlib.import_module("dags.dag_daily_data")
+
+    assert module.dag.dag_id == "daily_data_pipeline"
+    assert not any(task_id.startswith("minute_incremental.") for task_id in module.dag.task_ids)
+
+
 def test_minute_sync_failure_does_not_block_weekly_signal(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_daily_data_module(monkeypatch, enabled="true")
 
