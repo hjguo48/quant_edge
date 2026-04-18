@@ -20,6 +20,25 @@ class _BrokenSession:
         raise RuntimeError("db down")
 
 
+class _EmptyResult:
+    def mappings(self):
+        return self
+
+    def all(self):
+        return []
+
+
+class _EmptySession:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def execute(self, statement):
+        return _EmptyResult()
+
+
 def _empty_feature_frame() -> pd.DataFrame:
     return pd.DataFrame(columns=["ticker", "trade_date", "feature_name", "feature_value", "is_filled"])
 
@@ -38,6 +57,46 @@ def test_load_intraday_minute_history_raises_on_db_error_by_default(monkeypatch:
 
 def test_load_intraday_minute_history_returns_empty_with_allow_missing_flag(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pipeline_module, "get_session_factory", lambda: (lambda: _BrokenSession()))
+
+    frame = load_intraday_minute_history(
+        tickers=["AAPL"],
+        start_trade_date=date(2026, 1, 1),
+        end_trade_date=date(2026, 1, 5),
+        as_of=date(2026, 1, 6),
+        allow_missing=True,
+    )
+
+    assert frame.empty
+    assert list(frame.columns) == [
+        "ticker",
+        "trade_date",
+        "minute_ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "vwap",
+        "transactions",
+    ]
+
+
+def test_load_intraday_minute_history_raises_on_empty_rows_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pipeline_module, "get_session_factory", lambda: (lambda: _EmptySession()))
+
+    with pytest.raises(IntradayHistoryError, match="minute history empty"):
+        load_intraday_minute_history(
+            tickers=["AAPL"],
+            start_trade_date=date(2026, 1, 1),
+            end_trade_date=date(2026, 1, 5),
+            as_of=date(2026, 1, 6),
+        )
+
+
+def test_load_intraday_minute_history_returns_empty_with_allow_missing_on_empty_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(pipeline_module, "get_session_factory", lambda: (lambda: _EmptySession()))
 
     frame = load_intraday_minute_history(
         tickers=["AAPL"],

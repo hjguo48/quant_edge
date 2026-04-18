@@ -604,8 +604,20 @@ def load_intraday_minute_history(
         ) from exc
 
     if not rows:
-        return pd.DataFrame(
-            columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+        if allow_missing:
+            logger.error(
+                "minute_history empty (allow_missing=True): tickers={} range={}~{}",
+                normalized_tickers,
+                start_trade_date,
+                end_trade_date,
+            )
+            return pd.DataFrame(
+                columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+            )
+        raise IntradayHistoryError(
+            "minute history empty for "
+            f"{','.join(normalized_tickers)} {start_trade_date}~{end_trade_date} "
+            "(query succeeded but returned 0 rows; check minute_backfill_state coverage)",
         )
     return pd.DataFrame(rows)
 
