@@ -311,6 +311,12 @@ _INTRADAY_FEATURE_METADATA = {
     "gap_pct": "Open versus prior daily close return using the first regular-session minute bar.",
     "overnight_ret": "Alias for the regular-session opening gap versus the prior close.",
     "intraday_ret": "Regular-session close versus open return derived from minute aggregates.",
+    "open_30m_ret": "First 30-minute regular-session return from the 09:30 open to the 09:59 close.",
+    "last_30m_ret": "Last 30-minute regular-session return from the 15:30 open to the 15:59 close.",
+    "realized_vol_1d": "Daily realized volatility from intraday minute log returns scaled by sqrt(390).",
+    "volume_curve_surprise": "Average z-score of today's 30-minute volume buckets versus the prior 30 trading days.",
+    "close_to_vwap": "15:59 regular-session close relative to the day VWAP synthesized from minute closes and volume.",
+    "transactions_count_zscore": "Daily minute-aggregated transaction count z-score versus the prior 20 trading days.",
 }
 
 _COMPOSITE_FEATURE_METADATA = {
@@ -347,4 +353,5 @@ assert len(FUNDAMENTAL_FEATURE_NAMES) == 17
 assert len(MACRO_FEATURE_NAMES) == 10
 assert len(ALTERNATIVE_FEATURE_NAMES) == 38
 assert len(SECTOR_ROTATION_FEATURE_NAMES) == 5
+assert len(INTRADAY_FEATURE_NAMES) == 9
 assert len(COMPOSITE_FEATURE_NAMES) == 26

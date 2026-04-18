@@ -13,7 +13,7 @@ from loguru import logger
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert
 
-from src.data.db.models import FeatureStore
+from src.data.db.models import FeatureStore, StockMinuteAggs
 from src.data.db.pit import get_prices_pit
 from src.data.db.session import get_session_factory
 from src.data.sources.fmp_analyst import AnalystEstimate
@@ -23,6 +23,7 @@ from src.data.sources.fmp_sec_filings import SecFiling
 from src.data.sources.polygon_short_interest import ShortInterest
 from src.features.alternative import ALTERNATIVE_FEATURE_NAMES
 from src.features.fundamental import FUNDAMENTAL_FEATURE_NAMES, compute_fundamental_features
+from src.features.intraday import INTRADAY_FEATURE_NAMES, compute_intraday_features
 from src.features.macro import MACRO_FEATURE_NAMES, compute_macro_features
 from src.features.preprocessing import preprocess_features
 from src.features.sector import SECTOR_RELATIVE_RETAINED, compute_sector_relative_from_raw_features, load_sector_map_pit
@@ -203,8 +204,23 @@ class FeaturePipeline:
             output_end=end,
             as_of=as_of_ts,
         )
+        minute_history = load_intraday_minute_history(
+            tickers=normalized_tickers,
+            start_trade_date=start - timedelta(days=90),
+            end_trade_date=end,
+            as_of=as_of_ts,
+        )
+        intraday = compute_intraday_features(
+            minute_df=minute_history,
+            daily_prices_df=stock_prices,
+        )
+        if not intraday.empty:
+            intraday = intraday.loc[
+                (pd.to_datetime(intraday["trade_date"]).dt.date >= start)
+                & (pd.to_datetime(intraday["trade_date"]).dt.date <= end)
+            ].copy()
         macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
-        base_features = pd.concat([technical, fundamentals, alternative, macro], ignore_index=True)
+        base_features = pd.concat([technical, fundamentals, alternative, intraday, macro], ignore_index=True)
         sector_rotation = compute_sector_rotation_features(
             base_features_df=base_features,
             prices_df=prices,
@@ -528,6 +544,58 @@ def load_alternative_histories_batch(
         sum(len(frame) for frame in histories["sec_filings"].values()),
     )
     return histories
+
+
+def load_intraday_minute_history(
+    *,
+    tickers: Sequence[str],
+    start_trade_date: date,
+    end_trade_date: date,
+    as_of: date | datetime,
+) -> pd.DataFrame:
+    normalized_tickers = tuple(dict.fromkeys(str(ticker).upper() for ticker in tickers if ticker))
+    if not normalized_tickers:
+        return pd.DataFrame(
+            columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+        )
+
+    cutoff = _coerce_as_of_datetime(as_of)
+    statement = (
+        sa.select(
+            StockMinuteAggs.ticker,
+            StockMinuteAggs.trade_date,
+            StockMinuteAggs.minute_ts,
+            StockMinuteAggs.open,
+            StockMinuteAggs.high,
+            StockMinuteAggs.low,
+            StockMinuteAggs.close,
+            StockMinuteAggs.volume,
+            StockMinuteAggs.vwap,
+            StockMinuteAggs.transactions,
+        )
+        .where(
+            StockMinuteAggs.ticker.in_(normalized_tickers),
+            StockMinuteAggs.trade_date >= start_trade_date,
+            StockMinuteAggs.trade_date <= end_trade_date,
+            StockMinuteAggs.knowledge_time <= cutoff,
+        )
+        .order_by(StockMinuteAggs.ticker, StockMinuteAggs.minute_ts)
+    )
+    session_factory = get_session_factory()
+    try:
+        with session_factory() as session:
+            rows = session.execute(statement).mappings().all()
+    except Exception as exc:
+        logger.warning("intraday minute preload skipped because query failed: {}", exc)
+        return pd.DataFrame(
+            columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+        )
+
+    if not rows:
+        return pd.DataFrame(
+            columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+        )
+    return pd.DataFrame(rows)
 
 
 def _compute_alternative_features_for_ticker_history(
