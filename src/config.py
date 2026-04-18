@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     MLFLOW_ARTIFACT_ROOT: str = str(DEFAULT_MLFLOW_ARTIFACT_ROOT)
 
     POLYGON_API_KEY: str = ""
+    POLYGON_S3_KEY: str = ""
+    POLYGON_S3_SECRET: str = ""
+    POLYGON_S3_ENDPOINT: str = "https://files.massive.com"
+    POLYGON_S3_BUCKET: str = "flatfiles"
     FRED_API_KEY: str = ""
     FMP_API_KEY: str = ""
 

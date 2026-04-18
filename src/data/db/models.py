@@ -1,4 +1,4 @@
-"""Core ORM models; stock_prices, feature_store, and predictions require create_hypertable()."""
+"""Core ORM models; time-series tables require create_hypertable()."""
 
 from __future__ import annotations
 
@@ -69,6 +69,73 @@ class StockPrice(Base):
     volume: Mapped[int | None] = mapped_column(BigInteger)
     knowledge_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     source: Mapped[str | None] = mapped_column(String(20))
+
+
+class StockMinuteAggs(Base):
+    __tablename__ = "stock_minute_aggs"
+    __table_args__ = (
+        sa.Index("idx_stock_minute_aggs_trade_date", "trade_date"),
+        sa.Index("idx_stock_minute_aggs_knowledge_time", "knowledge_time"),
+    )
+
+    # TimescaleDB hypertables require any unique constraint to include the
+    # partition key, so the ORM identity is the `(ticker, minute_ts)` pair
+    # rather than a standalone surrogate `id`.
+    ticker: Mapped[str] = mapped_column(String(10), primary_key=True)
+    minute_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    id: Mapped[int | None] = mapped_column(BigInteger, sa.Identity(), nullable=False, index=True)
+    trade_date: Mapped[date] = mapped_column(Date, nullable=False)
+    open: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    high: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    low: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    close: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    volume: Mapped[int | None] = mapped_column(BigInteger)
+    vwap: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    transactions: Mapped[int | None] = mapped_column(BigInteger)
+    event_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    knowledge_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    batch_id: Mapped[str] = mapped_column(String(36), nullable=False)
+
+
+class PriceReconciliationEvent(Base):
+    __tablename__ = "price_reconciliation_events"
+    __table_args__ = (
+        sa.Index("idx_price_reconciliation_events_trade_date", "trade_date"),
+        sa.Index("idx_price_reconciliation_events_severity", "severity"),
+        sa.Index("idx_price_reconciliation_events_batch_id", "batch_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ticker: Mapped[str] = mapped_column(String(10), nullable=False)
+    trade_date: Mapped[date] = mapped_column(Date, nullable=False)
+    field: Mapped[str] = mapped_column(String(20), nullable=False)
+    stock_prices_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 8))
+    minute_agg_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 8))
+    delta_bp: Mapped[Decimal | None] = mapped_column(Numeric(20, 8))
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    batch_id: Mapped[str] = mapped_column(String(36), nullable=False)
+
+
+class MinuteBackfillState(Base):
+    __tablename__ = "minute_backfill_state"
+    __table_args__ = (
+        sa.Index("idx_minute_backfill_state_status", "status"),
+        sa.Index("idx_minute_backfill_state_finished_at", "finished_at"),
+    )
+
+    trading_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    source_file: Mapped[str | None] = mapped_column(String(255))
+    rows_raw: Mapped[int | None] = mapped_column(Integer)
+    rows_kept: Mapped[int | None] = mapped_column(Integer)
+    tickers_loaded: Mapped[int | None] = mapped_column(Integer)
+    checksum: Mapped[str | None] = mapped_column(String(64))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    watermark: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    error_message: Mapped[str | None] = mapped_column(sa.Text)
 
 
 class FundamentalsPIT(Base):

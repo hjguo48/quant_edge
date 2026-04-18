@@ -7,6 +7,7 @@ import pandas as pd
 
 from src.features.alternative import ALTERNATIVE_FEATURE_NAMES
 from src.features.fundamental import FUNDAMENTAL_FEATURE_NAMES, compute_fundamental_features
+from src.features.intraday import INTRADAY_FEATURE_NAMES, compute_intraday_features
 from src.features.macro import MACRO_FEATURE_NAMES, compute_macro_features
 from src.features.pipeline import COMPOSITE_FEATURE_NAMES, compute_composite_features
 from src.features.pipeline import compute_alternative_features_batch
@@ -66,6 +67,8 @@ class FeatureRegistry:
             self.register(name, "sector_rotation", description, compute_sector_rotation_features)
         for name, description in _COMPOSITE_FEATURE_METADATA.items():
             self.register(name, "composite", description, compute_composite_features)
+        for name, description in _INTRADAY_FEATURE_METADATA.items():
+            self.register(name, "intraday", description, compute_intraday_features)
 
 
 _TECHNICAL_FEATURE_METADATA = {
@@ -304,6 +307,18 @@ _SECTOR_ROTATION_FEATURE_METADATA = {
     "sector_pressure_x_divergence": "Sector pressure interacted with the stock's 20-day divergence from its sector ETF.",
 }
 
+_INTRADAY_FEATURE_METADATA = {
+    "gap_pct": "Open versus prior daily close return using the first regular-session minute bar.",
+    "overnight_ret": "Alias for the regular-session opening gap versus the prior close.",
+    "intraday_ret": "Regular-session close versus open return derived from minute aggregates.",
+    "open_30m_ret": "First 30-minute regular-session return from the 09:30 open to the 09:59 close.",
+    "last_30m_ret": "Last 30-minute regular-session return from the 15:30 open to the 15:59 close.",
+    "realized_vol_1d": "Daily realized volatility from intraday minute log returns scaled by sqrt(390).",
+    "volume_curve_surprise": "Average z-score of today's 30-minute volume buckets versus the prior 30 trading days.",
+    "close_to_vwap": "15:59 regular-session close relative to the day VWAP synthesized from minute closes and volume.",
+    "transactions_count_zscore": "Daily minute-aggregated transaction count z-score versus the prior 20 trading days.",
+}
+
 _COMPOSITE_FEATURE_METADATA = {
     "ret_vol_interaction_20d": "20-day return interacted with 20-day volume ratio.",
     "ret_vol_interaction_60d": "60-day return interacted with 20-day volume ratio.",
@@ -338,4 +353,5 @@ assert len(FUNDAMENTAL_FEATURE_NAMES) == 17
 assert len(MACRO_FEATURE_NAMES) == 10
 assert len(ALTERNATIVE_FEATURE_NAMES) == 38
 assert len(SECTOR_ROTATION_FEATURE_NAMES) == 5
+assert len(INTRADAY_FEATURE_NAMES) == 9
 assert len(COMPOSITE_FEATURE_NAMES) == 26

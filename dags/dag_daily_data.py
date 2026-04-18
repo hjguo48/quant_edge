@@ -8,10 +8,16 @@ import subprocess
 import sys
 from typing import Any
 
-from airflow import DAG
-from airflow.exceptions import AirflowException
-from airflow.operators.python import PythonOperator
-import pendulum
+try:
+    from airflow import DAG
+    from airflow.exceptions import AirflowException
+    from airflow.operators.python import PythonOperator
+except ImportError:
+    from dags._airflow_compat import DAG, AirflowException, PythonOperator
+try:
+    import pendulum
+except ImportError:
+    pendulum = None
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_FEATURES_PATH = "data/features/all_features.parquet"
@@ -20,6 +26,25 @@ FAST_VIX_SERIES = ("VIXCLS",)
 SLOW_MACRO_SERIES = ("DGS10", "DGS2", "BAA10Y", "AAA10Y", "FEDFUNDS")
 DEFAULT_PRICE_BOOTSTRAP_DAYS = 30
 DEFAULT_FEATURE_BOOTSTRAP_DAYS = 30
+
+
+def minute_incremental_enabled() -> bool:
+    raw = os.environ.get("ENABLE_MINUTE_INCREMENTAL")
+    if raw is not None:
+        return raw.lower() in {"1", "true", "yes", "on"}
+    try:
+        from airflow.models import Variable
+
+        value = Variable.get("ENABLE_MINUTE_INCREMENTAL", default_var="false")
+    except Exception:
+        value = "false"
+    return str(value).lower() in {"1", "true", "yes", "on"}
+
+
+def _dag_start_datetime(year: int, month: int, day: int) -> datetime:
+    if pendulum is not None:
+        return pendulum.datetime(year, month, day, tz="America/New_York")
+    return datetime(year, month, day, tzinfo=timezone.utc)
 
 
 def _project_root() -> Path:
@@ -1149,6 +1174,7 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
         batch_size=25,
         max_workers=8,
         progress_interval=100,
+        allow_missing_intraday=True,
         sync_feature_store=True,
         clear_store_range_flag=True,
     )
@@ -1180,7 +1206,7 @@ with DAG(
     dag_id="daily_data_pipeline",
     description="Overnight slow market, macro, and fundamental refresh.",
     schedule="0 2 * * 1-5",
-    start_date=pendulum.datetime(2026, 1, 1, tz="America/New_York"),
+    start_date=_dag_start_datetime(2026, 1, 1),
     catchup=False,
     max_active_runs=1,
     tags=["quantedge", "data", "daily"],
@@ -1207,10 +1233,15 @@ with DAG(
         task_id="update_features_cache",
         python_callable=update_features_cache,
     )
-
     fetch_prices_task >> store_to_db_task
     store_to_db_task >> sync_universe_membership_task
     sync_universe_membership_task >> [fetch_fundamentals_task, fetch_alternative_data_task]
+    if minute_incremental_enabled():
+        from dags.task_groups.minute_incremental import build_minute_incremental_task_group
+
+        minute_incremental_group = build_minute_incremental_task_group(dag=dag)
+        sync_universe_membership_task >> minute_incremental_group
+        minute_incremental_group >> update_features_cache_task
     [
         store_to_db_task,
         fetch_vix_task,
@@ -1225,7 +1256,7 @@ with DAG(
     dag_id="market_close_fast_pipeline",
     description="Repeated post-close price and VIX refresh until same-day market data is visible.",
     schedule="10,20,30,40,50 16-20 * * 1-5",
-    start_date=pendulum.datetime(2026, 1, 1, tz="America/New_York"),
+    start_date=_dag_start_datetime(2026, 1, 1),
     catchup=False,
     max_active_runs=1,
     tags=["quantedge", "data", "market-close", "fast"],

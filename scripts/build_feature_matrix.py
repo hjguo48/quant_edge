@@ -156,6 +156,7 @@ def export_feature_panel(
     progress_interval: int,
     sync_feature_store: bool,
     clear_store_range_flag: bool,
+    allow_missing_intraday: bool = False,
 ) -> dict[str, Any]:
     install_runtime_optimizations()
     tickers = load_universe_tickers()
@@ -184,6 +185,7 @@ def export_feature_panel(
         feature_output_path=output_path,
         batch_dir=batch_dir,
         manifest_path=manifest_path,
+        allow_missing_intraday=allow_missing_intraday,
     )
     batch_specs = build_batch_specs(tickers=tickers, batch_size=batch_size, batch_dir=batch_dir)
 
@@ -234,6 +236,7 @@ def main(argv: list[str] | None = None) -> int:
         progress_interval=args.progress_interval,
         sync_feature_store=bool(args.sync_feature_store),
         clear_store_range_flag=bool(args.clear_feature_store_range),
+        allow_missing_intraday=False,
     )
     if args.metadata_output:
         write_json_atomic(REPO_ROOT / args.metadata_output, summary)

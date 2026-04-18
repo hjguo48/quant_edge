@@ -217,9 +217,22 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 
 ---
 
-### Week 3: Massive Minute Aggregates 入库
+### Week 3: Massive Minute Aggregates 入库 [🔄 IN PROGRESS — Week 3.0 smoke + A-plus gate DONE, 待 3.1 全量]
 
 **目标**：5D/1D 获得专属数据层。
+
+**已完成子任务** (branch: feature/s2-v5.1-week3-minute-aggs, PR #2 draft):
+- [✅ commit e1b6fbc] Week 3.0 smoke — Polygon minute ingest + stock_minute_aggs hypertable + 3 intraday features, 10 ticker × 5 日 = 19550 行
+- [✅ commit 7646295] Week 3.0.5 B-lite 三向对账诊断 — 24 样本, 归因 polygon_daily_vs_minute (vendor 差异, 本地 0bp)
+- [✅ commit e33d905] Week 3.0.6 A-plus gate + C-partial 血缘 + minute 内部一致性 — smoke pass=true, 53 warning 落 price_reconciliation_events
+- [✅ commit 0180812] Week 3.0.7 P1/P2 hotfix (Codex auto-review) — 修 t=16:00 post-close 误入 regular session, health_check 周末误报. close bp 13.63→6.87, 清理 50 条污染数据.
+- [🔄 commit 63ec8e2] Week 3.1 脚手架完成 — flat_files client + migration 005 (compression + state table) + backfill runner + verify. 停在 S3 credential gate, 等 POLYGON_S3_KEY/SECRET.
+
+**待做子任务**:
+- [🔄 running] Week 3.1 全量回填 2016-04 → 2026-04-16 (后台 setsid 跑 2024→2016 按年分片)
+- [✅ commit c220dfb] Week 3.2 补 6 个 intraday 特征 (共 9 个, registry 136→142, 44 tests pass)
+- [✅ commit bd3decb] Week 3.A dag_daily_data minute_incremental TaskGroup (feature flag OFF 默认, Step A 完成)
+- [ ] Week 3.3 Gate 验证 (覆盖率 >95% / minute↔day A-plus / 特征质量三件套) — 等 3.1 完成后派
 
 **任务**：
 - 新建 `src/data/polygon_minute.py`
@@ -239,6 +252,49 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - `scripts/run_intraday_label_build.py`
 
 **Gate**: 2019+ active universe minute 覆盖率 > 95%
+
+---
+
+### Week 3 DAG 集成分层 (Step A/B/C, 严格分阶段不混淆)
+
+**原则**: 数据层连续性 ≠ 研究生产化. V5 live baseline 不被新 minute 链路干扰 (双轨).
+
+#### Step A — 现在做 (Week 3 当下, 3.1 并行): minute_incremental 最小扩展
+在 `dag_daily_data.py` 加 TaskGroup:
+```
+minute_incremental:
+  ├─ resolve_minute_dates_to_sync
+  ├─ sync_polygon_minute_incremental  (Polygon flat file, T-1/T)
+  ├─ validate_minute_internal_quality  (gap/overlap/monotonic)
+  ├─ validate_minute_day_reconciliation_aplus  (OHL<10bp blocker, close/vol warning)
+  └─ publish_minute_watermark  (写 minute_backfill_state)
+```
+
+- 挂法: 放在 day 数据同步之后、最终 data quality 结果之前
+- **trigger_rule=ALL_DONE**: minute 链路失败不 block V5 weekly signal
+- **不挂默认成功路径** (feature flag 或 downstream_on_failure=none)
+- 只做原始 minute 数据增量同步 + QC, 不跑 feature/label build
+
+#### Step B — 3.3 Gate 通过后启用默认调度
+条件:
+- minute 覆盖率达到 >95% pass 条件
+- 连续 5 个交易日 A-plus gate blocker 全绿
+- 三件套阈值稳定 (missing < X%, outlier rate 稳定, lag 规则明确)
+
+此时把 `minute_incremental` 挂进 dag_daily_data 默认成功路径 (移除 feature flag).
+
+#### Step C — Week 7 后评估 intraday feature/label DAG 化
+条件:
+- per-horizon IC screening 证明 intraday family 对 1D/5D 有独立增量
+- family ablation 显示 minute-derived 特征可独立存在
+
+此时才考虑把 `run_intraday_feature_build.py` + `run_intraday_label_build.py` 挂进 DAG. 在此之前保持脚本态.
+
+**禁止事项** (避免 scope creep):
+- 不要把 Week 3.1 历史回填挂进 dag_daily_data (保持独立批处理脚本)
+- 不要让 minute 链路失败 block weekly_signal_pipeline
+- 不要在 Step A 阶段就挂 intraday feature/label build 到默认成功路径
+- 不要在 IC screening (Week 7) 前工程化 minute family
 
 ---
 
@@ -411,7 +467,7 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 
 ---
 
-### Week 12: 灰度/Shadow/Live Validation + 下一阶段决策
+### Week 12: 灰度/Shadow/Live Validation + 下一阶段决策 + Production Hardening
 
 **目标**：研究结果收束为可执行部署方案。
 
@@ -422,9 +478,17 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - 回滚规则 + drift rules 写入配置
 - 评估是否需要进入下一阶段采购
 
+**Production Hardening TODO (延后项, 不 block Week 3-11):**
+- [ ] Week 3 Codex review P2 遗留:
+  - `aggregate_minute_to_daily` 不查 09:30/15:59 端点, partial-session 日 gap_pct/overnight_ret/intraday_ret 可能用偏移 anchor
+  - `reference_prices` 空 DataFrame 列访问 KeyError (daily 先于 minute ingest 边角场景)
+  - health_check 日内 timing (pre-open 假 unhealthy, 低价值)
+- [ ] (未来 review 发现的其他 edge cases 续加)
+
 **Gate**:
 - 单一 champion + 单一 rollback 逻辑
 - "下一阶段该不该买新数据"明确判断
+- Production hardening TODO 清零 (或明确接受长期 known issue)
 
 ---
 

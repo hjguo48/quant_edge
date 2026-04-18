@@ -177,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
         start_date=live_trade_date,
         end_date=live_trade_date,
         as_of=as_of,
+        allow_missing_intraday=True,
     )
     if features_long.empty:
         raise RuntimeError("FeaturePipeline returned no rows for greyscale live execution.")
