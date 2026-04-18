@@ -387,6 +387,22 @@ def test_minute_sync_failure_does_not_block_weekly_signal(monkeypatch: pytest.Mo
     assert publish_task.trigger_rule == TriggerRule.ALL_DONE
 
 
+def test_minute_incremental_trigger_rules_correctly_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="true")
+
+    resolve_task = module.dag.get_task("minute_incremental.resolve_minute_dates_to_sync")
+    sync_task = module.dag.get_task("minute_incremental.sync_polygon_minute_incremental")
+    validate_internal_task = module.dag.get_task("minute_incremental.validate_minute_internal_quality")
+    validate_reconciliation_task = module.dag.get_task("minute_incremental.validate_minute_day_reconciliation_aplus")
+    publish_task = module.dag.get_task("minute_incremental.publish_minute_watermark")
+
+    assert resolve_task.trigger_rule == TriggerRule.ALL_SUCCESS
+    assert sync_task.trigger_rule == TriggerRule.ALL_SUCCESS
+    assert validate_internal_task.trigger_rule == TriggerRule.ALL_SUCCESS
+    assert validate_reconciliation_task.trigger_rule == TriggerRule.ALL_SUCCESS
+    assert publish_task.trigger_rule == TriggerRule.ALL_DONE
+
+
 def _load_daily_data_module(monkeypatch: pytest.MonkeyPatch, *, enabled: str):
     monkeypatch.setenv("ENABLE_MINUTE_INCREMENTAL", enabled)
     for module_name in ("dags.dag_daily_data",):

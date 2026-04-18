@@ -452,17 +452,17 @@ def build_minute_incremental_task_group(*, dag: Any) -> TaskGroup:
         sync_incremental = PythonOperator(
             task_id="sync_polygon_minute_incremental",
             python_callable=_task_sync_polygon_minute_incremental,
-            trigger_rule=TriggerRule.ALL_DONE,
+            trigger_rule=TriggerRule.ALL_SUCCESS,
         )
         validate_internal = PythonOperator(
             task_id="validate_minute_internal_quality",
             python_callable=_task_validate_minute_internal_quality,
-            trigger_rule=TriggerRule.ALL_DONE,
+            trigger_rule=TriggerRule.ALL_SUCCESS,
         )
         validate_reconciliation = PythonOperator(
             task_id="validate_minute_day_reconciliation_aplus",
             python_callable=_task_validate_minute_day_reconciliation_aplus,
-            trigger_rule=TriggerRule.ALL_DONE,
+            trigger_rule=TriggerRule.ALL_SUCCESS,
         )
         publish_watermark = PythonOperator(
             task_id="publish_minute_watermark",
