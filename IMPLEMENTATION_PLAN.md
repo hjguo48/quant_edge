@@ -229,9 +229,10 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - [🔄 commit 63ec8e2] Week 3.1 脚手架完成 — flat_files client + migration 005 (compression + state table) + backfill runner + verify. 停在 S3 credential gate, 等 POLYGON_S3_KEY/SECRET.
 
 **待做子任务**:
-- [ ] Week 3.1 完成全量回填 2016-04 → 2026-04 (governed PIT universe, Polygon flat files)
+- [ ] Week 3.1 完成全量回填 2016-04 → 2026-04-16 (governed PIT universe, Polygon flat files)
 - [ ] Week 3.2 首批 9 个 intraday 特征 (补 6 个: open_30m_ret / last_30m_ret / realized_vol_1d / volume_curve_surprise / close_to_vwap / transactions_count_zscore)
 - [ ] Week 3.3 Gate 验证 (覆盖率 >95% / minute↔day A-plus / 特征质量三件套)
+- [ ] Week 3.A — dag_daily_data `minute_incremental` TaskGroup (仅原始 minute 增量 + QC + watermark, 不挂默认成功路径)
 
 **任务**：
 - 新建 `src/data/polygon_minute.py`
@@ -251,6 +252,49 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - `scripts/run_intraday_label_build.py`
 
 **Gate**: 2019+ active universe minute 覆盖率 > 95%
+
+---
+
+### Week 3 DAG 集成分层 (Step A/B/C, 严格分阶段不混淆)
+
+**原则**: 数据层连续性 ≠ 研究生产化. V5 live baseline 不被新 minute 链路干扰 (双轨).
+
+#### Step A — 现在做 (Week 3 当下, 3.1 并行): minute_incremental 最小扩展
+在 `dag_daily_data.py` 加 TaskGroup:
+```
+minute_incremental:
+  ├─ resolve_minute_dates_to_sync
+  ├─ sync_polygon_minute_incremental  (Polygon flat file, T-1/T)
+  ├─ validate_minute_internal_quality  (gap/overlap/monotonic)
+  ├─ validate_minute_day_reconciliation_aplus  (OHL<10bp blocker, close/vol warning)
+  └─ publish_minute_watermark  (写 minute_backfill_state)
+```
+
+- 挂法: 放在 day 数据同步之后、最终 data quality 结果之前
+- **trigger_rule=ALL_DONE**: minute 链路失败不 block V5 weekly signal
+- **不挂默认成功路径** (feature flag 或 downstream_on_failure=none)
+- 只做原始 minute 数据增量同步 + QC, 不跑 feature/label build
+
+#### Step B — 3.3 Gate 通过后启用默认调度
+条件:
+- minute 覆盖率达到 >95% pass 条件
+- 连续 5 个交易日 A-plus gate blocker 全绿
+- 三件套阈值稳定 (missing < X%, outlier rate 稳定, lag 规则明确)
+
+此时把 `minute_incremental` 挂进 dag_daily_data 默认成功路径 (移除 feature flag).
+
+#### Step C — Week 7 后评估 intraday feature/label DAG 化
+条件:
+- per-horizon IC screening 证明 intraday family 对 1D/5D 有独立增量
+- family ablation 显示 minute-derived 特征可独立存在
+
+此时才考虑把 `run_intraday_feature_build.py` + `run_intraday_label_build.py` 挂进 DAG. 在此之前保持脚本态.
+
+**禁止事项** (避免 scope creep):
+- 不要把 Week 3.1 历史回填挂进 dag_daily_data (保持独立批处理脚本)
+- 不要让 minute 链路失败 block weekly_signal_pipeline
+- 不要在 Step A 阶段就挂 intraday feature/label build 到默认成功路径
+- 不要在 IC screening (Week 7) 前工程化 minute family
 
 ---
 
