@@ -115,6 +115,9 @@ def compute_volume_curve_surprise(
 
 
 def compute_close_to_vwap(minute_bars: pd.DataFrame) -> tuple[float, bool]:
+    minute_ts_et = pd.to_datetime(minute_bars["minute_ts"], utc=True, errors="coerce").dt.tz_convert(EASTERN)
+    if not (minute_ts_et.dt.strftime("%H:%M") == "15:59").any():
+        return np.nan, True
     volumes = pd.to_numeric(minute_bars["volume"], errors="coerce").fillna(0.0)
     if float(volumes.sum()) <= 0.0:
         return np.nan, True
@@ -312,6 +315,9 @@ def _compute_window_return(
         & (minute_bars["session_minute"] < end_minute)
     ].sort_values("minute_ts")
     if len(window.index) < 25:
+        return np.nan, True
+    window_minutes = set(pd.to_numeric(window["session_minute"], errors="coerce").dropna().astype(int).tolist())
+    if start_minute not in window_minutes or (end_minute - 1) not in window_minutes:
         return np.nan, True
     first_open = pd.to_numeric(window["open"], errors="coerce").iloc[0]
     last_close = pd.to_numeric(window["close"], errors="coerce").iloc[-1]

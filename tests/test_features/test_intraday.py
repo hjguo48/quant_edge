@@ -50,6 +50,22 @@ def test_open_30m_ret_missing_bars() -> None:
     assert is_filled is True
 
 
+def test_open_30m_ret_requires_exact_boundary_minutes() -> None:
+    minute_bars = pd.DataFrame(
+        {
+            "session_minute": list(range(571, 600)),
+            "open": [100.0 + idx * 0.1 for idx in range(29)],
+            "close": [100.2 + idx * 0.1 for idx in range(29)],
+            "minute_ts": pd.date_range("2026-01-05 14:31", periods=29, freq="min", tz="UTC"),
+        },
+    )
+
+    value, is_filled = compute_open_30m_ret(minute_bars)
+
+    assert np.isnan(value)
+    assert is_filled is True
+
+
 def test_last_30m_ret_happy_path() -> None:
     minute_bars = pd.DataFrame(
         {
@@ -73,6 +89,22 @@ def test_last_30m_ret_missing_bars() -> None:
             "open": [200.0] * 12,
             "close": [201.0] * 12,
             "minute_ts": pd.date_range("2026-01-05 20:30", periods=12, freq="min", tz="UTC"),
+        },
+    )
+
+    value, is_filled = compute_last_30m_ret(minute_bars)
+
+    assert np.isnan(value)
+    assert is_filled is True
+
+
+def test_last_30m_ret_requires_exact_boundary_minutes() -> None:
+    minute_bars = pd.DataFrame(
+        {
+            "session_minute": list(range(930, 959)),
+            "open": [200.0 + idx * 0.2 for idx in range(29)],
+            "close": [200.1 + idx * 0.2 for idx in range(29)],
+            "minute_ts": pd.date_range("2026-01-05 20:30", periods=29, freq="min", tz="UTC"),
         },
     )
 
@@ -141,6 +173,10 @@ def test_close_to_vwap_happy_path() -> None:
             "close": [100.0, 102.0, 104.0],
             "volume": [1.0, 2.0, 1.0],
             "vwap": [99.0, 101.0, 103.0],
+            "minute_ts": pd.to_datetime(
+                ["2026-01-05 20:57:00+00:00", "2026-01-05 20:58:00+00:00", "2026-01-05 20:59:00+00:00"],
+                utc=True,
+            ),
         },
     )
 
@@ -157,6 +193,10 @@ def test_close_to_vwap_zero_volume() -> None:
             "close": [100.0, 101.0, 102.0],
             "volume": [0.0, 0.0, 0.0],
             "vwap": [100.0, 101.0, 102.0],
+            "minute_ts": pd.to_datetime(
+                ["2026-01-05 20:57:00+00:00", "2026-01-05 20:58:00+00:00", "2026-01-05 20:59:00+00:00"],
+                utc=True,
+            ),
         },
     )
 
@@ -172,6 +212,10 @@ def test_close_to_vwap_flags_is_filled_on_nan_close() -> None:
             "close": [100.0, 101.0, np.nan],
             "volume": [1.0, 2.0, 3.0],
             "vwap": [100.0, 101.0, 102.0],
+            "minute_ts": pd.to_datetime(
+                ["2026-01-05 20:57:00+00:00", "2026-01-05 20:58:00+00:00", "2026-01-05 20:59:00+00:00"],
+                utc=True,
+            ),
         },
     )
 
@@ -187,6 +231,10 @@ def test_close_to_vwap_uses_volume_weighted_minute_vwap() -> None:
             "close": [111.0, 111.0],
             "volume": [1000.0, 9000.0],
             "vwap": [100.0, 110.0],
+            "minute_ts": pd.to_datetime(
+                ["2026-01-05 20:58:00+00:00", "2026-01-05 20:59:00+00:00"],
+                utc=True,
+            ),
         },
     )
 
@@ -196,6 +244,25 @@ def test_close_to_vwap_uses_volume_weighted_minute_vwap() -> None:
     assert expected_vwap == pytest.approx(109.0)
     assert value == pytest.approx((111.0 - expected_vwap) / expected_vwap)
     assert is_filled is False
+
+
+def test_close_to_vwap_flags_is_filled_on_missing_session_tail() -> None:
+    minute_bars = pd.DataFrame(
+        {
+            "close": [100.0, 101.0, 102.0],
+            "volume": [1.0, 2.0, 3.0],
+            "vwap": [100.0, 101.0, 102.0],
+            "minute_ts": pd.to_datetime(
+                ["2026-01-05 20:56:00+00:00", "2026-01-05 20:57:00+00:00", "2026-01-05 20:58:00+00:00"],
+                utc=True,
+            ),
+        },
+    )
+
+    value, is_filled = compute_close_to_vwap(minute_bars)
+
+    assert np.isnan(value)
+    assert is_filled is True
 
 
 def test_transactions_count_zscore_happy_path() -> None:
