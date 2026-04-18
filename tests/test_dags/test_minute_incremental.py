@@ -32,6 +32,42 @@ def test_resolve_minute_dates_to_sync_finds_uncompleted_days() -> None:
     assert result["dates_to_sync"] == ["2026-04-14", "2026-04-17"]
 
 
+def test_resolve_minute_dates_excludes_today_session_when_market_not_closed() -> None:
+    result = minute_module.resolve_minute_dates_to_sync(
+        current_time=datetime(2026, 4, 17, 10, 0, tzinfo=timezone.utc),
+        state_rows=[
+            {"trading_date": date(2026, 4, 9), "status": "completed"},
+            {"trading_date": date(2026, 4, 10), "status": "completed"},
+            {"trading_date": date(2026, 4, 13), "status": "completed"},
+            {"trading_date": date(2026, 4, 14), "status": "completed"},
+            {"trading_date": date(2026, 4, 15), "status": "completed"},
+            {"trading_date": date(2026, 4, 16), "status": "failed"},
+        ],
+    )
+
+    assert result["reference_date"] == "2026-04-16"
+    assert "2026-04-17" not in result["candidate_session_dates"]
+    assert result["dates_to_sync"] == ["2026-04-16"]
+
+
+def test_resolve_minute_dates_uses_previous_when_today_not_session() -> None:
+    result = minute_module.resolve_minute_dates_to_sync(
+        current_time=datetime(2026, 4, 18, 10, 0, tzinfo=timezone.utc),
+        state_rows=[
+            {"trading_date": date(2026, 4, 10), "status": "completed"},
+            {"trading_date": date(2026, 4, 13), "status": "completed"},
+            {"trading_date": date(2026, 4, 14), "status": "completed"},
+            {"trading_date": date(2026, 4, 15), "status": "completed"},
+            {"trading_date": date(2026, 4, 16), "status": "completed"},
+            {"trading_date": date(2026, 4, 17), "status": "failed"},
+        ],
+    )
+
+    assert result["reference_date"] == "2026-04-17"
+    assert "2026-04-18" not in result["candidate_session_dates"]
+    assert result["dates_to_sync"] == ["2026-04-17"]
+
+
 def test_sync_polygon_minute_incremental_calls_run_minute_backfill(tmp_path) -> None:
     calls: list[dict[str, object]] = []
 
@@ -63,6 +99,28 @@ def test_sync_polygon_minute_incremental_calls_run_minute_backfill(tmp_path) -> 
 
 def test_validate_minute_internal_quality_catches_gap() -> None:
     minute_frame = _build_minute_frame("AAPL", date(2026, 4, 16), 379)
+
+    with pytest.raises(AirflowException, match="insufficient_bars"):
+        minute_module.validate_minute_internal_quality(
+            resolved_dates=[date(2026, 4, 16)],
+            minute_frame=minute_frame,
+        )
+
+
+def test_validate_minute_internal_quality_allows_early_close_day() -> None:
+    minute_frame = _build_minute_frame("AAPL", date(2025, 11, 28), 208)
+
+    result = minute_module.validate_minute_internal_quality(
+        resolved_dates=[date(2025, 11, 28)],
+        minute_frame=minute_frame,
+    )
+
+    assert result["status"] == "ok"
+    assert result["failure_count"] == 0
+
+
+def test_validate_minute_internal_quality_blocks_insufficient_bars_normal_day() -> None:
+    minute_frame = _build_minute_frame("AAPL", date(2026, 4, 16), 200)
 
     with pytest.raises(AirflowException, match="insufficient_bars"):
         minute_module.validate_minute_internal_quality(
@@ -190,12 +248,12 @@ def _load_daily_data_module(monkeypatch: pytest.MonkeyPatch, *, enabled: str):
 
 
 def _build_minute_frame(ticker: str, trade_day: date, count: int) -> pd.DataFrame:
+    session_open = pd.Timestamp(minute_module.XNYS.session_open(pd.Timestamp(trade_day)))
     timestamps = pd.date_range(
-        f"{trade_day.isoformat()} 09:30",
+        session_open,
         periods=count,
         freq="min",
-        tz="America/New_York",
-    ).tz_convert("UTC")
+    )
     rows = []
     for idx, minute_ts in enumerate(timestamps):
         open_px = 100.0 + idx * 0.01

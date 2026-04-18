@@ -216,8 +216,11 @@ def run_backfill(args: argparse.Namespace) -> dict[str, Any]:
     start_date = parse_date(args.start_date)
     end_date = parse_date(args.end_date)
     # None → no whitelist filter; a list → only keep those tickers.
-    # Empty list would match nothing via isin(), silently zeroing the day.
     universe_tickers = load_universe_whitelist() if args.universe_from_membership else None
+    if args.universe_from_membership and not universe_tickers:
+        raise RuntimeError(
+            "universe_membership yields empty whitelist; run the PIT universe backfill before minute backfill",
+        )
     client = PolygonFlatFilesClient(min_request_interval=0.0)
     state_map = load_state_map() if args.resume else {}
     processed: list[dict[str, Any]] = []

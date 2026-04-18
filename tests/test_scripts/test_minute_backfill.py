@@ -5,7 +5,8 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from scripts.run_minute_backfill import ProcessResult, process_trade_day, should_skip_resume
+import scripts.run_minute_backfill as minute_backfill_module
+from scripts.run_minute_backfill import ProcessResult, process_trade_day, run_backfill, should_skip_resume
 from src.data.polygon_flat_files import FlatFileLoadResult
 
 
@@ -145,3 +146,42 @@ def test_writer_idempotence_same_day_twice(monkeypatch: pytest.MonkeyPatch) -> N
 
     assert first.rows_kept == second.rows_kept == 1
     assert len(writer.keys) == 1
+
+
+def test_run_backfill_fails_fast_on_empty_membership(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(minute_backfill_module, "load_universe_whitelist", lambda: [])
+
+    with pytest.raises(RuntimeError, match="empty whitelist"):
+        run_backfill(
+            minute_backfill_module.argparse.Namespace(
+                start_date="2026-01-05",
+                end_date="2026-01-05",
+                resume=False,
+                dry_run=True,
+                universe_from_membership=True,
+                report_output="ignored.json",
+            ),
+        )
+
+
+def test_run_backfill_not_fails_on_unset_membership_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        minute_backfill_module,
+        "load_universe_whitelist",
+        lambda: (_ for _ in ()).throw(AssertionError("membership whitelist should not be loaded")),
+    )
+    monkeypatch.setattr(minute_backfill_module, "iter_calendar_days", lambda start_date, end_date: [])
+
+    summary = run_backfill(
+        minute_backfill_module.argparse.Namespace(
+            start_date="2026-01-05",
+            end_date="2026-01-05",
+            resume=False,
+            dry_run=True,
+            universe_from_membership=False,
+            report_output="ignored.json",
+        ),
+    )
+
+    assert summary["summary"]["failed_days"] == 0
+    assert summary["metadata"]["universe_size"] is None

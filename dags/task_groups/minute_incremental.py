@@ -30,7 +30,7 @@ from src.data.db.session import get_engine
 LOGGER = logging.getLogger(__name__)
 XNYS = xcals.get_calendar("XNYS")
 DEFAULT_LOOKBACK_DAYS = 7
-MIN_BARS_PER_TICKER_DAY = 380
+ALLOWED_MISSING_BARS = 3
 
 
 def _project_root() -> Path:
@@ -64,8 +64,21 @@ def minute_incremental_enabled() -> bool:
     return str(value).lower() in {"1", "true", "yes", "on"}
 
 
-def _now_utc_date() -> date:
-    return datetime.now(timezone.utc).date()
+def _now_utc_datetime() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _latest_completed_session_date(current_time: datetime | None = None) -> date:
+    now_utc = current_time or _now_utc_datetime()
+    now_ts = pd.Timestamp(now_utc)
+    today = now_ts.date()
+    today_label = pd.Timestamp(today)
+    if XNYS.is_session(today_label):
+        session_close = pd.Timestamp(XNYS.session_close(today_label))
+        if now_ts >= session_close:
+            return today
+        return XNYS.previous_session(today_label).date()
+    return XNYS.date_to_session(today_label, direction="previous").date()
 
 
 def _recent_session_dates(*, reference_date: date, lookback_days: int = DEFAULT_LOOKBACK_DAYS) -> list[date]:
@@ -92,10 +105,11 @@ def _load_recent_state_rows(session_dates: Sequence[date]) -> list[dict[str, Any
 def resolve_minute_dates_to_sync(
     *,
     reference_date: date | None = None,
+    current_time: datetime | None = None,
     state_rows: Sequence[dict[str, Any]] | None = None,
     lookback_days: int = DEFAULT_LOOKBACK_DAYS,
 ) -> dict[str, Any]:
-    reference = reference_date or _now_utc_date()
+    reference = reference_date or _latest_completed_session_date(current_time)
     session_dates = _recent_session_dates(reference_date=reference, lookback_days=lookback_days)
     known_rows = {
         pd.Timestamp(row["trading_date"]).date(): str(row.get("status") or "").lower()
@@ -226,13 +240,20 @@ def validate_minute_internal_quality(
 
     for (ticker, trade_day), group in frame.groupby(["ticker", "trade_date"], sort=False):
         group = group.sort_values("minute_ts")
-        if len(group) < MIN_BARS_PER_TICKER_DAY:
+        session_label = pd.Timestamp(trade_day)
+        session_open = pd.Timestamp(XNYS.session_open(session_label))
+        session_close = pd.Timestamp(XNYS.session_close(session_label))
+        expected_bars = int((session_close - session_open).total_seconds() / 60)
+        minimum_required_bars = max(expected_bars - ALLOWED_MISSING_BARS, 0)
+        if len(group) < minimum_required_bars:
             failures.append(
                 {
                     "check": "insufficient_bars",
                     "ticker": ticker,
                     "trade_date": trade_day,
                     "observed_bars": int(len(group)),
+                    "expected_bars": expected_bars,
+                    "minimum_required_bars": minimum_required_bars,
                 },
             )
         deltas = group["minute_ts"].diff().dropna()
