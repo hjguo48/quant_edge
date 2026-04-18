@@ -5,8 +5,11 @@ import gzip
 import io
 
 import pandas as pd
+import pytest
 
+import src.data.polygon_flat_files as polygon_flat_files_module
 from src.data.polygon_flat_files import PolygonFlatFilesClient
+from src.data.sources.base import DataSourceTransientError
 
 
 class _FakeBody:
@@ -115,3 +118,58 @@ def test_flat_file_client_builds_expected_s3_key() -> None:
     client = PolygonFlatFilesClient(access_key="access", secret_key="secret", s3_client=_FakeS3Client(b""))
 
     assert client.build_s3_key(date(2026, 4, 17)) == "us_stocks_sip/minute_aggs_v1/2026/04/2026-04-17.csv.gz"
+
+
+def test_fetch_historical_skips_non_session_days(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = PolygonFlatFilesClient(access_key="access", secret_key="secret", s3_client=_FakeS3Client(b""))
+    called_days: list[date] = []
+
+    def fake_load_day(trading_date, *, universe_tickers=None):
+        called_days.append(pd.Timestamp(trading_date).date())
+        return polygon_flat_files_module.FlatFileLoadResult(
+            source_file="s3://flatfiles/mock.csv.gz",
+            checksum_md5="abc",
+            rows_raw=0,
+            rows_kept=0,
+            tickers_loaded=0,
+            frame=pd.DataFrame(columns=polygon_flat_files_module.MINUTE_COLUMNS),
+        )
+
+    monkeypatch.setattr(client, "load_day", fake_load_day)
+
+    frame = client.fetch_historical(["AAPL"], date(2026, 1, 2), date(2026, 1, 5))
+
+    assert frame.empty
+    assert called_days == [date(2026, 1, 2), date(2026, 1, 5)]
+
+
+def test_classify_s3_error_handles_exc_without_response() -> None:
+    with pytest.raises(DataSourceTransientError, match="temporary network failure"):
+        PolygonFlatFilesClient._classify_s3_error(
+            RuntimeError("temporary network failure"),
+            context="Polygon flat-file download",
+        )
+
+
+def test_flat_files_health_check_uses_last_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = PolygonFlatFilesClient(access_key="access", secret_key="secret", s3_client=_FakeS3Client(b""))
+    captured_days: list[date] = []
+
+    class FakeDate(date):
+        @classmethod
+        def today(cls) -> "FakeDate":
+            return cls(2026, 1, 3)
+
+    def fake_head_day(trading_date):
+        captured_days.append(pd.Timestamp(trading_date).date())
+        return polygon_flat_files_module.FlatFileHeader(
+            source_file="s3://flatfiles/mock.csv.gz",
+            content_length=1,
+            etag="etag",
+        )
+
+    monkeypatch.setattr(polygon_flat_files_module, "date", FakeDate)
+    monkeypatch.setattr(client, "head_day", fake_head_day)
+
+    assert client.health_check() is True
+    assert captured_days == [date(2026, 1, 2)]

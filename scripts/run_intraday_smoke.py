@@ -273,9 +273,25 @@ def validate_timezones(minute_frame: pd.DataFrame) -> dict[str, Any]:
     frame["minute_ts"] = pd.to_datetime(frame["minute_ts"], utc=True)
     frame["trade_date"] = pd.to_datetime(frame["trade_date"]).dt.date
     frame["minute_ts_et"] = frame["minute_ts"].dt.tz_convert(EASTERN)
-    frame["session_time_ok"] = frame["minute_ts_et"].dt.time.between(REGULAR_SESSION_START, REGULAR_SESSION_END)
     frame["trade_date_ok"] = frame["minute_ts_et"].dt.date == frame["trade_date"]
     frame["session_date_ok"] = frame["minute_ts_et"].dt.date.map(lambda d: bool(XNYS.is_session(pd.Timestamp(d))))
+    session_open_map: dict[date, pd.Timestamp] = {}
+    session_close_map: dict[date, pd.Timestamp] = {}
+    for trade_day in frame["trade_date"].dropna().unique():
+        session_label = pd.Timestamp(trade_day)
+        if XNYS.is_session(session_label):
+            session_open_map[trade_day] = pd.Timestamp(XNYS.session_open(session_label))
+            session_close_map[trade_day] = pd.Timestamp(XNYS.session_close(session_label))
+        else:
+            session_open_map[trade_day] = pd.NaT
+            session_close_map[trade_day] = pd.NaT
+    session_open = frame["trade_date"].map(session_open_map)
+    session_close = frame["trade_date"].map(session_close_map)
+    frame["session_time_ok"] = (
+        session_open.notna()
+        & (frame["minute_ts"] >= session_open)
+        & (frame["minute_ts"] < session_close)
+    )
     frame["pass"] = frame["session_time_ok"] & frame["trade_date_ok"] & frame["session_date_ok"]
     failures = frame.loc[~frame["pass"]].copy()
     sample_source = failures if not failures.empty else frame.sample(n=min(10, len(frame)), random_state=42)
@@ -355,13 +371,16 @@ def validate_minute_internal_consistency(minute_frame: pd.DataFrame) -> dict[str
     }
 
     gap_failures: list[dict[str, object]] = []
-    expected_minutes = pd.date_range(
-        "2000-01-01 09:30",
-        "2000-01-01 16:00",
-        freq="min",
-    ).time
-    expected_minute_set = set(expected_minutes)
     for (ticker, trade_day), group in frame.groupby(["ticker", "trade_date"]):
+        session_label = pd.Timestamp(trade_day)
+        session_open_utc = pd.Timestamp(XNYS.session_open(session_label))
+        session_close_utc = pd.Timestamp(XNYS.session_close(session_label))
+        expected_index = pd.date_range(
+            session_open_utc,
+            session_close_utc - pd.Timedelta(minutes=1),
+            freq="min",
+        ).tz_convert(EASTERN)
+        expected_minute_set = set(expected_index.time)
         observed_minutes = set(group["minute_ts_et"].dt.time.tolist())
         missing_minutes = sorted(expected_minute_set - observed_minutes)
         missing_count = len(missing_minutes)
@@ -371,6 +390,7 @@ def validate_minute_internal_consistency(minute_frame: pd.DataFrame) -> dict[str
                     "ticker": ticker,
                     "trade_date": trade_day,
                     "observed_bars": int(len(group)),
+                    "expected_bars": int(len(expected_index)),
                     "missing_bars": int(missing_count),
                     "missing_sample": [minute.isoformat() for minute in missing_minutes[:10]],
                 },
@@ -378,7 +398,7 @@ def validate_minute_internal_consistency(minute_frame: pd.DataFrame) -> dict[str
     gap_check = {
         "pass": not gap_failures,
         "tolerance_missing_bars": ALLOWED_MISSING_BARS,
-        "expected_bars_per_session": EXPECTED_BARS_PER_SESSION,
+        "expected_bars_per_session": "dynamic_by_session",
         "failure_count": int(len(gap_failures)),
         "sample": gap_failures[:10],
     }
@@ -763,7 +783,7 @@ def main(argv: list[str] | None = None) -> int:
     report_path = REPO_ROOT / args.report_output
     write_json_atomic(report_path, json_safe(report))
     print(json.dumps(json_safe(report), indent=2, sort_keys=True))
-    return 0
+    return 0 if report["pass"] else 1
 
 
 if __name__ == "__main__":

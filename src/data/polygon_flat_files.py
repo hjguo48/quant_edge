@@ -75,6 +75,9 @@ class PolygonFlatFilesClient(DataSource):
         current = self.coerce_date(start_date)
         final = self.coerce_date(end_date)
         while current <= final:
+            if not XNYS.is_session(pd.Timestamp(current)):
+                current += timedelta(days=1)
+                continue
             result = self.load_day(current, universe_tickers=normalized)
             if not result.frame.empty:
                 frames.append(result.frame)
@@ -91,8 +94,10 @@ class PolygonFlatFilesClient(DataSource):
         raise NotImplementedError("Minute flat-file incremental fetch is orchestrated by run_minute_backfill.py.")
 
     def health_check(self) -> bool:
+        today = pd.Timestamp(date.today())
+        probe_day = today if XNYS.is_session(today) else XNYS.date_to_session(today, direction="previous")
         try:
-            self.head_day(date.today())
+            self.head_day(probe_day.date())
         except Exception as exc:
             logger.warning("polygon_flat_files health check failed: {}", exc)
             return False
@@ -320,7 +325,10 @@ class PolygonFlatFilesClient(DataSource):
     @staticmethod
     def _classify_s3_error(exc: Exception, *, context: str) -> None:
         message = str(exc)
-        status_code = getattr(getattr(exc, "response", None), "get", lambda *_a, **_k: None)("ResponseMetadata", {}).get("HTTPStatusCode")
+        response = getattr(exc, "response", None)
+        status_code = None
+        if isinstance(response, dict):
+            status_code = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
         if status_code in {401, 403} or "AccessDenied" in message or "InvalidAccessKeyId" in message:
             raise DataSourceAuthError(f"{context} is not authorized: {message}") from exc
         if status_code == 404 or "NoSuchKey" in message:

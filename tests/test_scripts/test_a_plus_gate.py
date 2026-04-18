@@ -3,9 +3,13 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 
 import pandas as pd
+import pytest
 
+import scripts.run_intraday_smoke as smoke_module
 from scripts.run_intraday_smoke import (
+    main,
     persist_reconciliation_events,
+    validate_timezones,
     validate_minute_internal_consistency,
     validate_minute_to_day_consistency,
 )
@@ -155,3 +159,188 @@ def test_reconciliation_event_written() -> None:
     assert row.ticker == "AAA"
     assert row.field == "close"
     assert row.batch_id == "batch-1"
+
+
+def test_smoke_gap_check_handles_early_close_day() -> None:
+    trade_day = date(2025, 11, 28)
+    minute_index = pd.date_range(
+        "2025-11-28 14:30",
+        "2025-11-28 17:59",
+        freq="min",
+        tz="UTC",
+    )
+    prices = pd.Series([100.0 + idx * 0.01 for idx in range(len(minute_index))])
+    minute_df = pd.DataFrame(
+        {
+            "ticker": "AAA",
+            "trade_date": trade_day,
+            "minute_ts": minute_index,
+            "open": prices,
+            "high": prices + 0.05,
+            "low": prices - 0.05,
+            "close": prices,
+            "volume": 100,
+            "vwap": prices,
+            "transactions": 10,
+        },
+    )
+
+    result = validate_minute_internal_consistency(minute_df)
+
+    assert result["pass"] is True
+    assert result["checks"]["gap_free"]["pass"] is True
+
+
+def test_validate_timezones_uses_half_open_interval() -> None:
+    trade_day = date(2026, 1, 5)
+    minute_df = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "trade_date": trade_day,
+                "minute_ts": pd.Timestamp("2026-01-05 20:59", tz="UTC"),
+                "open": 100.0,
+                "high": 100.1,
+                "low": 99.9,
+                "close": 100.0,
+                "volume": 100,
+                "vwap": 100.0,
+                "transactions": 10,
+            },
+            {
+                "ticker": "AAA",
+                "trade_date": trade_day,
+                "minute_ts": pd.Timestamp("2026-01-05 21:00", tz="UTC"),
+                "open": 100.0,
+                "high": 100.1,
+                "low": 99.9,
+                "close": 100.0,
+                "volume": 100,
+                "vwap": 100.0,
+                "transactions": 10,
+            },
+        ],
+    )
+
+    result = validate_timezones(minute_df)
+
+    assert result["pass"] is False
+    assert result["failure_count"] == 1
+    assert result["sample"][0]["minute_ts_et"].endswith("16:00:00-05:00")
+    assert result["sample"][0]["time_ok"] is False
+
+
+def test_smoke_main_exit_code_reflects_report_pass(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    minute_frame = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "trade_date": date(2026, 1, 5),
+                "minute_ts": pd.Timestamp("2026-01-05 14:30", tz="UTC"),
+                "open": 100.0,
+                "high": 100.1,
+                "low": 99.9,
+                "close": 100.0,
+                "volume": 100,
+                "vwap": 100.0,
+                "transactions": 10,
+                "event_time": pd.Timestamp("2026-01-05 14:30", tz="UTC"),
+                "knowledge_time": pd.Timestamp("2026-01-06 21:00", tz="UTC"),
+                "batch_id": "batch",
+            },
+        ],
+    )
+    feature_frame = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "trade_date": date(2026, 1, 5),
+                "feature_name": "gap_pct",
+                "feature_value": 0.01,
+                "is_filled": False,
+            },
+        ],
+    )
+    label_frame = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "trade_date": date(2026, 1, 5),
+                "label_name": "next_open_ret_1d",
+                "label_value": 0.01,
+            },
+        ],
+    )
+
+    class FakeMinuteClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_minute_aggs(self, ticker, start_date, end_date):
+            return minute_frame.copy()
+
+        def persist_minute_aggs(self, frame):
+            return len(frame)
+
+    saved_batches: list[str] = []
+
+    monkeypatch.setattr(smoke_module, "PolygonMinuteClient", FakeMinuteClient)
+    monkeypatch.setattr(smoke_module, "load_minute_slice", lambda **kwargs: minute_frame.copy())
+    monkeypatch.setattr(
+        smoke_module,
+        "load_daily_prices",
+        lambda **kwargs: pd.DataFrame(
+            [
+                {
+                    "ticker": "AAA",
+                    "trade_date": date(2026, 1, 5),
+                    "open": 100.0,
+                    "high": 100.1,
+                    "low": 99.9,
+                    "close": 100.0,
+                    "volume": 100,
+                },
+            ],
+        ),
+    )
+    monkeypatch.setattr(smoke_module, "compute_intraday_features", lambda **kwargs: feature_frame.copy())
+    monkeypatch.setattr(smoke_module, "prepare_feature_export_frame", lambda frame: frame.copy())
+    monkeypatch.setattr(
+        smoke_module.FeaturePipeline,
+        "save_to_store",
+        lambda self, features_df, batch_id: saved_batches.append(batch_id) or len(features_df),
+    )
+    monkeypatch.setattr(smoke_module, "write_parquet_atomic", lambda frame, path: None)
+    monkeypatch.setattr(smoke_module, "build_smoke_labels", lambda frame: label_frame.copy())
+    monkeypatch.setattr(smoke_module, "validate_schema", lambda: {"pass": True})
+    monkeypatch.setattr(smoke_module, "validate_timezones", lambda frame: {"pass": True})
+    monkeypatch.setattr(smoke_module, "validate_trading_days", lambda **kwargs: {"pass": True})
+    monkeypatch.setattr(smoke_module, "validate_minute_internal_consistency", lambda frame: {"pass": True})
+    monkeypatch.setattr(smoke_module, "validate_corporate_action_alignment", lambda *args, **kwargs: {"pass": True})
+    monkeypatch.setattr(
+        smoke_module,
+        "validate_minute_to_day_consistency",
+        lambda *args, **kwargs: {"pass": False, "warning_events": [], "fields": {}},
+    )
+    monkeypatch.setattr(smoke_module, "persist_reconciliation_events", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(smoke_module, "write_json_atomic", lambda path, payload: None)
+
+    exit_code = main(
+        [
+            "--start-date",
+            "2026-01-05",
+            "--end-date",
+            "2026-01-05",
+            "--tickers",
+            "AAA",
+            "--feature-output",
+            str(tmp_path / "features.parquet"),
+            "--label-output",
+            str(tmp_path / "labels.parquet"),
+            "--report-output",
+            str(tmp_path / "report.json"),
+        ],
+    )
+
+    assert exit_code == 1
+    assert len(saved_batches) == 1
