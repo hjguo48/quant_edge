@@ -220,6 +220,7 @@ def _load_minute_rows_for_dates(dates_to_check: Sequence[date]) -> pd.DataFrame:
 def _load_daily_rows_for_dates(dates_to_check: Sequence[date]) -> pd.DataFrame:
     if not dates_to_check:
         return pd.DataFrame(columns=["ticker", "trade_date", "open", "high", "low", "close", "volume"])
+    minute_tickers = _load_minute_universe_tickers(dates_to_check)
     statement = (
         sa.select(
             StockPrice.ticker,
@@ -230,12 +231,28 @@ def _load_daily_rows_for_dates(dates_to_check: Sequence[date]) -> pd.DataFrame:
             StockPrice.close,
             StockPrice.volume,
         )
-        .where(StockPrice.trade_date.in_(list(dates_to_check)))
+        .where(
+            StockPrice.trade_date.in_(list(dates_to_check)),
+            StockPrice.ticker.in_(list(minute_tickers)),
+        )
         .order_by(StockPrice.ticker, StockPrice.trade_date)
     )
     with get_engine().connect() as conn:
         rows = conn.execute(statement).mappings().all()
-    return pd.DataFrame(rows)
+    frame = pd.DataFrame(rows)
+    if frame.empty:
+        return frame
+    frame["ticker"] = frame["ticker"].astype(str).str.upper()
+    return frame.loc[frame["ticker"].isin(minute_tickers)].copy()
+
+
+def _load_minute_universe_tickers(dates_to_check: Sequence[date]) -> tuple[str, ...]:
+    if not dates_to_check:
+        return ()
+    from scripts.run_minute_backfill import load_universe_whitelist_for_date
+
+    tickers = load_universe_whitelist_for_date(min(dates_to_check))
+    return tuple(sorted(str(ticker).upper() for ticker in tickers))
 
 
 def validate_minute_internal_quality(
@@ -485,7 +502,7 @@ def build_minute_incremental_task_group(*, dag: Any) -> TaskGroup:
         publish_watermark = PythonOperator(
             task_id="publish_minute_watermark",
             python_callable=_task_publish_minute_watermark,
-            trigger_rule=TriggerRule.ALL_DONE,
+            trigger_rule=TriggerRule.ALL_SUCCESS,
         )
 
         resolve_dates >> sync_incremental >> validate_internal >> validate_reconciliation >> publish_watermark

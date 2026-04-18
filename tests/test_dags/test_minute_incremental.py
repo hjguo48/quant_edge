@@ -318,6 +318,62 @@ def test_reconciliation_catches_fully_missing_ticker() -> None:
         )
 
 
+def test_reconciliation_excludes_non_minute_universe_ticker(monkeypatch: pytest.MonkeyPatch) -> None:
+    minute_frame = _build_minute_frame("AAPL", date(2024, 1, 2), 391)
+    monkeypatch.setattr(minute_module, "_load_minute_universe_tickers", lambda dates: ("AAPL",))
+
+    class FakeResult:
+        def mappings(self):
+            return self
+
+        def all(self):
+            return [
+                {
+                    "ticker": "AAPL",
+                    "trade_date": date(2024, 1, 2),
+                    "open": float(minute_frame["open"].iloc[0]),
+                    "high": float(minute_frame["high"].max()),
+                    "low": float(minute_frame["low"].min()),
+                    "close": float(minute_frame["close"].iloc[-1]),
+                    "volume": int(minute_frame["volume"].sum()),
+                },
+                {
+                    "ticker": "SPY",
+                    "trade_date": date(2024, 1, 2),
+                    "open": 100.0,
+                    "high": 101.0,
+                    "low": 99.0,
+                    "close": 100.0,
+                    "volume": 1_000_000,
+                },
+            ]
+
+    class FakeConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute(self, statement):
+            return FakeResult()
+
+    class FakeEngine:
+        def connect(self):
+            return FakeConn()
+
+    monkeypatch.setattr(minute_module, "get_engine", lambda: FakeEngine())
+
+    result = minute_module.validate_minute_day_reconciliation_aplus(
+        resolved_dates=[date(2024, 1, 2)],
+        minute_frame=minute_frame,
+        persist_fn=lambda *args, **kwargs: 0,
+    )
+
+    assert result["status"] == "ok"
+    assert result["reconciliation"]["daily_only_count"] == 0
+
+
 def test_publish_minute_watermark_updates_state_table(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeResult:
         def __init__(self, value):
@@ -419,7 +475,7 @@ def test_minute_sync_failure_does_not_block_weekly_signal(monkeypatch: pytest.Mo
     module = _load_daily_data_module(monkeypatch, enabled="true")
 
     publish_task = module.dag.get_task("minute_incremental.publish_minute_watermark")
-    assert publish_task.trigger_rule == TriggerRule.ALL_DONE
+    assert publish_task.trigger_rule == TriggerRule.ALL_SUCCESS
 
 
 def test_minute_incremental_trigger_rules_correctly_configured(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -435,7 +491,7 @@ def test_minute_incremental_trigger_rules_correctly_configured(monkeypatch: pyte
     assert sync_task.trigger_rule == TriggerRule.ALL_SUCCESS
     assert validate_internal_task.trigger_rule == TriggerRule.ALL_SUCCESS
     assert validate_reconciliation_task.trigger_rule == TriggerRule.ALL_SUCCESS
-    assert publish_task.trigger_rule == TriggerRule.ALL_DONE
+    assert publish_task.trigger_rule == TriggerRule.ALL_SUCCESS
 
 
 def test_update_features_cache_waits_for_minute_incremental_when_enabled(
