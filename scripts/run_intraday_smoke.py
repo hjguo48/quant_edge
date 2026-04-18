@@ -561,7 +561,8 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
     merged = minute_daily.merge(
         daily_reference,
         on=["ticker", "trade_date"],
-        how="inner",
+        how="outer",
+        indicator=True,
         suffixes=("_minute", "_daily"),
     )
     if merged.empty:
@@ -574,6 +575,9 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
             "concentrated_warning_days": [],
             "reason": "minute/daily merge empty",
         }
+    minute_only = merged.loc[merged["_merge"] == "left_only"].copy()
+    daily_only = merged.loc[merged["_merge"] == "right_only"].copy()
+    overlap = merged.loc[merged["_merge"] == "both"].copy()
     field_specs = {
         "open": {"threshold_bp": BLOCKER_THRESHOLD_BP, "severity": "blocker"},
         "high": {"threshold_bp": BLOCKER_THRESHOLD_BP, "severity": "blocker"},
@@ -582,12 +586,12 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
         "volume": {"threshold_bp": WARNING_VOLUME_THRESHOLD_BP, "severity": "warning"},
     }
     summary: dict[str, Any] = {}
-    blocker_pass = True
+    blocker_pass = minute_only.empty and daily_only.empty
     warning_events: list[dict[str, Any]] = []
     total_nan_pairs = 0
     for field, spec in field_specs.items():
-        minute_values = pd.to_numeric(merged[f"{field}_minute"], errors="coerce").astype(float)
-        daily_values = pd.to_numeric(merged[f"{field}_daily"], errors="coerce").astype(float)
+        minute_values = pd.to_numeric(overlap[f"{field}_minute"], errors="coerce").astype(float)
+        daily_values = pd.to_numeric(overlap[f"{field}_daily"], errors="coerce").astype(float)
         rel_diffs = []
         bp_diffs = []
         nan_pairs = 0
@@ -608,7 +612,10 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
         elif spec["severity"] == "blocker":
             blocker_pass &= field_pass
         else:
-            flagged = merged.loc[bp_diff > spec["threshold_bp"], ["ticker", "trade_date", f"{field}_daily", f"{field}_minute"]].copy()
+            flagged = overlap.loc[
+                bp_diff > spec["threshold_bp"],
+                ["ticker", "trade_date", f"{field}_daily", f"{field}_minute"],
+            ].copy()
             flagged["delta_bp"] = bp_diff.loc[flagged.index].astype(float)
             for row in flagged.itertuples(index=False):
                 warning_events.append(
@@ -651,11 +658,15 @@ def validate_minute_to_day_consistency(minute_frame: pd.DataFrame, daily_prices:
     return {
         "pass": bool(blocker_pass),
         "row_count": int(len(merged)),
+        "overlap_count": int(len(overlap)),
+        "minute_only_count": int(len(minute_only)),
+        "daily_only_count": int(len(daily_only)),
         "fields": summary,
         "nan_pair_count": int(total_nan_pairs),
         "warning_events": warning_events,
         "warning_event_count": int(len(warning_events)),
         "concentrated_warning_days": concentrated_warning_days,
+        "ticker_day_mismatch": bool(not minute_only.empty or not daily_only.empty),
     }
 
 

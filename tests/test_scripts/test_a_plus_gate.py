@@ -131,6 +131,49 @@ def test_validate_minute_to_day_consistency_counts_partial_nan() -> None:
     assert result["nan_pair_count"] == 1
 
 
+def test_validate_minute_to_day_consistency_flags_missing_daily_row() -> None:
+    minute_df = _minute_rows_for_day(ticker="AAA", trade_day=date(2026, 1, 5))
+    daily_df = pd.DataFrame(columns=["ticker", "trade_date", "open", "high", "low", "close", "volume"])
+
+    result = validate_minute_to_day_consistency(minute_df, daily_df)
+
+    assert result["pass"] is False
+    assert result["minute_only_count"] == 1
+    assert result["daily_only_count"] == 0
+    assert result["ticker_day_mismatch"] is True
+
+
+def test_validate_minute_to_day_consistency_flags_missing_minute_row() -> None:
+    minute_df = _minute_rows_for_day(ticker="AAA", trade_day=date(2026, 1, 5))
+    daily_df = pd.concat(
+        [
+            _daily_row(ticker="AAA", trade_day=date(2026, 1, 5)),
+            _daily_row(ticker="BBB", trade_day=date(2026, 1, 5)),
+        ],
+        ignore_index=True,
+    )
+
+    result = validate_minute_to_day_consistency(minute_df, daily_df)
+
+    assert result["pass"] is False
+    assert result["minute_only_count"] == 0
+    assert result["daily_only_count"] == 1
+    assert result["ticker_day_mismatch"] is True
+
+
+def test_validate_minute_to_day_consistency_pass_with_full_overlap() -> None:
+    minute_df = _minute_rows_for_day()
+    daily_df = _daily_row()
+
+    result = validate_minute_to_day_consistency(minute_df, daily_df)
+
+    assert result["overlap_count"] == 1
+    assert result["minute_only_count"] == 0
+    assert result["daily_only_count"] == 0
+    assert result["ticker_day_mismatch"] is False
+    assert result["pass"] is True
+
+
 def test_minute_internal_consistency_gap() -> None:
     minute_df = _minute_rows_for_day().drop(index=[0, 1, 2, 3]).reset_index(drop=True)
 
