@@ -12,8 +12,9 @@ import pandas as pd
 from loguru import logger
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert
+import exchange_calendars as xcals
 
-from src.data.db.models import FeatureStore, StockMinuteAggs
+from src.data.db.models import FeatureStore, MinuteBackfillState, StockMinuteAggs
 from src.data.db.pit import get_prices_pit
 from src.data.db.session import get_session_factory
 from src.data.sources.fmp_analyst import AnalystEstimate
@@ -59,6 +60,7 @@ COMPOSITE_FEATURE_NAMES = (
     "macro_risk_on",
 )
 FEATURE_EXPORT_COLUMNS = ["ticker", "trade_date", "feature_name", "feature_value", "is_filled"]
+XNYS = xcals.get_calendar("XNYS")
 
 
 class IntradayHistoryError(RuntimeError):
@@ -592,7 +594,47 @@ def load_intraday_minute_history(
     session_factory = get_session_factory()
     try:
         with session_factory() as session:
+            expected_sessions = [
+                pd.Timestamp(session_label).date()
+                for session_label in XNYS.sessions_in_range(pd.Timestamp(start_trade_date), pd.Timestamp(end_trade_date))
+            ]
+            if expected_sessions:
+                state_query = sa.select(
+                    MinuteBackfillState.trading_date,
+                    MinuteBackfillState.status,
+                ).where(
+                    MinuteBackfillState.trading_date >= expected_sessions[0],
+                    MinuteBackfillState.trading_date <= expected_sessions[-1],
+                )
+                state_rows = session.execute(state_query).mappings().all()
+                state_map = {
+                    pd.Timestamp(row["trading_date"]).date(): str(row["status"]).lower()
+                    for row in state_rows
+                }
+                incomplete = [
+                    trade_day
+                    for trade_day in expected_sessions
+                    if state_map.get(trade_day) not in {"completed", "skipped_holiday"}
+                ]
+                if incomplete:
+                    if allow_missing:
+                        logger.error(
+                            "minute_history backfill incomplete (allow_missing=True): {} days missing ({}...) range {}~{}",
+                            len(incomplete),
+                            [trade_day.isoformat() for trade_day in incomplete[:5]],
+                            start_trade_date,
+                            end_trade_date,
+                        )
+                    else:
+                        raise IntradayHistoryError(
+                            "minute history backfill incomplete: "
+                            f"{len(incomplete)} trading days not completed "
+                            f"(first 5: {[trade_day.isoformat() for trade_day in incomplete[:5]]}) "
+                            f"range {start_trade_date}~{end_trade_date}",
+                        )
             rows = session.execute(statement).mappings().all()
+    except IntradayHistoryError:
+        raise
     except Exception as exc:
         if allow_missing:
             logger.error("minute_history_missing (allow_missing=True): {}", exc)
