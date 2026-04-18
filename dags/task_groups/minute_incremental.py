@@ -204,6 +204,7 @@ def _load_minute_rows_for_dates(dates_to_check: Sequence[date]) -> pd.DataFrame:
             StockMinuteAggs.low,
             StockMinuteAggs.close,
             StockMinuteAggs.volume,
+            StockMinuteAggs.vwap,
             StockMinuteAggs.transactions,
         )
         .where(StockMinuteAggs.trade_date.in_(list(dates_to_check)))

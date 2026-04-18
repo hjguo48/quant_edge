@@ -97,6 +97,49 @@ def test_sync_polygon_minute_incremental_calls_run_minute_backfill(tmp_path) -> 
     assert command[-4:] == ["--end-date", "2026-04-17", "--universe-from-membership", "--resume"]
 
 
+def test_load_minute_rows_for_dates_includes_vwap_column(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeResult:
+        def mappings(self):
+            return self
+
+        def all(self):
+            return [
+                {
+                    "ticker": "AAPL",
+                    "trade_date": date(2026, 4, 16),
+                    "minute_ts": pd.Timestamp("2026-04-16 13:30:00+00:00"),
+                    "open": 100.0,
+                    "high": 100.1,
+                    "low": 99.9,
+                    "close": 100.05,
+                    "volume": 1000,
+                    "vwap": 100.02,
+                    "transactions": 10,
+                },
+            ]
+
+    class FakeConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute(self, statement):
+            return FakeResult()
+
+    class FakeEngine:
+        def connect(self):
+            return FakeConn()
+
+    monkeypatch.setattr(minute_module, "get_engine", lambda: FakeEngine())
+
+    frame = minute_module._load_minute_rows_for_dates([date(2026, 4, 16)])
+
+    assert "vwap" in frame.columns
+    assert float(frame.loc[0, "vwap"]) == 100.02
+
+
 def test_validate_minute_internal_quality_catches_gap() -> None:
     minute_frame = _build_minute_frame("AAPL", date(2026, 4, 16), 379)
 
@@ -163,6 +206,33 @@ def test_validate_minute_day_reconciliation_aplus_blocks_on_ohl() -> None:
             daily_prices=daily_prices,
             persist_fn=lambda *args, **kwargs: 0,
         )
+
+
+def test_validate_reconciliation_task_does_not_crash_on_valid_input() -> None:
+    minute_frame = _build_minute_frame("AAPL", date(2026, 4, 16), 391)
+    daily_prices = pd.DataFrame(
+        [
+            {
+                "ticker": "AAPL",
+                "trade_date": date(2026, 4, 16),
+                "open": float(minute_frame["open"].iloc[0]),
+                "high": float(minute_frame["high"].max()),
+                "low": float(minute_frame["low"].min()),
+                "close": float(minute_frame["close"].iloc[-1]),
+                "volume": int(minute_frame["volume"].sum()),
+            },
+        ],
+    )
+
+    result = minute_module.validate_minute_day_reconciliation_aplus(
+        resolved_dates=[date(2026, 4, 16)],
+        minute_frame=minute_frame,
+        daily_prices=daily_prices,
+        persist_fn=lambda *args, **kwargs: 0,
+    )
+
+    assert result["status"] == "ok"
+    assert result["warning_event_count"] == 0
 
 
 def test_publish_minute_watermark_updates_state_table(monkeypatch: pytest.MonkeyPatch) -> None:
