@@ -467,7 +467,7 @@ minute_incremental:
 
 ---
 
-### Week 12: 灰度/Shadow/Live Validation + 下一阶段决策
+### Week 12: 灰度/Shadow/Live Validation + 下一阶段决策 + Production Hardening
 
 **目标**：研究结果收束为可执行部署方案。
 
@@ -478,9 +478,17 @@ minute_incremental:
 - 回滚规则 + drift rules 写入配置
 - 评估是否需要进入下一阶段采购
 
+**Production Hardening TODO (延后项, 不 block Week 3-11):**
+- [ ] Week 3 Codex review P2 遗留:
+  - `aggregate_minute_to_daily` 不查 09:30/15:59 端点, partial-session 日 gap_pct/overnight_ret/intraday_ret 可能用偏移 anchor
+  - `reference_prices` 空 DataFrame 列访问 KeyError (daily 先于 minute ingest 边角场景)
+  - health_check 日内 timing (pre-open 假 unhealthy, 低价值)
+- [ ] (未来 review 发现的其他 edge cases 续加)
+
 **Gate**:
 - 单一 champion + 单一 rollback 逻辑
 - "下一阶段该不该买新数据"明确判断
+- Production hardening TODO 清零 (或明确接受长期 known issue)
 
 ---
 
