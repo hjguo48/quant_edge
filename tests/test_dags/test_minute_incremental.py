@@ -284,6 +284,40 @@ def test_validate_reconciliation_task_does_not_crash_on_valid_input() -> None:
     assert result["warning_event_count"] == 0
 
 
+def test_reconciliation_catches_fully_missing_ticker() -> None:
+    minute_frame = _build_minute_frame("AAA", date(2024, 1, 2), 391)
+    daily_prices = pd.DataFrame(
+        [
+            {
+                "ticker": "AAA",
+                "trade_date": date(2024, 1, 2),
+                "open": float(minute_frame["open"].iloc[0]),
+                "high": float(minute_frame["high"].max()),
+                "low": float(minute_frame["low"].min()),
+                "close": float(minute_frame["close"].iloc[-1]),
+                "volume": int(minute_frame["volume"].sum()),
+            },
+            {
+                "ticker": "BBB",
+                "trade_date": date(2024, 1, 2),
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.5,
+                "close": 100.5,
+                "volume": 500_000,
+            },
+        ],
+    )
+
+    with pytest.raises(AirflowException, match="daily_only=1"):
+        minute_module.validate_minute_day_reconciliation_aplus(
+            resolved_dates=[date(2024, 1, 2)],
+            minute_frame=minute_frame,
+            daily_prices=daily_prices,
+            persist_fn=lambda *args, **kwargs: 0,
+        )
+
+
 def test_publish_minute_watermark_updates_state_table(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeResult:
         def __init__(self, value):

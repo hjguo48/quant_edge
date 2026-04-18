@@ -19,12 +19,8 @@ import exchange_calendars as xcals
 import pandas as pd
 import sqlalchemy as sa
 
-from scripts.run_intraday_smoke import (
-    load_daily_prices,
-    persist_reconciliation_events,
-    validate_minute_to_day_consistency,
-)
-from src.data.db.models import StockMinuteAggs
+from scripts.run_intraday_smoke import persist_reconciliation_events, validate_minute_to_day_consistency
+from src.data.db.models import StockMinuteAggs, StockPrice
 from src.data.db.session import get_engine
 from src.data.polygon_flat_files import is_flat_file_available
 
@@ -221,6 +217,27 @@ def _load_minute_rows_for_dates(dates_to_check: Sequence[date]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _load_daily_rows_for_dates(dates_to_check: Sequence[date]) -> pd.DataFrame:
+    if not dates_to_check:
+        return pd.DataFrame(columns=["ticker", "trade_date", "open", "high", "low", "close", "volume"])
+    statement = (
+        sa.select(
+            StockPrice.ticker,
+            StockPrice.trade_date,
+            StockPrice.open,
+            StockPrice.high,
+            StockPrice.low,
+            StockPrice.close,
+            StockPrice.volume,
+        )
+        .where(StockPrice.trade_date.in_(list(dates_to_check)))
+        .order_by(StockPrice.ticker, StockPrice.trade_date)
+    )
+    with get_engine().connect() as conn:
+        rows = conn.execute(statement).mappings().all()
+    return pd.DataFrame(rows)
+
+
 def validate_minute_internal_quality(
     *,
     resolved_dates: Sequence[str | date] | None = None,
@@ -330,12 +347,7 @@ def validate_minute_day_reconciliation_aplus(
     minute_rows = minute_frame.copy() if minute_frame is not None else _load_minute_rows_for_dates(dates)
     if minute_rows.empty:
         raise AirflowException("Minute reconciliation found no rows for requested dates.")
-    tickers = tuple(sorted(minute_rows["ticker"].astype(str).str.upper().unique().tolist()))
-    reference_prices = daily_prices.copy() if daily_prices is not None else load_daily_prices(
-        tickers=tickers,
-        start_date=min(dates),
-        end_date=max(dates),
-    )
+    reference_prices = daily_prices.copy() if daily_prices is not None else _load_daily_rows_for_dates(dates)
     filtered_daily = reference_prices.loc[
         (pd.to_datetime(reference_prices["trade_date"]).dt.date >= min(dates))
         & (pd.to_datetime(reference_prices["trade_date"]).dt.date <= max(dates))
@@ -360,6 +372,12 @@ def validate_minute_day_reconciliation_aplus(
             for field, payload in reconciliation.get("fields", {}).items()
             if payload.get("severity") == "blocker" and not payload.get("pass")
         ]
+        if reconciliation.get("ticker_day_mismatch"):
+            ohl_failures.append(
+                "ticker_day_mismatch:"
+                f"minute_only={reconciliation.get('minute_only_count', 0)},"
+                f"daily_only={reconciliation.get('daily_only_count', 0)}",
+            )
         raise AirflowException("Minute A-plus reconciliation blocker failed: " + ", ".join(ohl_failures))
     return result
 
