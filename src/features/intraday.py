@@ -112,6 +112,8 @@ def compute_close_to_vwap(minute_bars: pd.DataFrame) -> tuple[float, bool]:
         return np.nan, True
     closes = pd.to_numeric(minute_bars["close"], errors="coerce")
     day_close = float(closes.iloc[-1])
+    if pd.isna(day_close):
+        return np.nan, True
     day_vwap = float((closes * volumes).sum() / volumes.sum())
     if not np.isfinite(day_vwap) or day_vwap == 0.0:
         return np.nan, True
@@ -123,6 +125,8 @@ def compute_transactions_count_zscore(
     txn_today: float,
     txn_history: pd.Series,
 ) -> tuple[float, bool]:
+    if pd.isna(txn_today):
+        return np.nan, True
     clean_history = pd.to_numeric(txn_history, errors="coerce").dropna().astype(float)
     if len(clean_history.index) < 10:
         return np.nan, True

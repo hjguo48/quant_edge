@@ -164,6 +164,20 @@ def test_close_to_vwap_zero_volume() -> None:
     assert is_filled is True
 
 
+def test_close_to_vwap_flags_is_filled_on_nan_close() -> None:
+    minute_bars = pd.DataFrame(
+        {
+            "close": [100.0, 101.0, np.nan],
+            "volume": [1.0, 2.0, 3.0],
+        },
+    )
+
+    value, is_filled = compute_close_to_vwap(minute_bars)
+
+    assert np.isnan(value)
+    assert is_filled is True
+
+
 def test_transactions_count_zscore_happy_path() -> None:
     txn_history = pd.Series(np.linspace(100.0, 119.0, 20))
 
@@ -182,6 +196,18 @@ def test_transactions_count_zscore_missing_history() -> None:
 
     value, is_filled = compute_transactions_count_zscore(
         txn_today=110.0,
+        txn_history=txn_history,
+    )
+
+    assert np.isnan(value)
+    assert is_filled is True
+
+
+def test_transactions_count_zscore_flags_is_filled_on_nan_txn_today() -> None:
+    txn_history = pd.Series(np.linspace(100.0, 119.0, 20))
+
+    value, is_filled = compute_transactions_count_zscore(
+        txn_today=float("nan"),
         txn_history=txn_history,
     )
 
