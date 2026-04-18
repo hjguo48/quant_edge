@@ -403,6 +403,24 @@ def test_minute_incremental_trigger_rules_correctly_configured(monkeypatch: pyte
     assert publish_task.trigger_rule == TriggerRule.ALL_DONE
 
 
+def test_update_features_cache_waits_for_minute_incremental_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="true")
+
+    update_task = module.dag.get_task("update_features_cache")
+
+    assert "minute_incremental.publish_minute_watermark" in update_task.upstream_task_ids
+
+
+def test_update_features_cache_independent_when_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="false")
+
+    update_task = module.dag.get_task("update_features_cache")
+
+    assert not any(task_id.startswith("minute_incremental.") for task_id in update_task.upstream_task_ids)
+
+
 def _load_daily_data_module(monkeypatch: pytest.MonkeyPatch, *, enabled: str):
     monkeypatch.setenv("ENABLE_MINUTE_INCREMENTAL", enabled)
     for module_name in ("dags.dag_daily_data",):

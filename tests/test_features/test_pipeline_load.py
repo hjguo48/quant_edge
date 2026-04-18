@@ -39,6 +39,31 @@ class _EmptySession:
         return _EmptyResult()
 
 
+class _RowsResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def mappings(self):
+        return self
+
+    def all(self):
+        return list(self._rows)
+
+
+class _RowsSession:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def execute(self, statement):
+        return _RowsResult(self._rows)
+
+
 def _empty_feature_frame() -> pd.DataFrame:
     return pd.DataFrame(columns=["ticker", "trade_date", "feature_name", "feature_value", "is_filled"])
 
@@ -156,3 +181,63 @@ def test_feature_pipeline_run_fails_closed_by_default(monkeypatch: pytest.Monkey
             end_date=date(2026, 1, 6),
             as_of=date(2026, 1, 7),
         )
+
+
+def test_load_intraday_minute_history_raises_on_partial_coverage(monkeypatch: pytest.MonkeyPatch) -> None:
+    rows = [
+        {
+            "ticker": "AAPL",
+            "trade_date": date(2026, 1, 5),
+            "minute_ts": pd.Timestamp("2026-01-05 14:30:00+00:00"),
+            "open": 100.0,
+            "high": 101.0,
+            "low": 99.0,
+            "close": 100.5,
+            "volume": 1000,
+            "vwap": 100.2,
+            "transactions": 10,
+        },
+    ]
+    monkeypatch.setattr(pipeline_module, "get_session_factory", lambda: (lambda: _RowsSession(rows)))
+
+    with pytest.raises(IntradayHistoryError, match="minute history partial"):
+        load_intraday_minute_history(
+            tickers=["AAPL", "MSFT"],
+            start_trade_date=date(2026, 1, 1),
+            end_trade_date=date(2026, 1, 5),
+            as_of=date(2026, 1, 6),
+        )
+
+
+def test_load_intraday_minute_history_logs_partial_coverage_with_allow_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            "ticker": "AAPL",
+            "trade_date": date(2026, 1, 5),
+            "minute_ts": pd.Timestamp("2026-01-05 14:30:00+00:00"),
+            "open": 100.0,
+            "high": 101.0,
+            "low": 99.0,
+            "close": 100.5,
+            "volume": 1000,
+            "vwap": 100.2,
+            "transactions": 10,
+        },
+    ]
+    logged: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+    monkeypatch.setattr(pipeline_module, "get_session_factory", lambda: (lambda: _RowsSession(rows)))
+    monkeypatch.setattr(pipeline_module.logger, "error", lambda *args, **kwargs: logged.append((args, kwargs)))
+
+    frame = load_intraday_minute_history(
+        tickers=["AAPL", "MSFT"],
+        start_trade_date=date(2026, 1, 1),
+        end_trade_date=date(2026, 1, 5),
+        as_of=date(2026, 1, 6),
+        allow_missing=True,
+    )
+
+    assert not frame.empty
+    assert any("partial coverage" in str(args[0]) for args, _ in logged)

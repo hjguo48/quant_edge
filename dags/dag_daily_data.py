@@ -1240,6 +1240,7 @@ with DAG(
 
         minute_incremental_group = build_minute_incremental_task_group(dag=dag)
         sync_universe_membership_task >> minute_incremental_group
+        minute_incremental_group >> update_features_cache_task
     [
         store_to_db_task,
         fetch_vix_task,

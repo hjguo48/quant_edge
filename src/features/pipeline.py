@@ -619,6 +619,25 @@ def load_intraday_minute_history(
             f"{','.join(normalized_tickers)} {start_trade_date}~{end_trade_date} "
             "(query succeeded but returned 0 rows; check minute_backfill_state coverage)",
         )
+    loaded_tickers = {str(row["ticker"]).upper() for row in rows}
+    missing_tickers = sorted(set(normalized_tickers) - loaded_tickers)
+    if missing_tickers:
+        if allow_missing:
+            logger.error(
+                "minute_history partial coverage (allow_missing=True): missing tickers {} range {}~{}",
+                missing_tickers,
+                start_trade_date,
+                end_trade_date,
+            )
+        else:
+            preview = ",".join(missing_tickers[:5])
+            suffix = "..." if len(missing_tickers) > 5 else ""
+            raise IntradayHistoryError(
+                "minute history partial for "
+                f"{len(missing_tickers)} tickers ({preview}{suffix}) "
+                f"{start_trade_date}~{end_trade_date} "
+                f"(query returned {len(loaded_tickers)}/{len(normalized_tickers)} tickers)",
+            )
     return pd.DataFrame(rows)
 
 
