@@ -101,3 +101,49 @@ def test_resolve_active_universe_prefers_membership_and_filters_to_price_visible
 
     assert tickers == ["AAA"]
     assert source == "universe_membership"
+
+
+def test_pit_query_returns_current_members_for_historical_dates(monkeypatch) -> None:
+    engine = _engine()
+    session_factory = sa.orm.sessionmaker(bind=engine, expire_on_commit=False)
+    monkeypatch.setattr(pit_module, "get_session_factory", lambda: session_factory)
+
+    with session_factory() as session:
+        session.add(
+            UniverseMembership(
+                ticker="AAPL",
+                index_name="SP500",
+                effective_date=date(2016, 1, 1),
+                end_date=None,
+                reason="historical_active_since_inception",
+            ),
+        )
+        session.commit()
+
+    members = get_universe_pit(datetime(2020, 1, 15, 12, tzinfo=timezone.utc), index_name="SP500")
+
+    assert members == ["AAPL"]
+
+
+def test_pit_query_excludes_post_removal_for_historical_dates(monkeypatch) -> None:
+    engine = _engine()
+    session_factory = sa.orm.sessionmaker(bind=engine, expire_on_commit=False)
+    monkeypatch.setattr(pit_module, "get_session_factory", lambda: session_factory)
+
+    with session_factory() as session:
+        session.add(
+            UniverseMembership(
+                ticker="AA",
+                index_name="SP500",
+                effective_date=date(2016, 1, 1),
+                end_date=date(2016, 11, 1),
+                reason="historical_backfill_anchor",
+            ),
+        )
+        session.commit()
+
+    before_removal = get_universe_pit(datetime(2016, 6, 15, 12, tzinfo=timezone.utc), index_name="SP500")
+    after_removal = get_universe_pit(datetime(2017, 1, 15, 12, tzinfo=timezone.utc), index_name="SP500")
+
+    assert before_removal == ["AA"]
+    assert after_removal == []
