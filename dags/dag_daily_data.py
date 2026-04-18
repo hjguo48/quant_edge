@@ -1224,12 +1224,11 @@ with DAG(
         task_id="update_features_cache",
         python_callable=update_features_cache,
     )
-    minute_incremental_group = build_minute_incremental_task_group(dag=dag)
-
     fetch_prices_task >> store_to_db_task
     store_to_db_task >> sync_universe_membership_task
     sync_universe_membership_task >> [fetch_fundamentals_task, fetch_alternative_data_task]
     if minute_incremental_enabled():
+        minute_incremental_group = build_minute_incremental_task_group(dag=dag)
         sync_universe_membership_task >> minute_incremental_group
     [
         store_to_db_task,

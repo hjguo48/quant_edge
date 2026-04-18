@@ -70,17 +70,22 @@ def is_trading_day(trade_day: date) -> bool:
     return bool(XNYS.is_session(pd.Timestamp(trade_day)))
 
 
-def load_universe_whitelist(*, index_name: str = "SP500") -> list[str]:
+def load_universe_whitelist_for_date(trading_date: date, *, index_name: str = "SP500") -> list[str]:
     query = sa.text(
         """
         select distinct ticker
         from universe_membership
         where index_name = :index_name
+          and effective_date <= :trading_date
+          and (end_date is null or end_date > :trading_date)
         order by ticker
         """,
     )
     with get_engine().connect() as conn:
-        tickers = conn.execute(query, {"index_name": index_name}).scalars().all()
+        tickers = conn.execute(
+            query,
+            {"index_name": index_name, "trading_date": trading_date},
+        ).scalars().all()
     return [str(ticker).upper() for ticker in tickers]
 
 
@@ -215,12 +220,6 @@ def should_skip_resume(existing_state: dict[date, dict[str, Any]], trading_date:
 def run_backfill(args: argparse.Namespace) -> dict[str, Any]:
     start_date = parse_date(args.start_date)
     end_date = parse_date(args.end_date)
-    # None → no whitelist filter; a list → only keep those tickers.
-    universe_tickers = load_universe_whitelist() if args.universe_from_membership else None
-    if args.universe_from_membership and not universe_tickers:
-        raise RuntimeError(
-            "universe_membership yields empty whitelist; run the PIT universe backfill before minute backfill",
-        )
     client = PolygonFlatFilesClient(min_request_interval=0.0)
     state_map = load_state_map() if args.resume else {}
     processed: list[dict[str, Any]] = []
@@ -235,6 +234,15 @@ def run_backfill(args: argparse.Namespace) -> dict[str, Any]:
                 },
             )
             continue
+
+        universe_tickers: list[str] | None = None
+        if args.universe_from_membership and is_trading_day(trading_date):
+            universe_tickers = load_universe_whitelist_for_date(trading_date)
+            if not universe_tickers:
+                raise RuntimeError(
+                    f"universe_membership yields empty whitelist for session day {trading_date.isoformat()}; "
+                    "run the PIT universe backfill before minute backfill",
+                )
 
         started_at = datetime.now(timezone.utc)
         if not args.dry_run:
@@ -307,7 +315,7 @@ def run_backfill(args: argparse.Namespace) -> dict[str, Any]:
             "dry_run": bool(args.dry_run),
             "resume": bool(args.resume),
             "universe_from_membership": bool(args.universe_from_membership),
-            "universe_size": len(universe_tickers) if universe_tickers is not None else None,
+            "universe_size": None,
         },
         "processed": processed,
         "errors": errors,

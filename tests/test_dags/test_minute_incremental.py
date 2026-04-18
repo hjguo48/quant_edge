@@ -209,10 +209,9 @@ def test_dag_daily_data_parses_without_error(monkeypatch: pytest.MonkeyPatch) ->
 
     assert module.dag.dag_id == "daily_data_pipeline"
     assert "fetch_prices" in module.dag.task_ids
-    assert "minute_incremental.resolve_minute_dates_to_sync" in module.dag.task_ids
 
 
-def test_minute_incremental_task_group_structure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_minute_incremental_group_instantiated_when_flag_on(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_daily_data_module(monkeypatch, enabled="true")
     expected = {
         "minute_incremental.resolve_minute_dates_to_sync",
@@ -225,11 +224,10 @@ def test_minute_incremental_task_group_structure(monkeypatch: pytest.MonkeyPatch
     assert expected <= set(module.dag.task_ids)
 
 
-def test_feature_flag_disabled_unhooks_task_group(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_minute_incremental_group_not_instantiated_when_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_daily_data_module(monkeypatch, enabled="false")
 
-    sync_universe = module.dag.get_task("sync_universe_membership")
-    assert "minute_incremental.resolve_minute_dates_to_sync" not in sync_universe.downstream_task_ids
+    assert not any(task_id.startswith("minute_incremental.") for task_id in module.dag.task_ids)
 
 
 def test_minute_sync_failure_does_not_block_weekly_signal(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -9,6 +9,7 @@ import scripts.run_intraday_smoke as smoke_module
 from scripts.run_intraday_smoke import (
     main,
     persist_reconciliation_events,
+    validate_trading_days,
     validate_timezones,
     validate_minute_internal_consistency,
     validate_minute_to_day_consistency,
@@ -228,6 +229,29 @@ def test_validate_timezones_uses_half_open_interval() -> None:
     assert result["failure_count"] == 1
     assert result["sample"][0]["minute_ts_et"].endswith("16:00:00-05:00")
     assert result["sample"][0]["time_ok"] is False
+
+
+def test_smoke_validate_trading_days_catches_per_ticker_dropout() -> None:
+    expected_dates = [date(2026, 1, 5), date(2026, 1, 6), date(2026, 1, 7), date(2026, 1, 8), date(2026, 1, 9)]
+    frames = []
+    expected_tickers = [f"T{idx:02d}" for idx in range(10)]
+    for ticker in expected_tickers:
+        for trade_day in expected_dates:
+            if ticker == "T01" and trade_day == date(2026, 1, 7):
+                continue
+            frames.append(_minute_rows_for_day(ticker=ticker, trade_day=trade_day))
+    minute_df = pd.concat(frames, ignore_index=True)
+
+    result = validate_trading_days(
+        minute_frame=minute_df,
+        start_date=expected_dates[0],
+        end_date=expected_dates[-1],
+        expected_tickers=expected_tickers,
+    )
+
+    assert result["pass"] is False
+    assert result["missing_trade_dates"] == []
+    assert result["per_ticker_missing"]["T01"] == [date(2026, 1, 7)]
 
 
 def test_smoke_main_exit_code_reflects_report_pass(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:

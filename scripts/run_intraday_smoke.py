@@ -318,17 +318,39 @@ def validate_timezones(minute_frame: pd.DataFrame) -> dict[str, Any]:
     }
 
 
-def validate_trading_days(*, minute_frame: pd.DataFrame, start_date: date, end_date: date) -> dict[str, Any]:
+def validate_trading_days(
+    *,
+    minute_frame: pd.DataFrame,
+    start_date: date,
+    end_date: date,
+    expected_tickers: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, Any]:
     actual_dates = sorted(pd.to_datetime(minute_frame["trade_date"]).dt.date.unique().tolist())
     expected_sessions = [ts.date() for ts in XNYS.sessions_in_range(pd.Timestamp(start_date), pd.Timestamp(end_date))]
     missing = sorted(set(expected_sessions) - set(actual_dates))
     extra = sorted(set(actual_dates) - set(expected_sessions))
+    frame = minute_frame.copy()
+    frame["ticker"] = frame["ticker"].astype(str).str.upper()
+    frame["trade_date"] = pd.to_datetime(frame["trade_date"]).dt.date
+    tickers = (
+        sorted(frame["ticker"].unique().tolist())
+        if expected_tickers is None
+        else sorted({str(ticker).upper() for ticker in expected_tickers})
+    )
+    expected_dates_set = set(expected_sessions)
+    per_ticker_missing: dict[str, list[date]] = {}
+    for ticker in tickers:
+        ticker_dates = set(frame.loc[frame["ticker"] == ticker, "trade_date"].tolist())
+        ticker_missing = sorted(expected_dates_set - ticker_dates)
+        if ticker_missing:
+            per_ticker_missing[ticker] = ticker_missing
     return {
-        "pass": not missing and not extra,
+        "pass": not missing and not extra and not per_ticker_missing,
         "actual_trade_dates": actual_dates,
         "expected_trade_dates": expected_sessions,
         "missing_trade_dates": missing,
         "unexpected_trade_dates": extra,
+        "per_ticker_missing": per_ticker_missing,
     }
 
 
@@ -709,6 +731,7 @@ def main(argv: list[str] | None = None) -> int:
         minute_frame=persisted,
         start_date=start_date,
         end_date=end_date,
+        expected_tickers=list(tickers),
     )
     internal_consistency = validate_minute_internal_consistency(persisted)
     corporate_action_alignment = validate_corporate_action_alignment(persisted, filtered_daily_prices)

@@ -6,7 +6,13 @@ import pandas as pd
 import pytest
 
 import scripts.run_minute_backfill as minute_backfill_module
-from scripts.run_minute_backfill import ProcessResult, process_trade_day, run_backfill, should_skip_resume
+from scripts.run_minute_backfill import (
+    ProcessResult,
+    load_universe_whitelist_for_date,
+    process_trade_day,
+    run_backfill,
+    should_skip_resume,
+)
 from src.data.polygon_flat_files import FlatFileLoadResult
 
 
@@ -148,8 +154,93 @@ def test_writer_idempotence_same_day_twice(monkeypatch: pytest.MonkeyPatch) -> N
     assert len(writer.keys) == 1
 
 
-def test_run_backfill_fails_fast_on_empty_membership(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(minute_backfill_module, "load_universe_whitelist", lambda: [])
+def test_load_universe_whitelist_for_date_filters_pit_correctly(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeResult:
+        def __init__(self, values):
+            self._values = values
+
+        def scalars(self):
+            return self
+
+        def all(self):
+            return self._values
+
+    class FakeConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute(self, statement, params=None):
+            trade_day = params["trading_date"]
+            if trade_day == date(2025, 3, 15):
+                return FakeResult(["AAPL", "MSFT"])
+            if trade_day == date(2025, 7, 15):
+                return FakeResult(["MSFT"])
+            return FakeResult([])
+
+    class FakeEngine:
+        def connect(self):
+            return FakeConn()
+
+    monkeypatch.setattr(minute_backfill_module, "get_engine", lambda: FakeEngine())
+
+    assert load_universe_whitelist_for_date(date(2025, 3, 15)) == ["AAPL", "MSFT"]
+    assert load_universe_whitelist_for_date(date(2025, 7, 15)) == ["MSFT"]
+    assert load_universe_whitelist_for_date(date(2015, 12, 1)) == []
+
+
+def test_run_backfill_calls_pit_universe_per_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_universes: list[tuple[date, list[str] | None]] = []
+
+    monkeypatch.setattr(
+        minute_backfill_module,
+        "iter_calendar_days",
+        lambda start_date, end_date: [date(2026, 1, 5), date(2026, 1, 6)],
+    )
+    monkeypatch.setattr(minute_backfill_module, "is_trading_day", lambda _: True)
+    monkeypatch.setattr(
+        minute_backfill_module,
+        "load_universe_whitelist_for_date",
+        lambda trading_date: ["AAPL"] if trading_date == date(2026, 1, 5) else ["MSFT", "NVDA"],
+    )
+    monkeypatch.setattr(minute_backfill_module, "PolygonFlatFilesClient", lambda min_request_interval=0.0: object())
+    monkeypatch.setattr(
+        minute_backfill_module,
+        "process_trade_day",
+        lambda **kwargs: (
+            seen_universes.append((kwargs["trading_date"], kwargs["universe_tickers"])),
+            ProcessResult(trading_date=kwargs["trading_date"], status="completed"),
+        )[1],
+    )
+
+    summary = run_backfill(
+        minute_backfill_module.argparse.Namespace(
+            start_date="2026-01-05",
+            end_date="2026-01-06",
+            resume=False,
+            dry_run=True,
+            universe_from_membership=True,
+            report_output="ignored.json",
+        ),
+    )
+
+    assert summary["summary"]["completed_days"] == 2
+    assert seen_universes == [
+        (date(2026, 1, 5), ["AAPL"]),
+        (date(2026, 1, 6), ["MSFT", "NVDA"]),
+    ]
+
+
+def test_run_backfill_fails_fast_when_session_day_has_empty_pit_whitelist(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        minute_backfill_module,
+        "iter_calendar_days",
+        lambda start_date, end_date: [date(2026, 1, 5)],
+    )
+    monkeypatch.setattr(minute_backfill_module, "is_trading_day", lambda _: True)
+    monkeypatch.setattr(minute_backfill_module, "load_universe_whitelist_for_date", lambda _: [])
 
     with pytest.raises(RuntimeError, match="empty whitelist"):
         run_backfill(
@@ -164,11 +255,44 @@ def test_run_backfill_fails_fast_on_empty_membership(monkeypatch: pytest.MonkeyP
         )
 
 
+def test_run_backfill_holiday_skips_empty_pit_whitelist(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        minute_backfill_module,
+        "iter_calendar_days",
+        lambda start_date, end_date: [date(2026, 1, 4)],
+    )
+    monkeypatch.setattr(minute_backfill_module, "is_trading_day", lambda _: False)
+    monkeypatch.setattr(
+        minute_backfill_module,
+        "load_universe_whitelist_for_date",
+        lambda _: (_ for _ in ()).throw(AssertionError("holiday should not load PIT whitelist")),
+    )
+    monkeypatch.setattr(minute_backfill_module, "PolygonFlatFilesClient", lambda min_request_interval=0.0: object())
+    monkeypatch.setattr(
+        minute_backfill_module,
+        "process_trade_day",
+        lambda **kwargs: ProcessResult(trading_date=kwargs["trading_date"], status="skipped_holiday"),
+    )
+
+    summary = run_backfill(
+        minute_backfill_module.argparse.Namespace(
+            start_date="2026-01-04",
+            end_date="2026-01-04",
+            resume=False,
+            dry_run=True,
+            universe_from_membership=True,
+            report_output="ignored.json",
+        ),
+    )
+
+    assert summary["summary"]["skipped_holidays"] == 1
+
+
 def test_run_backfill_not_fails_on_unset_membership_flag(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         minute_backfill_module,
-        "load_universe_whitelist",
-        lambda: (_ for _ in ()).throw(AssertionError("membership whitelist should not be loaded")),
+        "load_universe_whitelist_for_date",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("membership whitelist should not be loaded")),
     )
     monkeypatch.setattr(minute_backfill_module, "iter_calendar_days", lambda start_date, end_date: [])
 
