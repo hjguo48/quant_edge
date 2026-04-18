@@ -280,6 +280,18 @@ def validate_minute_internal_quality(
                     "row_count": int(len(invalid_prices)),
                 },
             )
+        nan_ohlc = group.loc[
+            group.loc[:, ["open", "high", "low", "close"]].apply(pd.to_numeric, errors="coerce").isna().any(axis=1)
+        ]
+        if not nan_ohlc.empty:
+            failures.append(
+                {
+                    "check": "nan_ohlc",
+                    "ticker": ticker,
+                    "trade_date": trade_day,
+                    "row_count": int(len(nan_ohlc)),
+                },
+            )
 
     result = {
         "status": "ok" if not failures else "error",

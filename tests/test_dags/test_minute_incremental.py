@@ -129,6 +129,17 @@ def test_validate_minute_internal_quality_blocks_insufficient_bars_normal_day() 
         )
 
 
+def test_validate_minute_internal_quality_flags_nan_ohlc() -> None:
+    minute_frame = _build_minute_frame("AAPL", date(2026, 4, 16), 391)
+    minute_frame.loc[0, "close"] = float("nan")
+
+    with pytest.raises(AirflowException, match="nan_ohlc"):
+        minute_module.validate_minute_internal_quality(
+            resolved_dates=[date(2026, 4, 16)],
+            minute_frame=minute_frame,
+        )
+
+
 def test_validate_minute_day_reconciliation_aplus_blocks_on_ohl() -> None:
     minute_frame = _build_minute_frame("AAPL", date(2026, 4, 16), 391)
     daily_prices = pd.DataFrame(
