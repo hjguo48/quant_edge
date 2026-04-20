@@ -381,6 +381,9 @@ minute_incremental:
 - 跑 `leave_one_family_out` 消融
 - 分 horizon 产出 retained 候选集
 
+**预处理 TODO (Week 7 开前需处理)**:
+- [ ] `scripts/run_ic_screening.py` 加 `--allow-missing-intraday` CLI flag, `build_or_load_feature_cache` 传透; 默认 False (研究 fail-closed), 显式 opt-in tolerant. 否则默认 2016-03~2025-06 范围会因 minute coverage gap 直接 raise IntradayHistoryError.
+
 **复用/新增**：
 - `scripts/run_ic_screening.py` (复用, --horizon)
 - `scripts/run_family_ablation.py` (**新建**)
