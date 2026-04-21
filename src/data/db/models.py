@@ -7,8 +7,8 @@ from decimal import Decimal
 from typing import Any
 
 import sqlalchemy as sa
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, SmallInteger, String
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 try:
     from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 except ImportError:
@@ -115,6 +115,50 @@ class PriceReconciliationEvent(Base):
     severity: Mapped[str] = mapped_column(String(20), nullable=False)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     batch_id: Mapped[str] = mapped_column(String(36), nullable=False)
+
+
+class StockTradesSampled(Base):
+    __tablename__ = "stock_trades_sampled"
+    __table_args__ = (
+        sa.Index("ix_trades_sampled_knowledge_time", "ticker", "knowledge_time"),
+        sa.Index("ix_trades_sampled_trading_date", "ticker", "trading_date"),
+    )
+
+    ticker: Mapped[str] = mapped_column(String(16), primary_key=True)
+    sip_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    exchange: Mapped[int] = mapped_column(SmallInteger, primary_key=True, server_default="-1")
+    sequence_number: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default="-1")
+    trading_date: Mapped[date] = mapped_column(Date, nullable=False)
+    participant_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    trf_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    knowledge_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(14, 6), nullable=False)
+    size: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    decimal_size: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    tape: Mapped[int | None] = mapped_column(SmallInteger)
+    conditions: Mapped[list[int] | None] = mapped_column(ARRAY(SmallInteger))
+    correction: Mapped[int | None] = mapped_column(SmallInteger)
+    trade_id: Mapped[str | None] = mapped_column(String(64))
+    trf_id: Mapped[str | None] = mapped_column(String(32))
+    sampled_reason: Mapped[str] = mapped_column(String(32), nullable=False)
+
+
+class TradesSamplingState(Base):
+    __tablename__ = "trades_sampling_state"
+    __table_args__ = (
+        sa.Index("ix_trades_sampling_state_status", "status", "trading_date"),
+    )
+
+    ticker: Mapped[str] = mapped_column(String(16), primary_key=True)
+    trading_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    sampled_reason: Mapped[str] = mapped_column(String(32), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    rows_ingested: Mapped[int | None] = mapped_column(Integer)
+    pages_fetched: Mapped[int | None] = mapped_column(Integer)
+    api_calls_used: Mapped[int | None] = mapped_column(Integer)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_message: Mapped[str | None] = mapped_column(sa.Text)
 
 
 class MinuteBackfillState(Base):

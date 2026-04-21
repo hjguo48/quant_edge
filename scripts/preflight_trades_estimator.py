@@ -481,6 +481,7 @@ def estimate_from_candidates(
     ]
     total_rows = int(sum(rows_by_key.values()))
     api_calls = int(sum(api_calls_by_key.values()))
+    # TODO(Task 4): populate probe_calls once Polygon client defines ticker-existence probe policy.
     probe_calls = 0
     uncompressed_storage_gb = total_rows * BYTES_PER_TRADE_UNCOMPRESSED / (1024**3)
     compressed_storage_gb = total_rows * BYTES_PER_TRADE_COMPRESSED / (1024**3)
