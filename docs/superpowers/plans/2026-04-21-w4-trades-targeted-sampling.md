@@ -1,9 +1,9 @@
-# Week 4: Massive Trades 定向抽样 Implementation Plan (v3)
+# Week 4: Massive Trades 定向抽样 Implementation Plan (v3.2)
 
 > **For agentic workers:** 本 plan 作为任务包交给 Codex 执行. Claude 负责审查/退回/验收, 不写代码.
 > Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**版本:** v3.1 (2026-04-21, round 3 passed 7.8 + 3 micro-fixes)
+**版本:** v3.2 (2026-04-21, round 4 passed 7.6 + stable-hash fix)
 **v2→v3 修订 (P1 + P2):**
 - P1 scope: weak_window 收窄至 `weak_window_top_n=100` (防 180k ticker-day 超预算)
 - P1 schema: exchange/sequence_number 改 NOT NULL + deterministic fallback (sentinel -1)
@@ -15,7 +15,12 @@
 **v3→v3.1 修订 (round 3 cleanup):**
 - P1 (round 3): Task 3 event_calendar weak_window 文本与 yaml 对齐 — 显式调 `get_top_liquidity_tickers(top_n=100)`, 不再写"全 universe 命中"
 - P2 (round 3): 缺失 `sequence_number` 的 collision 风险 — 加 deterministic hash fallback (trade_id/price/size/participant_ts/conditions → 负值空间)
-- P3: 文档版本标签统一 v3
+- P3: 文档版本标签统一 v3.1
+
+**v3.1→v3.2 修订 (round 4):**
+- P1 (round 4): Python `hash()` 依赖 `PYTHONHASHSEED` 不 deterministic → 改 `sha256` stable digest (取前 8 字节映射到负 int64). Test 加 "跨进程/重跑 fallback 值稳定" assertion.
+- P2 (round 4): migration 注释澄清 — `server_default='-1'` 仅作 DB 最后兜底, 正常 ingestion 不用; client 代码用 stable hash fallback 取负值
+- P3 (round 4): H1 标题补 "(v3.2)"
 
 **v1→v2 修订:** 分阶段 scope (pilot → 扩展 gated by estimator); PIT 改用 sip_timestamp + delay; schema 补 4 个时间戳 + exchange + sequence + decimal_size; 特征从 4 增至 5 (补 off_exchange_volume_ratio); 阈值外移 yaml; 修正 `universe_membership` 表名.
 
@@ -207,9 +212,30 @@ git commit -m "feat(week4): trades sampling config + preflight estimator"
 - 新增 `trf_id` String(32) nullable (P2 off_exchange 检测用)
 - `exchange` SmallInt **NOT NULL** (sentinel=-1 当未知)
 - PK: `(ticker, sip_timestamp, exchange, sequence_number)`
-- **Round 3 P2 防冲突**: `sequence_number` 缺失时 Codex 入库前生成 deterministic fallback:
-  `fallback_seq = - (abs(hash((trade_id, price, size, participant_timestamp_ns, conditions_tuple))) % (2**62))` (负值空间, 保证和真实 >=0 的 sequence_number 不冲突)
-  若 `trade_id` 也为空, 退到 `price + size + participant_timestamp_ns` 组合 hash. 同 ticker+sip_timestamp+exchange 下两条都缺 sequence 的 trades, 只要其他字段 (price/size/ts) 有差异, fallback 就不同, 不覆盖.
+- **Round 3/4 防冲突 + 跨进程稳定**: `sequence_number` 缺失时 Codex 入库前生成 deterministic fallback 用 **sha256** (Python 内建 `hash()` 依 `PYTHONHASHSEED` 非稳定, 禁用):
+
+  ```python
+  import hashlib
+  def stable_sequence_fallback(
+      trade_id: str | None,
+      price: Decimal,
+      size: Decimal,
+      participant_timestamp_ns: int | None,
+      conditions: tuple[int, ...],
+  ) -> int:
+      key = "|".join([
+          trade_id or "",
+          f"{price:.6f}",
+          f"{size:.4f}",
+          str(participant_timestamp_ns or 0),
+          ",".join(str(c) for c in conditions),
+      ])
+      digest = hashlib.sha256(key.encode("utf-8")).digest()
+      int64_from_first_8 = int.from_bytes(digest[:8], "big", signed=False) & ((1 << 62) - 1)
+      return -(int64_from_first_8 + 1)   # 负值空间, 保证和真实 >=0 的 sequence_number 不冲突
+  ```
+
+  同 ticker+sip_timestamp+exchange 下两条都缺 sequence 的 trades, 只要其他字段 (price/size/ts/conditions) 有差异, fallback 就不同, 不覆盖. 跨进程重跑同一 trade 保证产生相同 PK (idempotent).
 
 **up:**
 
@@ -227,7 +253,9 @@ def upgrade():
         sa.Column("size", sa.Numeric(18, 4), nullable=False),
         sa.Column("decimal_size", sa.Numeric(18, 8), nullable=True),
         # P1 修订: exchange / sequence_number 因进 PK, 必须 NOT NULL.
-        # Codex 入库前把缺失值 normalize 到 sentinel -1.
+        # exchange: client 缺失时 normalize 到 sentinel -1 (所有未知走同一桶可接受).
+        # sequence_number: client 缺失时必须用 stable_sequence_fallback (sha256) 算负值,
+        #   不要用 -1. server_default='-1' 只是 DB 最后兜底, 正常 ingestion 不应命中.
         sa.Column("exchange", sa.SmallInteger, nullable=False, server_default="-1"),
         sa.Column("tape", sa.SmallInteger, nullable=True),
         sa.Column("conditions", sa.ARRAY(sa.SmallInteger), nullable=True),
@@ -270,7 +298,11 @@ def upgrade():
     op.create_index("ix_trades_sampling_state_status", "trades_sampling_state", ["status", "trading_date"])
 ```
 
-- [ ] **Step 1.1:** 写 migration + `tests/test_alembic/test_migration_007.py` (upgrade → insert sample rows → downgrade → re-upgrade, 验证 PK 防重复, 跨 venue 不冲突, **缺失 exchange/sequence_number → normalize 到 -1 后入库不报错**, **round3 P2: 两条同 ticker+sip_timestamp+exchange 都缺 sequence_number 的 trades, 经 deterministic fallback 后不冲突, 两条都成功入库**)
+- [ ] **Step 1.1:** 写 migration + `tests/test_alembic/test_migration_007.py`:
+    - upgrade → insert sample rows → downgrade → re-upgrade, 验证 PK 防重复, 跨 venue 不冲突
+    - 缺失 exchange → sentinel -1 入库不报错
+    - **round3 P2**: 两条同 ticker+sip_timestamp+exchange 都缺 sequence_number, price/size/ts 不同的 trades, 经 `stable_sequence_fallback` 后不冲突, 两条都成功入库
+    - **round4 P1**: 同一笔缺失 sequence_number 的 trade 反复调用 `stable_sequence_fallback` **必须返回相同值** (idempotent, 跨进程稳定); 用 subprocess + 自定义 `PYTHONHASHSEED` 验证
 - [ ] **Step 1.2:** 跑测试 + alembic upgrade head
 - [ ] **Step 1.3:** Commit
 
