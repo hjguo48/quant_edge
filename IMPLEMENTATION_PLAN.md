@@ -217,43 +217,37 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 
 ---
 
-### Week 3: Massive Minute Aggregates 入库 [✅ DONE 2026-04-21 — 3.0/3.1/3.2/3.A/3.3 全部完成]
+### Week 3: Massive Minute Aggregates 入库 [✅ DONE 2026-04-21 — merged to main via PR #2 `5e09410`]
 
 **目标**：5D/1D 获得专属数据层。
 
-**已完成子任务** (branch: feature/s2-v5.1-week3-minute-aggs, PR #2 draft):
-- [✅ commit e1b6fbc] Week 3.0 smoke — Polygon minute ingest + stock_minute_aggs hypertable + 3 intraday features, 10 ticker × 5 日 = 19550 行
-- [✅ commit 7646295] Week 3.0.5 B-lite 三向对账诊断 — 24 样本, 归因 polygon_daily_vs_minute (vendor 差异, 本地 0bp)
-- [✅ commit e33d905] Week 3.0.6 A-plus gate + C-partial 血缘 + minute 内部一致性 — smoke pass=true, 53 warning 落 price_reconciliation_events
-- [✅ commit 0180812] Week 3.0.7 P1/P2 hotfix (Codex auto-review) — 修 t=16:00 post-close 误入 regular session, health_check 周末误报. close bp 13.63→6.87, 清理 50 条污染数据.
-- [🔄 commit 63ec8e2] Week 3.1 脚手架完成 — flat_files client + migration 005 (compression + state table) + backfill runner + verify. 停在 S3 credential gate, 等 POLYGON_S3_KEY/SECRET.
+**已完成子任务** (branch: feature/s2-v5.1-week3-minute-aggs → main):
+- [✅ e1b6fbc] 3.0 smoke — Polygon minute ingest + stock_minute_aggs hypertable + 3 intraday features (10 ticker × 5 日)
+- [✅ 7646295] 3.0.5 B-lite 三向对账诊断 — 24 样本, 归因 polygon_daily_vs_minute vendor 差异
+- [✅ e33d905] 3.0.6 A-plus gate + C-partial 血缘 + minute 内部一致性
+- [✅ 0180812] 3.0.7 P1/P2 hotfix — t=16:00 post-close 修正, close bp 13.63→6.87
+- [✅ 63ec8e2 + 后续] 3.1 Polygon flat files 客户端 + migration 005 (compression + state table) + backfill runner
+- [✅ 2026-04-21] **3.1 全量回填 2016-04-20 → 2026-04-17** — 2513 sessions 100% 覆盖, **553 M minute rows**
+- [✅ c220dfb] 3.2 补 6 个 intraday 特征 (共 9 个: gap_pct / overnight_ret / intraday_ret / open_30m_ret / last_30m_ret / realized_vol_1d / volume_curve_surprise / close_to_vwap / transactions_count_zscore)
+- [✅ bd3decb] 3.A dag_daily_data minute_incremental TaskGroup (ENABLE_MINUTE_INCREMENTAL=false 默认, Step A 完成)
+- [✅ c50430c] 3.3.1 历史 intraday 特征构建 — **11.5 M rows**, 10 年 × 9 特征
+- [✅ c96d8b2] 3.3.2 Gate 验证三件套全绿 (覆盖率 100% / A-plus 0 blocker / missing<20% outlier<1%)
+- [✅ 1029650] 3.3.3 V5 sanity PASS — 60D IC=0.0594, **0% 退化**
+- [✅ 5e09410] PR #2 merged to main (2026-04-21)
 
-**已完成子任务**:
-- [✅ 2026-04-21] Week 3.1 全量回填 2016-04-20 → 2026-04-17 (2513 sessions 100% 覆盖, 553 M rows)
-- [✅ commit c220dfb] Week 3.2 补 6 个 intraday 特征 (共 9 个, registry 136→142, 44 tests pass)
-- [✅ commit bd3decb] Week 3.A dag_daily_data minute_incremental TaskGroup (feature flag OFF 默认, Step A 完成)
-- [✅ commit c50430c] Week 3.3.1 历史 intraday 特征构建 (11.5 M rows, 10 年 × 9 特征)
-- [✅ commit c96d8b2] Week 3.3.2 Gate 验证三件套全绿 (覆盖率 100% / A-plus 0 blocker / 特征质量 missing<20%+outlier<1%)
-- [✅ commit 1029650] Week 3.3.3 V5 sanity PASS (60D IC=0.0594, 0% 退化)
+**Gate**: 2019+ active universe minute 覆盖率 > 95% — **实际 2016-04+ 全覆盖 100%, 超额达成** ✅
 
-**任务**：
-- 新建 `src/data/polygon_minute.py`
-- 新表 `stock_minute_aggs`
-- 优先回填 2019+ active universe 的 minute aggregates
-- 建 `src/features/intraday.py` (分钟级特征)
-- 同步生成 overnight / intraday labels (`labels_intraday`)
+**Week 3 期间 bonus 修复** (未在原 plan 范围但实际做了):
+- Week 2.5-P3 universe_membership 真实 PIT bug (FMP 数据不对称, 改 Wikipedia fallback) — commit 5b0fb43
+- 2016-04-18 单日 Polygon 10-year rolling cutoff → skipped_holiday
+- Codex review 19 轮 / 40+ P1&P2 修复 / +64 tests
 
-**首批新特征**：
-- `gap_pct`, `overnight_ret`, `intraday_ret`
-- `open_30m_ret`, `last_30m_ret`
-- `realized_vol_1d`, `volume_curve_surprise`
-- `close_to_vwap`, `transactions_count_zscore`
-
-**新脚本**：
-- `scripts/run_intraday_feature_build.py`
-- `scripts/run_intraday_label_build.py`
-
-**Gate**: 2019+ active universe minute 覆盖率 > 95%
+**Week 3 累计统计**:
+- Minute 数据: 553 M rows (stock_minute_aggs, TimescaleDB hypertable + compression)
+- Intraday 特征: 11.5 M rows (feature_store, 9 features × 10 年)
+- Universe: 3150 rows (universe_membership, 2016-01 ~ 2026-04, 真实 PIT)
+- 代码: 20+ commits, 40+ bug fix, +64 tests
+- 耗时: 3 天 (2026-04-18 ~ 2026-04-21)
 
 ---
 
