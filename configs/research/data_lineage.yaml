@@ -1,0 +1,61 @@
+# Week 3 minute / daily 数据血缘与对账规则。
+
+minute_layer:
+  # 分钟层唯一真相来源。
+  source_of_truth: stock_minute_aggs
+  # 分钟层 ingestion 主入口。
+  ingestion_source: polygon_flat_files
+  # 分钟层当前允许驱动的下游。
+  used_for:
+    - intraday_features
+    - intraday_labels
+    - execution_timing_research
+  # 分钟层当前明确禁止直接驱动的下游。
+  not_used_for:
+    - portfolio_pnl
+    - benchmark_excess_return
+    - risk_reporting
+    - post_cost_truth_table
+
+daily_layer:
+  # 日层唯一真相来源。
+  source_of_truth: stock_prices
+  # 日层当前负责的正式输出。
+  used_for:
+    - portfolio_construction
+    - benchmark_comparison
+    - post_cost_truth_table
+    - pnl
+    - live_reporting
+
+reconciliation_rule:
+  # minute 对账 daily 时的阻断字段。
+  blocker_fields:
+    - open
+    - high
+    - low
+  blocker_threshold_bp: 10
+  # close / volume 只记 warning，不阻断 smoke gate。
+  warning_fields:
+    - close
+    - volume
+  close_warning_threshold_bp: 10
+  volume_warning_threshold_bp: 500
+  # warning 需要落库，不能只打印。
+  warning_event_table: price_reconciliation_events
+
+intraday_feature_layer:
+  # intraday 特征层当前写入 feature_store，供 Week 3 之后的研究使用。
+  source_of_truth: feature_store
+  applies_to:
+    - gap_pct
+    - overnight_ret
+    - intraday_ret
+    - open_30m_ret
+    - last_30m_ret
+    - realized_vol_1d
+    - volume_curve_surprise
+    - close_to_vwap
+    - transactions_count_zscore
+  # Week 3 intraday 特征统一遵守 trade_date + 1 个 XNYS session close 可见。
+  knowledge_time_rule: trade_date + 1 business day close (next XNYS session close, T+1)

@@ -586,6 +586,7 @@ def build_or_load_feature_cache(
     feature_output_path: Path,
     batch_dir: Path,
     manifest_path: Path,
+    allow_missing_intraday: bool = False,
 ) -> dict[str, Any]:
     batch_dir.mkdir(parents=True, exist_ok=True)
     feature_output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -654,6 +655,7 @@ def build_or_load_feature_cache(
                     feature_end=feature_end,
                     as_of=as_of,
                     batch_path=str(batch_spec["path"]),
+                    allow_missing_intraday=allow_missing_intraday,
                 )
                 completed_tickers += int(result["ticker_count"])
                 if completed_tickers % progress_interval == 0 or completed_tickers == len(tickers):
@@ -673,6 +675,7 @@ def build_or_load_feature_cache(
                         feature_end=feature_end,
                         as_of=as_of,
                         batch_path=str(batch_spec["path"]),
+                        allow_missing_intraday=allow_missing_intraday,
                     ): (batch_index, batch_spec)
                     for batch_index, batch_spec in pending_specs
                 }
@@ -721,6 +724,7 @@ def build_feature_batch_worker(
     feature_end: date,
     as_of: date,
     batch_path: str,
+    allow_missing_intraday: bool = False,
 ) -> dict[str, Any]:
     install_runtime_optimizations()
     pipeline = FeaturePipeline()
@@ -737,6 +741,7 @@ def build_feature_batch_worker(
         start_date=feature_start,
         end_date=feature_end,
         as_of=as_of,
+        allow_missing_intraday=allow_missing_intraday,
     )
     filtered = prepare_feature_batch(features)
     write_parquet_atomic(filtered, Path(batch_path))

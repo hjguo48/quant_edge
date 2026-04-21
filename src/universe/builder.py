@@ -113,6 +113,17 @@ def _fetch_index_change_events(index_name: str, *, strict_fmp: bool = False) -> 
     if settings.FMP_API_KEY:
         try:
             events = _fetch_sp500_historical_changes_from_fmp()
+            if events and _fmp_change_feed_is_insufficient(events):
+                message = (
+                    "FMP historical constituent feed is insufficient for PIT reconstruction "
+                    f"(added={sum(1 for event in events if event.added_ticker)}, "
+                    f"removed={sum(1 for event in events if event.removed_ticker)}); "
+                    "falling back to Wikipedia changes"
+                )
+                if strict_fmp:
+                    raise DataSourceError(message)
+                logger.warning(message)
+                return _fetch_sp500_historical_changes_from_wikipedia()
             if strict_fmp or events:
                 return events
         except Exception as exc:
@@ -124,6 +135,13 @@ def _fetch_index_change_events(index_name: str, *, strict_fmp: bool = False) -> 
             )
 
     return _fetch_sp500_historical_changes_from_wikipedia()
+
+
+def _fmp_change_feed_is_insufficient(events: list[UniverseChangeEvent]) -> bool:
+    added_count = sum(1 for event in events if event.added_ticker)
+    removed_count = sum(1 for event in events if event.removed_ticker)
+    both_count = sum(1 for event in events if event.added_ticker and event.removed_ticker)
+    return removed_count >= 200 and (added_count < 100 or both_count < 100)
 
 
 def _fetch_sp500_from_fmp() -> list[str]:
@@ -385,7 +403,7 @@ def _reconstruct_membership_rows(
                         "index_name": index_name,
                         "effective_date": event.effective_date,
                         "end_date": interval_end_by_ticker.get(ticker),
-                        "reason": event.reason or f"{event.source}_change",
+                        "reason": _normalize_membership_reason(event.reason or f"{event.source}_change"),
                     },
                 )
                 active_tickers.remove(ticker)
@@ -402,11 +420,16 @@ def _reconstruct_membership_rows(
                 "index_name": index_name,
                 "effective_date": start_date,
                 "end_date": interval_end_by_ticker.get(ticker),
-                "reason": "historical_backfill_anchor",
+                "reason": _normalize_membership_reason("historical_backfill_anchor"),
             },
         )
 
     return sorted(rows, key=lambda row: (str(row["ticker"]), row["effective_date"]))
+
+
+def _normalize_membership_reason(reason: str | None) -> str:
+    value = (reason or "").strip() or "membership_interval"
+    return value[:50]
 
 
 def _apply_reverse_change(

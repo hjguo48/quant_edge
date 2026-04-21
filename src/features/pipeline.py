@@ -12,8 +12,9 @@ import pandas as pd
 from loguru import logger
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert
+import exchange_calendars as xcals
 
-from src.data.db.models import FeatureStore
+from src.data.db.models import FeatureStore, MinuteBackfillState, StockMinuteAggs
 from src.data.db.pit import get_prices_pit
 from src.data.db.session import get_session_factory
 from src.data.sources.fmp_analyst import AnalystEstimate
@@ -23,6 +24,7 @@ from src.data.sources.fmp_sec_filings import SecFiling
 from src.data.sources.polygon_short_interest import ShortInterest
 from src.features.alternative import ALTERNATIVE_FEATURE_NAMES
 from src.features.fundamental import FUNDAMENTAL_FEATURE_NAMES, compute_fundamental_features
+from src.features.intraday import INTRADAY_FEATURE_NAMES, compute_intraday_features
 from src.features.macro import MACRO_FEATURE_NAMES, compute_macro_features
 from src.features.preprocessing import preprocess_features
 from src.features.sector import SECTOR_RELATIVE_RETAINED, compute_sector_relative_from_raw_features, load_sector_map_pit
@@ -58,6 +60,11 @@ COMPOSITE_FEATURE_NAMES = (
     "macro_risk_on",
 )
 FEATURE_EXPORT_COLUMNS = ["ticker", "trade_date", "feature_name", "feature_value", "is_filled"]
+XNYS = xcals.get_calendar("XNYS")
+
+
+class IntradayHistoryError(RuntimeError):
+    """Raised when intraday minute history is required but unavailable."""
 
 
 def prepare_feature_export_frame(features_df: pd.DataFrame) -> pd.DataFrame:
@@ -113,6 +120,8 @@ class FeaturePipeline:
         start_date: date | datetime,
         end_date: date | datetime,
         as_of: date | datetime,
+        *,
+        allow_missing_intraday: bool = False,
     ) -> pd.DataFrame:
         """Generate PIT-safe features for market dates in the requested window.
 
@@ -203,8 +212,24 @@ class FeaturePipeline:
             output_end=end,
             as_of=as_of_ts,
         )
+        minute_history = load_intraday_minute_history(
+            tickers=normalized_tickers,
+            start_trade_date=start - timedelta(days=90),
+            end_trade_date=end,
+            as_of=as_of_ts,
+            allow_missing=allow_missing_intraday,
+        )
+        intraday = compute_intraday_features(
+            minute_df=minute_history,
+            daily_prices_df=stock_prices,
+        )
+        if not intraday.empty:
+            intraday = intraday.loc[
+                (pd.to_datetime(intraday["trade_date"]).dt.date >= start)
+                & (pd.to_datetime(intraday["trade_date"]).dt.date <= end)
+            ].copy()
         macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
-        base_features = pd.concat([technical, fundamentals, alternative, macro], ignore_index=True)
+        base_features = pd.concat([technical, fundamentals, alternative, intraday, macro], ignore_index=True)
         sector_rotation = compute_sector_rotation_features(
             base_features_df=base_features,
             prices_df=prices,
@@ -528,6 +553,134 @@ def load_alternative_histories_batch(
         sum(len(frame) for frame in histories["sec_filings"].values()),
     )
     return histories
+
+
+def load_intraday_minute_history(
+    *,
+    tickers: Sequence[str],
+    start_trade_date: date,
+    end_trade_date: date,
+    as_of: date | datetime,
+    allow_missing: bool = False,
+) -> pd.DataFrame:
+    normalized_tickers = tuple(dict.fromkeys(str(ticker).upper() for ticker in tickers if ticker))
+    if not normalized_tickers:
+        return pd.DataFrame(
+            columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+        )
+
+    cutoff = _coerce_as_of_datetime(as_of)
+    statement = (
+        sa.select(
+            StockMinuteAggs.ticker,
+            StockMinuteAggs.trade_date,
+            StockMinuteAggs.minute_ts,
+            StockMinuteAggs.open,
+            StockMinuteAggs.high,
+            StockMinuteAggs.low,
+            StockMinuteAggs.close,
+            StockMinuteAggs.volume,
+            StockMinuteAggs.vwap,
+            StockMinuteAggs.transactions,
+        )
+        .where(
+            StockMinuteAggs.ticker.in_(normalized_tickers),
+            StockMinuteAggs.trade_date >= start_trade_date,
+            StockMinuteAggs.trade_date <= end_trade_date,
+            StockMinuteAggs.knowledge_time <= cutoff,
+        )
+        .order_by(StockMinuteAggs.ticker, StockMinuteAggs.minute_ts)
+    )
+    session_factory = get_session_factory()
+    try:
+        with session_factory() as session:
+            expected_sessions = [
+                pd.Timestamp(session_label).date()
+                for session_label in XNYS.sessions_in_range(pd.Timestamp(start_trade_date), pd.Timestamp(end_trade_date))
+            ]
+            if expected_sessions:
+                state_query = sa.select(
+                    MinuteBackfillState.trading_date,
+                    MinuteBackfillState.status,
+                ).where(
+                    MinuteBackfillState.trading_date >= expected_sessions[0],
+                    MinuteBackfillState.trading_date <= expected_sessions[-1],
+                )
+                state_rows = session.execute(state_query).mappings().all()
+                state_map = {
+                    pd.Timestamp(row["trading_date"]).date(): str(row["status"]).lower()
+                    for row in state_rows
+                }
+                incomplete = [
+                    trade_day
+                    for trade_day in expected_sessions
+                    if state_map.get(trade_day) not in {"completed", "skipped_holiday"}
+                ]
+                if incomplete:
+                    if allow_missing:
+                        logger.error(
+                            "minute_history backfill incomplete (allow_missing=True): {} days missing ({}...) range {}~{}",
+                            len(incomplete),
+                            [trade_day.isoformat() for trade_day in incomplete[:5]],
+                            start_trade_date,
+                            end_trade_date,
+                        )
+                    else:
+                        raise IntradayHistoryError(
+                            "minute history backfill incomplete: "
+                            f"{len(incomplete)} trading days not completed "
+                            f"(first 5: {[trade_day.isoformat() for trade_day in incomplete[:5]]}) "
+                            f"range {start_trade_date}~{end_trade_date}",
+                        )
+            rows = session.execute(statement).mappings().all()
+    except IntradayHistoryError:
+        raise
+    except Exception as exc:
+        if allow_missing:
+            logger.error("minute_history_missing (allow_missing=True): {}", exc)
+            return pd.DataFrame(
+                columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+            )
+        raise IntradayHistoryError(
+            f"minute history unavailable for {','.join(normalized_tickers)} {start_trade_date}~{end_trade_date}: {exc}",
+        ) from exc
+
+    if not rows:
+        if allow_missing:
+            logger.error(
+                "minute_history empty (allow_missing=True): tickers={} range={}~{}",
+                normalized_tickers,
+                start_trade_date,
+                end_trade_date,
+            )
+            return pd.DataFrame(
+                columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+            )
+        raise IntradayHistoryError(
+            "minute history empty for "
+            f"{','.join(normalized_tickers)} {start_trade_date}~{end_trade_date} "
+            "(query succeeded but returned 0 rows; check minute_backfill_state coverage)",
+        )
+    loaded_tickers = {str(row["ticker"]).upper() for row in rows}
+    missing_tickers = sorted(set(normalized_tickers) - loaded_tickers)
+    if missing_tickers:
+        if allow_missing:
+            logger.error(
+                "minute_history partial coverage (allow_missing=True): missing tickers {} range {}~{}",
+                missing_tickers,
+                start_trade_date,
+                end_trade_date,
+            )
+        else:
+            preview = ",".join(missing_tickers[:5])
+            suffix = "..." if len(missing_tickers) > 5 else ""
+            raise IntradayHistoryError(
+                "minute history partial for "
+                f"{len(missing_tickers)} tickers ({preview}{suffix}) "
+                f"{start_trade_date}~{end_trade_date} "
+                f"(query returned {len(loaded_tickers)}/{len(normalized_tickers)} tickers)",
+            )
+    return pd.DataFrame(rows)
 
 
 def _compute_alternative_features_for_ticker_history(
