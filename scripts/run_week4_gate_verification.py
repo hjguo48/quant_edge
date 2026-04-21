@@ -101,10 +101,13 @@ def compute_coverage_gate(status_counts: dict[str, int], *, threshold_pct: float
     skipped_holiday = status_counts.get("skipped_holiday", 0)
     completed = status_counts.get("completed", 0) + status_counts.get("partial", 0)
     denominator = max(total - skipped_holiday, 0)
-    value = (completed / denominator * 100.0) if denominator > 0 else 0.0
+    # F2: when denominator=0, report value=None (not 0.0) so downstream consumers can distinguish
+    # "truly 0% covered" from "no coverable samples exist".
+    value = (completed / denominator * 100.0) if denominator > 0 else None
+    value_rounded = round(value, 4) if value is not None else None
     return {
-        "pass": value >= threshold_pct and denominator > 0,
-        "value": round(value, 4),
+        "pass": (value is not None) and value >= threshold_pct,
+        "value": value_rounded,
         "threshold": threshold_pct,
         "completed": completed,
         "denominator": denominator,

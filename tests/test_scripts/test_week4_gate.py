@@ -105,6 +105,8 @@ def test_coverage_gate_all_skipped_holiday_fails_gracefully() -> None:
     result = gate.compute_coverage_gate(counts, threshold_pct=95.0)
     assert result["pass"] is False
     assert result["denominator"] == 0
+    # F2: denominator=0 → value=None (not 0.0) so consumers distinguish "no coverable" from "0% covered"
+    assert result["value"] is None
 
 
 # ---------------------------------------------------------------------------
