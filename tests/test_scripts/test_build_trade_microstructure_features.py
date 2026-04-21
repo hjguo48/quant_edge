@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -189,6 +190,9 @@ def test_build_features_happy_path(tmp_path: Path, monkeypatched_loaders) -> Non
     assert frame["knowledge_time_offhours"].iloc[0].hour == 1
     # trade_imbalance_proxy on up-tick day → positive
     assert frame["trade_imbalance_proxy"].iloc[0] > 0
+    # Task 9 consumers rely on tz-aware UTC knowledge_time; assert parquet round-trip preserves tz
+    assert str(frame["knowledge_time_regular"].dt.tz) == "UTC"
+    assert str(frame["knowledge_time_offhours"].dt.tz) == "UTC"
 
 
 def test_build_features_resume_skips_completed(tmp_path: Path, monkeypatched_loaders) -> None:
@@ -336,6 +340,177 @@ def test_build_features_empty_range_writes_nothing(tmp_path: Path, monkeypatched
     assert summary["rows_computed"] == 0
     assert summary["rows_total"] == 0
     assert not output.exists()
+
+
+def test_build_features_decimal_inputs_match_float_outputs(tmp_path: Path, monkeypatched_loaders) -> None:
+    """P1-2: Production DB returns price/size as Decimal (Numeric cols) and conditions as list[int] from
+    ARRAY(SmallInteger). Verify these types round-trip through feature compute identically to floats.
+    """
+    config_path = _write_config(tmp_path)
+    config = builder.preflight_trades_estimator.load_config(config_path)
+    config_hash = builder.preflight_trades_estimator.compute_config_hash(config)
+
+    def _trades_decimal() -> pd.DataFrame:
+        return pd.DataFrame(
+            [
+                {
+                    "sip_timestamp": _et("2026-01-05 10:00"),
+                    "price": Decimal("100.000000"),
+                    "size": Decimal("100.0000"),
+                    "exchange": 1,
+                    "trf_id": None,
+                    "trf_timestamp": None,
+                    "conditions": [0],
+                },
+                {
+                    "sip_timestamp": _et("2026-01-05 10:01"),
+                    "price": Decimal("101.000000"),
+                    "size": Decimal("100.0000"),
+                    "exchange": 1,
+                    "trf_id": None,
+                    "trf_timestamp": None,
+                    "conditions": [0],
+                },
+                {
+                    "sip_timestamp": _et("2026-01-05 15:05"),
+                    "price": Decimal("102.000000"),
+                    "size": Decimal("100.0000"),
+                    "exchange": 4,
+                    "trf_id": None,
+                    "trf_timestamp": None,
+                    "conditions": [0],
+                },
+                {
+                    "sip_timestamp": _et("2026-01-05 08:00"),
+                    "price": Decimal("99.000000"),
+                    "size": Decimal("100.0000"),
+                    "exchange": 1,
+                    "trf_id": None,
+                    "trf_timestamp": None,
+                    "conditions": [0],
+                },
+            ],
+        )
+
+    groups = [("AAPL", date(2026, 1, 5))]
+
+    # Decimal run
+    factory_dec = monkeypatched_loaders(groups, {groups[0]: _trades_decimal()})
+    out_dec = tmp_path / "features_decimal.parquet"
+    builder.build_features(
+        config=config,
+        config_hash=config_hash,
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 31),
+        output_path=out_dec,
+        session_factory=factory_dec,
+        resume=True,
+    )
+    frame_dec = pd.read_parquet(out_dec)
+
+    # Float baseline
+    factory_float = monkeypatched_loaders(groups, {groups[0]: _sample_trades()})
+    out_float = tmp_path / "features_float.parquet"
+    builder.build_features(
+        config=config,
+        config_hash=config_hash,
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 31),
+        output_path=out_float,
+        session_factory=factory_float,
+        resume=True,
+    )
+    frame_float = pd.read_parquet(out_float)
+
+    numeric_cols = [
+        "trade_imbalance_proxy",
+        "large_trade_ratio",
+        "late_day_aggressiveness",
+        "offhours_trade_ratio",
+        "off_exchange_volume_ratio",
+    ]
+    for col in numeric_cols:
+        dec_val = frame_dec[col].iloc[0]
+        float_val = frame_float[col].iloc[0]
+        if pd.isna(dec_val) and pd.isna(float_val):
+            continue
+        assert dec_val == pytest.approx(float_val, rel=1e-9, abs=1e-9), f"{col}: decimal={dec_val} float={float_val}"
+
+
+def test_build_features_condition_filter_subset_semantics(tmp_path: Path, monkeypatched_loaders) -> None:
+    """P1-1: Lock the 'subset' semantics of condition_allow_list — a trade is KEPT iff its conditions
+    array is a subset of the allow list. Trades with ANY condition outside the list are DROPPED.
+
+    This is a strict whitelist, not an intersection filter. Operators editing the yaml must understand
+    this to avoid silently dropping 90%+ of trades.
+    """
+    config_path = _write_config(tmp_path)
+    payload = _config_payload()
+    payload["features"]["condition_allow_list"] = [0]  # only trades with conditions ⊆ {0} kept
+    config_path.write_text(yaml.safe_dump(payload))
+    config = builder.preflight_trades_estimator.load_config(config_path)
+    config_hash = builder.preflight_trades_estimator.compute_config_hash(config)
+
+    # 3 trades: first [0] (kept), second [12] (dropped — 12 not in allow), third [0, 12] (DROPPED —
+    # {0,12} not a subset of {0}), fourth [0] (kept)
+    trades = pd.DataFrame(
+        [
+            {
+                "sip_timestamp": _et("2026-01-05 10:00"),
+                "price": 100.0,
+                "size": 100.0,
+                "exchange": 1,
+                "trf_id": None,
+                "trf_timestamp": None,
+                "conditions": [0],  # kept
+            },
+            {
+                "sip_timestamp": _et("2026-01-05 10:01"),
+                "price": 200.0,
+                "size": 100.0,
+                "exchange": 1,
+                "trf_id": None,
+                "trf_timestamp": None,
+                "conditions": [12],  # dropped
+            },
+            {
+                "sip_timestamp": _et("2026-01-05 10:02"),
+                "price": 300.0,
+                "size": 100.0,
+                "exchange": 1,
+                "trf_id": None,
+                "trf_timestamp": None,
+                "conditions": [0, 12],  # dropped (not subset of {0})
+            },
+            {
+                "sip_timestamp": _et("2026-01-05 10:03"),
+                "price": 101.0,
+                "size": 100.0,
+                "exchange": 1,
+                "trf_id": None,
+                "trf_timestamp": None,
+                "conditions": [0],  # kept
+            },
+        ],
+    )
+
+    groups = [("AAPL", date(2026, 1, 5))]
+    factory = monkeypatched_loaders(groups, {groups[0]: trades})
+    output = tmp_path / "features.parquet"
+    builder.build_features(
+        config=config,
+        config_hash=config_hash,
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 31),
+        output_path=output,
+        session_factory=factory,
+        resume=True,
+    )
+    frame = pd.read_parquet(output)
+    # Only 2 kept trades (100 → 101) contribute to imbalance calc:
+    # first trade has no prior sign (→ 0), second trade up-tick (+1)
+    # → signed_size = 0*100 + 1*100 = 100; total = 200 → 0.5
+    assert frame["trade_imbalance_proxy"].iloc[0] == pytest.approx(0.5)
 
 
 def test_build_features_skips_group_with_empty_trades(tmp_path: Path, monkeypatched_loaders) -> None:

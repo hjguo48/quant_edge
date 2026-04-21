@@ -128,7 +128,14 @@ def compute_feature_row(
     config: Week4TradesConfig,
     config_hash: str,
 ) -> dict[str, Any]:
-    """Compute 5 trade microstructure features + PIT knowledge times for one (ticker, event_date)."""
+    """Compute 5 trade microstructure features + PIT knowledge times for one (ticker, event_date).
+
+    Note on condition_allow semantics (Task 7 contract): trades are kept iff their `conditions`
+    array is a **subset** of `condition_allow_list`. Empty list = no filter (keep all trades).
+    A non-empty list is a strict whitelist — any trade containing even one condition code outside
+    the list is dropped. Operators configuring this yaml field must understand this strict
+    semantics; see test_build_features_condition_filter_subset_semantics for expected behavior.
+    """
     condition_allow = set(config.features.condition_allow_list) or None
     trf_exchange_codes = set(config.features.trf_exchange_codes)
     late_day_window = tuple(config.features.late_day_window_et)
@@ -199,6 +206,11 @@ def build_features(
     """Main loop — iterate (ticker, event_date) pairs, compute features, write parquet.
 
     Returns summary dict with counts (skipped, computed, written).
+
+    TODO(Task 10 / Stage 2): current impl holds a single transaction across the entire run and
+    only writes the final parquet after the loop. For Stage 2 (top_200 × 10-year ~ 30k+ ticker-days)
+    this risks losing work on crash + prevents autovacuum. Consider incremental flush every N groups
+    (e.g., N=1000) via pyarrow partitioned write_dataset, and per-group session re-open.
     """
     factory = session_factory or get_session_factory()
     if resume:
