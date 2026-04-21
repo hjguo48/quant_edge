@@ -1,0 +1,38 @@
+{
+  "metadata": {
+    "说明": "Week 2.5 P3 universe_membership PIT coverage verification.",
+    "generated_at_utc": "2026-04-21T13:11:38.056766+00:00",
+    "script_name": "scripts/verify_universe_pit_coverage.py",
+    "accepted_range": [
+      490,
+      515
+    ]
+  },
+  "summary": {
+    "check_dates": [
+      "2016-01-01",
+      "2017-06-01",
+      "2018-12-31",
+      "2020-06-15",
+      "2023-01-01",
+      "2023-12-15",
+      "2024-06-01",
+      "2025-12-31"
+    ],
+    "count_range": [
+      503,
+      509
+    ],
+    "all_dates_passed": true
+  },
+  "counts_by_date": {
+    "2016-01-01": 509,
+    "2017-06-01": 509,
+    "2018-12-31": 506,
+    "2020-06-15": 506,
+    "2023-01-01": 503,
+    "2023-12-15": 503,
+    "2024-06-01": 503,
+    "2025-12-31": 503
+  }
+}
