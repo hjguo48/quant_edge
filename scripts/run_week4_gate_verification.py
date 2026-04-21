@@ -71,6 +71,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
     parser.add_argument("--n-windows", type=int, default=DEFAULT_N_WINDOWS)
     parser.add_argument(
+        "--feature-names",
+        type=str,
+        default=",".join(TRADE_MICROSTRUCTURE_FEATURE_NAMES),
+        help="Comma-separated feature columns to evaluate. Defaults to all trade microstructure features.",
+    )
+    parser.add_argument(
         "--stage-note",
         type=str,
         default="pilot",
@@ -467,11 +473,13 @@ def evaluate_gates(
     label_col: str,
     n_windows: int,
     stage_note: str,
+    feature_names: tuple[str, ...] = TRADE_MICROSTRUCTURE_FEATURE_NAMES,
 ) -> dict[str, Any]:
     """Pure evaluator — no DB access. Takes all data as frames, returns the full gate report."""
     coverage = compute_coverage_gate(state_counts, threshold_pct=config.gate.coverage_min_pct)
     feature_quality = compute_feature_quality_gate(
         features_frame,
+        feature_names=feature_names,
         missing_max_pct=config.gate.feature_missing_max_pct,
         outlier_max_pct=config.gate.feature_outlier_max_pct,
     )
@@ -491,6 +499,7 @@ def evaluate_gates(
             features_frame,
             labels_frame,
             label_col=label_col,
+            feature_names=feature_names,
             ic_threshold=config.gate.ic_threshold,
             abs_tstat_threshold=config.gate.abs_tstat_threshold,
             sign_consistent_windows_min=config.gate.sign_consistent_windows_min,
@@ -502,6 +511,7 @@ def evaluate_gates(
             labels_frame,
             state_frame if state_frame is not None else pd.DataFrame(),
             label_col=label_col,
+            feature_names=feature_names,
         )
 
     notes = [
@@ -534,6 +544,7 @@ def run_gate_verification(
     label_col: str,
     n_windows: int,
     stage_note: str,
+    feature_names: tuple[str, ...] = TRADE_MICROSTRUCTURE_FEATURE_NAMES,
     session_factory: Callable[[], Session] | None = None,
 ) -> dict[str, Any]:
     if not features_path.exists():
@@ -562,7 +573,15 @@ def run_gate_verification(
         label_col=label_col,
         n_windows=n_windows,
         stage_note=stage_note,
+        feature_names=feature_names,
     )
+
+
+def parse_feature_names(raw: str) -> tuple[str, ...]:
+    names = tuple(dict.fromkeys(name.strip() for name in raw.split(",") if name.strip()))
+    if not names:
+        raise ValueError("--feature-names must include at least one feature")
+    return names
 
 
 def _format_console(report: dict[str, Any]) -> str:
@@ -592,6 +611,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     config = preflight_trades_estimator.load_config(args.config)
     config_hash = preflight_trades_estimator.compute_config_hash(config)
+    feature_names = parse_feature_names(args.feature_names)
 
     report = run_gate_verification(
         config=config,
@@ -601,6 +621,7 @@ def main(argv: list[str] | None = None) -> int:
         label_col=args.label_col,
         n_windows=args.n_windows,
         stage_note=args.stage_note,
+        feature_names=feature_names,
     )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)

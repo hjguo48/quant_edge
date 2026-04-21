@@ -387,6 +387,68 @@ def test_evaluate_gates_end_to_end_all_pass(config, config_hash) -> None:
     assert report["overall_pass"] is True
 
 
+def test_evaluate_gates_respects_feature_subset(config, config_hash) -> None:
+    rng = np.random.default_rng(22)
+    n = 400
+    dates = pd.date_range("2022-01-01", periods=n, freq="D").date
+    tickers = np.tile(["AAPL", "MSFT"], n // 2 + 1)[:n]
+    signal = rng.normal(0, 1, n)
+    subset = ("trade_imbalance_proxy", "late_day_aggressiveness", "offhours_trade_ratio")
+    features = pd.DataFrame(
+        {
+            "event_date": dates,
+            "ticker": tickers,
+            "knowledge_time_regular": pd.Timestamp("2022-01-05 21:15", tz="UTC"),
+            "knowledge_time_offhours": pd.Timestamp("2022-01-06 01:15", tz="UTC"),
+            "trade_imbalance_proxy": signal,
+            "late_day_aggressiveness": signal * 0.8 + rng.normal(0, 0.1, n),
+            "offhours_trade_ratio": rng.uniform(0, 0.3, n),
+            "run_config_hash": ["h"] * n,
+        },
+    )
+    labels = pd.DataFrame(
+        {
+            "event_date": dates,
+            "ticker": tickers,
+            "forward_excess_return_5d": signal * 0.7 + rng.normal(0, 0.3, n),
+        },
+    )
+    state = pd.DataFrame(
+        {
+            "ticker": tickers,
+            "trading_date": dates,
+            "sampled_reason": ["minute_proxy"] * n,
+            "status": ["completed"] * n,
+        },
+    )
+
+    report = gate.evaluate_gates(
+        config=config,
+        config_hash=config_hash,
+        features_frame=features,
+        labels_frame=labels,
+        state_counts={"completed": 100},
+        state_frame=state,
+        label_col="forward_excess_return_5d",
+        n_windows=11,
+        stage_note="minute_proxy",
+        feature_names=subset,
+    )
+
+    assert set(report["gates"]["feature_quality"]["per_feature"]) == set(subset)
+    assert "large_trade_ratio" not in report["gates"]["data_readiness_ic"]["details"]
+    assert report["overall_pass"] is True
+
+
+def test_parse_feature_names_deduplicates_and_rejects_empty() -> None:
+    assert gate.parse_feature_names(" trade_imbalance_proxy,late_day_aggressiveness,trade_imbalance_proxy ") == (
+        "trade_imbalance_proxy",
+        "late_day_aggressiveness",
+    )
+    with pytest.raises(ValueError, match="feature-names"):
+        gate.parse_feature_names(" , ")
+
+
 def test_output_json_schema_contains_expected_keys(config, config_hash) -> None:
     frame = _feature_frame()
     report = gate.evaluate_gates(
