@@ -106,6 +106,16 @@ def downgrade() -> None:
     op.drop_table("trades_sampling_state")
 
     op.execute("SELECT remove_compression_policy('stock_trades_sampled', if_exists => TRUE);")
+    op.execute(
+        """
+        ALTER TABLE stock_trades_sampled
+        RESET (
+            timescaledb.compress,
+            timescaledb.compress_segmentby,
+            timescaledb.compress_orderby
+        );
+        """,
+    )
     op.drop_index("ix_trades_sampled_trading_date", table_name="stock_trades_sampled")
     op.drop_index("ix_trades_sampled_knowledge_time", table_name="stock_trades_sampled")
     op.drop_table("stock_trades_sampled")
