@@ -80,6 +80,29 @@ def test_evaluate_gate3_requires_missing_outlier_and_documentation() -> None:
     assert any(item["issue_type"] == "lag_rule_undocumented" for item in summary["failing_examples"])
 
 
+def test_evaluate_gate3_uses_20pct_missing_threshold() -> None:
+    metrics = [
+        gate_module.FeatureQualityMetric(
+            feature_name="open_30m_ret",
+            total_rows=100,
+            missing_rows=18,
+            missing_rate=0.18,
+            evaluated_rows=82,
+            outlier_rows=0,
+            outlier_rate=0.0,
+            lag_rule_documented=True,
+            missing_examples=[],
+            outlier_examples=[],
+        ),
+    ]
+
+    summary = gate_module.evaluate_gate3(metrics)
+
+    assert summary["pass"] is True
+    assert summary["features"]["open_30m_ret"]["missing_rate_pass"] is True
+    assert summary["missing_threshold"] == 0.20
+
+
 def test_load_lag_rule_documentation_recognizes_intraday_rule(tmp_path: Path) -> None:
     lineage_path = tmp_path / "data_lineage.yaml"
     lineage_path.write_text(

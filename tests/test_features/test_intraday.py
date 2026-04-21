@@ -246,6 +246,27 @@ def test_close_to_vwap_uses_volume_weighted_minute_vwap() -> None:
     assert is_filled is False
 
 
+def test_close_to_vwap_uses_close_fallback_when_vwap_all_null() -> None:
+    minute_bars = pd.DataFrame(
+        {
+            "close": [100.0, 110.0],
+            "volume": [1000.0, 9000.0],
+            "vwap": [np.nan, np.nan],
+            "minute_ts": pd.to_datetime(
+                ["2026-01-05 20:58:00+00:00", "2026-01-05 20:59:00+00:00"],
+                utc=True,
+            ),
+        },
+    )
+
+    value, is_filled = compute_close_to_vwap(minute_bars)
+
+    expected_vwap = (100.0 * 1000.0 + 110.0 * 9000.0) / 10000.0
+    assert expected_vwap == pytest.approx(109.0)
+    assert value == pytest.approx((110.0 - expected_vwap) / expected_vwap)
+    assert is_filled is False
+
+
 def test_close_to_vwap_flags_is_filled_on_missing_session_tail() -> None:
     minute_bars = pd.DataFrame(
         {

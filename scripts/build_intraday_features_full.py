@@ -49,6 +49,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE)
     parser.add_argument("--max-workers", type=int, default=min(4, max(1, (os.cpu_count() or 4) // 2)))
     parser.add_argument("--report-output", default=DEFAULT_REPORT_OUTPUT)
+    parser.add_argument(
+        "--features",
+        default=",".join(INTRADAY_FEATURE_NAMES),
+        help="Comma-separated subset of intraday features to build.",
+    )
     return parser.parse_args(argv)
 
 
@@ -136,11 +141,18 @@ def build_expected_pairs(
 
 
 def build_expected_feature_rows(expected_pairs: pd.DataFrame) -> pd.DataFrame:
+    return build_expected_feature_rows_for_names(expected_pairs, INTRADAY_FEATURE_NAMES)
+
+
+def build_expected_feature_rows_for_names(
+    expected_pairs: pd.DataFrame,
+    feature_names: Sequence[str],
+) -> pd.DataFrame:
     if expected_pairs.empty:
         return pd.DataFrame(columns=FEATURE_COLUMNS)
     rows: list[dict[str, object]] = []
     for row in expected_pairs.itertuples(index=False):
-        for feature_name in INTRADAY_FEATURE_NAMES:
+        for feature_name in feature_names:
             rows.append(
                 {
                     "ticker": str(row.ticker).upper(),
@@ -158,6 +170,7 @@ def load_existing_feature_rows(
     start_date: date,
     end_date: date,
     tickers: Sequence[str],
+    feature_names: Sequence[str],
 ) -> pd.DataFrame:
     if not tickers:
         return pd.DataFrame(columns=["ticker", "trade_date", "feature_name"])
@@ -179,7 +192,7 @@ def load_existing_feature_rows(
                 "start_date": start_date,
                 "end_date": end_date,
                 "tickers": list(tickers),
-                "feature_names": list(INTRADAY_FEATURE_NAMES),
+                "feature_names": list(feature_names),
             },
             parse_dates=["trade_date"],
         )
@@ -231,6 +244,7 @@ def build_chunk_frame(
     target_start: date,
     target_end: date,
     expected_pairs: pd.DataFrame,
+    feature_names: Sequence[str],
 ) -> pd.DataFrame:
     if expected_pairs.empty:
         return pd.DataFrame(columns=FEATURE_COLUMNS)
@@ -257,9 +271,9 @@ def build_chunk_frame(
             (pd.to_datetime(computed["trade_date"]).dt.date >= target_start)
             & (pd.to_datetime(computed["trade_date"]).dt.date <= target_end)
             & (computed["ticker"].astype(str).str.upper().isin([str(ticker).upper() for ticker in tickers]))
-            & (computed["feature_name"].isin(INTRADAY_FEATURE_NAMES))
+            & (computed["feature_name"].isin(feature_names))
         ].copy()
-    expected_rows = build_expected_feature_rows(expected_pairs)
+    expected_rows = build_expected_feature_rows_for_names(expected_pairs, feature_names)
     return merge_intraday_rows(expected_rows, computed)
 
 
@@ -360,6 +374,7 @@ def process_month_window(
     window_end: date,
     chunk_size: int,
     max_workers: int,
+    feature_names: Sequence[str],
 ) -> dict[str, object]:
     session_dates = _coerce_session_dates(window_start, window_end)
     membership_rows = load_membership_rows(start_date=window_start, end_date=window_end)
@@ -373,7 +388,7 @@ def process_month_window(
         "session_day_count": len(session_dates),
         "skipped_universe_days": [trade_day.isoformat() for trade_day in skipped_universe_days],
         "expected_ticker_dates": int(len(expected_pairs)),
-        "expected_feature_rows": int(len(expected_pairs) * len(INTRADAY_FEATURE_NAMES)),
+        "expected_feature_rows": int(len(expected_pairs) * len(feature_names)),
         "rows_written": 0,
         "existing_feature_rows_skipped": 0,
         "missing_rows_padded": 0,
@@ -394,6 +409,7 @@ def process_month_window(
                 expected_pairs=expected_pairs.loc[expected_pairs["ticker"].isin(ticker_batch)].copy(),
                 window_start=window_start,
                 window_end=window_end,
+                feature_names=feature_names,
             ): batch_index
             for batch_index, ticker_batch in batches
         }
@@ -414,6 +430,7 @@ def process_ticker_batch(
     expected_pairs: pd.DataFrame,
     window_start: date,
     window_end: date,
+    feature_names: Sequence[str],
 ) -> dict[str, int]:
     if expected_pairs.empty:
         return {
@@ -426,16 +443,17 @@ def process_ticker_batch(
         start_date=window_start,
         end_date=window_end,
         tickers=ticker_batch,
+        feature_names=feature_names,
     )
     existing_pair_counts = Counter(
         (str(row.ticker).upper(), row.trade_date)
         for row in existing_rows.itertuples(index=False)
-        if str(row.feature_name) in INTRADAY_FEATURE_SET
+        if str(row.feature_name) in set(feature_names)
     )
     complete_pairs = {
         pair
         for pair, count in existing_pair_counts.items()
-        if count >= len(INTRADAY_FEATURE_NAMES)
+        if count >= len(feature_names)
     }
     if complete_pairs:
         expected_pairs = expected_pairs.loc[
@@ -464,6 +482,7 @@ def process_ticker_batch(
         target_start=window_start,
         target_end=window_end,
         expected_pairs=expected_pairs,
+        feature_names=feature_names,
     )
     padded_count = int(batch_frame["feature_value"].isna().sum())
     filtered_frame, skipped_existing = filter_existing_feature_rows(batch_frame, existing_rows)
@@ -490,6 +509,7 @@ def build_intraday_feature_history(
     end_date: date,
     chunk_size: int,
     max_workers: int,
+    feature_names: Sequence[str],
 ) -> dict[str, object]:
     month_results: list[dict[str, object]] = []
     errors: list[dict[str, object]] = []
@@ -502,6 +522,7 @@ def build_intraday_feature_history(
                     window_end=window_end,
                     chunk_size=chunk_size,
                     max_workers=max_workers,
+                    feature_names=feature_names,
                 ),
             )
         except Exception as exc:
@@ -533,7 +554,7 @@ def build_intraday_feature_history(
             "end_date": end_date.isoformat(),
             "chunk_size": int(chunk_size),
             "max_workers": int(max_workers),
-            "feature_names": list(INTRADAY_FEATURE_NAMES),
+            "feature_names": list(feature_names),
         },
         "summary": {
             "month_window_count": len(month_results),
@@ -555,11 +576,20 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging()
     start_date = date.fromisoformat(args.start_date)
     end_date = date.fromisoformat(args.end_date)
+    feature_names = tuple(
+        name.strip()
+        for name in str(args.features).split(",")
+        if name.strip()
+    )
+    unknown_features = sorted(set(feature_names) - INTRADAY_FEATURE_SET)
+    if unknown_features:
+        raise SystemExit(f"unknown intraday feature(s): {', '.join(unknown_features)}")
     summary = build_intraday_feature_history(
         start_date=start_date,
         end_date=end_date,
         chunk_size=int(args.chunk_size),
         max_workers=int(args.max_workers),
+        feature_names=feature_names,
     )
     report_path = REPO_ROOT / args.report_output
     write_json_atomic(report_path, summary)

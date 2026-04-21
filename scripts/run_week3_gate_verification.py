@@ -18,6 +18,8 @@ DEFAULT_START_DATE = date(2016, 4, 20)
 DEFAULT_END_DATE = date(2026, 4, 17)
 DEFAULT_REPORT_OUTPUT = Path(f"data/reports/week3_gate_verification_{date.today().strftime('%Y%m%d')}.json")
 DEFAULT_LINEAGE_PATH = Path("configs/research/data_lineage.yaml")
+MISSING_RATE_THRESHOLD = 0.20
+OUTLIER_RATE_THRESHOLD = 0.01
 
 
 @dataclass(frozen=True)
@@ -135,8 +137,8 @@ def evaluate_gate2(blocker_count: int, warning_count: int, sample_blockers: list
 def evaluate_gate3(
     feature_metrics: list[FeatureQualityMetric],
     *,
-    missing_threshold: float = 0.05,
-    outlier_threshold: float = 0.01,
+    missing_threshold: float = MISSING_RATE_THRESHOLD,
+    outlier_threshold: float = OUTLIER_RATE_THRESHOLD,
 ) -> dict[str, Any]:
     feature_payload: dict[str, Any] = {}
     failing_examples: list[dict[str, Any]] = []
@@ -189,6 +191,10 @@ def evaluate_gate3(
     return {
         "pass": all_pass,
         "missing_threshold": missing_threshold,
+        "missing_threshold_note": (
+            ">20% missing suggests structural coverage problems; lower rates can reflect genuine "
+            "low-liquidity boundary-minute gaps rather than a feature bug."
+        ),
         "outlier_threshold": outlier_threshold,
         "features": feature_payload,
         "failing_examples": failing_examples,

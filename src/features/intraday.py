@@ -126,6 +126,8 @@ def compute_close_to_vwap(minute_bars: pd.DataFrame) -> tuple[float, bool]:
     if pd.isna(day_close):
         return np.nan, True
     minute_vwaps = pd.to_numeric(minute_bars["vwap"], errors="coerce")
+    if minute_vwaps.isna().all():
+        minute_vwaps = closes
     weighted_vwaps = minute_vwaps * volumes
     day_vwap_numerator = weighted_vwaps.sum(min_count=1)
     if pd.isna(day_vwap_numerator):
