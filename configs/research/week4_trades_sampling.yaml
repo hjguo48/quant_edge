@@ -4,24 +4,18 @@ version: 1
 stage: pilot  # pilot | stage2
 
 sampling:
+  # Smoke-run scope (stage 1): W5 only + top_n=50 to validate streaming pipeline.
+  # After Gate sanity check, restore W6/W11 + gap for full pilot run.
   pilot:
     reasons:
-      - earnings
-      - gap
       - weak_window
     earnings_window_days: 3
     gap_threshold_pct: 0.03
-    weak_window_top_n: 100
+    weak_window_top_n: 50
     weak_windows:
       - name: W5
         start: "2022-10-01"
         end: "2023-03-31"
-      - name: W6
-        start: "2023-04-01"
-        end: "2023-09-30"
-      - name: W11
-        start: "2025-10-01"
-        end: "2026-03-31"
   stage2:
     top_n_liquidity: 200
     top_liquidity_lookback_days: 20

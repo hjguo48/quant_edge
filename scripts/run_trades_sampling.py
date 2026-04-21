@@ -22,14 +22,34 @@ from src.data.db.models import StockTradesSampled, TradesSamplingState
 from src.data.db.session import get_session_factory
 from src.data.polygon_trades import PolygonTradesClient, TradeRecord
 from src.data.sources.base import DataSourceAuthError
+from src.features.trade_microstructure import (
+    TRADE_MICROSTRUCTURE_FEATURE_NAMES,
+    compute_knowledge_time,
+    compute_large_trade_ratio,
+    compute_late_day_aggressiveness,
+    compute_off_exchange_volume_ratio,
+    compute_offhours_trade_ratio,
+    compute_trade_imbalance_proxy,
+)
 
 DEFAULT_PLAN_PATH = Path("data/reports/week4/trades_sampling_plan.parquet")
 DEFAULT_CONFIG_PATH = Path("configs/research/week4_trades_sampling.yaml")
+DEFAULT_FEATURES_OUTPUT = Path("data/features/trade_microstructure_features.parquet")
 DEFAULT_BATCH_SIZE = 10_000
+DEFAULT_STREAMING_FLUSH_EVERY = 200  # flush features parquet every N completed jobs
 STATE_PENDING = "pending"
 STATE_FAILED = "failed"
 STATE_COMPLETED = "completed"
 STATE_PARTIAL = "partial"
+
+FEATURE_OUTPUT_COLUMNS = [
+    "event_date",
+    "ticker",
+    "knowledge_time_regular",
+    "knowledge_time_offhours",
+    *TRADE_MICROSTRUCTURE_FEATURE_NAMES,
+    "run_config_hash",
+]
 
 
 class StorageBudgetExceeded(RuntimeError):
@@ -47,11 +67,12 @@ class SamplingJob:
 class FetchResult:
     job: SamplingJob
     raw_count: int
-    rows: list[dict[str, Any]]
+    rows: list[dict[str, Any]]  # DB-mode: trade rows for insert; streaming-mode: empty
     dropped_conditions: int
     pages_fetched: int
     api_calls_used: int
     partial: bool
+    features_row: dict[str, Any] | None = None  # streaming-mode: computed feature row
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -63,6 +84,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
+    parser.add_argument(
+        "--streaming-mode",
+        action="store_true",
+        help="Compute 5 trade features from fetched trades in-memory and write parquet; skip DB persist.",
+    )
+    parser.add_argument(
+        "--features-output",
+        type=Path,
+        default=DEFAULT_FEATURES_OUTPUT,
+        help="Output parquet for streaming mode features (ignored in DB mode).",
+    )
+    parser.add_argument(
+        "--streaming-flush-every",
+        type=int,
+        default=DEFAULT_STREAMING_FLUSH_EVERY,
+        help="Checkpoint features parquet every N completed jobs in streaming mode.",
+    )
     return parser.parse_args(argv)
 
 
@@ -146,11 +184,72 @@ def trade_to_record(
     }
 
 
+def _trades_to_feature_dataframe(trades: list[TradeRecord]) -> pd.DataFrame:
+    """Convert TradeRecord list to DataFrame expected by Task 7 feature functions."""
+    if not trades:
+        return pd.DataFrame(
+            columns=["sip_timestamp", "price", "size", "exchange", "trf_id", "trf_timestamp", "conditions"],
+        )
+    return pd.DataFrame(
+        [
+            {
+                "sip_timestamp": trade.sip_timestamp,
+                "price": trade.price,
+                "size": trade.size,
+                "exchange": trade.exchange,
+                "trf_id": trade.trf_id,
+                "trf_timestamp": trade.trf_timestamp,
+                "conditions": trade.conditions,
+            }
+            for trade in trades
+        ],
+    )
+
+
+def compute_features_inline(
+    trades: list[TradeRecord],
+    ticker: str,
+    trading_date: date,
+    config: Week4TradesConfig,
+    config_hash: str,
+) -> dict[str, Any]:
+    """Streaming-mode: compute 5 trade microstructure features directly from in-memory trades.
+
+    Returns dict with feature columns suitable for FEATURE_OUTPUT_COLUMNS schema.
+    """
+    frame = _trades_to_feature_dataframe(trades)
+    condition_allow = set(config.features.condition_allow_list) or None
+    trf_exchange_codes = set(config.features.trf_exchange_codes)
+    late_day_window = tuple(config.features.late_day_window_et)
+    pre_window = tuple(config.features.offhours_window_et_pre)
+    post_window = tuple(config.features.offhours_window_et_post)
+    size_threshold = float(config.features.size_threshold_dollars)
+
+    return {
+        "event_date": trading_date,
+        "ticker": ticker.upper(),
+        "knowledge_time_regular": compute_knowledge_time(trading_date, "trade_imbalance_proxy"),
+        "knowledge_time_offhours": compute_knowledge_time(trading_date, "offhours_trade_ratio"),
+        "trade_imbalance_proxy": compute_trade_imbalance_proxy(frame, condition_allow=condition_allow),
+        "large_trade_ratio": compute_large_trade_ratio(frame, size_threshold_dollars=size_threshold),
+        "late_day_aggressiveness": compute_late_day_aggressiveness(frame, late_day_window_et=late_day_window),
+        "offhours_trade_ratio": compute_offhours_trade_ratio(
+            frame, pre_window_et=pre_window, post_window_et=post_window,
+        ),
+        "off_exchange_volume_ratio": compute_off_exchange_volume_ratio(
+            frame, trf_exchange_codes=trf_exchange_codes,
+        ),
+        "run_config_hash": config_hash,
+    }
+
+
 def fetch_and_prepare_job(
     *,
     client: PolygonTradesClient,
     job: SamplingJob,
     config: Week4TradesConfig,
+    streaming_mode: bool = False,
+    config_hash: str = "",
 ) -> FetchResult:
     page_size = config.polygon.rest_page_size
     max_pages = config.polygon.rest_max_pages_per_request
@@ -162,19 +261,37 @@ def fetch_and_prepare_job(
     )
     allow_list = set(config.features.condition_allow_list)
     sampled_reason = _reason_label(job.reasons)
-    rows: list[dict[str, Any]] = []
     dropped_conditions = 0
-    for trade in trades:
-        if not _conditions_allowed(trade.conditions, allow_list):
-            dropped_conditions += 1
-            continue
-        rows.append(
-            trade_to_record(
-                trade,
-                entitlement_delay_minutes=config.polygon.entitlement_delay_minutes,
-                sampled_reason=sampled_reason,
-            ),
+    # In DB mode: materialize trade rows; in streaming mode: skip to save memory + CPU
+    rows: list[dict[str, Any]] = []
+    features_row: dict[str, Any] | None = None
+
+    if streaming_mode:
+        # Still count dropped conditions from the same allow-list (feature functions apply filter too,
+        # but state tracking expects dropped count).
+        if allow_list:
+            dropped_conditions = sum(
+                1 for trade in trades if not _conditions_allowed(trade.conditions, allow_list)
+            )
+        features_row = compute_features_inline(
+            trades,
+            ticker=job.ticker,
+            trading_date=job.trading_date,
+            config=config,
+            config_hash=config_hash,
         )
+    else:
+        for trade in trades:
+            if not _conditions_allowed(trade.conditions, allow_list):
+                dropped_conditions += 1
+                continue
+            rows.append(
+                trade_to_record(
+                    trade,
+                    entitlement_delay_minutes=config.polygon.entitlement_delay_minutes,
+                    sampled_reason=sampled_reason,
+                ),
+            )
     return FetchResult(
         job=job,
         raw_count=len(trades),
@@ -183,6 +300,7 @@ def fetch_and_prepare_job(
         pages_fetched=api_calls_used,
         api_calls_used=api_calls_used,
         partial=_is_partial(len(trades), page_size=page_size, max_pages=max_pages),
+        features_row=features_row,
     )
 
 
@@ -356,6 +474,35 @@ def _check_storage_budget(repository: TradesSamplingRepository, config: Week4Tra
     return storage_gb
 
 
+def _flush_streaming_features(
+    features_accumulator: list[dict[str, Any]],
+    output_path: Path,
+) -> int:
+    """Write accumulated feature rows to parquet atomically (full overwrite)."""
+    if not features_accumulator:
+        return 0
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    frame = pd.DataFrame(features_accumulator, columns=FEATURE_OUTPUT_COLUMNS)
+    frame["event_date"] = pd.to_datetime(frame["event_date"]).dt.date
+    frame = frame.drop_duplicates(["event_date", "ticker"], keep="last")
+    frame = frame.sort_values(["event_date", "ticker"]).reset_index(drop=True)
+    tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    frame.to_parquet(tmp_path, index=False)
+    tmp_path.replace(output_path)
+    return len(frame)
+
+
+def _load_streaming_features_checkpoint(output_path: Path) -> list[dict[str, Any]]:
+    """Load prior features parquet as list (resume-friendly)."""
+    if not output_path.exists():
+        return []
+    existing = pd.read_parquet(output_path)
+    if existing.empty:
+        return []
+    existing["event_date"] = pd.to_datetime(existing["event_date"]).dt.date
+    return existing.to_dict(orient="records")
+
+
 def run_sampling(
     *,
     plan_path: Path,
@@ -365,6 +512,9 @@ def run_sampling(
     dry_run: bool = False,
     limit: int | None = None,
     batch_size: int = DEFAULT_BATCH_SIZE,
+    streaming_mode: bool = False,
+    features_output: Path = DEFAULT_FEATURES_OUTPUT,
+    streaming_flush_every: int = DEFAULT_STREAMING_FLUSH_EVERY,
     repository: TradesSamplingRepository | None = None,
     client_factory: Callable[[], PolygonTradesClient] | None = None,
 ) -> dict[str, Any]:
@@ -372,13 +522,28 @@ def run_sampling(
         raise ValueError("max_workers must be positive")
     if batch_size <= 0:
         raise ValueError("batch_size must be positive")
+    if streaming_mode and dry_run:
+        raise ValueError("--streaming-mode and --dry-run are incompatible")
 
     config = load_config(config_path)
+    # Compute config_hash for streaming mode parquet traceability (import here to avoid cycle)
+    config_hash = ""
+    if streaming_mode:
+        try:
+            import scripts.preflight_trades_estimator as _pf
+        except ModuleNotFoundError:  # pragma: no cover
+            import preflight_trades_estimator as _pf
+        config_hash = _pf.compute_config_hash(config)
+
     plan = load_plan(plan_path)
     repo = repository or TradesSamplingRepository()
     jobs = repo.load_jobs(plan, resume=resume, limit=limit)
     client = client_factory() if client_factory else PolygonTradesClient(
         min_request_interval=config.polygon.rest_min_interval_seconds,
+    )
+
+    features_accumulator: list[dict[str, Any]] = (
+        _load_streaming_features_checkpoint(features_output) if streaming_mode and resume else []
     )
 
     summary: dict[str, Any] = {
@@ -390,6 +555,9 @@ def run_sampling(
         "api_calls_used": 0,
         "dry_run": dry_run,
         "resume": resume,
+        "streaming_mode": streaming_mode,
+        "features_output": str(features_output) if streaming_mode else None,
+        "features_rows_written": len(features_accumulator),
         "stopped_reason": None,
         "storage_gb": 0.0,
     }
@@ -411,7 +579,14 @@ def run_sampling(
 
                 batch_jobs = day_jobs[idx : idx + min(max_workers, len(day_jobs) - idx)]
                 futures = {
-                    executor.submit(fetch_and_prepare_job, client=client, job=job, config=config): job
+                    executor.submit(
+                        fetch_and_prepare_job,
+                        client=client,
+                        job=job,
+                        config=config,
+                        streaming_mode=streaming_mode,
+                        config_hash=config_hash,
+                    ): job
                     for job in batch_jobs
                 }
                 for future in as_completed(futures):
@@ -428,18 +603,34 @@ def run_sampling(
                     daily_api_calls[day_key] += result.api_calls_used
                     summary["api_calls_used"] += result.api_calls_used
 
-                    if result.raw_count > config.budgets.max_rows_per_ticker_day:
+                    if result.raw_count > config.budgets.max_rows_per_ticker_day and not streaming_mode:
+                        # Row-limit only enforced in DB mode (protects stock_trades_sampled storage)
                         repo.mark_failed(job, "row_limit_exceeded")
                         summary["failed_jobs"] += 1
                         continue
 
-                    inserted = len(result.rows) if dry_run else repo.persist_completed(result, batch_size=batch_size)
-                    if not dry_run:
-                        summary["storage_gb"] = _check_storage_budget(repo, config)
-                    summary["rows_ingested"] += inserted
+                    if streaming_mode:
+                        # Accumulate feature row; no DB insert; skip storage kill-switch
+                        if result.features_row is not None:
+                            features_accumulator.append(result.features_row)
+                        repo.mark_completed(result, rows_ingested=0)
+                    else:
+                        inserted = (
+                            len(result.rows)
+                            if dry_run
+                            else repo.persist_completed(result, batch_size=batch_size)
+                        )
+                        if not dry_run:
+                            summary["storage_gb"] = _check_storage_budget(repo, config)
+                        summary["rows_ingested"] += inserted
+
                     summary["completed_jobs"] += 1
 
                     processed = summary["completed_jobs"] + summary["failed_jobs"]
+                    if streaming_mode and processed and processed % streaming_flush_every == 0:
+                        summary["features_rows_written"] = _flush_streaming_features(
+                            features_accumulator, features_output,
+                        )
                     if processed and processed % 100 == 0:
                         print(
                             json.dumps(
@@ -448,6 +639,7 @@ def run_sampling(
                                         "completed": summary["completed_jobs"],
                                         "total": summary["total_jobs"],
                                         "storage_gb": summary["storage_gb"],
+                                        "features_rows_written": summary["features_rows_written"],
                                         "api_calls_today": dict(daily_api_calls),
                                     },
                                 ),
@@ -462,8 +654,18 @@ def run_sampling(
                     repo.mark_budget_deferred(remaining, "daily_api_budget_exhausted")
                     summary["deferred_jobs"] += len(remaining)
                     summary["stopped_reason"] = "daily_api_budget_exhausted"
+                    # final flush before returning
+                    if streaming_mode:
+                        summary["features_rows_written"] = _flush_streaming_features(
+                            features_accumulator, features_output,
+                        )
                     return summary
 
+    # final flush at end of successful run
+    if streaming_mode:
+        summary["features_rows_written"] = _flush_streaming_features(
+            features_accumulator, features_output,
+        )
     return summary
 
 
@@ -477,6 +679,9 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         limit=args.limit,
         batch_size=args.batch_size,
+        streaming_mode=args.streaming_mode,
+        features_output=args.features_output,
+        streaming_flush_every=args.streaming_flush_every,
     )
     print(json.dumps(_normalize_for_json(summary), indent=2, sort_keys=True))
     return 0

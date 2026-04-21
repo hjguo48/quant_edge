@@ -434,3 +434,51 @@ def test_dry_run_does_not_write_state_and_limit_runs_first_n_jobs(tmp_path: Path
     assert [call[0] for call in client.calls] == ["AAPL"]
     assert repo.states[("AAPL", day, "earnings")]["status"] == "pending"
     assert repo.states[("MSFT", day, "earnings")]["status"] == "pending"
+
+
+def test_streaming_mode_writes_features_parquet_and_skips_db(tmp_path: Path) -> None:
+    """Streaming mode: compute 5 features in-memory, write parquet, NO DB raw trade insert."""
+    day = date(2026, 1, 5)
+    plan_rows = [
+        {"ticker": "AAPL", "trading_date": day, "reason": "earnings"},
+        {"ticker": "MSFT", "trading_date": day, "reason": "earnings"},
+    ]
+    repo = _FakeRepository(states=_state(plan_rows))
+    # Each ticker gets multiple trades at 09:30+ ET so regular-session features compute
+    aapl_trades = [
+        _trade(ticker="AAPL", seq=1),
+        _trade(ticker="AAPL", seq=2),
+        _trade(ticker="AAPL", seq=3),
+    ]
+    msft_trades = [
+        _trade(ticker="MSFT", seq=10),
+        _trade(ticker="MSFT", seq=11),
+    ]
+    client = _FakePolygonClient({("AAPL", day): aapl_trades, ("MSFT", day): msft_trades})
+
+    features_output = tmp_path / "trade_microstructure_features.parquet"
+    summary = runner.run_sampling(
+        plan_path=_write_plan(tmp_path, plan_rows),
+        config_path=_write_config(tmp_path),
+        max_workers=1,
+        streaming_mode=True,
+        features_output=features_output,
+        repository=repo,
+        client_factory=lambda: client,
+    )
+
+    assert summary["streaming_mode"] is True
+    assert summary["completed_jobs"] == 2
+    assert summary["rows_ingested"] == 0, "streaming mode must not insert raw trades"
+    assert summary["features_rows_written"] == 2
+    assert repo.rows == [], "no DB raw trade rows in streaming mode"
+    assert repo.states[("AAPL", day, "earnings")]["status"] == "completed"
+    assert repo.states[("MSFT", day, "earnings")]["status"] == "completed"
+
+    # Parquet schema
+    features_frame = pd.read_parquet(features_output)
+    assert list(features_frame.columns) == runner.FEATURE_OUTPUT_COLUMNS
+    assert set(features_frame["ticker"]) == {"AAPL", "MSFT"}
+    # run_config_hash populated (sha256 stable)
+    assert features_frame["run_config_hash"].iloc[0] != ""
+    assert len(features_frame["run_config_hash"].unique()) == 1
