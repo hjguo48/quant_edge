@@ -109,9 +109,10 @@ def test_fetch_trades_for_day_paginates_three_pages_and_normalizes_records() -> 
         ],
     )
 
-    records = list(_client(fake_session).fetch_trades_for_day("AAPL", date(2026, 1, 5)))
+    records, page_count = _client(fake_session).fetch_trades_for_day("AAPL", date(2026, 1, 5))
 
     assert len(records) == 3
+    assert page_count == 3
     assert records[0].ticker == "AAPL"
     assert records[0].trading_date == date(2026, 1, 5)
     assert records[0].sip_timestamp.tzinfo == timezone.utc
@@ -144,9 +145,10 @@ def test_fetch_trades_for_day_retries_429_then_succeeds() -> None:
         ],
     )
 
-    records = list(_client(fake_session).fetch_trades_for_day("MSFT", date(2026, 1, 5)))
+    records, page_count = _client(fake_session).fetch_trades_for_day("MSFT", date(2026, 1, 5))
 
     assert len(records) == 1
+    assert page_count == 2
     assert records[0].sequence_number == 10
     assert len(fake_session.calls) == 2
 
@@ -161,7 +163,7 @@ def test_fetch_trades_for_day_raises_after_429_retries_exhausted() -> None:
     )
 
     with pytest.raises(DataSourceTransientError):
-        list(_client(fake_session).fetch_trades_for_day("NVDA", date(2026, 1, 5)))
+        _client(fake_session).fetch_trades_for_day("NVDA", date(2026, 1, 5))
 
     assert len(fake_session.calls) == 3
 
@@ -174,9 +176,10 @@ def test_fetch_trades_for_day_retries_5xx_then_succeeds() -> None:
         ],
     )
 
-    records = list(_client(fake_session).fetch_trades_for_day("GOOGL", date(2026, 1, 5)))
+    records, page_count = _client(fake_session).fetch_trades_for_day("GOOGL", date(2026, 1, 5))
 
     assert len(records) == 1
+    assert page_count == 2
     assert records[0].sequence_number == 20
     assert len(fake_session.calls) == 2
 
@@ -184,9 +187,10 @@ def test_fetch_trades_for_day_retries_5xx_then_succeeds() -> None:
 def test_fetch_trades_for_day_empty_response_returns_empty_iterator() -> None:
     fake_session = _FakeSession([_FakeResponse({"results": []})])
 
-    records = list(_client(fake_session).fetch_trades_for_day("META", date(2026, 1, 5)))
+    records, page_count = _client(fake_session).fetch_trades_for_day("META", date(2026, 1, 5))
 
     assert records == []
+    assert page_count == 1
     assert len(fake_session.calls) == 1
 
 
@@ -218,15 +222,14 @@ def test_fetch_trades_for_day_max_pages_truncates_with_warning(
 
     monkeypatch.setattr(polygon_trades, "logger", _FakeLogger())
 
-    records = list(
-        _client(fake_session).fetch_trades_for_day(
-            "TSLA",
-            date(2026, 1, 5),
-            max_pages=2,
-        ),
+    records, page_count = _client(fake_session).fetch_trades_for_day(
+        "TSLA",
+        date(2026, 1, 5),
+        max_pages=2,
     )
 
     assert [record.sequence_number for record in records] == [1, 2]
+    assert page_count == 2
     assert len(fake_session.calls) == 2
     assert warnings
     assert "max_pages" in warnings[0][0]

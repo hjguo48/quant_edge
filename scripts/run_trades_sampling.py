@@ -29,6 +29,7 @@ DEFAULT_BATCH_SIZE = 10_000
 STATE_PENDING = "pending"
 STATE_FAILED = "failed"
 STATE_COMPLETED = "completed"
+STATE_PARTIAL = "partial"
 
 
 class StorageBudgetExceeded(RuntimeError):
@@ -114,12 +115,6 @@ def _conditions_allowed(conditions: Sequence[int], allow_list: set[int]) -> bool
     return set(int(condition) for condition in conditions).issubset(allow_list)
 
 
-def _estimate_pages(row_count: int, *, page_size: int, max_pages: int) -> int:
-    if row_count <= 0:
-        return 1
-    return min(max_pages, max(1, int((row_count + page_size - 1) // page_size)))
-
-
 def _is_partial(row_count: int, *, page_size: int, max_pages: int) -> bool:
     return row_count >= page_size * max_pages
 
@@ -159,13 +154,11 @@ def fetch_and_prepare_job(
 ) -> FetchResult:
     page_size = config.polygon.rest_page_size
     max_pages = config.polygon.rest_max_pages_per_request
-    trades = list(
-        client.fetch_trades_for_day(
-            job.ticker,
-            job.trading_date,
-            page_size=page_size,
-            max_pages=max_pages,
-        ),
+    trades, api_calls_used = client.fetch_trades_for_day(
+        job.ticker,
+        job.trading_date,
+        page_size=page_size,
+        max_pages=max_pages,
     )
     allow_list = set(config.features.condition_allow_list)
     sampled_reason = _reason_label(job.reasons)
@@ -182,14 +175,13 @@ def fetch_and_prepare_job(
                 sampled_reason=sampled_reason,
             ),
         )
-    pages_fetched = _estimate_pages(len(trades), page_size=page_size, max_pages=max_pages)
     return FetchResult(
         job=job,
         raw_count=len(trades),
         rows=rows,
         dropped_conditions=dropped_conditions,
-        pages_fetched=pages_fetched,
-        api_calls_used=pages_fetched,
+        pages_fetched=api_calls_used,
+        api_calls_used=api_calls_used,
         partial=_is_partial(len(trades), page_size=page_size, max_pages=max_pages),
     )
 
@@ -251,9 +243,6 @@ class TradesSamplingRepository:
 
     def persist_completed(self, result: FetchResult, *, batch_size: int) -> int:
         message_parts: list[str] = []
-        if result.partial:
-            message_parts.append("partial=true")
-            message_parts.append("max_pages_reached")
         if result.dropped_conditions:
             message_parts.append(f"dropped_conditions={result.dropped_conditions}")
         error_message = "; ".join(message_parts) if message_parts else None
@@ -284,7 +273,7 @@ class TradesSamplingRepository:
                     TradesSamplingState.sampled_reason.in_(result.job.reasons),
                 )
                 .values(
-                    status=STATE_COMPLETED,
+                    status=STATE_PARTIAL if result.partial else STATE_COMPLETED,
                     rows_ingested=inserted,
                     pages_fetched=result.pages_fetched,
                     api_calls_used=result.api_calls_used,
@@ -298,14 +287,11 @@ class TradesSamplingRepository:
 
     def mark_completed(self, result: FetchResult, *, rows_ingested: int) -> None:
         message_parts: list[str] = []
-        if result.partial:
-            message_parts.append("partial=true")
-            message_parts.append("max_pages_reached")
         if result.dropped_conditions:
             message_parts.append(f"dropped_conditions={result.dropped_conditions}")
         self._update_state(
             result.job,
-            status=STATE_COMPLETED,
+            status=STATE_PARTIAL if result.partial else STATE_COMPLETED,
             rows_ingested=rows_ingested,
             pages_fetched=result.pages_fetched,
             api_calls_used=result.api_calls_used,
@@ -423,7 +409,7 @@ def run_sampling(
                     summary["stopped_reason"] = "daily_api_budget_exhausted"
                     return summary
 
-                batch_jobs = day_jobs[idx : idx + min(max_workers, remaining_budget, len(day_jobs) - idx)]
+                batch_jobs = day_jobs[idx : idx + min(max_workers, len(day_jobs) - idx)]
                 futures = {
                     executor.submit(fetch_and_prepare_job, client=client, job=job, config=config): job
                     for job in batch_jobs

@@ -111,7 +111,10 @@ def _trade(
 
 
 class _FakePolygonClient:
-    def __init__(self, responses: dict[tuple[str, date], list[TradeRecord] | Exception]) -> None:
+    def __init__(
+        self,
+        responses: dict[tuple[str, date], list[TradeRecord] | tuple[list[TradeRecord], int] | Exception],
+    ) -> None:
         self.responses = responses
         self.calls: list[tuple[str, date, int | None, int | None]] = []
 
@@ -120,7 +123,9 @@ class _FakePolygonClient:
         result = self.responses.get((ticker, trading_date), [])
         if isinstance(result, Exception):
             raise result
-        return iter(result)
+        if isinstance(result, tuple):
+            return result
+        return result, 1
 
 
 class _FakeRepository:
@@ -171,15 +176,13 @@ class _FakeRepository:
 
     def mark_completed(self, result: runner.FetchResult, *, rows_ingested: int) -> None:
         parts: list[str] = []
-        if result.partial:
-            parts.extend(["partial=true", "max_pages_reached"])
         if result.dropped_conditions:
             parts.append(f"dropped_conditions={result.dropped_conditions}")
         for reason in result.job.reasons:
             state = self.states[(result.job.ticker, result.job.trading_date, reason)]
             state.update(
                 {
-                    "status": "completed",
+                    "status": "partial" if result.partial else "completed",
                     "rows_ingested": rows_ingested,
                     "pages_fetched": result.pages_fetched,
                     "api_calls_used": result.api_calls_used,
@@ -214,7 +217,7 @@ def test_run_trades_sampling_basic_path_persists_rows_and_updates_state(tmp_path
     day = date(2026, 1, 5)
     plan_rows = [{"ticker": "AAPL", "trading_date": day, "reason": "earnings"}]
     repo = _FakeRepository(states=_state(plan_rows))
-    client = _FakePolygonClient({("AAPL", day): [_trade(seq=i) for i in range(1, 6)]})
+    client = _FakePolygonClient({("AAPL", day): ([_trade(seq=i) for i in range(1, 6)], 3)})
 
     summary = runner.run_sampling(
         plan_path=_write_plan(tmp_path, plan_rows),
@@ -226,10 +229,12 @@ def test_run_trades_sampling_basic_path_persists_rows_and_updates_state(tmp_path
 
     assert summary["completed_jobs"] == 1
     assert summary["rows_ingested"] == 5
+    assert summary["api_calls_used"] == 3
     assert len(repo.rows) == 5
     assert repo.rows[0]["knowledge_time"] == repo.rows[0]["sip_timestamp"] + pd.Timedelta(minutes=15)
     assert repo.states[("AAPL", day, "earnings")]["status"] == "completed"
     assert repo.states[("AAPL", day, "earnings")]["rows_ingested"] == 5
+    assert repo.states[("AAPL", day, "earnings")]["api_calls_used"] == 3
 
 
 def test_max_pages_truncation_marks_completed_with_partial_warning(tmp_path: Path) -> None:
@@ -248,8 +253,8 @@ def test_max_pages_truncation_marks_completed_with_partial_warning(tmp_path: Pat
 
     assert summary["completed_jobs"] == 1
     state = repo.states[("TSLA", day, "gap")]
-    assert state["status"] == "completed"
-    assert "partial=true" in state["error_message"]
+    assert state["status"] == "partial"
+    assert state["error_message"] is None
     assert state["rows_ingested"] == 2
 
 
@@ -351,3 +356,81 @@ def test_resume_retries_pending_and_failed_but_skips_completed(tmp_path: Path) -
     assert repo.states[("AAPL", day, "earnings")]["status"] == "completed"
     assert repo.states[("MSFT", day, "gap")]["status"] == "completed"
     assert repo.states[("NVDA", day, "weak_window")]["status"] == "completed"
+
+
+def test_same_ticker_date_multiple_reasons_single_fetch_updates_both_states(tmp_path: Path) -> None:
+    day = date(2026, 1, 5)
+    plan_rows = [
+        {"ticker": "AAPL", "trading_date": day, "reason": "earnings"},
+        {"ticker": "AAPL", "trading_date": day, "reason": "gap"},
+    ]
+    repo = _FakeRepository(states=_state(plan_rows))
+    client = _FakePolygonClient({("AAPL", day): [_trade(seq=1), _trade(seq=2)]})
+
+    summary = runner.run_sampling(
+        plan_path=_write_plan(tmp_path, plan_rows),
+        config_path=_write_config(tmp_path),
+        max_workers=1,
+        repository=repo,
+        client_factory=lambda: client,
+    )
+
+    assert summary["completed_jobs"] == 1
+    assert len(client.calls) == 1
+    assert repo.states[("AAPL", day, "earnings")]["status"] == "completed"
+    assert repo.states[("AAPL", day, "gap")]["status"] == "completed"
+    assert repo.states[("AAPL", day, "earnings")]["rows_ingested"] == 2
+    assert repo.states[("AAPL", day, "gap")]["rows_ingested"] == 2
+
+
+def test_row_limit_exceeded_marks_state_failed_without_insert(tmp_path: Path) -> None:
+    day = date(2026, 1, 5)
+    plan_rows = [{"ticker": "AAPL", "trading_date": day, "reason": "earnings"}]
+    repo = _FakeRepository(states=_state(plan_rows))
+    client = _FakePolygonClient({("AAPL", day): [_trade(seq=i) for i in range(1, 11)]})
+
+    summary = runner.run_sampling(
+        plan_path=_write_plan(tmp_path, plan_rows),
+        config_path=_write_config(tmp_path, max_rows_per_ticker_day=5),
+        max_workers=1,
+        repository=repo,
+        client_factory=lambda: client,
+    )
+
+    assert summary["failed_jobs"] == 1
+    assert repo.rows == []
+    assert repo.states[("AAPL", day, "earnings")]["status"] == "failed"
+    assert repo.states[("AAPL", day, "earnings")]["error_message"] == "row_limit_exceeded"
+
+
+def test_dry_run_does_not_write_state_and_limit_runs_first_n_jobs(tmp_path: Path) -> None:
+    day = date(2026, 1, 5)
+    plan_rows = [
+        {"ticker": "AAPL", "trading_date": day, "reason": "earnings"},
+        {"ticker": "MSFT", "trading_date": day, "reason": "earnings"},
+    ]
+    repo = _FakeRepository(states=_state(plan_rows))
+    client = _FakePolygonClient(
+        {
+            ("AAPL", day): [_trade(ticker="AAPL", seq=1)],
+            ("MSFT", day): [_trade(ticker="MSFT", seq=1)],
+        },
+    )
+
+    summary = runner.run_sampling(
+        plan_path=_write_plan(tmp_path, plan_rows),
+        config_path=_write_config(tmp_path),
+        max_workers=1,
+        dry_run=True,
+        limit=1,
+        repository=repo,
+        client_factory=lambda: client,
+    )
+
+    assert summary["total_jobs"] == 1
+    assert summary["completed_jobs"] == 1
+    assert summary["rows_ingested"] == 1
+    assert repo.rows == []
+    assert [call[0] for call in client.calls] == ["AAPL"]
+    assert repo.states[("AAPL", day, "earnings")]["status"] == "pending"
+    assert repo.states[("MSFT", day, "earnings")]["status"] == "pending"

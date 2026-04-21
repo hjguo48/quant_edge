@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
 import hashlib
+import random
+import time as time_module
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -95,7 +97,7 @@ class PolygonTradesClient(DataSource):
         *,
         page_size: int | None = None,
         max_pages: int | None = None,
-    ) -> Iterator[TradeRecord]:
+    ) -> tuple[list[TradeRecord], int]:
         canonical_ticker = normalize_polygon_ticker(ticker)
         provider_ticker = to_polygon_request_ticker(canonical_ticker)
         limit = page_size or DEFAULT_PAGE_SIZE
@@ -106,6 +108,8 @@ class PolygonTradesClient(DataSource):
             "apiKey": self.api_key,
         }
         page_count = 0
+        http_calls = 0
+        records: list[TradeRecord] = []
 
         while url:
             if max_pages is not None and page_count >= max_pages:
@@ -117,11 +121,12 @@ class PolygonTradesClient(DataSource):
                 )
                 break
 
-            payload = self._request_json(
+            payload, request_attempts = self._request_json(
                 url,
                 params=params,
                 context=f"{canonical_ticker} {trading_date.isoformat()} page {page_count + 1}",
             )
+            http_calls += request_attempts
             page_count += 1
 
             results = payload.get("results") or []
@@ -137,13 +142,14 @@ class PolygonTradesClient(DataSource):
                         f"Unexpected Polygon trade row for {canonical_ticker} {trading_date}: "
                         f"{type(raw_trade).__name__}",
                     )
-                yield self._parse_trade_record(canonical_ticker, trading_date, raw_trade)
+                records.append(self._parse_trade_record(canonical_ticker, trading_date, raw_trade))
 
             next_url = payload.get("next_url")
             if not next_url:
                 break
             url = self._append_api_key(str(next_url))
             params = None
+        return records, http_calls
 
     def fetch_historical(
         self,
@@ -162,21 +168,58 @@ class PolygonTradesClient(DataSource):
 
     def health_check(self) -> bool:
         try:
-            list(
-                self.fetch_trades_for_day(
-                    "SPY",
-                    date.today(),
-                    page_size=1,
-                    max_pages=1,
-                ),
+            self.fetch_trades_for_day(
+                "SPY",
+                date.today(),
+                page_size=1,
+                max_pages=1,
             )
         except Exception as exc:
             logger.warning("polygon_trades health check failed: {}", exc)
             return False
         return True
 
-    @DataSource.retryable()
     def _request_json(
+        self,
+        url: str,
+        *,
+        params: dict[str, Any] | None,
+        context: str,
+    ) -> tuple[dict[str, Any], int]:
+        active_config = self.retry_config
+        delay = active_config.initial_delay
+
+        for attempt in range(1, active_config.max_attempts + 1):
+            try:
+                return self._request_json_once(url, params=params, context=context), attempt
+            except active_config.retry_on as exc:
+                if attempt >= active_config.max_attempts:
+                    logger.opt(exception=exc).error(
+                        "{} exhausted retries for {} after {} attempts",
+                        self.source_name,
+                        context,
+                        active_config.max_attempts,
+                    )
+                    raise
+
+                sleep_for = min(delay, active_config.max_delay)
+                jitter_multiplier = 1 + random.uniform(-active_config.jitter, active_config.jitter)
+                sleep_for = max(sleep_for * jitter_multiplier, 0.0)
+                logger.warning(
+                    "{} transient error in {} on attempt {}/{}: {}. Retrying in {:.2f}s",
+                    self.source_name,
+                    context,
+                    attempt,
+                    active_config.max_attempts,
+                    exc,
+                    sleep_for,
+                )
+                time_module.sleep(sleep_for)
+                delay = min(delay * active_config.backoff_factor, active_config.max_delay)
+
+        raise DataSourceError(f"Unreachable retry state in polygon_trades {context}")
+
+    def _request_json_once(
         self,
         url: str,
         *,
