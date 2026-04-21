@@ -13,6 +13,10 @@ from src.features.pipeline import COMPOSITE_FEATURE_NAMES, compute_composite_fea
 from src.features.pipeline import compute_alternative_features_batch
 from src.features.sector_rotation import SECTOR_ROTATION_FEATURE_NAMES, compute_sector_rotation_features
 from src.features.technical import TECHNICAL_FEATURE_NAMES, compute_technical_features
+from src.features.trade_microstructure import (
+    TRADE_MICROSTRUCTURE_FEATURE_NAMES,
+    compute_trade_microstructure_features,
+)
 
 
 @dataclass(frozen=True)
@@ -69,6 +73,8 @@ class FeatureRegistry:
             self.register(name, "composite", description, compute_composite_features)
         for name, description in _INTRADAY_FEATURE_METADATA.items():
             self.register(name, "intraday", description, compute_intraday_features)
+        for name, description in _TRADE_MICROSTRUCTURE_FEATURE_METADATA.items():
+            self.register(name, "trade_microstructure", description, compute_trade_microstructure_features)
 
 
 _TECHNICAL_FEATURE_METADATA = {
@@ -319,6 +325,14 @@ _INTRADAY_FEATURE_METADATA = {
     "transactions_count_zscore": "Daily minute-aggregated transaction count z-score versus the prior 20 trading days.",
 }
 
+_TRADE_MICROSTRUCTURE_FEATURE_METADATA = {
+    "trade_imbalance_proxy": "Lee-Ready tick-rule buy/sell imbalance over regular-session trades.",
+    "large_trade_ratio": "Dollar volume share from trades above the configured block threshold.",
+    "late_day_aggressiveness": "Late-day absolute imbalance ratio versus full regular-session imbalance.",
+    "offhours_trade_ratio": "Pre/post-market volume share versus full analyzed-day volume.",
+    "off_exchange_volume_ratio": "TRF/off-exchange dollar volume share using exchange, TRF id, or TRF timestamp.",
+}
+
 _COMPOSITE_FEATURE_METADATA = {
     "ret_vol_interaction_20d": "20-day return interacted with 20-day volume ratio.",
     "ret_vol_interaction_60d": "60-day return interacted with 20-day volume ratio.",
@@ -354,4 +368,5 @@ assert len(MACRO_FEATURE_NAMES) == 10
 assert len(ALTERNATIVE_FEATURE_NAMES) == 38
 assert len(SECTOR_ROTATION_FEATURE_NAMES) == 5
 assert len(INTRADAY_FEATURE_NAMES) == 9
+assert len(TRADE_MICROSTRUCTURE_FEATURE_NAMES) == 5
 assert len(COMPOSITE_FEATURE_NAMES) == 26

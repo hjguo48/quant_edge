@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from types import SimpleNamespace
 
 import numpy as np
@@ -910,8 +910,8 @@ def test_compute_composite_features_outputs_expected_feature_names() -> None:
 
 def test_feature_registry_pre_registers_all_default_features() -> None:
     registry = FeatureRegistry()
-    # 133 base features + 9 Week 3 intraday features.
-    assert len(registry.list_features()) == 142
+    # 133 base features + 9 Week 3 intraday features + 5 default-off trade metadata entries.
+    assert len(registry.list_features()) == 147
 
 
 def test_compute_macro_features_uses_baa_minus_aaa_credit_spread(
