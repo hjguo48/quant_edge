@@ -4,8 +4,15 @@ version: 1
 stage: pilot  # pilot | stage2
 
 sampling:
-  # Smoke-run scope (stage 1): W5 only + top_n=50 to validate streaming pipeline.
-  # After Gate sanity check, restore W6/W11 + gap for full pilot run.
+  # Smoke-run scope (stage 1): real S1 v5 W11 only + top_n=50.
+  # Reference: data/reports/walkforward_comparison_60d_v5_no_analyst_week3_done.json
+  # S1 v5 W11 test window = 2023-09-01 → 2024-02-23.
+  # Prior to commit 100d2c8 (universe DELETE bugfix) universe_membership historical anchors
+  # were silently wiped by monthly sync → PIT returned 8 members at 2023-09. Bugfix
+  # restored 2016-2026 full PIT coverage (503 members at 2023-09-15), so real historical
+  # weak windows are now eligible. W11 chosen for smoke as it is the most recent S1 window
+  # and validates both engineering + diagnostic on clean universe. After smoke PASS, extend
+  # to additional weak windows (W4 COVID / W8 bear / etc.) via separate task.
   pilot:
     reasons:
       - weak_window
@@ -13,9 +20,9 @@ sampling:
     gap_threshold_pct: 0.03
     weak_window_top_n: 50
     weak_windows:
-      - name: W5
-        start: "2022-10-01"
-        end: "2023-03-31"
+      - name: W11
+        start: "2023-09-01"
+        end: "2024-02-23"
   stage2:
     top_n_liquidity: 200
     top_liquidity_lookback_days: 20
