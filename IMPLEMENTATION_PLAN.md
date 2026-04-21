@@ -217,7 +217,7 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 
 ---
 
-### Week 3: Massive Minute Aggregates 入库 [🔄 IN PROGRESS — Week 3.0 smoke + A-plus gate DONE, 待 3.1 全量]
+### Week 3: Massive Minute Aggregates 入库 [✅ DONE 2026-04-21 — 3.0/3.1/3.2/3.A/3.3 全部完成]
 
 **目标**：5D/1D 获得专属数据层。
 
@@ -228,11 +228,13 @@ QuantEdge 是研究驱动的机构级美股量化系统。核心原则:
 - [✅ commit 0180812] Week 3.0.7 P1/P2 hotfix (Codex auto-review) — 修 t=16:00 post-close 误入 regular session, health_check 周末误报. close bp 13.63→6.87, 清理 50 条污染数据.
 - [🔄 commit 63ec8e2] Week 3.1 脚手架完成 — flat_files client + migration 005 (compression + state table) + backfill runner + verify. 停在 S3 credential gate, 等 POLYGON_S3_KEY/SECRET.
 
-**待做子任务**:
-- [🔄 running] Week 3.1 全量回填 2016-04 → 2026-04-16 (后台 setsid 跑 2024→2016 按年分片)
+**已完成子任务**:
+- [✅ 2026-04-21] Week 3.1 全量回填 2016-04-20 → 2026-04-17 (2513 sessions 100% 覆盖, 553 M rows)
 - [✅ commit c220dfb] Week 3.2 补 6 个 intraday 特征 (共 9 个, registry 136→142, 44 tests pass)
 - [✅ commit bd3decb] Week 3.A dag_daily_data minute_incremental TaskGroup (feature flag OFF 默认, Step A 完成)
-- [ ] Week 3.3 Gate 验证 (覆盖率 >95% / minute↔day A-plus / 特征质量三件套) — 等 3.1 完成后派
+- [✅ commit c50430c] Week 3.3.1 历史 intraday 特征构建 (11.5 M rows, 10 年 × 9 特征)
+- [✅ commit c96d8b2] Week 3.3.2 Gate 验证三件套全绿 (覆盖率 100% / A-plus 0 blocker / 特征质量 missing<20%+outlier<1%)
+- [✅ commit 1029650] Week 3.3.3 V5 sanity PASS (60D IC=0.0594, 0% 退化)
 
 **任务**：
 - 新建 `src/data/polygon_minute.py`
