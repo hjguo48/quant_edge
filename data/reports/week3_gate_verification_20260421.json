@@ -1,0 +1,3631 @@
+{
+  "gate1_coverage": {
+    "failing_examples": [],
+    "features": {
+      "close_to_vwap": {
+        "actual": 1277469,
+        "coverage": 1.0,
+        "expected": 1277469,
+        "missing_examples": [],
+        "pass": true
+      },
+      "gap_pct": {
+        "actual": 1277469,
+        "coverage": 1.0,
+        "expected": 1277469,
+        "missing_examples": [],
+        "pass": true
+      },
+      "intraday_ret": {
+        "actual": 1277469,
+        "coverage": 1.0,
+        "expected": 1277469,
+        "missing_examples": [],
+        "pass": true
+      },
+      "last_30m_ret": {
+        "actual": 1277469,
+        "coverage": 1.0,
+        "expected": 1277469,
+        "missing_examples": [],
+        "pass": true
+      },
+      "open_30m_ret": {
+        "actual": 1277469,
+        "coverage": 1.0,
+        "expected": 1277469,
+        "missing_examples": [],
+        "pass": true
+      },
+      "overnight_ret": {
+        "actual": 1277469,
+        "coverage": 1.0,
+        "expected": 1277469,
+        "missing_examples": [],
+        "pass": true
+      },
+      "realized_vol_1d": {
+        "actual": 1277469,
+        "coverage": 1.0,
+        "expected": 1277469,
+        "missing_examples": [],
+        "pass": true
+      },
+      "transactions_count_zscore": {
+        "actual": 1277469,
+        "coverage": 1.0,
+        "expected": 1277469,
+        "missing_examples": [],
+        "pass": true
+      },
+      "volume_curve_surprise": {
+        "actual": 1277469,
+        "coverage": 1.0,
+        "expected": 1277469,
+        "missing_examples": [],
+        "pass": true
+      }
+    },
+    "pass": true,
+    "threshold": 0.95
+  },
+  "gate2_aplus": {
+    "blocker_count_last_30d": 0,
+    "pass": true,
+    "recent_trading_dates": [
+      "2026-03-06",
+      "2026-03-09",
+      "2026-03-10",
+      "2026-03-11",
+      "2026-03-12",
+      "2026-03-13",
+      "2026-03-16",
+      "2026-03-17",
+      "2026-03-18",
+      "2026-03-19",
+      "2026-03-20",
+      "2026-03-23",
+      "2026-03-24",
+      "2026-03-25",
+      "2026-03-26",
+      "2026-03-27",
+      "2026-03-30",
+      "2026-03-31",
+      "2026-04-01",
+      "2026-04-02",
+      "2026-04-06",
+      "2026-04-07",
+      "2026-04-08",
+      "2026-04-09",
+      "2026-04-10",
+      "2026-04-13",
+      "2026-04-14",
+      "2026-04-15",
+      "2026-04-16",
+      "2026-04-17"
+    ],
+    "sample_blockers": [],
+    "warning_count_last_30d": 0
+  },
+  "gate3_quality": {
+    "failing_examples": [
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AAP",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ADS",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AIV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AIZ",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ALLE",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ANDV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "APH",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "APTV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AVB",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AVY",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AZO",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BALL",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BBWI",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BCR",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BKNG",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BXP",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CBRE",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CHD",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CI",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CINF",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "COR",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CPAY",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CPRI",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CSRA",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "open_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CTAS",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ANDV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "APTV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BALL",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BBWI",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BKNG",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BXP",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CBRE",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CPAY",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CPRI",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CTRA",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "DAY",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "EG",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ELV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "EQIX",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "FRT",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "GEN",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "GL",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "HSIC",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "HUM",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "IQV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "J",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "JEF",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "LHX",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "LIN",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "last_30m_ret",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "LUMN",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ALLE",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ANDV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "APTV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AZO",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BALL",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BBWI",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BCR",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "BKNG",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CBRE",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "COR",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CPAY",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CPRI",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "CTRA",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "DAY",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "DNB",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "EG",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ELV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "EQIX",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ESS",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "FRT",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "GEN",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "GL",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "HSIC",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "IQV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "realized_vol_1d",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "J",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "A",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AA",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AAL",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AAP",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AAPL",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ABBV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ABT",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ACN",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ADBE",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ADI",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ADM",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ADP",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ADS",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ADSK",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "ADT",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AEE",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AEP",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AES",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AET",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AFL",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AGN",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AIG",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AIV",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AIZ",
+        "trade_date": "2016-04-20"
+      },
+      {
+        "feature_name": "close_to_vwap",
+        "feature_value": null,
+        "is_filled": true,
+        "issue_type": "missing_or_filled",
+        "ticker": "AKAM",
+        "trade_date": "2016-04-20"
+      }
+    ],
+    "features": {
+      "close_to_vwap": {
+        "evaluated_rows": 0,
+        "lag_rule_documented": true,
+        "missing_examples": [
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "A",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAPL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ABBV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ABT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ACN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADBE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADM",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADS",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADSK",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AEE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AEP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AES",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AET",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AFL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AGN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIZ",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AKAM",
+            "trade_date": "2016-04-20"
+          }
+        ],
+        "missing_rate": 1.0,
+        "missing_rate_pass": false,
+        "missing_rows": 1277469,
+        "outlier_examples": [],
+        "outlier_rate": null,
+        "outlier_rate_pass": false,
+        "outlier_rows": 0,
+        "pass": false,
+        "total_rows": 1277469
+      },
+      "gap_pct": {
+        "evaluated_rows": 1225484,
+        "lag_rule_documented": true,
+        "missing_examples": [
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ANDV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "APTV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BALL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BBWI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BHI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BKNG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CBRE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPRI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CTRA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CVC",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DISCA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DOW",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "EG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ELV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "EMC",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "FOX",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "FOXA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "GL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "IQV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "J",
+            "trade_date": "2016-04-20"
+          }
+        ],
+        "missing_rate": 0.04069374677585131,
+        "missing_rate_pass": true,
+        "missing_rows": 51985,
+        "outlier_examples": [
+          {
+            "feature_value": 24.03291001,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-11",
+            "zscore": 24.636292037569273
+          },
+          {
+            "feature_value": 24.14291154,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-16",
+            "zscore": 24.636277769846515
+          },
+          {
+            "feature_value": 24.2232254,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-13",
+            "zscore": 24.636243967058267
+          },
+          {
+            "feature_value": 23.84129719,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-10",
+            "zscore": 24.635430512383167
+          },
+          {
+            "feature_value": 23.98944399,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-19",
+            "zscore": 24.635367267000248
+          },
+          {
+            "feature_value": 23.7223199,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-12",
+            "zscore": 24.635343872648907
+          },
+          {
+            "feature_value": 23.81873139,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-24",
+            "zscore": 24.616337087132095
+          },
+          {
+            "feature_value": 24.49137903,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-17",
+            "zscore": 24.616294905942247
+          },
+          {
+            "feature_value": 23.91242975,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-27",
+            "zscore": 24.616279547817907
+          },
+          {
+            "feature_value": 23.94330718,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-26",
+            "zscore": 24.616217089898083
+          },
+          {
+            "feature_value": 23.77303577,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-18",
+            "zscore": 24.615999438503845
+          },
+          {
+            "feature_value": 24.01760156,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-30",
+            "zscore": 24.615943436375513
+          },
+          {
+            "feature_value": 24.04538939,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-25",
+            "zscore": 24.61581262331828
+          },
+          {
+            "feature_value": 24.03865502,
+            "ticker": "BKNG",
+            "trade_date": "2026-04-01",
+            "zscore": 24.61482735981716
+          },
+          {
+            "feature_value": 23.99470227,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-20",
+            "zscore": 24.61480048545832
+          },
+          {
+            "feature_value": 24.11833608,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-31",
+            "zscore": 24.614583432442558
+          },
+          {
+            "feature_value": 24.48392244,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-23",
+            "zscore": 24.614449351791553
+          },
+          {
+            "feature_value": 23.75762087,
+            "ticker": "BKNG",
+            "trade_date": "2026-04-02",
+            "zscore": 24.613323493166185
+          },
+          {
+            "feature_value": 24.07516917,
+            "ticker": "BKNG",
+            "trade_date": "2026-01-26",
+            "zscore": 24.596074655231067
+          },
+          {
+            "feature_value": 24.03131667,
+            "ticker": "BKNG",
+            "trade_date": "2026-02-20",
+            "zscore": 24.59573032050423
+          },
+          {
+            "feature_value": 23.84724501,
+            "ticker": "BKNG",
+            "trade_date": "2026-02-23",
+            "zscore": 24.595565746178508
+          },
+          {
+            "feature_value": 23.91411379,
+            "ticker": "BKNG",
+            "trade_date": "2026-01-21",
+            "zscore": 24.59553625850147
+          },
+          {
+            "feature_value": 24.12381066,
+            "ticker": "BKNG",
+            "trade_date": "2026-02-24",
+            "zscore": 24.595403613672875
+          },
+          {
+            "feature_value": 24.01990546,
+            "ticker": "BKNG",
+            "trade_date": "2026-01-15",
+            "zscore": 24.59537084477781
+          },
+          {
+            "feature_value": 24.16573901,
+            "ticker": "BKNG",
+            "trade_date": "2026-02-02",
+            "zscore": 24.595314393519295
+          }
+        ],
+        "outlier_rate": 0.008851196751650777,
+        "outlier_rate_pass": true,
+        "outlier_rows": 10847,
+        "pass": true,
+        "total_rows": 1277469
+      },
+      "intraday_ret": {
+        "evaluated_rows": 1237186,
+        "lag_rule_documented": true,
+        "missing_examples": [
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ANDV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "APTV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BALL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BBWI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BKNG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CBRE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPRI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CTRA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "EG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ELV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "GL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "IQV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "J",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "JEF",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "LHX",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "LIN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "LUMN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "META",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "MRSH",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "PSKY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "RTX",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "RVTY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "SPGI",
+            "trade_date": "2016-04-20"
+          }
+        ],
+        "missing_rate": 0.03153344621278481,
+        "missing_rate_pass": true,
+        "missing_rows": 40283,
+        "outlier_examples": [
+          {
+            "feature_value": 0.86011364,
+            "ticker": "AAP",
+            "trade_date": "2016-07-11",
+            "zscore": 21.255098978279936
+          },
+          {
+            "feature_value": 0.76057471,
+            "ticker": "AAP",
+            "trade_date": "2016-06-22",
+            "zscore": 21.191579267512182
+          },
+          {
+            "feature_value": 0.78813953,
+            "ticker": "AAP",
+            "trade_date": "2016-05-31",
+            "zscore": 21.15006415909595
+          },
+          {
+            "feature_value": 0.75898729,
+            "ticker": "AAP",
+            "trade_date": "2016-08-16",
+            "zscore": 21.02011978823235
+          },
+          {
+            "feature_value": 0.73074736,
+            "ticker": "AAP",
+            "trade_date": "2016-06-02",
+            "zscore": 20.951080109564085
+          },
+          {
+            "feature_value": 0.60516685,
+            "ticker": "AAP",
+            "trade_date": "2016-09-30",
+            "zscore": 20.376856723326096
+          },
+          {
+            "feature_value": 0.60462366,
+            "ticker": "AAP",
+            "trade_date": "2016-09-23",
+            "zscore": 20.051663045620323
+          },
+          {
+            "feature_value": 0.70048692,
+            "ticker": "AAP",
+            "trade_date": "2016-06-06",
+            "zscore": 19.979416662701933
+          },
+          {
+            "feature_value": -0.50081235,
+            "ticker": "GL",
+            "trade_date": "2024-04-11",
+            "zscore": 19.697901701955686
+          },
+          {
+            "feature_value": 0.73433333,
+            "ticker": "AAP",
+            "trade_date": "2016-04-29",
+            "zscore": 19.587756624261026
+          },
+          {
+            "feature_value": 0.69881306,
+            "ticker": "FRC",
+            "trade_date": "2023-03-16",
+            "zscore": 19.249338097733922
+          },
+          {
+            "feature_value": -0.46887709,
+            "ticker": "FRC",
+            "trade_date": "2023-04-28",
+            "zscore": 18.68577526822271
+          },
+          {
+            "feature_value": -0.32469402,
+            "ticker": "CTRA",
+            "trade_date": "2019-11-14",
+            "zscore": 18.589973809238085
+          },
+          {
+            "feature_value": -0.34288805,
+            "ticker": "FRC",
+            "trade_date": "2023-03-20",
+            "zscore": 18.07891580046014
+          },
+          {
+            "feature_value": 0.61666296,
+            "ticker": "POM",
+            "trade_date": "2026-03-09",
+            "zscore": 17.88937130679986
+          },
+          {
+            "feature_value": 0.33958353,
+            "ticker": "BIIB",
+            "trade_date": "2021-06-07",
+            "zscore": 17.5639639391307
+          },
+          {
+            "feature_value": 0.36515913,
+            "ticker": "CTRA",
+            "trade_date": "2020-09-18",
+            "zscore": 17.039937380993326
+          },
+          {
+            "feature_value": -0.39960351,
+            "ticker": "SIVB",
+            "trade_date": "2023-03-09",
+            "zscore": 16.969526460158217
+          },
+          {
+            "feature_value": -0.21626506,
+            "ticker": "PCG",
+            "trade_date": "2019-01-17",
+            "zscore": 15.445864290412247
+          },
+          {
+            "feature_value": 0.2183908,
+            "ticker": "GEN",
+            "trade_date": "2018-01-18",
+            "zscore": 15.230925832893352
+          },
+          {
+            "feature_value": -0.40886069,
+            "ticker": "EPAM",
+            "trade_date": "2022-02-28",
+            "zscore": 15.229114418709539
+          },
+          {
+            "feature_value": -0.33661753,
+            "ticker": "FRC",
+            "trade_date": "2023-04-25",
+            "zscore": 15.171952213215414
+          },
+          {
+            "feature_value": 0.18181818,
+            "ticker": "GEN",
+            "trade_date": "2016-06-20",
+            "zscore": 14.713202508852081
+          },
+          {
+            "feature_value": 0.17789533,
+            "ticker": "MRNA",
+            "trade_date": "2021-08-09",
+            "zscore": 14.583718151226275
+          },
+          {
+            "feature_value": 0.3375,
+            "ticker": "PSKY",
+            "trade_date": "2025-08-13",
+            "zscore": 14.552807224755208
+          }
+        ],
+        "outlier_rate": 0.0019374613033125174,
+        "outlier_rate_pass": true,
+        "outlier_rows": 2397,
+        "pass": true,
+        "total_rows": 1277469
+      },
+      "last_30m_ret": {
+        "evaluated_rows": 1194787,
+        "lag_rule_documented": true,
+        "missing_examples": [
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ANDV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "APTV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BALL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BBWI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BKNG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BXP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CBRE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPRI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CTRA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "EG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ELV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "EQIX",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "FRT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "GEN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "GL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "HSIC",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "HUM",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "IQV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "J",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "JEF",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "LHX",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "LIN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "LUMN",
+            "trade_date": "2016-04-20"
+          }
+        ],
+        "missing_rate": 0.0647232926982964,
+        "missing_rate_pass": false,
+        "missing_rows": 82682,
+        "outlier_examples": [
+          {
+            "feature_value": 0.32352638,
+            "ticker": "POM",
+            "trade_date": "2026-03-09",
+            "zscore": 22.77712098945273
+          },
+          {
+            "feature_value": 0.12283956,
+            "ticker": "FFIV",
+            "trade_date": "2016-06-07",
+            "zscore": 20.562452961799213
+          },
+          {
+            "feature_value": 0.18059413,
+            "ticker": "PTC",
+            "trade_date": "2025-07-09",
+            "zscore": 20.452465863017387
+          },
+          {
+            "feature_value": 0.10609681,
+            "ticker": "GEN",
+            "trade_date": "2018-02-22",
+            "zscore": 19.964355303058152
+          },
+          {
+            "feature_value": -0.23798468,
+            "ticker": "CRL",
+            "trade_date": "2025-04-10",
+            "zscore": 19.704551411314444
+          },
+          {
+            "feature_value": -0.10780156,
+            "ticker": "CHK",
+            "trade_date": "2016-05-06",
+            "zscore": 19.48805061439268
+          },
+          {
+            "feature_value": -0.07817391,
+            "ticker": "GEN",
+            "trade_date": "2019-09-26",
+            "zscore": 19.352729376964923
+          },
+          {
+            "feature_value": 0.07759088,
+            "ticker": "SPLS",
+            "trade_date": "2017-06-28",
+            "zscore": 19.05490199066711
+          },
+          {
+            "feature_value": 0.13955281,
+            "ticker": "AMTM",
+            "trade_date": "2024-09-30",
+            "zscore": 18.99288101275092
+          },
+          {
+            "feature_value": -0.12132557,
+            "ticker": "APP",
+            "trade_date": "2025-10-06",
+            "zscore": 18.676369656952584
+          },
+          {
+            "feature_value": -0.07333333,
+            "ticker": "GEN",
+            "trade_date": "2016-06-17",
+            "zscore": 18.615715233329826
+          },
+          {
+            "feature_value": -0.13879691,
+            "ticker": "FRC",
+            "trade_date": "2023-03-13",
+            "zscore": 18.477727117582916
+          },
+          {
+            "feature_value": 0.04711283,
+            "ticker": "WMB",
+            "trade_date": "2016-06-21",
+            "zscore": 18.401936799860966
+          },
+          {
+            "feature_value": -0.09339361,
+            "ticker": "UHS",
+            "trade_date": "2016-12-07",
+            "zscore": 18.235569690809285
+          },
+          {
+            "feature_value": 0.13819269,
+            "ticker": "CZR",
+            "trade_date": "2026-02-26",
+            "zscore": 18.199563757113694
+          },
+          {
+            "feature_value": 0.0800096,
+            "ticker": "VIAB",
+            "trade_date": "2018-01-12",
+            "zscore": 18.193293639792
+          },
+          {
+            "feature_value": 0.07301668,
+            "ticker": "CTXS",
+            "trade_date": "2017-03-13",
+            "zscore": 17.819239626435067
+          },
+          {
+            "feature_value": 0.12382611,
+            "ticker": "AET",
+            "trade_date": "2017-10-26",
+            "zscore": 17.725724872365657
+          },
+          {
+            "feature_value": 0.08227277,
+            "ticker": "PRGO",
+            "trade_date": "2016-06-14",
+            "zscore": 17.624693951753287
+          },
+          {
+            "feature_value": -0.08678124,
+            "ticker": "SMCI",
+            "trade_date": "2024-11-18",
+            "zscore": 17.561244692863458
+          },
+          {
+            "feature_value": -0.05255019,
+            "ticker": "WTW",
+            "trade_date": "2016-12-22",
+            "zscore": 17.550197961365136
+          },
+          {
+            "feature_value": -0.11099899,
+            "ticker": "EL",
+            "trade_date": "2026-03-23",
+            "zscore": 17.539947001443938
+          },
+          {
+            "feature_value": 0.05404369,
+            "ticker": "AMD",
+            "trade_date": "2017-09-20",
+            "zscore": 17.46165382187242
+          },
+          {
+            "feature_value": 0.07587798,
+            "ticker": "XL",
+            "trade_date": "2018-02-07",
+            "zscore": 17.31808612495865
+          },
+          {
+            "feature_value": -0.07176724,
+            "ticker": "GEN",
+            "trade_date": "2021-03-25",
+            "zscore": 17.234813341259766
+          }
+        ],
+        "outlier_rate": 0.001231181792235771,
+        "outlier_rate_pass": true,
+        "outlier_rows": 1471,
+        "pass": false,
+        "total_rows": 1277469
+      },
+      "open_30m_ret": {
+        "evaluated_rows": 1041716,
+        "lag_rule_documented": true,
+        "missing_examples": [
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADS",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIZ",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ALLE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ANDV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "APH",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "APTV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AVB",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AVY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AZO",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BALL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BBWI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BCR",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BKNG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BXP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CBRE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CHD",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CINF",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "COR",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPRI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CSRA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CTAS",
+            "trade_date": "2016-04-20"
+          }
+        ],
+        "missing_rate": 0.18454694399629268,
+        "missing_rate_pass": false,
+        "missing_rows": 235753,
+        "outlier_examples": [
+          {
+            "feature_value": 0.57890205,
+            "ticker": "AAP",
+            "trade_date": "2016-09-30",
+            "zscore": 20.617753709816288
+          },
+          {
+            "feature_value": 0.87840909,
+            "ticker": "AAP",
+            "trade_date": "2016-07-11",
+            "zscore": 20.574818746748623
+          },
+          {
+            "feature_value": 0.82351744,
+            "ticker": "AAP",
+            "trade_date": "2016-05-31",
+            "zscore": 20.4844861203527
+          },
+          {
+            "feature_value": 0.78660675,
+            "ticker": "AAP",
+            "trade_date": "2016-08-16",
+            "zscore": 20.37441599768165
+          },
+          {
+            "feature_value": 0.72926857,
+            "ticker": "AAP",
+            "trade_date": "2016-06-02",
+            "zscore": 20.343440673106002
+          },
+          {
+            "feature_value": 0.60607527,
+            "ticker": "AAP",
+            "trade_date": "2016-09-23",
+            "zscore": 20.213787804925364
+          },
+          {
+            "feature_value": 0.69697656,
+            "ticker": "AAP",
+            "trade_date": "2016-06-06",
+            "zscore": 20.198937259992626
+          },
+          {
+            "feature_value": 0.77045977,
+            "ticker": "AAP",
+            "trade_date": "2016-06-22",
+            "zscore": 20.16228482725738
+          },
+          {
+            "feature_value": -0.46202142,
+            "ticker": "AAP",
+            "trade_date": "2016-07-05",
+            "zscore": 19.333714627474983
+          },
+          {
+            "feature_value": 0.14774044,
+            "ticker": "SPLS",
+            "trade_date": "2017-04-04",
+            "zscore": 16.45127207633344
+          },
+          {
+            "feature_value": 0.15979381,
+            "ticker": "CTRA",
+            "trade_date": "2020-02-04",
+            "zscore": 14.462954719886863
+          },
+          {
+            "feature_value": -0.18326114,
+            "ticker": "PCG",
+            "trade_date": "2018-11-15",
+            "zscore": 14.091273226580798
+          },
+          {
+            "feature_value": 0.17232143,
+            "ticker": "PSKY",
+            "trade_date": "2025-08-13",
+            "zscore": 13.581857526354781
+          },
+          {
+            "feature_value": -0.10703067,
+            "ticker": "NKTR",
+            "trade_date": "2018-06-04",
+            "zscore": 12.996369330915105
+          },
+          {
+            "feature_value": -0.17983149,
+            "ticker": "TRIP",
+            "trade_date": "2019-11-07",
+            "zscore": 12.919596746029658
+          },
+          {
+            "feature_value": -0.12947442,
+            "ticker": "SMCI",
+            "trade_date": "2024-08-28",
+            "zscore": 12.84097936802299
+          },
+          {
+            "feature_value": 0.09534033,
+            "ticker": "SIG",
+            "trade_date": "2017-03-09",
+            "zscore": 12.33542944028519
+          },
+          {
+            "feature_value": 0.12830821,
+            "ticker": "CTRA",
+            "trade_date": "2020-09-18",
+            "zscore": 12.319218713376953
+          },
+          {
+            "feature_value": 0.13309508,
+            "ticker": "INFO",
+            "trade_date": "2018-07-11",
+            "zscore": 12.254298879056865
+          },
+          {
+            "feature_value": 0.11124402,
+            "ticker": "FMC",
+            "trade_date": "2023-10-23",
+            "zscore": 12.208850170798305
+          },
+          {
+            "feature_value": 0.13831967,
+            "ticker": "PSKY",
+            "trade_date": "2026-04-07",
+            "zscore": 12.161474416777759
+          },
+          {
+            "feature_value": 0.09192086,
+            "ticker": "GPS",
+            "trade_date": "2016-10-07",
+            "zscore": 12.000555526514479
+          },
+          {
+            "feature_value": 0.1094946,
+            "ticker": "FSLR",
+            "trade_date": "2023-05-12",
+            "zscore": 11.796233356783224
+          },
+          {
+            "feature_value": 0.12962963,
+            "ticker": "GEN",
+            "trade_date": "2020-05-22",
+            "zscore": 11.62149793110066
+          },
+          {
+            "feature_value": 0.13573407,
+            "ticker": "MAT",
+            "trade_date": "2018-02-02",
+            "zscore": 11.579777473788484
+          }
+        ],
+        "outlier_rate": 0.0020552626627602915,
+        "outlier_rate_pass": true,
+        "outlier_rows": 2141,
+        "pass": false,
+        "total_rows": 1277469
+      },
+      "overnight_ret": {
+        "evaluated_rows": 1225484,
+        "lag_rule_documented": true,
+        "missing_examples": [
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ANDV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "APTV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BALL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BBWI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BHI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BKNG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CBRE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPRI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CTRA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CVC",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DISCA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DOW",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "EG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ELV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "EMC",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "FOX",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "FOXA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "GL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "IQV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "J",
+            "trade_date": "2016-04-20"
+          }
+        ],
+        "missing_rate": 0.04069374677585131,
+        "missing_rate_pass": true,
+        "missing_rows": 51985,
+        "outlier_examples": [
+          {
+            "feature_value": 24.03291001,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-11",
+            "zscore": 24.63629203756926
+          },
+          {
+            "feature_value": 24.14291154,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-16",
+            "zscore": 24.636277769846522
+          },
+          {
+            "feature_value": 24.2232254,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-13",
+            "zscore": 24.636243967058263
+          },
+          {
+            "feature_value": 23.84129719,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-10",
+            "zscore": 24.635430512383145
+          },
+          {
+            "feature_value": 23.98944399,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-19",
+            "zscore": 24.63536726700023
+          },
+          {
+            "feature_value": 23.7223199,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-12",
+            "zscore": 24.63534387264894
+          },
+          {
+            "feature_value": 23.81873139,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-24",
+            "zscore": 24.616337087132116
+          },
+          {
+            "feature_value": 24.49137903,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-17",
+            "zscore": 24.616294905942265
+          },
+          {
+            "feature_value": 23.91242975,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-27",
+            "zscore": 24.616279547817914
+          },
+          {
+            "feature_value": 23.94330718,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-26",
+            "zscore": 24.616217089898075
+          },
+          {
+            "feature_value": 23.77303577,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-18",
+            "zscore": 24.615999438503817
+          },
+          {
+            "feature_value": 24.01760156,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-30",
+            "zscore": 24.615943436375517
+          },
+          {
+            "feature_value": 24.04538939,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-25",
+            "zscore": 24.615812623318277
+          },
+          {
+            "feature_value": 24.03865502,
+            "ticker": "BKNG",
+            "trade_date": "2026-04-01",
+            "zscore": 24.61482735981719
+          },
+          {
+            "feature_value": 23.99470227,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-20",
+            "zscore": 24.614800485458336
+          },
+          {
+            "feature_value": 24.11833608,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-31",
+            "zscore": 24.61458343244252
+          },
+          {
+            "feature_value": 24.48392244,
+            "ticker": "BKNG",
+            "trade_date": "2026-03-23",
+            "zscore": 24.614449351791567
+          },
+          {
+            "feature_value": 23.75762087,
+            "ticker": "BKNG",
+            "trade_date": "2026-04-02",
+            "zscore": 24.613323493166156
+          },
+          {
+            "feature_value": 24.07516917,
+            "ticker": "BKNG",
+            "trade_date": "2026-01-26",
+            "zscore": 24.59607465523106
+          },
+          {
+            "feature_value": 24.03131667,
+            "ticker": "BKNG",
+            "trade_date": "2026-02-20",
+            "zscore": 24.595730320504238
+          },
+          {
+            "feature_value": 23.84724501,
+            "ticker": "BKNG",
+            "trade_date": "2026-02-23",
+            "zscore": 24.59556574617854
+          },
+          {
+            "feature_value": 23.91411379,
+            "ticker": "BKNG",
+            "trade_date": "2026-01-21",
+            "zscore": 24.595536258501465
+          },
+          {
+            "feature_value": 24.12381066,
+            "ticker": "BKNG",
+            "trade_date": "2026-02-24",
+            "zscore": 24.595403613672882
+          },
+          {
+            "feature_value": 24.01990546,
+            "ticker": "BKNG",
+            "trade_date": "2026-01-15",
+            "zscore": 24.595370844777822
+          },
+          {
+            "feature_value": 24.16573901,
+            "ticker": "BKNG",
+            "trade_date": "2026-02-02",
+            "zscore": 24.595314393519324
+          }
+        ],
+        "outlier_rate": 0.008851196751650777,
+        "outlier_rate_pass": true,
+        "outlier_rows": 10847,
+        "pass": true,
+        "total_rows": 1277469
+      },
+      "realized_vol_1d": {
+        "evaluated_rows": 1126833,
+        "lag_rule_documented": true,
+        "missing_examples": [
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ALLE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ANDV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "APTV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AZO",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BALL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BBWI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BCR",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "BKNG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CBRE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "COR",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CPRI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "CTRA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DAY",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "DNB",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "EG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ELV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "EQIX",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ESS",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "FRT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "GEN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "GL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "HSIC",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "IQV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "J",
+            "trade_date": "2016-04-20"
+          }
+        ],
+        "missing_rate": 0.11791753850778375,
+        "missing_rate_pass": false,
+        "missing_rows": 150636,
+        "outlier_examples": [
+          {
+            "feature_value": 3.85197292,
+            "ticker": "AAP",
+            "trade_date": "2016-06-30",
+            "zscore": 21.62083391574917
+          },
+          {
+            "feature_value": 1.17085563,
+            "ticker": "AAP",
+            "trade_date": "2016-06-27",
+            "zscore": 21.620336695598727
+          },
+          {
+            "feature_value": 1.03991076,
+            "ticker": "AAP",
+            "trade_date": "2016-09-12",
+            "zscore": 21.609175732649742
+          },
+          {
+            "feature_value": 2.51816136,
+            "ticker": "AAP",
+            "trade_date": "2016-06-29",
+            "zscore": 21.578854192421705
+          },
+          {
+            "feature_value": 4.06481355,
+            "ticker": "AAP",
+            "trade_date": "2016-07-08",
+            "zscore": 21.532866391727012
+          },
+          {
+            "feature_value": 1.39353787,
+            "ticker": "AAP",
+            "trade_date": "2016-08-26",
+            "zscore": 21.526967549759483
+          },
+          {
+            "feature_value": 0.84974548,
+            "ticker": "AAP",
+            "trade_date": "2016-06-24",
+            "zscore": 21.52581336240672
+          },
+          {
+            "feature_value": 3.38296992,
+            "ticker": "AAP",
+            "trade_date": "2016-07-05",
+            "zscore": 21.503527900077962
+          },
+          {
+            "feature_value": 1.61221118,
+            "ticker": "AAP",
+            "trade_date": "2016-07-29",
+            "zscore": 21.503248817915818
+          },
+          {
+            "feature_value": 1.00020703,
+            "ticker": "AAP",
+            "trade_date": "2016-09-13",
+            "zscore": 21.502239306125418
+          },
+          {
+            "feature_value": 1.16154986,
+            "ticker": "AAP",
+            "trade_date": "2016-05-25",
+            "zscore": 21.49358499379174
+          },
+          {
+            "feature_value": 0.97315864,
+            "ticker": "AAP",
+            "trade_date": "2016-08-01",
+            "zscore": 21.487527922369363
+          },
+          {
+            "feature_value": 1.02993104,
+            "ticker": "AAP",
+            "trade_date": "2016-05-31",
+            "zscore": 21.480274684803913
+          },
+          {
+            "feature_value": 2.44868181,
+            "ticker": "AAP",
+            "trade_date": "2016-07-11",
+            "zscore": 21.474436429995393
+          },
+          {
+            "feature_value": 1.88819757,
+            "ticker": "AAP",
+            "trade_date": "2016-07-27",
+            "zscore": 21.46899928976406
+          },
+          {
+            "feature_value": 2.46566481,
+            "ticker": "AAP",
+            "trade_date": "2016-07-01",
+            "zscore": 21.4624470065374
+          },
+          {
+            "feature_value": 0.94485825,
+            "ticker": "AAP",
+            "trade_date": "2016-05-18",
+            "zscore": 21.456731617489236
+          },
+          {
+            "feature_value": 1.25794474,
+            "ticker": "AAP",
+            "trade_date": "2016-10-11",
+            "zscore": 21.452093025605496
+          },
+          {
+            "feature_value": 1.97035644,
+            "ticker": "AAP",
+            "trade_date": "2016-08-08",
+            "zscore": 21.44287783828727
+          },
+          {
+            "feature_value": 1.92183769,
+            "ticker": "AAP",
+            "trade_date": "2016-08-09",
+            "zscore": 21.441159800460895
+          },
+          {
+            "feature_value": 3.09891616,
+            "ticker": "AAP",
+            "trade_date": "2016-09-06",
+            "zscore": 21.436338702593385
+          },
+          {
+            "feature_value": 0.7502142,
+            "ticker": "AAP",
+            "trade_date": "2016-09-09",
+            "zscore": 21.416221010730673
+          },
+          {
+            "feature_value": 1.19722792,
+            "ticker": "AAP",
+            "trade_date": "2016-09-01",
+            "zscore": 21.39759426229425
+          },
+          {
+            "feature_value": 1.03992133,
+            "ticker": "AAP",
+            "trade_date": "2016-10-14",
+            "zscore": 21.396885885681133
+          },
+          {
+            "feature_value": 0.82437356,
+            "ticker": "AAP",
+            "trade_date": "2016-06-08",
+            "zscore": 21.389687465326382
+          }
+        ],
+        "outlier_rate": 0.003360746446012852,
+        "outlier_rate_pass": true,
+        "outlier_rows": 3787,
+        "pass": false,
+        "total_rows": 1277469
+      },
+      "transactions_count_zscore": {
+        "evaluated_rows": 1232254,
+        "lag_rule_documented": true,
+        "missing_examples": [
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "A",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAPL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ABBV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ABT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ACN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADBE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADM",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADS",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADSK",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AEE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AEP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AES",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AET",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AFL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AGN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIZ",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AKAM",
+            "trade_date": "2016-04-20"
+          }
+        ],
+        "missing_rate": 0.035394205260558184,
+        "missing_rate_pass": true,
+        "missing_rows": 45215,
+        "outlier_examples": [
+          {
+            "feature_value": 51.47381062,
+            "ticker": "LEG",
+            "trade_date": "2026-04-13",
+            "zscore": 21.431846034600653
+          },
+          {
+            "feature_value": 45.4858389,
+            "ticker": "BKNG",
+            "trade_date": "2026-04-06",
+            "zscore": 21.14122878162914
+          },
+          {
+            "feature_value": 89.57472605,
+            "ticker": "NFLX",
+            "trade_date": "2022-04-20",
+            "zscore": 20.87872156211906
+          },
+          {
+            "feature_value": 80.39666598,
+            "ticker": "EFX",
+            "trade_date": "2017-09-08",
+            "zscore": 20.672470818770094
+          },
+          {
+            "feature_value": 120.37946814,
+            "ticker": "SE",
+            "trade_date": "2016-09-06",
+            "zscore": 20.609645574371502
+          },
+          {
+            "feature_value": 75.232484,
+            "ticker": "BIIB",
+            "trade_date": "2022-09-28",
+            "zscore": 20.52517931751985
+          },
+          {
+            "feature_value": 72.30478351,
+            "ticker": "DPS",
+            "trade_date": "2018-01-29",
+            "zscore": 20.463039708799496
+          },
+          {
+            "feature_value": 39.98360367,
+            "ticker": "TWTR",
+            "trade_date": "2022-04-04",
+            "zscore": 20.29404729153057
+          },
+          {
+            "feature_value": 106.62419876,
+            "ticker": "SIVB",
+            "trade_date": "2023-03-09",
+            "zscore": 20.179358405410877
+          },
+          {
+            "feature_value": 42.62579022,
+            "ticker": "ULTA",
+            "trade_date": "2019-08-30",
+            "zscore": 20.151795063417808
+          },
+          {
+            "feature_value": 74.98878338,
+            "ticker": "KHC",
+            "trade_date": "2019-02-22",
+            "zscore": 20.150184607066148
+          },
+          {
+            "feature_value": 49.29318622,
+            "ticker": "INCY",
+            "trade_date": "2018-04-06",
+            "zscore": 19.972421318193295
+          },
+          {
+            "feature_value": 53.34023568,
+            "ticker": "ALXN",
+            "trade_date": "2020-12-14",
+            "zscore": 19.852160151215045
+          },
+          {
+            "feature_value": 45.06902797,
+            "ticker": "FISV",
+            "trade_date": "2019-01-16",
+            "zscore": 19.81788765391427
+          },
+          {
+            "feature_value": 58.31950378,
+            "ticker": "ABBV",
+            "trade_date": "2021-09-01",
+            "zscore": 19.803477575189675
+          },
+          {
+            "feature_value": 49.7127261,
+            "ticker": "DG",
+            "trade_date": "2024-08-29",
+            "zscore": 19.718361714638426
+          },
+          {
+            "feature_value": 44.14700728,
+            "ticker": "ATVI",
+            "trade_date": "2022-01-18",
+            "zscore": 19.619171829433885
+          },
+          {
+            "feature_value": 35.34397313,
+            "ticker": "KSU",
+            "trade_date": "2021-03-22",
+            "zscore": 19.587765664705042
+          },
+          {
+            "feature_value": 38.35505548,
+            "ticker": "SYY",
+            "trade_date": "2026-03-30",
+            "zscore": 19.36849868693828
+          },
+          {
+            "feature_value": 41.41669797,
+            "ticker": "XLNX",
+            "trade_date": "2020-10-09",
+            "zscore": 19.13901547214705
+          },
+          {
+            "feature_value": 53.81628121,
+            "ticker": "NKE",
+            "trade_date": "2024-06-28",
+            "zscore": 19.084524695016622
+          },
+          {
+            "feature_value": 65.3134041,
+            "ticker": "SNPS",
+            "trade_date": "2025-09-10",
+            "zscore": 19.063466692326458
+          },
+          {
+            "feature_value": 35.75786847,
+            "ticker": "BA",
+            "trade_date": "2019-03-11",
+            "zscore": 18.845866167155858
+          },
+          {
+            "feature_value": 34.63456886,
+            "ticker": "TPR",
+            "trade_date": "2023-08-10",
+            "zscore": 18.63996575638553
+          },
+          {
+            "feature_value": 39.99587188,
+            "ticker": "CXO",
+            "trade_date": "2018-03-28",
+            "zscore": 18.6364354518263
+          }
+        ],
+        "outlier_rate": 0.004552632817584687,
+        "outlier_rate_pass": true,
+        "outlier_rows": 5610,
+        "pass": true,
+        "total_rows": 1277469
+      },
+      "volume_curve_surprise": {
+        "evaluated_rows": 1226845,
+        "lag_rule_documented": true,
+        "missing_examples": [
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "A",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AA",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AAPL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ABBV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ABT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ACN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADBE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADI",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADM",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADS",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADSK",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "ADT",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AEE",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AEP",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AES",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AET",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AFL",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AGN",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIG",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIV",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AIZ",
+            "trade_date": "2016-04-20"
+          },
+          {
+            "feature_value": null,
+            "is_filled": true,
+            "ticker": "AKAM",
+            "trade_date": "2016-04-20"
+          }
+        ],
+        "missing_rate": 0.039628358887769485,
+        "missing_rate_pass": true,
+        "missing_rows": 50624,
+        "outlier_examples": [
+          {
+            "feature_value": 91.42461169,
+            "ticker": "INFO",
+            "trade_date": "2026-03-23",
+            "zscore": 24.316957624279453
+          },
+          {
+            "feature_value": 54.52272928,
+            "ticker": "LEG",
+            "trade_date": "2026-04-13",
+            "zscore": 23.415901986834985
+          },
+          {
+            "feature_value": 70.35086781,
+            "ticker": "INFO",
+            "trade_date": "2026-01-21",
+            "zscore": 23.134761587510685
+          },
+          {
+            "feature_value": 163.54454573,
+            "ticker": "CMG",
+            "trade_date": "2024-06-26",
+            "zscore": 21.86941458262737
+          },
+          {
+            "feature_value": 75.15121725,
+            "ticker": "AIV",
+            "trade_date": "2020-12-15",
+            "zscore": 21.80181405834
+          },
+          {
+            "feature_value": 58.80609001,
+            "ticker": "AMZN",
+            "trade_date": "2022-06-06",
+            "zscore": 21.68883410308877
+          },
+          {
+            "feature_value": 52.33591706,
+            "ticker": "TWTR",
+            "trade_date": "2022-04-04",
+            "zscore": 21.528823398091124
+          },
+          {
+            "feature_value": 85.16639726,
+            "ticker": "CSRA",
+            "trade_date": "2018-02-12",
+            "zscore": 21.398157815386767
+          },
+          {
+            "feature_value": 74.83987214,
+            "ticker": "NFLX",
+            "trade_date": "2022-04-20",
+            "zscore": 21.377441911963295
+          },
+          {
+            "feature_value": 46.66368948,
+            "ticker": "INFO",
+            "trade_date": "2026-01-20",
+            "zscore": 21.32365875134344
+          },
+          {
+            "feature_value": 21.67034661,
+            "ticker": "STI",
+            "trade_date": "2026-01-02",
+            "zscore": 21.156136989494083
+          },
+          {
+            "feature_value": 92.16595413,
+            "ticker": "SIVB",
+            "trade_date": "2023-03-09",
+            "zscore": 21.094867827218064
+          },
+          {
+            "feature_value": 56.58485992,
+            "ticker": "AAP",
+            "trade_date": "2023-05-31",
+            "zscore": 20.93790864655303
+          },
+          {
+            "feature_value": 40.06838673,
+            "ticker": "ALXN",
+            "trade_date": "2020-12-14",
+            "zscore": 20.880640592416952
+          },
+          {
+            "feature_value": 41.3499504,
+            "ticker": "INCY",
+            "trade_date": "2018-04-06",
+            "zscore": 20.833639020788123
+          },
+          {
+            "feature_value": 51.65768348,
+            "ticker": "FISV",
+            "trade_date": "2019-01-16",
+            "zscore": 20.73292586955222
+          },
+          {
+            "feature_value": 50.29646837,
+            "ticker": "SE",
+            "trade_date": "2016-09-06",
+            "zscore": 20.638698279984993
+          },
+          {
+            "feature_value": 39.03254428,
+            "ticker": "VRTX",
+            "trade_date": "2020-10-15",
+            "zscore": 20.631608544427504
+          },
+          {
+            "feature_value": 56.640165,
+            "ticker": "KHC",
+            "trade_date": "2019-02-22",
+            "zscore": 20.608590206168355
+          },
+          {
+            "feature_value": 60.04517235,
+            "ticker": "EFX",
+            "trade_date": "2017-09-08",
+            "zscore": 20.515383846797587
+          },
+          {
+            "feature_value": 51.60133722,
+            "ticker": "CNC",
+            "trade_date": "2025-07-02",
+            "zscore": 20.464171301017174
+          },
+          {
+            "feature_value": 46.8318401,
+            "ticker": "DG",
+            "trade_date": "2024-08-29",
+            "zscore": 20.4034477780731
+          },
+          {
+            "feature_value": 41.70256826,
+            "ticker": "ULTA",
+            "trade_date": "2019-08-30",
+            "zscore": 20.350678493064954
+          },
+          {
+            "feature_value": 38.57474964,
+            "ticker": "TPR",
+            "trade_date": "2023-08-10",
+            "zscore": 20.319256439496794
+          },
+          {
+            "feature_value": 39.47919199,
+            "ticker": "KSU",
+            "trade_date": "2021-03-22",
+            "zscore": 20.26964667006475
+          }
+        ],
+        "outlier_rate": 0.004916676515778277,
+        "outlier_rate_pass": true,
+        "outlier_rows": 6032,
+        "pass": true,
+        "total_rows": 1277469
+      }
+    },
+    "missing_threshold": 0.05,
+    "outlier_threshold": 0.01,
+    "pass": false
+  },
+  "metadata": {
+    "end_date": "2026-04-17",
+    "feature_names": [
+      "gap_pct",
+      "overnight_ret",
+      "intraday_ret",
+      "open_30m_ret",
+      "last_30m_ret",
+      "realized_vol_1d",
+      "volume_curve_surprise",
+      "close_to_vwap",
+      "transactions_count_zscore"
+    ],
+    "generated_at_utc": "2026-04-21T02:56:06.826815+00:00",
+    "lineage_path": "configs/research/data_lineage.yaml",
+    "script": "scripts/run_week3_gate_verification.py",
+    "start_date": "2016-04-20"
+  },
+  "overall_pass": false
+}

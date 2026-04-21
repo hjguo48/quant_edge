@@ -43,3 +43,19 @@ reconciliation_rule:
   volume_warning_threshold_bp: 500
   # warning 需要落库，不能只打印。
   warning_event_table: price_reconciliation_events
+
+intraday_feature_layer:
+  # intraday 特征层当前写入 feature_store，供 Week 3 之后的研究使用。
+  source_of_truth: feature_store
+  applies_to:
+    - gap_pct
+    - overnight_ret
+    - intraday_ret
+    - open_30m_ret
+    - last_30m_ret
+    - realized_vol_1d
+    - volume_curve_surprise
+    - close_to_vwap
+    - transactions_count_zscore
+  # Week 3 intraday 特征统一遵守 trade_date + 1 个 XNYS session close 可见。
+  knowledge_time_rule: trade_date + 1 business day close (next XNYS session close, T+1)
