@@ -1,10 +1,18 @@
-# Week 4: Massive Trades 定向抽样 Implementation Plan (v2)
+# Week 4: Massive Trades 定向抽样 Implementation Plan (v3)
 
 > **For agentic workers:** 本 plan 作为任务包交给 Codex 执行. Claude 负责审查/退回/验收, 不写代码.
 > Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**版本:** v2 (2026-04-21, based on Codex review round 1)
-**v1→v2 主要修订:** 分阶段 scope (pilot → 扩展 gated by estimator); PIT 改用 sip_timestamp + delay; schema 补 4 个时间戳 + exchange + sequence + decimal_size; 特征从 4 增至 5 (补 off_exchange_volume_ratio); 阈值外移 yaml; 修正 `universe_membership` 表名.
+**版本:** v3 (2026-04-21, based on Codex review round 2 — PASS 7.7)
+**v2→v3 修订 (P1 + P2):**
+- P1 scope: weak_window 收窄至 `weak_window_top_n=100` (防 180k ticker-day 超预算)
+- P1 schema: exchange/sequence_number 改 NOT NULL + deterministic fallback (sentinel -1)
+- P2 trf: 加 `trf_id` 字段 + off_exchange 检测用 (exchange_in_TRF OR trf_id NOT NULL OR trf_timestamp NOT NULL)
+- P2 IC gate: 用 `abs(t_stat) >= 2` + `sign_consistent_windows >= 7` (不歧视天然负 IC 特征)
+- P2 registry gating: register 只写 metadata, FeaturePipeline default excludes trade_microstructure; 加 V5 bundle / default pipeline 回归测试
+- P2 estimator: `api_calls = ceil(rows / page_size)` (去首页双计), probe_calls 独立统计
+
+**v1→v2 修订:** 分阶段 scope (pilot → 扩展 gated by estimator); PIT 改用 sip_timestamp + delay; schema 补 4 个时间戳 + exchange + sequence + decimal_size; 特征从 4 增至 5 (补 off_exchange_volume_ratio); 阈值外移 yaml; 修正 `universe_membership` 表名.
 
 **Goal:** 定向拉取 Polygon trades 数据 (先 pilot: earnings/gap/weak-window, 再视 estimator 决定是否扩 top200), 入库 `stock_trades_sampled`, 产出 5 个 trade microstructure 诊断特征, 验证 5D 弱窗口 alpha 可行性.
 
@@ -101,6 +109,7 @@ sampling:
     reasons: [earnings, gap, weak_window]   # 不含 top_liquidity continuous
     earnings_window_days: 3
     gap_threshold_pct: 0.03
+    weak_window_top_n: 100      # P1 修订: 每个 weak_window 仅抽 top 100 liquidity, 控总量
     weak_windows:
       - {name: W5, start: "2022-10-01", end: "2023-03-31"}
       - {name: W6, start: "2023-04-01", end: "2023-09-30"}
@@ -125,7 +134,11 @@ budgets:
 features:
   size_threshold_dollars: 1_000_000      # block trade proxy (替换旧 10k-share)
   size_threshold_min_cap_dollars: 250_000
-  condition_allow_list: [0, 37, 41, ...]  # 规则交易 + regular way; 禁 corrections/odd-lots/TRF-late
+  # P3 修订: 初始为空 allow-list (= 不过滤, 但在 gate 报告记录分布). Codex 实现时从
+  # Polygon condition codes 文档提取 "Regular" / "Regular Way" 对应值填入, 并加 yaml.safe_load test.
+  # 参考: https://api.polygon.io/v3/reference/conditions
+  condition_allow_list: []
+  trf_exchange_codes: [4, 202]           # Polygon exchange codes 中 TRF 系列 (NYSE TRF=4, FINRA ADF=202); Codex 实现时核对
   late_day_window_et: ["15:00", "16:00"]
   offhours_window_et_pre: ["04:00", "09:30"]
   offhours_window_et_post: ["16:00", "20:00"]
@@ -136,8 +149,10 @@ gate:
   feature_outlier_max_pct: 5.0
   min_passing_features: 2
   ic_threshold: 0.015
-  tstat_threshold: 2.0
-  positive_windows_min: 7   # 11 window 中至少 7 正
+  # P2 修订: 用 abs(t_stat) + sign_consistent_windows, 不歧视天然负 IC 特征
+  # (tree models 天然会产生负 IC 可用的 short signal; 禁止只对正 IC 放行)
+  abs_tstat_threshold: 2.0
+  sign_consistent_windows_min: 7   # 11 window 中至少 7 个与 mean_IC 同向
 ```
 
 **preflight estimator CLI:**
@@ -150,16 +165,17 @@ uv run python scripts/preflight_trades_estimator.py \
     --output data/reports/week4/preflight_estimate.json
 ```
 
-**Estimator 算法:**
+**Estimator 算法 (v3 P2 修订):**
 1. 展开 plan ⇒ `(ticker, trading_date)` 总数
 2. 用 minute aggs 的 per-day `transactions` 总和作为 trades 行数代理
-3. 页数估算 = ceil(trades / page_size)
-4. API call 估算 = 页数 + 每 ticker-day 1 首页
-5. 存储估算 = trades × ~150 bytes (后压缩 ~40 bytes/row)
-6. Wall-time 估算 = API call / (rest_min_interval × concurrency)
-7. 输出: JSON 报告 + PASS/FAIL (与 budgets 对比)
+3. 页数估算 = `ceil(trades / page_size)` (**首页已计入, 不再 +1**)
+4. API call 估算 = 页数总和 (即 `sum(ceil(rows_td / page_size))`)
+5. **probe_calls 独立统计** (e.g., 预热 metadata / ticker 存在性 check), 单列报告
+6. 存储估算 = trades × ~150 bytes (后压缩 ~40 bytes/row)
+7. Wall-time 估算 = (api_calls + probe_calls) × rest_min_interval / concurrency
+8. 输出: JSON 报告 `{api_calls, probe_calls, rows, storage_gb, wall_time_hours, verdict}` + PASS/FAIL (与 budgets 对比)
 
-- [ ] **Step 0.1:** 写 yaml + test_preflight_trades_estimator.py (5 个 case: 正常 / 超预算 / 数据缺失 / stage2 扩量 / daily_call_budget overflow)
+- [ ] **Step 0.1:** 写 yaml + test_preflight_trades_estimator.py (6 个 case: 正常 / 超预算 / 数据缺失 / stage2 扩量 / daily_call_budget overflow / **yaml.safe_load roundtrip 验证 所有 key 非占位**)
 - [ ] **Step 0.2:** 实现 estimator + config loader (pydantic)
 - [ ] **Step 0.3:** 跑 estimator 两次: pilot stage + stage2 stage, 检查 JSON 输出合理
 - [ ] **Step 0.4:** Commit
@@ -179,11 +195,13 @@ git commit -m "feat(week4): trades sampling config + preflight estimator"
 - Create: `alembic/versions/007_add_stock_trades_sampled.py`
 - Create: `tests/test_alembic/test_migration_007.py`
 
-**关键 schema 修订 (vs v1):**
-- 新增 `sip_timestamp`, `participant_timestamp`, `trf_timestamp` (nullable timestamptz)
+**关键 schema 修订 (vs v1, 含 v3 P1 PK fix):**
+- 新增 `sip_timestamp`, `participant_timestamp`, `trf_timestamp` (participant/trf nullable)
 - `size` 改 Numeric(18, 4), 新增 `decimal_size` Numeric(18, 8) nullable
-- 新增 `sequence_number` BigInt, `tape` SmallInt, `correction` SmallInt
-- PK: `(ticker, sip_timestamp, exchange, sequence_number)` — 不用 trade_id 做 PK, 因为跨 venue 可重复
+- 新增 `sequence_number` BigInt (**NOT NULL, sentinel=-1 当 Polygon 未返**), `tape` SmallInt, `correction` SmallInt
+- 新增 `trf_id` String(32) nullable (P2 off_exchange 检测用)
+- `exchange` SmallInt **NOT NULL, sentinel=-1** 当未知
+- PK: `(ticker, sip_timestamp, exchange, sequence_number)` — exchange/sequence_number 必须 NOT NULL, 缺失值 Codex 入库前以 sentinel `-1` normalize
 
 **up:**
 
@@ -200,12 +218,15 @@ def upgrade():
         sa.Column("price", sa.Numeric(14, 6), nullable=False),
         sa.Column("size", sa.Numeric(18, 4), nullable=False),
         sa.Column("decimal_size", sa.Numeric(18, 8), nullable=True),
-        sa.Column("exchange", sa.SmallInteger, nullable=True),
+        # P1 修订: exchange / sequence_number 因进 PK, 必须 NOT NULL.
+        # Codex 入库前把缺失值 normalize 到 sentinel -1.
+        sa.Column("exchange", sa.SmallInteger, nullable=False, server_default="-1"),
         sa.Column("tape", sa.SmallInteger, nullable=True),
         sa.Column("conditions", sa.ARRAY(sa.SmallInteger), nullable=True),
         sa.Column("correction", sa.SmallInteger, nullable=True),
-        sa.Column("sequence_number", sa.BigInteger, nullable=True),
+        sa.Column("sequence_number", sa.BigInteger, nullable=False, server_default="-1"),
         sa.Column("trade_id", sa.String(64), nullable=True),
+        sa.Column("trf_id", sa.String(32), nullable=True),      # P2: off_exchange 检测
         sa.Column("sampled_reason", sa.String(32), nullable=False),
         sa.PrimaryKeyConstraint("ticker", "sip_timestamp", "exchange", "sequence_number"),
     )
@@ -241,7 +262,7 @@ def upgrade():
     op.create_index("ix_trades_sampling_state_status", "trades_sampling_state", ["status", "trading_date"])
 ```
 
-- [ ] **Step 1.1:** 写 migration + `tests/test_alembic/test_migration_007.py` (upgrade → insert sample rows → downgrade → re-upgrade, 验证 PK 防重复, 跨 venue 不冲突)
+- [ ] **Step 1.1:** 写 migration + `tests/test_alembic/test_migration_007.py` (upgrade → insert sample rows → downgrade → re-upgrade, 验证 PK 防重复, 跨 venue 不冲突, **缺失 exchange/sequence_number → normalize 到 -1 后入库不报错**)
 - [ ] **Step 1.2:** 跑测试 + alembic upgrade head
 - [ ] **Step 1.3:** Commit
 
@@ -374,12 +395,13 @@ class TradeRecord:
     price: Decimal
     size: Decimal
     decimal_size: Decimal | None
-    exchange: int | None
+    exchange: int                       # v3 P1: NOT NULL, normalize to -1 if missing
     tape: int | None
     conditions: list[int]
     correction: int | None
-    sequence_number: int | None
+    sequence_number: int                # v3 P1: NOT NULL, normalize to -1 if missing
     trade_id: str | None
+    trf_id: str | None                  # v3 P2: 新增, off_exchange 检测用
 ```
 
 - [ ] **Step 4.1:** 6 个测试:
@@ -504,9 +526,14 @@ def compute_offhours_trade_ratio(
        Range [0, 1].
     """
 
-def compute_off_exchange_volume_ratio(trades: pd.DataFrame) -> float:
-    """**新增 (Codex P2 建议)**: TRF / off-exchange trades 占全日 dollar volume 比例.
-       识别规则: trf_timestamp IS NOT NULL 或 exchange == TRF code.
+def compute_off_exchange_volume_ratio(trades: pd.DataFrame, *, trf_exchange_codes: set[int]) -> float:
+    """**新增 (Codex P2 建议, v3 强化识别)**: TRF / off-exchange trades 占全日 dollar volume 比例.
+
+       识别规则 (三者任一):
+           1. exchange ∈ trf_exchange_codes (yaml `features.trf_exchange_codes`, e.g. NYSE TRF, FINRA ADF)
+           2. trf_id IS NOT NULL (Polygon 显式标记 TRF 报送)
+           3. trf_timestamp IS NOT NULL (某些实现只给 timestamp 无 id)
+
        Regular session only.
        Range [0, 1]; 高值 = 大量 dark pool / off-exchange 活动.
     """
@@ -525,7 +552,7 @@ def compute_knowledge_time(trading_date: date, feature_name: str) -> datetime:
     return datetime.combine(trading_date, time(16, 15), tzinfo=EASTERN).astimezone(timezone.utc)
 ```
 
-**registry:**
+**registry (v3 P2: 强制 default-off gating):**
 
 ```python
 # src/features/registry.py (新增 metadata 字典 + for-loop 注册)
@@ -540,7 +567,18 @@ for name, description in _TRADE_MICROSTRUCTURE_FEATURE_METADATA.items():
     self.register(name, "trade_microstructure", description, compute_trade_microstructure_features)
 ```
 
-- [ ] **Step 7.1:** 12 个测试 (5 特征 × 正常/边界 + 1 condition filter + 1 PIT split)
+**Gating 规则 (v3 P2 新增):**
+- registry 只存 **metadata**, `get_feature` 可查, 但不自动进 FeaturePipeline 默认 output
+- `FeaturePipeline.run()` / `FeaturePipeline.build_bundle()` 的 default `feature_list` **不含** `trade_microstructure` category
+- 启用路径:
+  1. 显式传入 `feature_list` 含 trade_microstructure 成员 (研究模式), 或
+  2. 设置 `settings.ENABLE_TRADE_MICROSTRUCTURE_FEATURES=true` 开启 family-level 默认注入
+- **必须加回归测试**:
+  - `test_feature_pipeline_default_unchanged`: default FeaturePipeline output 特征列与 v5 bundle 完全一致 (snapshot compare)
+  - `test_v5_bundle_validation_unchanged`: 跑 `scripts/validate_feature_bundle.py` (若存在) 或 `FeaturePipeline.build_bundle(bundle='v5')`, 特征 count/missing-rate 无变化
+  - `test_trade_microstructure_opt_in`: ENABLE flag ON 时 default 路径含新特征
+
+- [ ] **Step 7.1:** 14 个测试 (5 特征 × 正常/边界 + 1 condition filter + 1 PIT split + **1 PIT leak 测试** 19:55 trade 不能进 16:15 KT 特征 + **1 registry default-off** ENABLE=false 时 default FeaturePipeline output 未变)
 - [ ] **Step 7.2:** 实现 + registry
 - [ ] **Step 7.3:** 用公开参考数据 cross-validation (某日 AAPL 的 imbalance 应接近 0, 某 earnings day 的 block ratio 应明显高)
 - [ ] **Step 7.4:** Commit
@@ -582,13 +620,16 @@ uv run python scripts/build_trade_microstructure_features.py \
 - Create: `scripts/run_week4_gate_verification.py`
 - Test: `tests/test_scripts/test_week4_gate.py`
 
-**Gate 四项 (v1→v2: 强化, 按 Codex P2 建议):**
+**Gate 四项 (v1→v2→v3 强化, 按 Codex P2 建议):**
 
 1. **Coverage Gate**: `trades_sampling_state.completed / (total - skipped_holiday) >= config.gate.coverage_min_pct`
 2. **Feature Quality Gate**: 每特征 missing_rate <= `feature_missing_max_pct` AND outlier_rate <= `feature_outlier_max_pct`
-3. **Data-readiness IC Gate** (非 alpha 准出, 标记为 diagnostic):
-    - 对 5D horizon 计算 IC per feature
-    - 要求至少 `min_passing_features=2` 个特征满足: `|IC| >= 0.015` AND `t_stat >= 2.0` AND `positive_windows >= 7/11`
+3. **Data-readiness IC Gate** (非 alpha 准出, 标记为 diagnostic; **v3 P2 改为 sign-aware**):
+    - 对 5D horizon 计算 IC per feature per window
+    - 对每特征: `mean_IC`, `abs_t_stat`, `positive_windows`, `negative_windows`
+    - `sign_consistent_windows` = max(positive_windows, negative_windows) (以 mean_IC 的正负判方向)
+    - 通过条件: `|mean_IC| >= ic_threshold` AND `abs_t_stat >= abs_tstat_threshold` AND `sign_consistent_windows >= sign_consistent_windows_min`
+    - 要求至少 `min_passing_features=2` 个特征通过 (允许天然负 IC 特征, 即 short-signal)
 4. **Per-reason IC breakdown**: 对 (earnings / gap / weak_window) 三类 sample 分别算 IC — 报告 top-1 最强 reason, 指导 Week 5+ 使用
 
 **产出:**
@@ -601,7 +642,22 @@ uv run python scripts/build_trade_microstructure_features.py \
   "gates": {
     "coverage": {"pass": true, "value": 96.3, "threshold": 95.0},
     "feature_quality": {"pass": true, "per_feature": {...}},
-    "data_readiness_ic": {"pass": true, "passing_features": ["trade_imbalance_proxy", "off_exchange_volume_ratio"], "details": {...}},
+    "data_readiness_ic": {
+      "pass": true,
+      "passing_features": ["trade_imbalance_proxy", "off_exchange_volume_ratio"],
+      "details": {
+        "trade_imbalance_proxy": {
+          "mean_ic": 0.022, "abs_t_stat": 2.8,
+          "positive_windows": 8, "negative_windows": 3,
+          "sign_consistent_windows": 8, "direction": "positive"
+        },
+        "late_day_aggressiveness": {
+          "mean_ic": -0.018, "abs_t_stat": 2.1,
+          "positive_windows": 3, "negative_windows": 8,
+          "sign_consistent_windows": 8, "direction": "negative"
+        }
+      }
+    },
     "per_reason_ic": {"earnings": 0.019, "gap": 0.012, "weak_window": 0.021}
   },
   "notes": ["SEC event window deferred to Week 5", "Stage2 top_liquidity 未启用"]
