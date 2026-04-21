@@ -379,7 +379,7 @@ def build_sampling_plan(
 ```
 
 **事件源:**
-- earnings: `earnings_estimates.event_time` (仅用于 PIT-safe 后 ±earnings_window_days)
+- earnings: `earnings_estimates.fiscal_date` (PIT 过滤用 `knowledge_time`, `fiscal_date` 是 reporting date; code-review P3-1 修正, 原写 event_time 是错的, 实际 ORM schema 没该字段)
 - gap: 从 `stock_prices` 计算 `|open - prev_close| / prev_close >= config.sampling.pilot.gap_threshold_pct`
 - weak_window (**v3 P1 修订**): 从 yaml 读 (name, start, end), 对每个窗口内每日调 `get_top_liquidity_tickers(as_of_date, top_n=config.sampling.pilot.weak_window_top_n)` (默认 100), **不全 universe**
 - top_liquidity: 仅 stage2 — 每日 `get_top_liquidity_tickers(top_n=200)`
