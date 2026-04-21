@@ -486,6 +486,7 @@ minute_incremental:
   - `aggregate_minute_to_daily` 不查 09:30/15:59 端点, partial-session 日 gap_pct/overnight_ret/intraday_ret 可能用偏移 anchor
   - `reference_prices` 空 DataFrame 列访问 KeyError (daily 先于 minute ingest 边角场景)
   - health_check 日内 timing (pre-open 假 unhealthy, 低价值)
+- [ ] `validate_minute_day_reconciliation_aplus` 只持久化 warning_events, blocker events 只 raise 不入 price_reconciliation_events → Gate 2 查 blocker 计数掩盖问题 (仅 Step B 启用后影响)
 - [ ] (未来 review 发现的其他 edge cases 续加)
 
 **Gate**:
