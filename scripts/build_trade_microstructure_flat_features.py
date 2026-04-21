@@ -176,17 +176,8 @@ def build_flat_features(
             continue
 
         logger.info("loading trades flat file for {} ({} pending tickers)", trading_date, len(pending))
-        day_trades = flat_client.load_day_for_tickers(trading_date, pending)
         days_downloaded += 1
-        if not day_trades.empty:
-            day_trades["ticker"] = day_trades["ticker"].astype(str).str.upper()
-
-        for ticker in pending:
-            ticker_trades = (
-                day_trades.loc[day_trades["ticker"] == ticker].copy()
-                if not day_trades.empty
-                else pd.DataFrame(columns=day_trades.columns)
-            )
+        for ticker, ticker_trades in flat_client.yield_per_ticker_trades(trading_date, pending):
             new_rows.append(
                 compute_feature_row(
                     ticker=ticker,

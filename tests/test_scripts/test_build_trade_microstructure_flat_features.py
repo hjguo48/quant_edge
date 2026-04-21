@@ -124,9 +124,11 @@ class _FakeClient:
     def __init__(self) -> None:
         self.calls: list[tuple[date, tuple[str, ...]]] = []
 
-    def load_day_for_tickers(self, trading_date: date, tickers: list[str]) -> pd.DataFrame:
+    def yield_per_ticker_trades(self, trading_date: date, tickers: list[str]):
         self.calls.append((trading_date, tuple(tickers)))
-        return _sample_trades(list(tickers), trading_date)
+        trades = _sample_trades(list(tickers), trading_date)
+        for ticker in tickers:
+            yield ticker, trades.loc[trades["ticker"] == ticker].copy()
 
 
 def test_build_flat_features_happy_path_and_schema(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

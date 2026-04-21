@@ -72,10 +72,30 @@ def test_load_day_for_tickers_filters_subset_and_uses_trades_prefix() -> None:
         chunksize=2,
     )
 
-    frame = client.load_day_for_tickers(date(2022, 1, 3), ["AAPL"])
+    yielded = list(client.load_day_for_tickers(date(2022, 1, 3), ["AAPL"]))
 
+    assert [ticker for ticker, _ in yielded] == ["AAPL"]
+    frame = yielded[0][1]
     assert frame["ticker"].tolist() == ["AAPL"]
     assert fake_s3.get_calls[0][1] == "us_stocks_sip/trades_v1/2022/01/2022-01-03.csv.gz"
+
+
+def test_yield_per_ticker_trades_isolates_each_ticker() -> None:
+    fake_s3 = _FakeS3Client(_sample_payload())
+    client = PolygonTradesFlatFilesClient(
+        access_key="access",
+        secret_key="secret",
+        s3_client=fake_s3,
+        chunksize=2,
+    )
+
+    yielded = list(client.yield_per_ticker_trades(date(2022, 1, 3), ["AAPL", "MSFT"]))
+
+    assert [ticker for ticker, _ in yielded] == ["AAPL", "MSFT"]
+    for ticker, frame in yielded:
+        assert frame["ticker"].unique().tolist() == [ticker]
+    assert yielded[0][1]["trade_id"].tolist() == ["T1"]
+    assert yielded[1][1]["trade_id"].tolist() == ["T2"]
 
 
 def test_parse_empty_trades_response_returns_empty_contract() -> None:

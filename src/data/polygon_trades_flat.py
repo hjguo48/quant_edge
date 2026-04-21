@@ -47,26 +47,59 @@ class PolygonTradesFlatFilesClient(PolygonFlatFilesClient):
             chunksize=self.chunksize,
         )
 
-    def load_day_for_tickers(self, trading_date: date | datetime, tickers: Iterable[str]) -> pd.DataFrame:
-        trade_day = self.coerce_date(trading_date)
-        normalized = set(self.normalize_tickers(tickers))
-        if not normalized:
-            return pd.DataFrame(columns=flat_files.TRADES_FLAT_COLUMNS)
+    def load_day_for_tickers(
+        self,
+        trading_date: date | datetime,
+        tickers: Iterable[str],
+    ) -> Iterator[tuple[str, pd.DataFrame]]:
+        """Yield one ticker DataFrame at a time.
 
+        The original day-level DataFrame return path was intentionally removed
+        because top-50 mega-cap days can require 7GB+ RSS after concatenation.
+        """
+        return self.yield_per_ticker_trades(trading_date, tickers)
+
+    def yield_per_ticker_trades(
+        self,
+        trading_date: date | datetime,
+        tickers: Iterable[str],
+    ) -> Iterator[tuple[str, pd.DataFrame]]:
+        trade_day = self.coerce_date(trading_date)
+        normalized = tuple(dict.fromkeys(self.normalize_tickers(tickers)))
+        if not normalized:
+            return
         temp_root = str(self.temp_dir) if self.temp_dir is not None else None
         with tempfile.TemporaryDirectory(dir=temp_root) as directory:
-            local_path = Path(directory) / f"{trade_day:%Y-%m-%d}.csv.gz"
+            work_dir = Path(directory)
+            local_path = work_dir / f"{trade_day:%Y-%m-%d}.csv.gz"
             self.download_day_to_path(trade_day, local_path)
-            return self._parse_trades_file(local_path, trading_date=trade_day, tickers=normalized)
+            parts_by_ticker = self._partition_trades_file_by_ticker(
+                local_path,
+                trading_date=trade_day,
+                tickers=normalized,
+                output_dir=work_dir / "ticker_parts",
+            )
+            for ticker in normalized:
+                part_paths = parts_by_ticker.get(ticker, [])
+                if not part_paths:
+                    yield ticker, pd.DataFrame(columns=flat_files.TRADES_FLAT_COLUMNS)
+                    continue
+                frame = pd.concat((pd.read_parquet(path) for path in part_paths), ignore_index=True)
+                frame.sort_values(["sip_timestamp", "exchange", "sequence_number"], inplace=True)
+                frame.reset_index(drop=True, inplace=True)
+                yield ticker, frame[flat_files.TRADES_FLAT_COLUMNS]
 
-    def _parse_trades_file(
+    def _partition_trades_file_by_ticker(
         self,
         path: Path,
         *,
         trading_date: date,
         tickers: Iterable[str],
-    ) -> pd.DataFrame:
-        frames: list[pd.DataFrame] = []
+        output_dir: Path,
+    ) -> dict[str, list[Path]]:
+        universe = set(tickers)
+        parts_by_ticker: dict[str, list[Path]] = {ticker: [] for ticker in universe}
+        part_counter = 0
         try:
             with gzip.open(path, mode="rt", newline="") as handle:
                 reader = pd.read_csv(handle, chunksize=self.chunksize)
@@ -74,18 +107,21 @@ class PolygonTradesFlatFilesClient(PolygonFlatFilesClient):
                     parsed = flat_files._parse_trades_chunk(
                         chunk,
                         trading_date=trading_date,
-                        universe_tickers=set(tickers),
+                        universe_tickers=universe,
                     )
-                    if not parsed.empty:
-                        frames.append(parsed)
+                    if parsed.empty:
+                        continue
+                    for ticker, group in parsed.groupby("ticker", sort=False):
+                        ticker_key = str(ticker).upper()
+                        ticker_dir = output_dir / _safe_ticker_path(ticker_key)
+                        ticker_dir.mkdir(parents=True, exist_ok=True)
+                        part_path = ticker_dir / f"part_{part_counter:06d}.parquet"
+                        group.to_parquet(part_path, index=False)
+                        parts_by_ticker.setdefault(ticker_key, []).append(part_path)
+                    part_counter += 1
         except pd.errors.EmptyDataError:
-            return pd.DataFrame(columns=flat_files.TRADES_FLAT_COLUMNS)
-        if not frames:
-            return pd.DataFrame(columns=flat_files.TRADES_FLAT_COLUMNS)
-        frame = pd.concat(frames, ignore_index=True)
-        frame.sort_values(["ticker", "sip_timestamp", "exchange", "sequence_number"], inplace=True)
-        frame.reset_index(drop=True, inplace=True)
-        return frame[flat_files.TRADES_FLAT_COLUMNS]
+            return parts_by_ticker
+        return parts_by_ticker
 
     @DataSource.retryable()
     def download_day_to_path(self, trading_date: date | datetime, destination: Path) -> FlatFileHeader:
@@ -125,3 +161,7 @@ def _iter_body_chunks(body: Any, *, chunk_size: int = 8 * 1024 * 1024) -> Iterat
         if not chunk:
             break
         yield chunk
+
+
+def _safe_ticker_path(ticker: str) -> str:
+    return ticker.replace("/", "_").replace("\\", "_")
