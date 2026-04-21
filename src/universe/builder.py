@@ -457,14 +457,25 @@ def _replace_membership_rows(
 
     with session_factory() as session:
         try:
+            # Delete only rows whose `effective_date` falls inside the window being rebuilt.
+            # `_reconstruct_membership_rows` always emits rows with effective_date ∈ [start, end]
+            # (anchors at start_date + change events within the window), so this predicate is
+            # sufficient to make room for the re-inserted set without touching anchors from
+            # earlier windows.
+            #
+            # Regression guard: the previous predicate was `effective_date <= end_date AND
+            # (end_date IS NULL OR end_date > start_date)`, which matched EVERY still-active
+            # historical anchor (e.g., an `effective_date=2016-01-01, end_date=NULL` row for
+            # AAPL) when a monthly sync ran with a narrow (start, end) like (2026-04-01,
+            # 2026-04-21). That deletion silently wiped ~500 anchor rows built by prior full
+            # backfills and left `get_universe_pit(2020-09-15)` returning 56 members instead
+            # of 506. See fix/universe-membership-delete-predicate commit message + regression
+            # test `test_monthly_sync_preserves_historical_anchors`.
             session.execute(
                 sa.delete(UniverseMembership).where(
                     UniverseMembership.index_name == index_name,
+                    UniverseMembership.effective_date >= start_date,
                     UniverseMembership.effective_date <= end_date,
-                    sa.or_(
-                        UniverseMembership.end_date.is_(None),
-                        UniverseMembership.end_date > start_date,
-                    ),
                 ),
             )
 
