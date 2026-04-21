@@ -11,7 +11,7 @@ import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from scripts.preflight_trades_estimator import Week4TradesConfig
+from src.config.week4_trades import Week4TradesConfig
 from src.data.db.models import StockPrice
 from src.data.db.session import get_session_factory
 from src.data.sources.fmp_earnings import EarningsEstimate
