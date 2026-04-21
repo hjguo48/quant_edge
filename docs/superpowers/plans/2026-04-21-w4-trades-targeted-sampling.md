@@ -3,7 +3,7 @@
 > **For agentic workers:** 本 plan 作为任务包交给 Codex 执行. Claude 负责审查/退回/验收, 不写代码.
 > Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**版本:** v3 (2026-04-21, based on Codex review round 2 — PASS 7.7)
+**版本:** v3.1 (2026-04-21, round 3 passed 7.8 + 3 micro-fixes)
 **v2→v3 修订 (P1 + P2):**
 - P1 scope: weak_window 收窄至 `weak_window_top_n=100` (防 180k ticker-day 超预算)
 - P1 schema: exchange/sequence_number 改 NOT NULL + deterministic fallback (sentinel -1)
@@ -11,6 +11,11 @@
 - P2 IC gate: 用 `abs(t_stat) >= 2` + `sign_consistent_windows >= 7` (不歧视天然负 IC 特征)
 - P2 registry gating: register 只写 metadata, FeaturePipeline default excludes trade_microstructure; 加 V5 bundle / default pipeline 回归测试
 - P2 estimator: `api_calls = ceil(rows / page_size)` (去首页双计), probe_calls 独立统计
+
+**v3→v3.1 修订 (round 3 cleanup):**
+- P1 (round 3): Task 3 event_calendar weak_window 文本与 yaml 对齐 — 显式调 `get_top_liquidity_tickers(top_n=100)`, 不再写"全 universe 命中"
+- P2 (round 3): 缺失 `sequence_number` 的 collision 风险 — 加 deterministic hash fallback (trade_id/price/size/participant_ts/conditions → 负值空间)
+- P3: 文档版本标签统一 v3
 
 **v1→v2 修订:** 分阶段 scope (pilot → 扩展 gated by estimator); PIT 改用 sip_timestamp + delay; schema 补 4 个时间戳 + exchange + sequence + decimal_size; 特征从 4 增至 5 (补 off_exchange_volume_ratio); 阈值外移 yaml; 修正 `universe_membership` 表名.
 
@@ -195,13 +200,16 @@ git commit -m "feat(week4): trades sampling config + preflight estimator"
 - Create: `alembic/versions/007_add_stock_trades_sampled.py`
 - Create: `tests/test_alembic/test_migration_007.py`
 
-**关键 schema 修订 (vs v1, 含 v3 P1 PK fix):**
+**关键 schema 修订 (vs v1, 含 v3 P1 PK fix + round3 P2 collision fix):**
 - 新增 `sip_timestamp`, `participant_timestamp`, `trf_timestamp` (participant/trf nullable)
 - `size` 改 Numeric(18, 4), 新增 `decimal_size` Numeric(18, 8) nullable
-- 新增 `sequence_number` BigInt (**NOT NULL, sentinel=-1 当 Polygon 未返**), `tape` SmallInt, `correction` SmallInt
+- 新增 `sequence_number` BigInt **NOT NULL**, `tape` SmallInt, `correction` SmallInt
 - 新增 `trf_id` String(32) nullable (P2 off_exchange 检测用)
-- `exchange` SmallInt **NOT NULL, sentinel=-1** 当未知
-- PK: `(ticker, sip_timestamp, exchange, sequence_number)` — exchange/sequence_number 必须 NOT NULL, 缺失值 Codex 入库前以 sentinel `-1` normalize
+- `exchange` SmallInt **NOT NULL** (sentinel=-1 当未知)
+- PK: `(ticker, sip_timestamp, exchange, sequence_number)`
+- **Round 3 P2 防冲突**: `sequence_number` 缺失时 Codex 入库前生成 deterministic fallback:
+  `fallback_seq = - (abs(hash((trade_id, price, size, participant_timestamp_ns, conditions_tuple))) % (2**62))` (负值空间, 保证和真实 >=0 的 sequence_number 不冲突)
+  若 `trade_id` 也为空, 退到 `price + size + participant_timestamp_ns` 组合 hash. 同 ticker+sip_timestamp+exchange 下两条都缺 sequence 的 trades, 只要其他字段 (price/size/ts) 有差异, fallback 就不同, 不覆盖.
 
 **up:**
 
@@ -262,7 +270,7 @@ def upgrade():
     op.create_index("ix_trades_sampling_state_status", "trades_sampling_state", ["status", "trading_date"])
 ```
 
-- [ ] **Step 1.1:** 写 migration + `tests/test_alembic/test_migration_007.py` (upgrade → insert sample rows → downgrade → re-upgrade, 验证 PK 防重复, 跨 venue 不冲突, **缺失 exchange/sequence_number → normalize 到 -1 后入库不报错**)
+- [ ] **Step 1.1:** 写 migration + `tests/test_alembic/test_migration_007.py` (upgrade → insert sample rows → downgrade → re-upgrade, 验证 PK 防重复, 跨 venue 不冲突, **缺失 exchange/sequence_number → normalize 到 -1 后入库不报错**, **round3 P2: 两条同 ticker+sip_timestamp+exchange 都缺 sequence_number 的 trades, 经 deterministic fallback 后不冲突, 两条都成功入库**)
 - [ ] **Step 1.2:** 跑测试 + alembic upgrade head
 - [ ] **Step 1.3:** Commit
 
@@ -341,10 +349,10 @@ def build_sampling_plan(
 **事件源:**
 - earnings: `earnings_estimates.event_time` (仅用于 PIT-safe 后 ±earnings_window_days)
 - gap: 从 `stock_prices` 计算 `|open - prev_close| / prev_close >= config.sampling.pilot.gap_threshold_pct`
-- weak_window: 从 yaml 读 (name, start, end), 每个窗内每日全 universe 命中
-- top_liquidity: 仅 stage2 — 每日 `get_top_liquidity_tickers`
+- weak_window (**v3 P1 修订**): 从 yaml 读 (name, start, end), 对每个窗口内每日调 `get_top_liquidity_tickers(as_of_date, top_n=config.sampling.pilot.weak_window_top_n)` (默认 100), **不全 universe**
+- top_liquidity: 仅 stage2 — 每日 `get_top_liquidity_tickers(top_n=200)`
 
-- [ ] **Step 3.1:** 6 个测试 (每 reason 一个 + stage2/pilot 切换 + 去重)
+- [ ] **Step 3.1:** 7 个测试 (每 reason 一个 + stage2/pilot 切换 + 去重 + **weak_window 每日 emit ≤ 100 ticker**)
 - [ ] **Step 3.2:** 实现
 - [ ] **Step 3.3:** Commit
 
@@ -746,7 +754,7 @@ gh pr merge --merge --delete-branch
 
 ---
 
-## 预估工作量 (v2 修订)
+## 预估工作量 (v3 修订)
 
 | Task | 工时 | 备注 |
 |---|---|---|
