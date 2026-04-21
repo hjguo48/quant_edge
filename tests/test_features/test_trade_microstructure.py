@@ -200,3 +200,60 @@ def test_trade_microstructure_registry_metadata_is_default_off() -> None:
     assert settings.ENABLE_TRADE_MICROSTRUCTURE_FEATURES is False
     assert {definition.name for definition in trade_defs} == set(TRADE_MICROSTRUCTURE_FEATURE_NAMES)
     assert set(TRADE_MICROSTRUCTURE_FEATURE_NAMES).isdisjoint(default_feature_names)
+
+
+def test_feature_pipeline_source_does_not_import_trade_microstructure() -> None:
+    """Plan P2 contract pin: FeaturePipeline default output MUST NOT include trade_microstructure.
+
+    Task 7 achieves this 'passive gating' by NOT importing trade_microstructure in pipeline.py.
+    Any future refactor that adds such an import would activate trade features in the default
+    V5 bundle output silently; this test catches that regression.
+    """
+    from pathlib import Path
+
+    pipeline_source = Path("src/features/pipeline.py").read_text(encoding="utf-8")
+    assert "trade_microstructure" not in pipeline_source, (
+        "src/features/pipeline.py imports trade_microstructure — default-off gating broken. "
+        "Task 8 must make this an explicit opt-in (e.g., guarded by ENABLE_TRADE_MICROSTRUCTURE_FEATURES)."
+    )
+
+
+def test_trade_microstructure_opt_in_documented_not_implemented(monkeypatch) -> None:
+    """Plan P2 contract pin: ENABLE_TRADE_MICROSTRUCTURE_FEATURES=True currently does NOT change
+    FeaturePipeline default output (Task 7 chose passive gating). Task 8 will wire the flag when
+    adding the batch builder. This test locks the current contract so Task 8 knows to revisit.
+    """
+    from src.features import pipeline as pipeline_module
+
+    monkeypatch.setattr(settings, "ENABLE_TRADE_MICROSTRUCTURE_FEATURES", True)
+    pipeline_source = inspect_module_source(pipeline_module)
+    assert "trade_microstructure" not in pipeline_source
+    assert "ENABLE_TRADE_MICROSTRUCTURE_FEATURES" not in pipeline_source
+
+
+def inspect_module_source(module) -> str:
+    import inspect
+
+    return inspect.getsource(module)
+
+
+def test_naive_timestamp_raises_value_error() -> None:
+    """Plan PIT contract: upstream must supply tz-aware UTC sip_timestamp. Naive datetimes would
+    silently coerce via utc=True and get misinterpreted as UTC — ET wall-clock 10:00 would land at
+    05:00 ET after round-trip, outside the 09:30-16:00 window, producing silent NaN feature values.
+    """
+    trades = pd.DataFrame(
+        [
+            {
+                "sip_timestamp": pd.Timestamp("2026-01-05 10:00"),  # naive
+                "price": 100.0,
+                "size": 100.0,
+                "exchange": 1,
+                "trf_id": None,
+                "trf_timestamp": None,
+                "conditions": [0],
+            },
+        ],
+    )
+    with pytest.raises(ValueError, match="timezone-aware"):
+        compute_trade_imbalance_proxy(trades)

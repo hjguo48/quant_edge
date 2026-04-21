@@ -141,8 +141,23 @@ def _prepare_trades(trades: pd.DataFrame) -> pd.DataFrame:
             if column not in frame.columns:
                 frame[column] = np.nan
 
-    frame["sip_timestamp"] = pd.to_datetime(frame["sip_timestamp"], utc=True, errors="coerce")
-    frame["sip_timestamp_et"] = frame["sip_timestamp"].dt.tz_convert(EASTERN)
+    # PIT contract: upstream (PolygonTradesClient + Task 6 executor) always produces tz-aware UTC
+    # sip_timestamp. Silent coercion via utc=True would misinterpret ET wall-clock timestamps as UTC
+    # and produce NaN features through the 09:30-16:00 ET window filter, masking upstream bugs.
+    raw_timestamps = pd.to_datetime(frame["sip_timestamp"], errors="coerce")
+    if len(raw_timestamps) > 0 and raw_timestamps.dt.tz is None and raw_timestamps.notna().any():
+        raise ValueError(
+            "sip_timestamp must be timezone-aware (UTC); received naive datetimes. "
+            "Upstream callers must preserve timezone info when loading from DB / parquet.",
+        )
+    if len(raw_timestamps) > 0 and raw_timestamps.dt.tz is not None:
+        frame["sip_timestamp"] = raw_timestamps.dt.tz_convert(timezone.utc)
+        frame["sip_timestamp_et"] = frame["sip_timestamp"].dt.tz_convert(EASTERN)
+    else:
+        # empty or all-NaT: keep empty UTC series to preserve downstream .dt accessor behavior
+        empty_utc = pd.to_datetime(pd.Series([], dtype="datetime64[ns]"), utc=True)
+        frame["sip_timestamp"] = empty_utc if len(raw_timestamps) == 0 else raw_timestamps
+        frame["sip_timestamp_et"] = frame["sip_timestamp"]
     frame["price"] = pd.to_numeric(frame["price"], errors="coerce")
     frame["size"] = pd.to_numeric(frame["size"], errors="coerce")
     frame["exchange"] = pd.to_numeric(frame["exchange"], errors="coerce")
