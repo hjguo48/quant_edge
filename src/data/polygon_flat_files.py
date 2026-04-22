@@ -80,6 +80,14 @@ def ns_to_utc(series: pd.Series, *, zero_as_nat: bool = False) -> pd.Series:
     return pd.to_datetime(numeric, unit="ns", utc=True, errors="coerce")
 
 
+def _normalize_optional_text_id(series: pd.Series) -> pd.Series:
+    """Normalize Polygon optional ID fields where `0` represents missing."""
+    text = series.astype("string").str.strip()
+    missing_values = {"", "0", "0.0", "nan", "none", "null", "<na>"}
+    text = text.mask(text.str.lower().isin(missing_values))
+    return text.astype("object").where(text.notna(), None)
+
+
 def parse_trades_day_bytes(
     payload: bytes,
     *,
@@ -181,7 +189,7 @@ def _parse_trades_chunk(
             "correction": pd.to_numeric(raw["correction"], errors="coerce") if "correction" in raw.columns else pd.NA,
             "sequence_number": pd.to_numeric(raw["sequence_number"], errors="coerce") if "sequence_number" in raw.columns else pd.NA,
             "trade_id": raw["id"].where(raw["id"].notna(), None) if "id" in raw.columns else None,
-            "trf_id": raw["trf_id"].where(raw["trf_id"].notna(), None) if "trf_id" in raw.columns else None,
+            "trf_id": _normalize_optional_text_id(raw["trf_id"]) if "trf_id" in raw.columns else None,
         },
         columns=TRADES_FLAT_COLUMNS,
     )

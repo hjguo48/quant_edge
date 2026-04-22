@@ -80,7 +80,7 @@ def _sample_payload() -> bytes:
         [
             "ticker,conditions,correction,exchange,id,participant_timestamp,price,sequence_number,sip_timestamp,size,tape,trf_id,trf_timestamp,decimal_size",
             f"AAPL,\"[12,37]\",0,4,T1,{_ns('2022-01-03 10:00')},100.25,101,{_ns('2022-01-03 10:00')},200,1,TRF1,{_ns('2022-01-03 10:00')},200.0",
-            f"MSFT,,0,1,T2,{_ns('2022-01-03 10:01')},250.50,102,{_ns('2022-01-03 10:01')},100,1,,0,100.0",
+            f"MSFT,,0,1,T2,{_ns('2022-01-03 10:01')},250.50,102,{_ns('2022-01-03 10:01')},100,1,0,0,100.0",
             f"TSLA,,0,1,T3,{_ns('2022-01-03 10:02')},300.00,103,{_ns('2022-01-03 10:02')},50,1,,,50.0",
         ],
     )
@@ -95,6 +95,7 @@ def test_parse_trades_day_bytes_schema_and_timestamp_contract() -> None:
     assert str(frame["sip_timestamp"].dt.tz) == "UTC"
     assert frame.loc[frame["ticker"] == "AAPL", "conditions"].iloc[0] == [12, 37]
     assert frame.loc[frame["ticker"] == "AAPL", "trf_id"].iloc[0] == "TRF1"
+    assert pd.isna(frame.loc[frame["ticker"] == "MSFT", "trf_id"].iloc[0])
     assert pd.isna(frame.loc[frame["ticker"] == "MSFT", "trf_timestamp"].iloc[0])
     assert frame["trading_date"].unique().tolist() == [date(2022, 1, 3)]
 
