@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 from datetime import date, datetime
+from http.client import IncompleteRead
 from pathlib import Path
 import gzip
 import tempfile
@@ -16,7 +17,7 @@ from src.data.polygon_flat_files import (
     PolygonFlatFilesClient,
     parse_trades_day_bytes,
 )
-from src.data.sources.base import DataSource, DataSourceError
+from src.data.sources.base import DataSource, DataSourceError, DataSourceTransientError
 
 
 class PolygonTradesFlatFilesClient(PolygonFlatFilesClient):
@@ -138,13 +139,25 @@ class PolygonTradesFlatFilesClient(PolygonFlatFilesClient):
         if body is None:
             raise DataSourceError(f"Polygon trades flat-file download {key} returned no body")
 
-        with destination.open("wb") as output:
-            for chunk in _iter_body_chunks(body):
-                output.write(chunk)
+        expected_length = int(response.get("ContentLength") or 0)
+        written = 0
+        try:
+            # Opening with "wb" intentionally truncates partial bytes from a prior retry attempt.
+            with destination.open("wb") as output:
+                for chunk in _iter_body_chunks(body):
+                    output.write(chunk)
+                    written += len(chunk)
+        except _streaming_exception_types() as exc:
+            raise DataSourceTransientError(f"Polygon trades flat-file stream {key} failed after {written} bytes: {exc}") from exc
+
+        if expected_length > 0 and written != expected_length:
+            raise DataSourceTransientError(
+                f"Polygon trades flat-file stream {key} incomplete: wrote {written} bytes, expected {expected_length}",
+            )
 
         return FlatFileHeader(
             source_file=f"s3://{self.bucket}/{key}",
-            content_length=int(response.get("ContentLength") or destination.stat().st_size),
+            content_length=expected_length or destination.stat().st_size,
             etag=str(response.get("ETag") or "").strip('"') or None,
         )
 
@@ -165,3 +178,19 @@ def _iter_body_chunks(body: Any, *, chunk_size: int = 8 * 1024 * 1024) -> Iterat
 
 def _safe_ticker_path(ticker: str) -> str:
     return ticker.replace("/", "_").replace("\\", "_")
+
+
+def _streaming_exception_types() -> tuple[type[BaseException], ...]:
+    exceptions: list[type[BaseException]] = [
+        ConnectionError,
+        TimeoutError,
+        OSError,
+        IncompleteRead,
+    ]
+    try:  # botocore is present in runtime, but keep imports optional for lightweight test envs.
+        from botocore.exceptions import ReadTimeoutError, ResponseStreamingError
+    except ImportError:  # pragma: no cover
+        pass
+    else:
+        exceptions.extend([ReadTimeoutError, ResponseStreamingError])
+    return tuple(dict.fromkeys(exceptions))
