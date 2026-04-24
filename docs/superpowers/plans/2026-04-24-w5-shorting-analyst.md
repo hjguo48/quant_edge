@@ -3,18 +3,23 @@
 > **For agentic workers:** 本 plan 作为任务包交给 Codex 执行. Claude 负责审查/退回/验收, 不写代码.
 > Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**版本:** v2 (2026-04-24, based on Codex round 1 review — addressed 2 High + 5 Medium + 2 Low findings)
+**版本:** v3 (2026-04-24, Codex round 2 PASS 7.4 + 3 micro-edits)
 
-**v1→v2 修订:**
-- ✅ P1 Scope 冻结: 分 **Tranche A (must-have, 13 features)** + **Tranche B (optional, 3 FTD features)**
-- ✅ P1 Compatibility matrix: 新增 adapters 和 existing (`fmp_analyst.py`, `polygon_short_interest.py`) 完全正交, 列明边界
+**v2→v3 修订 (round 2 micro-fixes):**
+- P1 count freeze: **Tranche A = 14 features** (4 shorting + 10 analyst_proxy), **5 tables**. Goal/architecture/file/task/registry/Gate 所有引用对齐
+- P1 FMP price_target 端点契约: per-analyst historical 用 legacy `api/v4/price-target`, consensus 用 stable `/stable/price-target-consensus`. 两路径显式文档化 PIT / rate limit / test policy
+- P2 FINRA Gate 方向修正: "ETag change rate <= 5%" (update rate, 不是 consistency rate, 避免实现反转)
+
+**v1→v2 修订 (round 1 findings):**
+- ✅ P1 Scope 冻结: 分 **Tranche A** + **Tranche B**
+- ✅ P1 Compatibility matrix: 新增 adapters 和 existing 100% 正交
 - ✅ P2 PIT: FINRA same-day 18:00 ET, SEC 用实际发布日期, FMP query_time 保守 fallback
-- ✅ P2 Technical: FMP 改 query-param 端点格式 (`/stable/grades?symbol=X`)
-- ✅ P2 Schema: analyst_events 拆成 3 typed tables (grades_events / ratings_events / price_target_events), earnings_calendar 独立理由文档
+- ✅ P2 Technical: FMP 改 query-param 端点格式
+- ✅ P2 Schema: analyst_events 拆 3 typed tables + earnings_calendar 独立理由文档
 - ✅ P2 Priority: Tranche A 优先, B 按需
-- ✅ P2 Backfill: 分别列 engineering days + wall-clock hours + operator supervision
-- ✅ P3 Gate source-specific: 加 FINRA update rate / CUSIP 未匹配率 / FMP field drift 检查
-- ✅ P3 非显风险: CUSIP 未匹配首级指标 + FINRA re-fetch 策略
+- ✅ P2 Backfill: engineering days + wall-clock + operator supervision 分层
+- ✅ P3 Gate source-specific: FINRA update rate / CUSIP / FMP field drift
+- ✅ P3 非显风险: CUSIP 首级指标 + FINRA re-fetch 策略
 
 ---
 
@@ -24,8 +29,8 @@
 
 - **Tranche A (must-have, 本 Week 5 核心)**:
   - 数据源: FINRA Daily Short Sale + FMP 4 新端点 (grades / ratings / price_target / earnings_calendar)
-  - **13 个新特征** (4 shorting + 9 analyst_proxy)
-  - **3 个新表** (short_sale_volume_daily + 3 analyst events tables + earnings_calendar — 共 5 表, 见下)
+  - **14 个新特征** (4 shorting + 10 analyst_proxy)
+  - **5 个新表** (short_sale_volume_daily + grades_events + ratings_events + price_target_events + earnings_calendar)
   - Gate: 数据可用性 (coverage + missing + lag + source-specific integrity)
 
 - **Tranche B (optional, 按 Tranche A 进度决定)**:
@@ -121,9 +126,9 @@
 
 | 文件 | 修改点 |
 |---|---|
-| `src/features/registry.py` | 注册 13 (+3 Tranche B) metadata |
+| `src/features/registry.py` | 注册 14 (+3 Tranche B) metadata |
 | `src/config/__init__.py` | `ENABLE_SHORTING_FEATURES`, `ENABLE_ANALYST_PROXY_FEATURES` flags default False |
-| `configs/research/data_lineage.yaml` | 13 (+3) 特征血统 |
+| `configs/research/data_lineage.yaml` | 14 (+3) 特征血统 |
 | `IMPLEMENTATION_PLAN.md` | Week 5 段落进度标记 |
 
 ---
@@ -354,12 +359,35 @@ class FMPRatingsSource(DataSource):
 
 ```python
 # fmp_price_target.py
+# 注意: FMP 有 2 个 price_target 端点, 一新一老, Tranche A 都用:
+#
+# 1. 新 stable: GET /stable/price-target-consensus?symbol={ticker}
+#    - 返 consensus snapshot (current consensus target, high, low, num_analysts)
+#    - 用于 consensus_upside 特征 (需当前 consensus)
+#
+# 2. Legacy v4: GET /api/v4/price-target?symbol={ticker}
+#    - 返 per-analyst 历史 target events
+#    - 用于 target_price_drift / target_dispersion_proxy / coverage_change_proxy 特征
+#    - 这是 legacy endpoint (docs 2024 仍列出), PIT: published_date 23:59 ET
+#    - Rate limit: 同 /stable (共享 FMP 账户配额)
+#    - Test policy: snapshot sample + 字段变更 warn, 若 end-of-life 兜底到 /stable/price-target-summary
+#
+# 两个端点都在 Tranche A, 缺一不可. fetch_ticker 返 union frame (is_consensus bool).
+
 class FMPPriceTargetSource(DataSource):
+    stable_url = "/stable/price-target-consensus"
+    legacy_v4_url = "/api/v4/price-target"  # legacy, documented 2024
+
     def fetch_ticker(self, ticker: str) -> pd.DataFrame:
-        # GET /stable/price-target-summary?symbol={ticker}   # consensus snapshot
-        # AND /stable/price-target?symbol={ticker}           # per-analyst historical events
-        # Returns union of 2 frames (per-analyst vs consensus tagged via is_consensus bool)
+        # 1. Fetch consensus snapshot from /stable/price-target-consensus
+        # 2. Fetch per-analyst history from /api/v4/price-target
+        # 3. Merge into union frame:
+        #    - per-analyst rows: is_consensus=False, target_price, analyst_firm, event_date
+        #    - consensus row: is_consensus=True, target_price (= consensus), analyst_firm=NULL
+        # 4. Each row gets price_target_events schema alignment
 ```
+
+**Legacy v4 风险缓解**: 若某时 FMP 下线 v4, 特征 `target_price_drift`/`target_dispersion_proxy`/`coverage_change_proxy` 降级 — 自动回退到 consensus summary 的 target_high-target_low dispersion (有 test 覆盖这路径).
 
 ```python
 # fmp_earnings_calendar.py
@@ -508,8 +536,8 @@ class Settings(BaseSettings):
 
 3. **Lag Rule Gate** (每特征 `knowledge_time >= event/settlement_date`)
 
-4. **Source Integrity Gate** (NEW, Codex P3-8):
-   - FINRA: file re-fetch 时 ETag 一致率 < 5% (低一致性说明 FINRA 在改历史数据 — 需警报)
+4. **Source Integrity Gate** (NEW, Codex P3-8 + round 2 方向校正):
+   - FINRA: **历史文件 ETag change rate <= 5%** (re-fetch 时发现 ETag 变化的比例 = file update rate. 健康状态 < 5%, 若 > 5% 说明 FINRA 在改历史 → 警报 + 批量 re-parse)
    - FMP: 每端点 field-population 成功率 >= 95% (低成功率说明 API 格式变化)
    - 整体: adapter HTTP 4xx/5xx 错误率 < 1%
 
