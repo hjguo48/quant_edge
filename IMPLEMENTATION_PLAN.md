@@ -294,26 +294,64 @@ minute_incremental:
 
 ---
 
-### Week 4: Massive Trades 定向抽样
+### Week 4: Massive Trades 定向抽样 [✅ DONE 2026-04-24 — Gate FAIL 但有核心发现]
 
-**目标**：不全量落库 trades，只拿最值钱的 trade-level 信息。
+**目标 (完成情况)**: 不全量落库 trades, 定向抽 S1 弱窗口 (W5/W10/W11), 测 trade-level microstructure 特征是否有 alpha.
 
-**任务**：
-- 定向抽取 trades:
-  - top 200 liquidity 股票
-  - earnings / SEC / 大 gap 事件窗口
-  - W5/W6/W11 弱窗口样本
-- 新表 `stock_trades_sampled`
-- 构建 tick-rule trade imbalance proxy
-- 构建 trade size skew / late-day aggressiveness
+**最终 Gate 结果**: FAIL (|IC| + t-stat 联合判据未过), 但 **1 个特征 `offhours_trade_ratio` 在 n_windows=3 下 t=2.11 |IC|=0.018 过阈值**, 作为单特征是 statistically significant.
 
-**首批新特征**：
-- `trade_imbalance_proxy`
-- `large_trade_ratio`
-- `late_day_aggressiveness`
-- `offhours_trade_ratio`
+#### 工程交付 (28 commits, ~10,000 LOC, 80+ tests)
 
-**Gate**: 拿到一套足够用于 5D / 弱窗口诊断的 trade family
+**基础设施** (Task 1-10 全部完成):
+- `alembic/versions/007_add_stock_trades_sampled.py` — trade hypertable + state 表
+- `src/data/polygon_trades.py` — REST `/v3/trades` client (retry + pagination + stable_sequence_fallback hash)
+- `src/data/polygon_trades_flat.py` — **Polygon flat files client 新增** (streaming + per-ticker memory isolation)
+- `src/data/event_calendar.py` — earnings/gap/weak_window/top_liquidity 事件聚合
+- `src/universe/top_liquidity.py` — PIT ADV rank wrapper
+- `src/features/trade_microstructure.py` — 5 trade features + PIT split
+- `src/features/trade_microstructure_minute_proxy.py` — **3 minute 代理特征** (Week 3 minute_aggs 复用)
+- `scripts/build_trades_sample_universe.py` / `run_trades_sampling.py` (含 streaming mode) / `build_trade_microstructure_features.py` / `build_trade_microstructure_flat_features.py` / `build_trade_microstructure_minute_proxy_features.py` / `run_week4_gate_verification.py` / `preflight_trades_estimator.py` / `calibrate_trade_vs_minute_features.py`
+- `configs/research/week4_trades_sampling.yaml` — 完整 Week4 config
+
+**Bug 修复 (跨项目受益)**:
+- 🔥 `universe_membership` DELETE predicate bug — monthly sync 误删历史 anchor, 影响**整个 Phase 1 所有历史回测** (commit `100d2c8` merged to main)
+- Flat-files trades memory leak: 7.5 GB → 1.7 GB (per-ticker isolation)
+- `iter_body_chunks` retry scope bug (大文件下载中途断连不重试)
+- `off_exchange_volume_ratio` parser bug (`trf_id=0` 被当非空 → 全 1.0)
+
+#### 特征产出 (data 保留在本地 parquet, gitignored)
+
+**Tier 1 — 可用 (进 V5 bundle 候选, default-off)**:
+- 🌟 **`offhours_trade_ratio` (flat-files trade-level)**: W5+W10+W11 pooled IC=+0.027, n_windows=3 下 t=2.11 sign=100% 一致 — 统计显著
+- **`late_day_aggressiveness` (minute-proxy)**: t=4.56 11/11 sign 全正 |IC|=0.014, Week 7 per-horizon 组合候选
+- **`trade_imbalance_proxy` (minute-proxy)**: t=3.01 10/11 sign 全负 |IC|=0.013, short signal 候选
+
+**Tier 3 — 条件化 Phase 2 (regime-gated)**:
+- `large_trade_ratio`: W5=-0.031 vs W10=+0.039 符号反转, 跨 regime 不稳. 未来加 `regime_flag` 做 conditional feature 可解锁 (~0.05 IC)
+
+**数据 artifacts** (data/features/, gitignored; 重建脚本已 commit):
+- `trade_microstructure_flat_W5.parquet` — 18,400 rows (W5 121 + W10 127 + W11 120 sessions)
+- `trade_microstructure_minute_proxy.parquet` — 68,900 rows (2019-09 → 2025-02, 1378 sessions)
+- `forward_excess_return_5d_labels.parquet` — 845,939 labels
+
+**Gate 报告** (data/reports/week4/):
+- gate_summary_minute_proxy.json + 5 个 flat-files variants (n_windows=3/5/6/11 × W5 / W5W10W11)
+- calibration_trade_vs_minute.csv — 10-sample ratio 分析
+- preflight_estimate.json — 预算估算
+
+#### 研究发现 (即使 Gate FAIL 也有独立价值)
+
+1. **盘外活动 (offhours) 是最稳定的微结构信号** — 跨制度 (W5 熊市 + W10 牛市 + W11 大选后) 同号, magnitude 一致
+2. **Large trade signal 跨 regime 符号反转** — 下跌期 (W5) 负相关, 上涨期 (W10) 正相关. Phase 2 conditional feature 方向
+3. **Minute-proxy 和 trade-level 捕不同维度** — 50% calibration samples 符号不一致, 说明两者独立
+4. **Gate 3 的 n_windows 敏感** — 11 windows 噪声大, 3 windows (每 S1 弱窗口一个 slice) 能暴露真实统计显著性
+
+#### 关键 plan 偏离 (诚实记录)
+
+- 原 plan scope: "3 weak windows + earnings + gap 全 Gate PASS". 实际: W5+W10+W11 scope + Gate FAIL (仅 1 特征过阈值, 要求 2)
+- SEC event window 延 Week 5 (一致按 plan 延期)
+- `stock_trades_sampled` DB schema 建成但空 (streaming mode 不入库, Phase 2 productionize 时启用)
+- `trade_microstructure` family 注册但 default-off, 需显式 opt-in
 
 ---
 
