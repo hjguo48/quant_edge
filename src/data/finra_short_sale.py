@@ -388,6 +388,12 @@ class FINRAShortSaleSource(DataSource):
 
         prepared = frame.copy()
         prepared["ticker"] = prepared["ticker"].astype(str).str.upper()
+        # FINRA raw files occasionally contain duplicate (ticker, trade_date, market)
+        # rows (e.g. issuer reclassifications). Collapse to last occurrence so ON
+        # CONFLICT DO UPDATE does not hit the 'row affected twice' cardinality error.
+        prepared = prepared.drop_duplicates(
+            subset=["ticker", "trade_date", "market"], keep="last"
+        )
         records = []
         for row in prepared.to_dict(orient="records"):
             records.append(
