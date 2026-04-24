@@ -175,7 +175,10 @@ class FINRAShortSaleSource(DataSource):
             response = session.head(url, timeout=30)
         except Exception as exc:
             raise DataSourceTransientError(f"FINRA HEAD failed for {market} {trade_date}: {exc}") from exc
-        if response.status_code == 404:
+        if response.status_code in (403, 404):
+            # 403: FINRA restricts access to some historical ADF files (S3 AccessDenied).
+            # 404: file simply not published (non-trading day / before market started).
+            # Both are "data unavailable" — skip without raising.
             return False, None
         if not response.ok:
             self.classify_http_error(response.status_code, getattr(response, "text", ""), context=f"FINRA HEAD {url}")
@@ -190,7 +193,7 @@ class FINRAShortSaleSource(DataSource):
             response = session.get(url, timeout=30)
         except Exception as exc:
             raise DataSourceTransientError(f"FINRA GET failed for {market} {trade_date}: {exc}") from exc
-        if response.status_code == 404:
+        if response.status_code in (403, 404):
             return "", None
         if not response.ok:
             self.classify_http_error(response.status_code, getattr(response, "text", ""), context=f"FINRA GET {url}")
