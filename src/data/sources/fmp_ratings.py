@@ -118,8 +118,9 @@ class FMPRatingsSource(DataSource):
 
     def fetch_ticker(self, ticker: str) -> pd.DataFrame:
         normalized_ticker = self.normalize_tickers([ticker])[0]
+        payload = self._request_ticker(normalized_ticker)
         rows: list[dict[str, Any]] = []
-        for record in self._request_ticker(normalized_ticker):
+        for record in payload:
             event_date = _parse_date(record.get("date"))
             # FMP /stable/ratings-historical schema (2025+): `overallScore` not
             # `ratingScore`; financial ratios use *Score naming.
@@ -139,6 +140,15 @@ class FMPRatingsSource(DataSource):
                     "pe_rating": _decimal_or_none(record.get("priceToEarningsScore")),
                     "roe_rating": _decimal_or_none(record.get("returnOnEquityScore")),
                 },
+            )
+        # Fail loud on schema drift: if FMP returned rows but we parsed zero,
+        # the expected fields (date + overallScore) are renamed/missing.
+        if payload and not rows:
+            sample_keys = sorted(payload[0].keys()) if isinstance(payload[0], dict) else []
+            raise DataSourceError(
+                f"fmp_ratings: payload non-empty ({len(payload)} rows) but zero parsed for "
+                f"{normalized_ticker}. Likely FMP schema change. Received keys: {sample_keys}. "
+                "Required: date + overallScore."
             )
         frame = self.dataframe_or_empty(rows, RATINGS_COLUMNS)
         if not frame.empty:

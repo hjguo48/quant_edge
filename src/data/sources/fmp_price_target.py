@@ -66,7 +66,9 @@ class PriceTargetEvent(Base):
 class FMPPriceTargetSource(DataSource):
     source_name = "fmp_price_target"
     stable_base_url = "https://financialmodelingprep.com/stable"
-    legacy_base_url = "https://financialmodelingprep.com/api/v4"
+    # Note: retired /api/v4/price-target endpoint returns 403 "Legacy Endpoint"
+    # since FMP 2025-08 cut-off. Per-analyst history now comes from
+    # /stable/price-target-news via paginated _request_news_page.
 
     def __init__(
         self,
@@ -149,18 +151,29 @@ class FMPPriceTargetSource(DataSource):
             return []
         return payload
 
-    def _request_news_all(self, ticker: str, max_pages: int = 20) -> list[dict[str, Any]]:
+    def _request_news_all(self, ticker: str, max_pages: int = 50) -> list[dict[str, Any]]:
         """Pull all available per-analyst events via pagination.
 
         Terminates when a page returns < page_size records (tail of history).
+        Warns loudly if max_pages is reached with a still-full page (i.e. more
+        history exists than we pulled) so silent truncation cannot happen.
         """
         page_size = 100
         all_rows: list[dict[str, Any]] = []
+        last_full_batch = True
         for page in range(max_pages):
             batch = self._request_news_page(ticker, page=page, limit=page_size)
             all_rows.extend(batch)
             if len(batch) < page_size:
+                last_full_batch = False
                 break
+        if last_full_batch:
+            logger.warning(
+                "fmp_price_target: news pagination hit max_pages=%s for %s with a still-full "
+                "final page; history may be truncated. Bump max_pages if this recurs.",
+                max_pages,
+                ticker,
+            )
         return all_rows
 
     def fetch_ticker(self, ticker: str) -> pd.DataFrame:
@@ -197,15 +210,16 @@ class FMPPriceTargetSource(DataSource):
             analyst_firm = _clean_text(record.get("analystCompany")) or _clean_text(record.get("analystName"))
             if event_date is None or target_price is None or analyst_firm is None:
                 continue
-            # publishedDate from news endpoint has precise UTC timestamp (ISO8601),
-            # so knowledge_time can be set to actual publication time rather than
-            # end-of-day — more accurate PIT discipline.
-            kt = _parse_iso_utc(published_raw) or _end_of_day_utc(event_date)
+            # Use EOD(event_date) for PIT consistency with the lag-rule gate
+            # (which requires knowledge_time >= end_of_day_ET(event_date)).
+            # Intraday publication precision adds no value for cross-sectional
+            # alpha and would cause spurious lag-rule violations. Preserve the
+            # actual publication timestamp as a separate column if ever needed.
             rows.append(
                 {
                     "ticker": normalized_ticker,
                     "event_date": event_date,
-                    "knowledge_time": kt,
+                    "knowledge_time": _end_of_day_utc(event_date),
                     "analyst_firm": analyst_firm,
                     "target_price": target_price,
                     "prior_target": None,
@@ -216,8 +230,20 @@ class FMPPriceTargetSource(DataSource):
 
         frame = self.dataframe_or_empty(rows, PRICE_TARGET_COLUMNS)
         if not frame.empty:
-            frame.sort_values(["ticker", "event_date", "is_consensus", "analyst_firm"], inplace=True)
-            frame.reset_index(drop=True, inplace=True)
+            # Persistence PK is (ticker, event_date, analyst_firm) + is_consensus.
+            # News endpoint can emit multiple same-day notes from the same firm.
+            # Sort by knowledge_time ASC then drop_duplicates(keep="last") so the
+            # most recent revision wins the upsert, not whichever arrived last
+            # in HTTP response order.
+            frame.sort_values(
+                ["ticker", "event_date", "is_consensus", "analyst_firm", "knowledge_time"],
+                inplace=True,
+                na_position="first",
+            )
+            frame = frame.drop_duplicates(
+                subset=["ticker", "event_date", "is_consensus", "analyst_firm"],
+                keep="last",
+            ).reset_index(drop=True)
         return frame
 
     def fetch_historical(
@@ -374,21 +400,6 @@ def _end_of_day_utc(day_value: date) -> datetime:
     return local_dt.astimezone(timezone.utc)
 
 
-def _parse_iso_utc(raw_value: Any) -> datetime | None:
-    """Parse FMP publishedDate (e.g. '2026-04-17T13:34:10.000Z') → tz-aware UTC datetime."""
-    if raw_value is None:
-        return None
-    text = str(raw_value).strip()
-    if not text:
-        return None
-    try:
-        normalized = text.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(normalized)
-    except (TypeError, ValueError):
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
 
 
 def _ensure_utc(value: datetime) -> datetime:

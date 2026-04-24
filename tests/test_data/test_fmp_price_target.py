@@ -111,8 +111,9 @@ def test_fetch_ticker_merges_consensus_and_per_analyst_news_rows() -> None:
     analyst_row = frame.loc[~frame["is_consensus"]].iloc[0]
     assert consensus_row["knowledge_time"] == now_dt
     assert consensus_row["target_price"] == Decimal("210")
-    # knowledge_time now uses precise publishedDate UTC, not end-of-day ET.
-    assert analyst_row["knowledge_time"] == datetime(2026, 4, 23, 8, 0, tzinfo=timezone.utc)
+    # knowledge_time uses EOD(event_date) in America/New_York → 03:59 UTC next day.
+    # This keeps PIT alignment with the Week 5 lag-rule gate.
+    assert analyst_row["knowledge_time"] == datetime(2026, 4, 24, 3, 59, tzinfo=timezone.utc)
     assert analyst_row["target_price"] == Decimal("205")  # adjPriceTarget preferred
     assert analyst_row["price_when_published"] == Decimal("200")
     # news endpoint does not provide targetChange; prior_target stays None.

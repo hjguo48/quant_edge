@@ -98,6 +98,29 @@ def test_fetch_ticker_returns_empty_on_404() -> None:
     assert frame.empty
 
 
+def test_fetch_ticker_raises_on_schema_drift() -> None:
+    """If FMP renames overallScore (e.g. overall_score), we must fail loud."""
+    from src.data.sources.base import DataSourceError
+
+    fake_session = _FakeSession(
+        [
+            _FakeResponse(
+                payload=[
+                    {
+                        "date": "2026-04-23",
+                        "rating": "A",
+                        "overall_score": 4,  # snake_case renamed — adapter expects overallScore
+                        "dcfRating": 3.25,
+                    },
+                ],
+            ),
+        ],
+    )
+
+    with pytest.raises(DataSourceError, match="schema"):
+        _client(fake_session).fetch_ticker("AAPL")
+
+
 def test_fetch_ticker_retries_on_5xx_then_succeeds() -> None:
     fake_session = _FakeSession(
         [

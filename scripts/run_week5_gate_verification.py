@@ -197,12 +197,15 @@ def compute_missing_rate_gate(
     universe_source = universe_fetcher or get_historical_members
     tickers = tuple(sorted(set(universe_source(universe_asof, "SP500"))))
 
-    rng = np.random.default_rng(42)
+    # Independent RNGs so --sample-dates stays stable when --sample-tickers
+    # changes (and vice versa). Shared seed would couple the two streams.
+    ticker_rng = np.random.default_rng(42)
+    date_rng = np.random.default_rng(1337)
     if sample_tickers is not None and sample_tickers < len(tickers):
-        indices = sorted(rng.choice(len(tickers), size=sample_tickers, replace=False).tolist())
+        indices = sorted(ticker_rng.choice(len(tickers), size=sample_tickers, replace=False).tolist())
         tickers = tuple(tickers[i] for i in indices)
     if sample_dates is not None and sample_dates < len(trade_dates):
-        indices = sorted(rng.choice(len(trade_dates), size=sample_dates, replace=False).tolist())
+        indices = sorted(date_rng.choice(len(trade_dates), size=sample_dates, replace=False).tolist())
         trade_dates = [trade_dates[i] for i in indices]
     total = len(trade_dates) * len(tickers)
     factory = session_factory or get_session_factory()
