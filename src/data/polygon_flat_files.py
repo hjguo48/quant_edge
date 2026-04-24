@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from hashlib import md5
 import gzip
 import io
+import json
+import math
 from typing import Any
 
 import pandas as pd
@@ -18,8 +20,26 @@ from src.data.sources.polygon import normalize_polygon_ticker
 
 DEFAULT_BUCKET = "flatfiles"
 DEFAULT_PREFIX = "us_stocks_sip/minute_aggs_v1"
+DEFAULT_TRADES_PREFIX = "us_stocks_sip/trades_v1"
 FLAT_FILE_PUBLISH_CUTOFF_HOUR_ET = 11
 FLAT_FILE_PUBLISH_CUTOFF_MINUTE_ET = 30
+TRADES_FLAT_COLUMNS = [
+    "ticker",
+    "trading_date",
+    "sip_timestamp",
+    "participant_timestamp",
+    "trf_timestamp",
+    "price",
+    "size",
+    "decimal_size",
+    "exchange",
+    "tape",
+    "conditions",
+    "correction",
+    "sequence_number",
+    "trade_id",
+    "trf_id",
+]
 
 
 @dataclass(frozen=True)
@@ -51,6 +71,161 @@ def is_flat_file_available(trading_date: date, *, now_utc: datetime | None = Non
     )
     now = now_utc or datetime.now(timezone.utc)
     return now >= cutoff_local.astimezone(timezone.utc)
+
+
+def ns_to_utc(series: pd.Series, *, zero_as_nat: bool = False) -> pd.Series:
+    numeric = pd.to_numeric(series, errors="coerce")
+    if zero_as_nat:
+        numeric = numeric.mask(numeric <= 0)
+    return pd.to_datetime(numeric, unit="ns", utc=True, errors="coerce")
+
+
+def _normalize_optional_text_id(series: pd.Series) -> pd.Series:
+    """Normalize Polygon optional ID fields where `0` represents missing."""
+    text = series.astype("string").str.strip()
+    missing_values = {"", "0", "0.0", "nan", "none", "null", "<na>"}
+    text = text.mask(text.str.lower().isin(missing_values))
+    return text.astype("object").where(text.notna(), None)
+
+
+def parse_trades_day_bytes(
+    payload: bytes,
+    *,
+    trading_date: date | datetime,
+    universe_tickers: Iterable[str] | None = None,
+    nrows: int | None = None,
+    chunksize: int | None = None,
+) -> pd.DataFrame:
+    """Parse Polygon trades flat-file CSV bytes into the Task 7 trade schema.
+
+    The input payload is the raw `.csv.gz` object from Polygon flat files.
+    When `chunksize` is supplied, rows are filtered chunk-by-chunk to avoid
+    retaining all non-requested tickers during W5 scoped validation.
+    """
+    trade_day = pd.Timestamp(trading_date).date()
+    universe_set = {normalize_polygon_ticker(ticker) for ticker in universe_tickers} if universe_tickers is not None else None
+    frames: list[pd.DataFrame] = []
+    try:
+        with gzip.GzipFile(fileobj=io.BytesIO(payload)) as gz:
+            reader = pd.read_csv(gz, nrows=nrows, chunksize=chunksize)
+            if isinstance(reader, pd.DataFrame):
+                chunks: Iterator[pd.DataFrame] = iter([reader])
+            else:
+                chunks = iter(reader)
+            for chunk in chunks:
+                parsed = _parse_trades_chunk(chunk, trading_date=trade_day, universe_tickers=universe_set)
+                if not parsed.empty:
+                    frames.append(parsed)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame(columns=TRADES_FLAT_COLUMNS)
+
+    if not frames:
+        return pd.DataFrame(columns=TRADES_FLAT_COLUMNS)
+    frame = pd.concat(frames, ignore_index=True)
+    frame.sort_values(["ticker", "sip_timestamp", "exchange", "sequence_number"], inplace=True)
+    frame.reset_index(drop=True, inplace=True)
+    return frame[TRADES_FLAT_COLUMNS]
+
+
+def _parse_trades_chunk(
+    raw: pd.DataFrame,
+    *,
+    trading_date: date,
+    universe_tickers: set[str] | None,
+) -> pd.DataFrame:
+    if raw.empty:
+        return pd.DataFrame(columns=TRADES_FLAT_COLUMNS)
+    raw = raw.copy()
+    raw.columns = [str(column).strip().lower() for column in raw.columns]
+    required = {
+        "ticker",
+        "exchange",
+        "price",
+        "sip_timestamp",
+        "size",
+    }
+    missing = sorted(required - set(raw.columns))
+    if missing:
+        raise DataSourceError(
+            f"Polygon trades flat file is missing expected columns: {', '.join(missing)}",
+        )
+
+    raw["ticker"] = raw["ticker"].astype(str).map(normalize_polygon_ticker)
+    if universe_tickers is not None:
+        raw = raw.loc[raw["ticker"].isin(universe_tickers)].copy()
+    if raw.empty:
+        return pd.DataFrame(columns=TRADES_FLAT_COLUMNS)
+
+    raw["sip_timestamp"] = ns_to_utc(raw["sip_timestamp"])
+    raw = raw.loc[raw["sip_timestamp"].notna()].copy()
+    if raw.empty:
+        return pd.DataFrame(columns=TRADES_FLAT_COLUMNS)
+    raw["trading_date"] = raw["sip_timestamp"].dt.tz_convert(EASTERN).dt.date
+    raw = raw.loc[raw["trading_date"] == trading_date].copy()
+    if raw.empty:
+        return pd.DataFrame(columns=TRADES_FLAT_COLUMNS)
+
+    raw["participant_timestamp"] = (
+        ns_to_utc(raw["participant_timestamp"], zero_as_nat=True)
+        if "participant_timestamp" in raw.columns
+        else pd.NaT
+    )
+    raw["trf_timestamp"] = ns_to_utc(raw["trf_timestamp"], zero_as_nat=True) if "trf_timestamp" in raw.columns else pd.NaT
+    raw["conditions"] = raw["conditions"].map(_parse_trade_conditions) if "conditions" in raw.columns else [[] for _ in range(len(raw))]
+
+    frame = pd.DataFrame(
+        {
+            "ticker": raw["ticker"].astype(str).str.upper(),
+            "trading_date": raw["trading_date"],
+            "sip_timestamp": raw["sip_timestamp"],
+            "participant_timestamp": raw["participant_timestamp"],
+            "trf_timestamp": raw["trf_timestamp"],
+            "price": pd.to_numeric(raw["price"], errors="coerce"),
+            "size": pd.to_numeric(raw["size"], errors="coerce"),
+            "decimal_size": pd.to_numeric(raw["decimal_size"], errors="coerce") if "decimal_size" in raw.columns else pd.NA,
+            "exchange": pd.to_numeric(raw["exchange"], errors="coerce"),
+            "tape": pd.to_numeric(raw["tape"], errors="coerce") if "tape" in raw.columns else pd.NA,
+            "conditions": raw["conditions"],
+            "correction": pd.to_numeric(raw["correction"], errors="coerce") if "correction" in raw.columns else pd.NA,
+            "sequence_number": pd.to_numeric(raw["sequence_number"], errors="coerce") if "sequence_number" in raw.columns else pd.NA,
+            "trade_id": raw["id"].where(raw["id"].notna(), None) if "id" in raw.columns else None,
+            "trf_id": _normalize_optional_text_id(raw["trf_id"]) if "trf_id" in raw.columns else None,
+        },
+        columns=TRADES_FLAT_COLUMNS,
+    )
+    frame = frame.loc[frame["price"].notna() & frame["size"].notna()].copy()
+    return frame
+
+
+def _parse_trade_conditions(value: object) -> list[int]:
+    if value is None:
+        return []
+    try:
+        if bool(pd.isna(value)):
+            return []
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, float) and (pd.isna(value) or math.isnan(value)):
+        return []
+    if isinstance(value, int):
+        return [value]
+    if isinstance(value, (list, tuple, set)):
+        return [int(item) for item in value if not pd.isna(item)]
+
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "null"}:
+        return []
+    try:
+        loaded = json.loads(text)
+    except json.JSONDecodeError:
+        loaded = [part.strip() for part in text.strip("[]").split(",") if part.strip()]
+    if isinstance(loaded, int):
+        return [loaded]
+    if isinstance(loaded, str):
+        return [int(loaded)] if loaded.strip() else []
+    if isinstance(loaded, list):
+        return [int(item) for item in loaded if str(item).strip()]
+    return []
 
 
 class PolygonFlatFilesClient(DataSource):

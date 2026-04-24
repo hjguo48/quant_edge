@@ -1,0 +1,228 @@
+{
+  "budgets": {
+    "expected_pilot_ticker_days": 30000,
+    "max_daily_api_calls": 50000,
+    "max_rows_per_ticker_day": 2000000,
+    "max_storage_gb": 200.0
+  },
+  "estimates": {
+    "api_calls": 81012,
+    "daily_api_call_overflow_examples": [],
+    "max_daily_api_calls_estimated": 453,
+    "probe_calls": 0,
+    "row_limit_overflow_examples": [
+      {
+        "rows": 2345611,
+        "ticker": "GME",
+        "trading_date": "2024-06-07"
+      },
+      {
+        "rows": 2347318,
+        "ticker": "NVDA",
+        "trading_date": "2024-03-08"
+      },
+      {
+        "rows": 2557629,
+        "ticker": "NVDA",
+        "trading_date": "2024-06-10"
+      },
+      {
+        "rows": 3698050,
+        "ticker": "NVDA",
+        "trading_date": "2024-06-20"
+      },
+      {
+        "rows": 2964331,
+        "ticker": "NVDA",
+        "trading_date": "2024-06-21"
+      },
+      {
+        "rows": 3331653,
+        "ticker": "NVDA",
+        "trading_date": "2024-06-24"
+      },
+      {
+        "rows": 2277296,
+        "ticker": "NVDA",
+        "trading_date": "2024-06-25"
+      },
+      {
+        "rows": 2061148,
+        "ticker": "NVDA",
+        "trading_date": "2024-06-26"
+      },
+      {
+        "rows": 2780586,
+        "ticker": "NVDA",
+        "trading_date": "2024-07-11"
+      },
+      {
+        "rows": 3072395,
+        "ticker": "NVDA",
+        "trading_date": "2024-07-17"
+      },
+      {
+        "rows": 2209093,
+        "ticker": "NVDA",
+        "trading_date": "2024-07-18"
+      },
+      {
+        "rows": 2363804,
+        "ticker": "NVDA",
+        "trading_date": "2024-07-24"
+      },
+      {
+        "rows": 3427105,
+        "ticker": "NVDA",
+        "trading_date": "2024-07-25"
+      },
+      {
+        "rows": 3224646,
+        "ticker": "NVDA",
+        "trading_date": "2024-07-30"
+      },
+      {
+        "rows": 2612342,
+        "ticker": "NVDA",
+        "trading_date": "2024-07-31"
+      },
+      {
+        "rows": 3105121,
+        "ticker": "NVDA",
+        "trading_date": "2024-08-01"
+      },
+      {
+        "rows": 3256332,
+        "ticker": "NVDA",
+        "trading_date": "2024-08-02"
+      },
+      {
+        "rows": 4095970,
+        "ticker": "NVDA",
+        "trading_date": "2024-08-05"
+      },
+      {
+        "rows": 2434374,
+        "ticker": "NVDA",
+        "trading_date": "2024-08-06"
+      },
+      {
+        "rows": 2562300,
+        "ticker": "NVDA",
+        "trading_date": "2024-08-07"
+      }
+    ],
+    "rows": 3644730487,
+    "storage_compressed_gb": 135.77679123729467,
+    "storage_uncompressed_gb": 509.162967139855,
+    "wall_time_hours": 1.1251666666666669
+  },
+  "failure_reasons": [
+    "missing_transaction_estimates",
+    "storage_budget_exceeded",
+    "ticker_day_row_limit_exceeded"
+  ],
+  "inputs": {
+    "candidate_event_rows": 18400,
+    "missing_transaction_estimate_count": 2284,
+    "missing_transaction_estimate_examples": [
+      {
+        "ticker": "IWM",
+        "trading_date": "2021-09-03"
+      },
+      {
+        "ticker": "QQQ",
+        "trading_date": "2021-09-03"
+      },
+      {
+        "ticker": "XLB",
+        "trading_date": "2021-09-03"
+      },
+      {
+        "ticker": "XLE",
+        "trading_date": "2021-09-03"
+      },
+      {
+        "ticker": "XLF",
+        "trading_date": "2021-09-03"
+      },
+      {
+        "ticker": "XLI",
+        "trading_date": "2021-09-03"
+      },
+      {
+        "ticker": "XLK",
+        "trading_date": "2021-09-03"
+      },
+      {
+        "ticker": "XLV",
+        "trading_date": "2021-09-03"
+      },
+      {
+        "ticker": "IWM",
+        "trading_date": "2021-09-07"
+      },
+      {
+        "ticker": "QQQ",
+        "trading_date": "2021-09-07"
+      },
+      {
+        "ticker": "XLE",
+        "trading_date": "2021-09-07"
+      },
+      {
+        "ticker": "XLF",
+        "trading_date": "2021-09-07"
+      },
+      {
+        "ticker": "XLI",
+        "trading_date": "2021-09-07"
+      },
+      {
+        "ticker": "XLK",
+        "trading_date": "2021-09-07"
+      },
+      {
+        "ticker": "XLV",
+        "trading_date": "2021-09-07"
+      },
+      {
+        "ticker": "IWM",
+        "trading_date": "2021-09-08"
+      },
+      {
+        "ticker": "QQQ",
+        "trading_date": "2021-09-08"
+      },
+      {
+        "ticker": "XLE",
+        "trading_date": "2021-09-08"
+      },
+      {
+        "ticker": "XLF",
+        "trading_date": "2021-09-08"
+      },
+      {
+        "ticker": "XLI",
+        "trading_date": "2021-09-08"
+      }
+    ],
+    "reason_counts": {
+      "weak_window": 18400
+    },
+    "transaction_estimate_rows": 237421,
+    "unique_ticker_days": 18400
+  },
+  "metadata": {
+    "bytes_per_trade_compressed": 40,
+    "bytes_per_trade_uncompressed": 150,
+    "config_hash": "40cb7d495794f294cbcde033e483ed4e120ccbb6c3c3dcf7c0c7d83d269352b1",
+    "end_date": "2025-02-28",
+    "generated_at_utc": "2026-04-21T13:26:17.361180+00:00",
+    "script": "scripts/preflight_trades_estimator.py",
+    "stage": "pilot",
+    "start_date": "2021-09-03"
+  },
+  "pass": false,
+  "verdict": "FAIL"
+}

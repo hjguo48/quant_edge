@@ -1,0 +1,137 @@
+{
+  "budgets": {
+    "expected_pilot_ticker_days": 30000,
+    "max_daily_api_calls": 50000,
+    "max_rows_per_ticker_day": 2000000,
+    "max_storage_gb": 200.0
+  },
+  "estimates": {
+    "api_calls": 25163,
+    "daily_api_call_overflow_examples": [],
+    "max_daily_api_calls_estimated": 304,
+    "probe_calls": 0,
+    "row_limit_overflow_examples": [
+      {
+        "rows": 2384040,
+        "ticker": "TSLA",
+        "trading_date": "2023-01-03"
+      },
+      {
+        "rows": 2458467,
+        "ticker": "TSLA",
+        "trading_date": "2023-01-27"
+      }
+    ],
+    "rows": 1120467468,
+    "storage_compressed_gb": 41.74066588282585,
+    "storage_uncompressed_gb": 156.52749706059694,
+    "wall_time_hours": 0.34948611111111116
+  },
+  "failure_reasons": [
+    "missing_transaction_estimates",
+    "ticker_day_row_limit_exceeded"
+  ],
+  "inputs": {
+    "candidate_event_rows": 6250,
+    "missing_transaction_estimate_count": 863,
+    "missing_transaction_estimate_examples": [
+      {
+        "ticker": "IWM",
+        "trading_date": "2022-10-03"
+      },
+      {
+        "ticker": "QQQ",
+        "trading_date": "2022-10-03"
+      },
+      {
+        "ticker": "XLE",
+        "trading_date": "2022-10-03"
+      },
+      {
+        "ticker": "XLF",
+        "trading_date": "2022-10-03"
+      },
+      {
+        "ticker": "XLK",
+        "trading_date": "2022-10-03"
+      },
+      {
+        "ticker": "XLU",
+        "trading_date": "2022-10-03"
+      },
+      {
+        "ticker": "XLV",
+        "trading_date": "2022-10-03"
+      },
+      {
+        "ticker": "XLY",
+        "trading_date": "2022-10-03"
+      },
+      {
+        "ticker": "IWM",
+        "trading_date": "2022-10-04"
+      },
+      {
+        "ticker": "QQQ",
+        "trading_date": "2022-10-04"
+      },
+      {
+        "ticker": "XLB",
+        "trading_date": "2022-10-04"
+      },
+      {
+        "ticker": "XLE",
+        "trading_date": "2022-10-04"
+      },
+      {
+        "ticker": "XLF",
+        "trading_date": "2022-10-04"
+      },
+      {
+        "ticker": "XLK",
+        "trading_date": "2022-10-04"
+      },
+      {
+        "ticker": "XLU",
+        "trading_date": "2022-10-04"
+      },
+      {
+        "ticker": "XLV",
+        "trading_date": "2022-10-04"
+      },
+      {
+        "ticker": "XLY",
+        "trading_date": "2022-10-04"
+      },
+      {
+        "ticker": "IWM",
+        "trading_date": "2022-10-05"
+      },
+      {
+        "ticker": "QQQ",
+        "trading_date": "2022-10-05"
+      },
+      {
+        "ticker": "XLE",
+        "trading_date": "2022-10-05"
+      }
+    ],
+    "reason_counts": {
+      "weak_window": 6250
+    },
+    "transaction_estimate_rows": 25225,
+    "unique_ticker_days": 6250
+  },
+  "metadata": {
+    "bytes_per_trade_compressed": 40,
+    "bytes_per_trade_uncompressed": 150,
+    "config_hash": "494114106e5325f5591869eddd2895d3efd15283a50945500964b369aef68c23",
+    "end_date": "2023-03-31",
+    "generated_at_utc": "2026-04-21T12:33:28.933973+00:00",
+    "script": "scripts/preflight_trades_estimator.py",
+    "stage": "pilot",
+    "start_date": "2022-10-01"
+  },
+  "pass": false,
+  "verdict": "FAIL"
+}
