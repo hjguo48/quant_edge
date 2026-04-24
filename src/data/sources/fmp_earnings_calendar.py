@@ -200,19 +200,31 @@ class FMPEarningsCalendarSource(DataSource):
     def _persist(frame: pd.DataFrame, *, now_dt: datetime) -> int:
         if frame.empty:
             return 0
+
+        def _clean(value: Any) -> Any:
+            """Coerce pandas NaN / pd.NA back to None for SQLAlchemy bigint/numeric binding."""
+            if value is None:
+                return None
+            try:
+                if pd.isna(value):
+                    return None
+            except (TypeError, ValueError):
+                pass
+            return value
+
         session_factory = get_session_factory()
         with session_factory() as session:
             for row in frame.itertuples(index=False):
                 stmt = insert(EarningsCalendar).values(
-                    ticker=row.ticker,
-                    announce_date=row.announce_date,
-                    knowledge_time=row.knowledge_time,
-                    timing=row.timing,
-                    fiscal_period_end=row.fiscal_period_end,
-                    eps_estimate=row.eps_estimate,
-                    eps_actual=row.eps_actual,
-                    revenue_estimate=row.revenue_estimate,
-                    revenue_actual=row.revenue_actual,
+                    ticker=_clean(row.ticker),
+                    announce_date=_clean(row.announce_date),
+                    knowledge_time=_clean(row.knowledge_time),
+                    timing=_clean(row.timing),
+                    fiscal_period_end=_clean(row.fiscal_period_end),
+                    eps_estimate=_clean(row.eps_estimate),
+                    eps_actual=_clean(row.eps_actual),
+                    revenue_estimate=_clean(row.revenue_estimate),
+                    revenue_actual=_clean(row.revenue_actual),
                 )
                 knowledge_time_value = sa.case(
                     (
