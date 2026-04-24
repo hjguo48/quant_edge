@@ -54,18 +54,19 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     start_date = parse_date(args.start_date)
     end_date = parse_date(args.end_date)
+    markets = parse_markets(args.markets)
     source = FINRAShortSaleSource(min_request_interval=0.0)
     inserted = source.fetch_historical(
         start_date=start_date,
         end_date=end_date,
-        markets=parse_markets(args.markets),
+        markets=markets,
         force_refetch=args.force_refetch,
     )
     logger.info(
         "FINRA short-sale backfill finished: start={} end={} markets={} rows={}",
         start_date,
         end_date,
-        parse_markets(args.markets),
+        markets,
         inserted,
     )
     return 0

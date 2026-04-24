@@ -34,6 +34,7 @@ except ImportError:
 EASTERN = ZoneInfo("America/New_York")
 XNYS = xcals.get_calendar("XNYS")
 VALID_MARKETS = ("CNMS", "ADF", "BNY")
+FINRA_USER_AGENT = "QuantEdge/1.0 (research; contact: hjguo48@gmail.com)"
 FINRA_COLUMNS = [
     "ticker",
     "trade_date",
@@ -42,6 +43,16 @@ FINRA_COLUMNS = [
     "short_volume",
     "short_exempt_volume",
     "total_volume",
+]
+PERSISTED_FINRA_COLUMNS = [
+    "ticker",
+    "trade_date",
+    "market",
+    "knowledge_time",
+    "short_volume",
+    "short_exempt_volume",
+    "total_volume",
+    "file_etag",
 ]
 
 
@@ -74,6 +85,7 @@ class FINRAShortSaleSource(DataSource):
         min_request_interval: float = 0.0,
         retry_config: RetryConfig | None = None,
         http_session: Any | None = None,
+        now_fn: Callable[[], datetime] | None = None,
     ) -> None:
         super().__init__(
             api_key or "public",
@@ -81,6 +93,7 @@ class FINRAShortSaleSource(DataSource):
             retry_config=retry_config or RetryConfig(max_attempts=5),
         )
         self._http_session = http_session
+        self._now_fn = now_fn or (lambda: datetime.now(timezone.utc))
 
     def _require_api_key(self) -> None:
         # FINRA daily short-sale files are public; keep the retry/throttle
@@ -103,46 +116,18 @@ class FINRAShortSaleSource(DataSource):
         self,
         start_date: date,
         end_date: date,
-        markets: list[str] = ["CNMS", "ADF", "BNY"],
+        markets: Sequence[str] = VALID_MARKETS,
         session_factory: Callable | None = None,
         force_refetch: bool = False,
     ) -> int:
-        if start_date > end_date:
-            return 0
-
-        total_rows = 0
-        active_session_factory = session_factory or get_session_factory()
-        sessions = XNYS.sessions_in_range(pd.Timestamp(start_date), pd.Timestamp(end_date))
-        for session_label in sessions:
-            trade_day = session_label.date()
-            for market in markets:
-                normalized_market = _normalize_market(market)
-                cached_etag = self._get_cached_etag(
-                    trade_date=trade_day,
-                    market=normalized_market,
-                    session_factory=active_session_factory,
-                )
-                if not force_refetch:
-                    exists, remote_etag = self._head_day(trade_day, normalized_market)
-                    if not exists:
-                        continue
-                    if cached_etag and remote_etag and cached_etag == remote_etag:
-                        logger.info(
-                            "finra_short_sale skipping {} {} because cached ETag matches {}",
-                            trade_day,
-                            normalized_market,
-                            remote_etag,
-                        )
-                        continue
-
-                frame, etag = self.fetch_day(trade_day, normalized_market)
-                if frame.empty:
-                    continue
-                total_rows += self._persist(
-                    frame,
-                    file_etag=etag,
-                    session_factory=active_session_factory,
-                )
+        total_rows, _ = self._fetch_and_persist_range(
+            start_date=start_date,
+            end_date=end_date,
+            markets=markets,
+            session_factory=session_factory,
+            force_refetch=force_refetch,
+            collect_frames=False,
+        )
         return total_rows
 
     def fetch_incremental(
@@ -150,12 +135,26 @@ class FINRAShortSaleSource(DataSource):
         tickers: Sequence[str],
         since_date: date | datetime,
     ) -> pd.DataFrame:
-        _ = tickers
+        if tickers:
+            logger.warning("FINRA files are market-wide, 'tickers' filter ignored; returning all rows")
         start = self.coerce_date(since_date)
         end = date.today()
-        inserted = self.fetch_historical(start, end)
+        inserted, frames = self._fetch_and_persist_range(
+            start_date=start,
+            end_date=end,
+            markets=VALID_MARKETS,
+            session_factory=None,
+            force_refetch=False,
+            collect_frames=True,
+        )
         logger.info("finra_short_sale incremental fetched {} rows from {} to {}", inserted, start, end)
-        return pd.DataFrame(columns=FINRA_COLUMNS)
+        if not frames:
+            return pd.DataFrame(columns=PERSISTED_FINRA_COLUMNS)
+        combined = pd.concat(frames, ignore_index=True)
+        combined = combined[PERSISTED_FINRA_COLUMNS]
+        combined.sort_values(["trade_date", "market", "ticker"], inplace=True)
+        combined.reset_index(drop=True, inplace=True)
+        return combined
 
     def health_check(self) -> bool:
         today = pd.Timestamp(date.today())
@@ -206,8 +205,70 @@ class FINRAShortSaleSource(DataSource):
             raise DataSourceError("requests is not installed.") from exc
         session = requests.Session()
         session.trust_env = False
+        session.headers.update({"User-Agent": FINRA_USER_AGENT})
         self._http_session = session
         return session
+
+    def _fetch_and_persist_range(
+        self,
+        *,
+        start_date: date,
+        end_date: date,
+        markets: Sequence[str],
+        session_factory: Callable | None,
+        force_refetch: bool,
+        collect_frames: bool,
+    ) -> tuple[int, list[pd.DataFrame]]:
+        if start_date > end_date:
+            return 0, []
+
+        total_rows = 0
+        collected_frames: list[pd.DataFrame] = []
+        active_session_factory = session_factory or get_session_factory()
+        sessions = XNYS.sessions_in_range(pd.Timestamp(start_date), pd.Timestamp(end_date))
+        for session_label in sessions:
+            trade_day = session_label.date()
+            for market in markets:
+                normalized_market = _normalize_market(market)
+                cached_etag = self._get_cached_etag(
+                    trade_date=trade_day,
+                    market=normalized_market,
+                    session_factory=active_session_factory,
+                )
+                remote_etag: str | None = None
+                if not force_refetch:
+                    exists, remote_etag = self._head_day(trade_day, normalized_market)
+                    if not exists:
+                        continue
+                    if cached_etag and remote_etag and cached_etag == remote_etag:
+                        logger.info(
+                            "finra_short_sale skipping {} {} because cached ETag matches {}",
+                            trade_day,
+                            normalized_market,
+                            remote_etag,
+                        )
+                        continue
+
+                frame, etag = self.fetch_day(trade_day, normalized_market)
+                if frame.empty:
+                    continue
+
+                effective_etag = etag or remote_etag or cached_etag
+                revision_knowledge_time = None
+                if cached_etag and effective_etag and cached_etag != effective_etag:
+                    revision_knowledge_time = _ensure_utc(self._now_fn())
+
+                total_rows += self._persist(
+                    frame,
+                    file_etag=effective_etag,
+                    session_factory=active_session_factory,
+                    revision_knowledge_time=revision_knowledge_time,
+                )
+                if collect_frames:
+                    persisted_frame = frame.copy()
+                    persisted_frame["file_etag"] = effective_etag
+                    collected_frames.append(persisted_frame[PERSISTED_FINRA_COLUMNS])
+        return total_rows, collected_frames
 
     @staticmethod
     def _build_url(trade_date: date, market: str) -> str:
@@ -319,6 +380,7 @@ class FINRAShortSaleSource(DataSource):
         *,
         file_etag: str | None,
         session_factory: Callable,
+        revision_knowledge_time: datetime | None = None,
     ) -> int:
         if frame.empty:
             return 0
@@ -341,6 +403,12 @@ class FINRAShortSaleSource(DataSource):
             )
 
         statement = insert(ShortSaleVolume).values(records)
+        updated_knowledge_time: Any = statement.excluded.knowledge_time
+        if revision_knowledge_time is not None:
+            updated_knowledge_time = sa.func.greatest(
+                ShortSaleVolume.knowledge_time + sa.text("interval '1 second'"),
+                sa.literal(revision_knowledge_time, type_=sa.DateTime(timezone=True)),
+            )
         upsert = statement.on_conflict_do_update(
             index_elements=[
                 ShortSaleVolume.ticker,
@@ -348,7 +416,7 @@ class FINRAShortSaleSource(DataSource):
                 ShortSaleVolume.market,
             ],
             set_={
-                "knowledge_time": statement.excluded.knowledge_time,
+                "knowledge_time": updated_knowledge_time,
                 "short_volume": statement.excluded.short_volume,
                 "short_exempt_volume": statement.excluded.short_exempt_volume,
                 "total_volume": statement.excluded.total_volume,
@@ -390,3 +458,9 @@ def _parse_int(raw_value: object, *, field: str, line_number: int) -> int:
         return int(float(text))
     except Exception as exc:
         raise ValueError(f"{field}='{text}' is not numeric on line {line_number}") from exc
+
+
+def _ensure_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)

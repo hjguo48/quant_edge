@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+import sys
 from typing import Any
+import types
 
 import pandas as pd
 import pytest
@@ -11,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 
 import src.data.finra_short_sale as finra_module
 from src.data.finra_short_sale import FINRAShortSaleSource, ShortSaleVolume
-from src.data.sources.base import RetryConfig
+from src.data.sources.base import DataSourceTransientError, RetryConfig
 
 
 class _FakeResponse:
@@ -66,11 +68,16 @@ def _retry_config() -> RetryConfig:
     )
 
 
-def _client(fake_session: _FakeSession) -> FINRAShortSaleSource:
+def _client(
+    fake_session: _FakeSession,
+    *,
+    now_fn: Any | None = None,
+) -> FINRAShortSaleSource:
     return FINRAShortSaleSource(
         min_request_interval=0,
         retry_config=_retry_config(),
         http_session=fake_session,
+        now_fn=now_fn,
     )
 
 
@@ -193,6 +200,17 @@ def test_fetch_day_retries_429_then_succeeds() -> None:
     assert len(fake_session.get_calls) == 2
 
 
+def test_fetch_day_raises_on_persistent_429() -> None:
+    fake_session = _FakeSession(
+        get_responses=[_FakeResponse(status_code=429, text="rate limited") for _ in range(_retry_config().max_attempts)],
+    )
+
+    with pytest.raises(DataSourceTransientError):
+        _client(fake_session).fetch_day(date(2026, 4, 23), "CNMS")
+
+    assert len(fake_session.get_calls) == _retry_config().max_attempts
+
+
 def test_fetch_historical_skips_when_etag_unchanged_unless_force_refetch(db_engine) -> None:
     _truncate_table(db_engine)
     session_factory = _session_factory(db_engine)
@@ -273,7 +291,8 @@ def test_fetch_historical_etag_changed_reparses_and_upserts(db_engine) -> None:
         ],
     )
 
-    inserted = _client(fake_session).fetch_historical(
+    now_dt = datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)
+    inserted = _client(fake_session, now_fn=lambda: now_dt).fetch_historical(
         start_date=date(2026, 4, 23),
         end_date=date(2026, 4, 23),
         markets=["CNMS"],
@@ -292,3 +311,106 @@ def test_fetch_historical_etag_changed_reparses_and_upserts(db_engine) -> None:
     assert row.short_volume == 250
     assert row.total_volume == 1200
     assert row.file_etag == "etag-new"
+    assert row.knowledge_time == now_dt
+
+
+def test_etag_change_advances_knowledge_time(db_engine) -> None:
+    _truncate_table(db_engine)
+    session_factory = _session_factory(db_engine)
+    original_kt = datetime(2026, 4, 23, 22, 0, tzinfo=timezone.utc)
+    with session_factory() as session:
+        session.execute(
+            insert(ShortSaleVolume).values(
+                ticker="AAPL",
+                trade_date=date(2026, 4, 23),
+                knowledge_time=original_kt,
+                market="CNMS",
+                short_volume=100,
+                short_exempt_volume=10,
+                total_volume=1000,
+                file_etag="etag-old",
+            ),
+        )
+        session.commit()
+
+    fake_session = _FakeSession(
+        head_responses=[_FakeResponse(status_code=200, headers={"ETag": '"etag-new"'})],
+        get_responses=[
+            _FakeResponse(
+                status_code=200,
+                text="\n".join(
+                    [
+                        "Date|Symbol|ShortVolume|ShortExemptVolume|TotalVolume|Market",
+                        "20260423|AAPL|250|15|1200|CNMS",
+                    ],
+                ),
+                headers={"ETag": '"etag-new"'},
+            ),
+        ],
+    )
+    now_dt = datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)
+
+    _client(fake_session, now_fn=lambda: now_dt).fetch_historical(
+        start_date=date(2026, 4, 23),
+        end_date=date(2026, 4, 23),
+        markets=["CNMS"],
+        session_factory=session_factory,
+    )
+
+    with session_factory() as session:
+        updated = session.execute(
+            sa.select(ShortSaleVolume.knowledge_time).where(
+                ShortSaleVolume.ticker == "AAPL",
+                ShortSaleVolume.trade_date == date(2026, 4, 23),
+                ShortSaleVolume.market == "CNMS",
+            ),
+        ).scalar_one()
+
+    assert updated >= now_dt
+
+
+def test_session_has_user_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _RequestsSession:
+        def __init__(self) -> None:
+            self.headers: dict[str, str] = {}
+            self.trust_env = True
+
+    fake_requests = types.SimpleNamespace(Session=_RequestsSession)
+    monkeypatch.setitem(sys.modules, "requests", fake_requests)
+    source = FINRAShortSaleSource(min_request_interval=0, retry_config=_retry_config())
+
+    session = source._get_http_session()
+
+    assert "QuantEdge" in session.headers["User-Agent"]
+
+
+def test_fetch_incremental_returns_persisted_frame(
+    db_engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _truncate_table(db_engine)
+    session_factory = _session_factory(db_engine)
+
+    class _FixedDate(date):
+        @classmethod
+        def today(cls) -> date:
+            return cls(2026, 4, 23)
+
+    fake_session = _FakeSession(
+        head_responses=[
+            _FakeResponse(status_code=200, headers={"ETag": '"etag-cnms"'}),
+            _FakeResponse(status_code=404, text="not found"),
+            _FakeResponse(status_code=404, text="not found"),
+        ],
+        get_responses=[
+            _FakeResponse(status_code=200, text=_sample_file(rows=1), headers={"ETag": '"etag-cnms"'})
+        ],
+    )
+    monkeypatch.setattr(finra_module, "date", _FixedDate)
+    monkeypatch.setattr(finra_module, "get_session_factory", lambda: session_factory)
+
+    frame = _client(fake_session).fetch_incremental(["AAPL"], date(2026, 4, 23))
+
+    assert not frame.empty
+    assert list(frame.columns) == [column.name for column in ShortSaleVolume.__table__.columns]
+    assert frame["file_etag"].iloc[0] == "etag-cnms"
