@@ -59,3 +59,46 @@ intraday_feature_layer:
     - transactions_count_zscore
   # Week 3 intraday 特征统一遵守 trade_date + 1 个 XNYS session close 可见。
   knowledge_time_rule: trade_date + 1 business day close (next XNYS session close, T+1)
+
+shorting_feature_layer:
+  # Week 5 shorting 特征当前为 opt-in，不默认进入主管道。
+  source_of_truth: short_sale_volume_daily
+  source_adapter: src.data.finra_short_sale.FINRAShortSaleSource
+  applies_to:
+    - short_sale_ratio_1d
+    - short_sale_ratio_5d
+    - short_sale_accel
+    - abnormal_off_exchange_shorting
+  knowledge_time_rule: trade_date 18:00 America/New_York (same-day FINRA publication)
+
+analyst_proxy_feature_layer:
+  # Week 5 analyst proxy 特征当前为 opt-in，不默认进入主管道。
+  sources:
+    - adapter: src.data.sources.fmp_grades.FMPGradesSource
+      table: grades_events
+      knowledge_time_rule: event_date 23:59 America/New_York
+      features:
+        - net_grade_change_5d
+        - net_grade_change_20d
+        - net_grade_change_60d
+        - upgrade_count
+        - downgrade_count
+    - adapter: src.data.sources.fmp_ratings.FMPRatingsSource
+      table: ratings_events
+      knowledge_time_rule: event_date 23:59 America/New_York
+      features:
+        - financial_health_trend
+    - adapter: src.data.sources.fmp_price_target.FMPPriceTargetSource
+      table: price_target_events
+      knowledge_time_rule: per-analyst rows = published/event_date 23:59 America/New_York; consensus snapshots = fetch timestamp
+      features:
+        - consensus_upside
+        - target_price_drift
+        - target_dispersion_proxy
+        - coverage_change_proxy
+    - adapter: src.data.db.models.StockPrice
+      table: stock_prices
+      knowledge_time_rule: PIT-visible close uses stock_prices.knowledge_time <= as_of_end
+      features:
+        - consensus_upside
+        - target_price_drift
