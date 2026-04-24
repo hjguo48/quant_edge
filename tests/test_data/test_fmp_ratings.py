@@ -54,10 +54,16 @@ def _ensure_table(db_engine) -> None:
     RatingEvent.__table__.create(bind=db_engine, checkfirst=True)
 
 
+_TEST_TICKER = "TSTRTG"  # unique prefix avoids clobbering real SP500 data
+
+
 def _truncate_table(db_engine) -> None:
     _ensure_table(db_engine)
     with db_engine.begin() as conn:
-        conn.execute(sa.text("truncate table ratings_events"))
+        conn.execute(
+            sa.text("DELETE FROM ratings_events WHERE ticker = :t"),
+            {"t": _TEST_TICKER},
+        )
 
 
 def test_fetch_ticker_parses_ratings_and_pit_knowledge_time() -> None:
@@ -157,10 +163,12 @@ def test_fetch_historical_persists_and_updates_row(db_engine) -> None:
     )
     client = _client(fake_session)
 
-    assert client.fetch_historical(["AAPL"], date(2026, 4, 1), date(2026, 4, 30)) == 1
-    assert client.fetch_historical(["AAPL"], date(2026, 4, 1), date(2026, 4, 30)) == 1
+    assert client.fetch_historical([_TEST_TICKER], date(2026, 4, 1), date(2026, 4, 30)) == 1
+    assert client.fetch_historical([_TEST_TICKER], date(2026, 4, 1), date(2026, 4, 30)) == 1
 
     with session_factory() as session:
-        row = session.execute(sa.select(RatingEvent)).scalar_one()
+        row = session.execute(
+            sa.select(RatingEvent).where(RatingEvent.ticker == _TEST_TICKER)
+        ).scalar_one()
     assert row.rating_score == 5
     assert row.rating_recommendation == "A"

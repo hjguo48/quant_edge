@@ -63,10 +63,16 @@ def _ensure_table(db_engine) -> None:
     EarningsCalendar.__table__.create(bind=db_engine, checkfirst=True)
 
 
+_TEST_TICKER = "TSTERN"  # unique prefix avoids clobbering real SP500 data
+
+
 def _truncate_table(db_engine) -> None:
     _ensure_table(db_engine)
     with db_engine.begin() as conn:
-        conn.execute(sa.text("truncate table earnings_calendar"))
+        conn.execute(
+            sa.text("DELETE FROM earnings_calendar WHERE ticker = :t"),
+            {"t": _TEST_TICKER},
+        )
 
 
 def test_fetch_range_parses_rows_and_pit_knowledge_time() -> None:
@@ -75,7 +81,7 @@ def test_fetch_range_parses_rows_and_pit_knowledge_time() -> None:
             _FakeResponse(
                 payload=[
                     {
-                        "symbol": "AAPL",
+                        "symbol": _TEST_TICKER,
                         "date": "2026-04-23",
                         "epsEstimated": 1.25,
                         "eps": None,
@@ -104,7 +110,7 @@ def test_fetch_range_parses_rows_and_pit_knowledge_time() -> None:
     frame = _client(fake_session).fetch_range(date(2026, 4, 23), date(2026, 4, 23))
 
     assert len(frame) == 2
-    aapl_row = frame.loc[frame["ticker"] == "AAPL"].iloc[0]
+    aapl_row = frame.loc[frame["ticker"] == _TEST_TICKER].iloc[0]
     msft_row = frame.loc[frame["ticker"] == "MSFT"].iloc[0]
     assert aapl_row["knowledge_time"] == datetime(2026, 4, 24, 3, 59, tzinfo=timezone.utc)
     assert msft_row["knowledge_time"] == datetime(2026, 4, 25, 3, 59, tzinfo=timezone.utc)
@@ -160,7 +166,7 @@ def test_revised_eps_advances_knowledge_time(db_engine) -> None:
             _FakeResponse(
                 payload=[
                     {
-                        "symbol": "AAPL",
+                        "symbol": _TEST_TICKER,
                         "date": "2026-04-23",
                         "epsEstimated": 1.25,
                         "eps": None,
@@ -175,7 +181,7 @@ def test_revised_eps_advances_knowledge_time(db_engine) -> None:
             _FakeResponse(
                 payload=[
                     {
-                        "symbol": "AAPL",
+                        "symbol": _TEST_TICKER,
                         "date": "2026-04-23",
                         "epsEstimated": 1.25,
                         "eps": 1.5,
@@ -191,10 +197,12 @@ def test_revised_eps_advances_knowledge_time(db_engine) -> None:
     )
     client = _client(fake_session, now_fn=lambda: now_dt)
 
-    assert client.fetch_historical(["AAPL"], date(2026, 4, 23), date(2026, 4, 23)) == 1
-    assert client.fetch_historical(["AAPL"], date(2026, 4, 23), date(2026, 4, 23)) == 1
+    assert client.fetch_historical([_TEST_TICKER], date(2026, 4, 23), date(2026, 4, 23)) == 1
+    assert client.fetch_historical([_TEST_TICKER], date(2026, 4, 23), date(2026, 4, 23)) == 1
 
     with session_factory() as session:
-        row = session.execute(sa.select(EarningsCalendar)).scalar_one()
+        row = session.execute(
+            sa.select(EarningsCalendar).where(EarningsCalendar.ticker == _TEST_TICKER)
+        ).scalar_one()
     assert row.eps_actual == Decimal("1.5")
     assert row.knowledge_time >= now_dt

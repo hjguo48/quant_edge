@@ -54,10 +54,17 @@ def _ensure_table(db_engine) -> None:
     GradesEvent.__table__.create(bind=db_engine, checkfirst=True)
 
 
+_TEST_TICKER = "TSTGRD"  # unique prefix avoids clobbering real SP500 data
+
+
 def _truncate_table(db_engine) -> None:
     _ensure_table(db_engine)
     with db_engine.begin() as conn:
-        conn.execute(sa.text("truncate table grades_events restart identity"))
+        # NEVER truncate the full table — production data would be wiped.
+        conn.execute(
+            sa.text("DELETE FROM grades_events WHERE ticker = :t"),
+            {"t": _TEST_TICKER},
+        )
 
 
 def test_fetch_ticker_parses_grades_and_pit_knowledge_time() -> None:
@@ -153,10 +160,12 @@ def test_fetch_historical_persists_rows(db_engine) -> None:
         ],
     )
 
-    inserted = _client(fake_session).fetch_historical(["AAPL"], date(2026, 4, 1), date(2026, 4, 30))
+    inserted = _client(fake_session).fetch_historical([_TEST_TICKER], date(2026, 4, 1), date(2026, 4, 30))
 
     assert inserted == 1
     with session_factory() as session:
-        row = session.execute(sa.select(GradesEvent)).scalar_one()
-    assert row.ticker == "AAPL"
+        row = session.execute(
+            sa.select(GradesEvent).where(GradesEvent.ticker == _TEST_TICKER)
+        ).scalar_one()
+    assert row.ticker == _TEST_TICKER
     assert row.new_grade == "Buy"

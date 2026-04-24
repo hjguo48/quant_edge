@@ -64,10 +64,16 @@ def _ensure_table(db_engine) -> None:
     PriceTargetEvent.__table__.create(bind=db_engine, checkfirst=True)
 
 
+_TEST_TICKER = "TSTPT"  # unique prefix avoids clobbering real SP500 data
+
+
 def _truncate_table(db_engine) -> None:
     _ensure_table(db_engine)
     with db_engine.begin() as conn:
-        conn.execute(sa.text("truncate table price_target_events restart identity"))
+        conn.execute(
+            sa.text("DELETE FROM price_target_events WHERE ticker = :t"),
+            {"t": _TEST_TICKER},
+        )
 
 
 def test_fetch_ticker_merges_consensus_and_per_analyst_news_rows() -> None:
@@ -200,18 +206,20 @@ def test_fetch_historical_persists_consensus_without_duplicates(db_engine) -> No
     now_dt = datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)
     fake_session = _FakeSession(
         [
-            _FakeResponse(payload={"symbol": "AAPL", "targetConsensus": 210}),
+            _FakeResponse(payload={"symbol": _TEST_TICKER, "targetConsensus": 210}),
             _FakeResponse(status_code=404, text="not found"),
-            _FakeResponse(payload={"symbol": "AAPL", "targetConsensus": 212}),
+            _FakeResponse(payload={"symbol": _TEST_TICKER, "targetConsensus": 212}),
             _FakeResponse(status_code=404, text="not found"),
         ],
     )
     client = _client(fake_session, now_fn=lambda: now_dt)
 
-    assert client.fetch_historical(["AAPL"], date(2026, 4, 1), date(2026, 4, 30)) == 1
-    assert client.fetch_historical(["AAPL"], date(2026, 4, 1), date(2026, 4, 30)) == 1
+    assert client.fetch_historical([_TEST_TICKER], date(2026, 4, 1), date(2026, 4, 30)) == 1
+    assert client.fetch_historical([_TEST_TICKER], date(2026, 4, 1), date(2026, 4, 30)) == 1
 
     with session_factory() as session:
-        rows = session.execute(sa.select(PriceTargetEvent)).scalars().all()
+        rows = session.execute(
+            sa.select(PriceTargetEvent).where(PriceTargetEvent.ticker == _TEST_TICKER)
+        ).scalars().all()
     assert len(rows) == 1
     assert rows[0].target_price == Decimal("212")
