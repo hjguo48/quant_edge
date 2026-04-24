@@ -373,34 +373,35 @@ minute_incremental:
 
 ---
 
-### Week 5: 免费公开数据 + FMP 新端点
+### Week 5: 免费公开数据 + FMP 新端点 **[✅ Tranche A DONE 2026-04-25 PR #4 merged]**
 
 **目标**：补 shorting/crowding 盲区 + 启动 analyst proxy。
 
-**任务 A: FINRA Daily Short Sale Volume**:
-- `src/data/finra_short_sale.py`
-- 新表 `short_sale_volume_daily`
-- 特征: `short_sale_ratio_1d/5d`, `short_sale_accel`, `abnormal_off_exchange_shorting`
+**已交付 (Tranche A, PR #4, 14 commits, +7586 lines)**:
+- ✅ Task 0: migration 008 — 5 tables (short_sale_volume_daily + grades/ratings/price_target/earnings_calendar)
+- ✅ Task 1: FINRA source + backfill CLI (PASS 7.67)
+- ✅ Task 2: FMP 4 adapters (grades/ratings/price_target dual-endpoint/earnings_calendar) (PASS 8.4)
+- ✅ Task 3: 4 shorting 特征 — `short_sale_ratio_1d/5d`, `short_sale_accel`, `abnormal_off_exchange_shorting` (PASS 8.6)
+- ✅ Task 4: 10 analyst_proxy 特征 — `net_grade_change_5d/20d/60d`, `upgrade/downgrade_count`, `consensus_upside`, `target_price_drift`, `target_dispersion_proxy`, `coverage_change_proxy`, `financial_health_trend` (PASS 8.5)
+- ✅ Task 5: registry + config flags (ENABLE_SHORTING_FEATURES / ENABLE_ANALYST_PROXY_FEATURES, 默认 OFF) (PASS 8.9)
+- ✅ Task 6: Gate verification script (4 gates: coverage/missing/lag/source_integrity) (PASS 8.4)
+- ✅ Task 7: 历史 backfill — FINRA 13.4M rows (2021-01-04+), FMP grades 128,981, price_target 499 tickers (consensus), earnings_calendar 271
+- ✅ Task 8: PR #4 merged to main (commit 1a61464)
 
-**任务 B: SEC FTD**:
-- `src/data/sec_ftd.py`
-- 新表 `ftd_pit`
-- 特征: `ftd_to_float`, `ftd_persistence`, `ftd_shock`
+**Tranche A 局限 (已文档化)**:
+- FMP `/stable/ratings-historical` 返回 0 行 (当前订阅不支持) → `financial_health_trend` 特征暂不可用
+- FMP `/api/v4/price-target` legacy 403 → adapter 降级 consensus snapshot-only (per-analyst history 不可用)
+- FMP earnings_calendar 402 Premium 限制 2022 前 + 4000 rows/chunk pagination 限制 → Tranche A 14 特征不依赖 earnings 故不 block
 
-**任务 C: FMP 新端点**:
-- `src/data/sources/fmp_grades.py` (historical stock grades)
-- `src/data/sources/fmp_price_target.py` (summary + consensus)
-- `src/data/sources/fmp_ratings.py` (ratings-historical)
-- `src/data/sources/fmp_earnings_calendar.py`
+**Post-merge follow-up (已文档化, non-blocking)**:
+- Gate verification 性能优化: missing_rate gate 14 feat × 503 tick × 835 days = 5.8M calls, 实测 >1.5h。需 `--sample-ratio` 参数
+- Task 4 `target_price_drift` 同 analyst_firm dedupe (important finding)
+- 累积若干 docstring / LSP / warning gating suggestions (Task 1-6 各 5-7 条) 汇总 cleanup PR
 
-**首批新特征** (analyst proxy):
-- `net_grade_change_5d/20d/60d`
-- `upgrade_count`, `downgrade_count`
-- `consensus_upside`, `target_price_drift`
-- `target_dispersion_proxy`, `coverage_change_proxy`
-- `financial_health_trend`
+**Tranche B (未做, 视后续 Gate 决定)**:
+- SEC FTD — `src/data/sec_ftd.py`, 新表 `ftd_pit`, 特征 `ftd_to_float` / `ftd_persistence` / `ftd_shock`
 
-**Gate**: analyst_proxy family 至少 8-12 个可回测特征, 缺失率与 lag rule 清楚
+**14 特征 default OFF**: Week 5 新特征需通过 Gate 验证 + S1 walk-forward 证明独立 IC 贡献后, 才 flip default enable。当前默认 OFF 保护 S1 v5 既有 38 特征集。
 
 ---
 
