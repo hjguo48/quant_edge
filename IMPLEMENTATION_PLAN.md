@@ -353,6 +353,24 @@ minute_incremental:
 - `stock_trades_sampled` DB schema 建成但空 (streaming mode 不入库, Phase 2 productionize 时启用)
 - `trade_microstructure` family 注册但 default-off, 需显式 opt-in
 
+#### 3 个候选特征 (修正 framing, 按 Codex 审核) — **"promising candidates", 非 Gate-adopted**
+
+| 特征 | 状态 | Gate 判据 |
+|---|---|---|
+| `offhours_trade_ratio` (flat) | 3-window 下 |IC|=0.018 > 0.015 AND t=2.11 > 2.0 AND sign 2/2 ✅ | **但 sign_consistent_windows_min=7 硬阈值使其在 3-window 下结构性 fail**. 单特征显著, 未达 Gate 2/5 要求 |
+| `late_day_aggressiveness` (minute-proxy) | t=4.56, 11/11 sign | **|IC|=0.0140 < 0.015 硬阈值** → Gate miss |
+| `trade_imbalance_proxy` (minute-proxy) | t=3.01, 10/11 sign | **|IC|=0.0134 < 0.015 硬阈值** → Gate miss |
+
+**诚实评估**: 3 特征**均未通过 Gate 3 当前阈值**. 属 "promising candidates", Week 7 per-horizon screening / Phase 2 feature selection 时可**组合 / opt-in** 测试, **不直接入 V5 bundle**.
+
+#### Codex review findings (高/中 优先级 post-merge TODOs)
+
+- **High (framing)**: 上文已修正, "Tier 1 usable" → "promising candidates below Gate threshold"
+- **Medium (gate scope)**: Coverage Gate 使用全 `trades_sampling_state` 表, 不随 features parquet scope 变化. 子 scope 评估 Coverage Gate 失真. **TODO**: 改 Coverage scope 按 evaluated artifact 过滤日期/ticker, 或加 `--state-scope` CLI flag.
+- **Medium (streaming resume)**: `scripts/run_trades_sampling.py` streaming-mode checkpoint 不验 `run_config_hash`. 改 config 后 `--resume` 可能混入不兼容 rows. **TODO**: 和 Task 8 builder 一致地 hash-aware (mismatch → 全量 recompute).
+
+两个 medium 都非 blocker, 作为 Phase 2 productionize 前修复.
+
 ---
 
 ### Week 5: 免费公开数据 + FMP 新端点
