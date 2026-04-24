@@ -117,17 +117,14 @@ def test_fetch_range_parses_rows_and_pit_knowledge_time() -> None:
     assert msft_row["eps_actual"] == Decimal("2.5")
 
 
-def test_fetch_range_splits_requests_longer_than_365_days() -> None:
-    fake_session = _FakeSession(
-        [
-            _FakeResponse(payload=[]),
-            _FakeResponse(payload=[]),
-        ],
-    )
+def test_fetch_range_splits_requests_into_30_day_chunks() -> None:
+    # 2025-01-01 → 2026-02-01 spans 397 days; 30-day chunks → 14 calls.
+    fake_session = _FakeSession([_FakeResponse(payload=[]) for _ in range(20)])
 
     _client(fake_session).fetch_range(date(2025, 1, 1), date(2026, 2, 1))
 
-    assert len(fake_session.calls) == 2
+    # 397 days / 30 = 14 chunks (last is partial).
+    assert len(fake_session.calls) == 14
 
 
 def test_fetch_range_returns_empty_on_404() -> None:

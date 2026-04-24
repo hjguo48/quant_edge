@@ -93,23 +93,42 @@ def compute_consensus_upside(
     as_of: date,
     session_factory: Callable | None = None,
 ) -> float | None:
+    """(consensus_target - close) / close.
+
+    The FMP consensus snapshot endpoint returns only the *current* aggregate, so
+    historical PIT lookups for past dates always exclude it (knowledge_time =
+    fetch time, not event time). We therefore proxy the consensus by averaging
+    per-analyst price targets in the most recent 60 days that meet PIT.
+    """
     normalized_ticker = ticker.upper()
     start_date = as_of - timedelta(days=60)
     as_of_end = _as_of_end_utc(as_of)
     factory = session_factory or get_session_factory()
 
-    stmt = (
-        sa.select(PriceTargetEvent.target_price)
+    # Per-analyst targets within the lookback (PIT-safe). Take last revision per
+    # firm so the proxy mirrors a real consensus calc.
+    ranked_targets = (
+        sa.select(
+            PriceTargetEvent.analyst_firm.label("analyst_firm"),
+            PriceTargetEvent.target_price.label("target_price"),
+            sa.func.row_number()
+            .over(
+                partition_by=PriceTargetEvent.analyst_firm,
+                order_by=(PriceTargetEvent.event_date.desc(), PriceTargetEvent.knowledge_time.desc()),
+            )
+            .label("rn"),
+        )
         .where(
             PriceTargetEvent.ticker == normalized_ticker,
-            PriceTargetEvent.is_consensus.is_(True),
+            PriceTargetEvent.is_consensus.is_(False),
             PriceTargetEvent.knowledge_time <= as_of_end,
             PriceTargetEvent.event_date >= start_date,
             PriceTargetEvent.event_date <= as_of,
+            PriceTargetEvent.analyst_firm.is_not(None),
         )
-        .order_by(PriceTargetEvent.knowledge_time.desc(), PriceTargetEvent.event_date.desc())
-        .limit(1)
+        .subquery()
     )
+    stmt = sa.select(sa.func.avg(ranked_targets.c.target_price)).where(ranked_targets.c.rn == 1)
 
     with factory() as session:
         consensus_target = session.execute(stmt).scalar_one_or_none()
