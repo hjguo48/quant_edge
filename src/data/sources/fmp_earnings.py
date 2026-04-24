@@ -11,7 +11,6 @@ For past earnings (epsActual is not null), knowledge_time = lastUpdated (typical
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
