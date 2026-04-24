@@ -73,6 +73,21 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--enable-flags", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--sample-tickers",
+        type=int,
+        default=None,
+        help="Cap tickers in missing-rate gate to this many (random sample). "
+        "Mitigates the O(features × tickers × dates) hot loop on full SP500. "
+        "Default: no cap.",
+    )
+    parser.add_argument(
+        "--sample-dates",
+        type=int,
+        default=None,
+        help="Cap trading dates in missing-rate gate to this many (random sample). "
+        "Default: no cap.",
+    )
     return parser.parse_args(argv)
 
 
@@ -175,10 +190,20 @@ def compute_missing_rate_gate(
     session_factory: Callable | None = None,
     registry_builder: Callable[[], FeatureRegistry] = build_feature_registry,
     universe_fetcher: Callable[[date, str], list[str]] | None = None,
+    sample_tickers: int | None = None,
+    sample_dates: int | None = None,
 ) -> dict[str, Any]:
     trade_dates = [session.date() for session in XNYS.sessions_in_range(pd.Timestamp(start_date), pd.Timestamp(end_date))]
     universe_source = universe_fetcher or get_historical_members
     tickers = tuple(sorted(set(universe_source(universe_asof, "SP500"))))
+
+    rng = np.random.default_rng(42)
+    if sample_tickers is not None and sample_tickers < len(tickers):
+        indices = sorted(rng.choice(len(tickers), size=sample_tickers, replace=False).tolist())
+        tickers = tuple(tickers[i] for i in indices)
+    if sample_dates is not None and sample_dates < len(trade_dates):
+        indices = sorted(rng.choice(len(trade_dates), size=sample_dates, replace=False).tolist())
+        trade_dates = [trade_dates[i] for i in indices]
     total = len(trade_dates) * len(tickers)
     factory = session_factory or get_session_factory()
     registry = registry_builder()
@@ -404,6 +429,8 @@ def generate_gate_summary(
     session_factory: Callable | None = None,
     registry_builder: Callable[[], FeatureRegistry] = build_feature_registry,
     universe_fetcher: Callable[[date, str], list[str]] | None = None,
+    sample_tickers: int | None = None,
+    sample_dates: int | None = None,
 ) -> dict[str, Any]:
     lineage = load_lineage_config(features_config_path)
     universe_source = universe_fetcher or get_historical_members
@@ -421,6 +448,8 @@ def generate_gate_summary(
         session_factory=session_factory,
         registry_builder=registry_builder,
         universe_fetcher=universe_source,
+        sample_tickers=sample_tickers,
+        sample_dates=sample_dates,
     )
     lag_gate = compute_lag_rule_gate(
         start_date=start_date,
@@ -472,6 +501,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             end_date=args.end_date,
             universe_asof=args.universe_asof,
             features_config_path=args.features_config,
+            sample_tickers=args.sample_tickers,
+            sample_dates=args.sample_dates,
         )
 
     if args.dry_run:
