@@ -1,0 +1,144 @@
+{
+  "config_hash": "40cb7d495794f294cbcde033e483ed4e120ccbb6c3c3dcf7c0c7d83d269352b1",
+  "run_stage": "pilot-flat-W5W10W11-6win",
+  "overall_pass": false,
+  "gates": {
+    "coverage": {
+      "pass": false,
+      "value": 0.4891,
+      "threshold": 95.0,
+      "completed": 90,
+      "denominator": 18400,
+      "status_counts": {
+        "completed": 90,
+        "pending": 18310
+      }
+    },
+    "feature_quality": {
+      "pass": false,
+      "missing_threshold_pct": 30.0,
+      "outlier_threshold_pct": 5.0,
+      "per_feature": {
+        "trade_imbalance_proxy": {
+          "missing_rate_pct": 0.0217,
+          "outlier_rate_pct": 0.4239,
+          "missing_pass": true,
+          "outlier_pass": true,
+          "pass": true
+        },
+        "large_trade_ratio": {
+          "missing_rate_pct": 0.0217,
+          "outlier_rate_pct": 0.8315,
+          "missing_pass": true,
+          "outlier_pass": true,
+          "pass": true
+        },
+        "late_day_aggressiveness": {
+          "missing_rate_pct": 0.0272,
+          "outlier_rate_pct": 0.0,
+          "missing_pass": true,
+          "outlier_pass": true,
+          "pass": true
+        },
+        "offhours_trade_ratio": {
+          "missing_rate_pct": 0.0217,
+          "outlier_rate_pct": 0.0,
+          "missing_pass": true,
+          "outlier_pass": true,
+          "pass": true
+        },
+        "off_exchange_volume_ratio": {
+          "missing_rate_pct": 32.8804,
+          "outlier_rate_pct": 0.0,
+          "missing_pass": false,
+          "outlier_pass": true,
+          "pass": false
+        }
+      }
+    },
+    "data_readiness_ic": {
+      "pass": false,
+      "passing_features": [],
+      "details": {
+        "trade_imbalance_proxy": {
+          "mean_ic": -0.011873,
+          "abs_t_stat": 1.7154,
+          "positive_windows": 0,
+          "negative_windows": 3,
+          "sign_consistent_windows": 3,
+          "direction": "negative",
+          "pass": false,
+          "per_window_ic_count": 3
+        },
+        "large_trade_ratio": {
+          "mean_ic": 0.008059,
+          "abs_t_stat": 0.4142,
+          "positive_windows": 2,
+          "negative_windows": 1,
+          "sign_consistent_windows": 2,
+          "direction": "positive",
+          "pass": false,
+          "per_window_ic_count": 3
+        },
+        "late_day_aggressiveness": {
+          "mean_ic": -0.001953,
+          "abs_t_stat": 0.3221,
+          "positive_windows": 1,
+          "negative_windows": 2,
+          "sign_consistent_windows": 2,
+          "direction": "negative",
+          "pass": false,
+          "per_window_ic_count": 3
+        },
+        "offhours_trade_ratio": {
+          "mean_ic": 0.017003,
+          "abs_t_stat": 1.0784,
+          "positive_windows": 2,
+          "negative_windows": 1,
+          "sign_consistent_windows": 2,
+          "direction": "positive",
+          "pass": false,
+          "per_window_ic_count": 3
+        },
+        "off_exchange_volume_ratio": {
+          "mean_ic": -0.012505,
+          "abs_t_stat": 0.4891,
+          "positive_windows": 1,
+          "negative_windows": 1,
+          "sign_consistent_windows": 1,
+          "direction": "negative",
+          "pass": false,
+          "per_window_ic_count": 2
+        }
+      },
+      "min_passing_features": 2,
+      "ic_threshold": 0.015,
+      "abs_tstat_threshold": 2.0,
+      "sign_consistent_windows_min": 7,
+      "n_windows_used": 6
+    },
+    "per_reason_ic": {
+      "per_reason": {
+        "weak_window": {
+          "trade_imbalance_proxy": -0.011772,
+          "large_trade_ratio": 0.006341,
+          "late_day_aggressiveness": -0.002624,
+          "offhours_trade_ratio": 0.013214,
+          "off_exchange_volume_ratio": -0.005235
+        }
+      },
+      "top_reason_by_feature": {
+        "trade_imbalance_proxy": "weak_window",
+        "large_trade_ratio": "weak_window",
+        "late_day_aggressiveness": "weak_window",
+        "offhours_trade_ratio": "weak_window",
+        "off_exchange_volume_ratio": "weak_window"
+      }
+    }
+  },
+  "notes": [
+    "SEC event window deferred to Week 5 (see plan Task 3 footnote)",
+    "Stage note: pilot-flat-W5W10W11-6win",
+    "Data-readiness IC gate is diagnostic-only; not an alpha-adoption criterion."
+  ]
+}

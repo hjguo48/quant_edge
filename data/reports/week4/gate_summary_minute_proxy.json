@@ -1,0 +1,107 @@
+{
+  "config_hash": "40cb7d495794f294cbcde033e483ed4e120ccbb6c3c3dcf7c0c7d83d269352b1",
+  "run_stage": "pilot-minute-proxy",
+  "overall_pass": false,
+  "gates": {
+    "coverage": {
+      "pass": false,
+      "value": 0.4891,
+      "threshold": 95.0,
+      "completed": 90,
+      "denominator": 18400,
+      "status_counts": {
+        "completed": 90,
+        "pending": 18310
+      }
+    },
+    "feature_quality": {
+      "pass": true,
+      "missing_threshold_pct": 30.0,
+      "outlier_threshold_pct": 5.0,
+      "per_feature": {
+        "trade_imbalance_proxy": {
+          "missing_rate_pct": 0.0348,
+          "outlier_rate_pct": 0.0131,
+          "missing_pass": true,
+          "outlier_pass": true,
+          "pass": true
+        },
+        "late_day_aggressiveness": {
+          "missing_rate_pct": 0.8331,
+          "outlier_rate_pct": 0.0,
+          "missing_pass": true,
+          "outlier_pass": true,
+          "pass": true
+        },
+        "offhours_trade_ratio": {
+          "missing_rate_pct": 0.0348,
+          "outlier_rate_pct": 0.0,
+          "missing_pass": true,
+          "outlier_pass": true,
+          "pass": true
+        }
+      }
+    },
+    "data_readiness_ic": {
+      "pass": false,
+      "passing_features": [],
+      "details": {
+        "trade_imbalance_proxy": {
+          "mean_ic": -0.013382,
+          "abs_t_stat": 3.0122,
+          "positive_windows": 1,
+          "negative_windows": 10,
+          "sign_consistent_windows": 10,
+          "direction": "negative",
+          "pass": false,
+          "per_window_ic_count": 11
+        },
+        "late_day_aggressiveness": {
+          "mean_ic": 0.013955,
+          "abs_t_stat": 4.5617,
+          "positive_windows": 11,
+          "negative_windows": 0,
+          "sign_consistent_windows": 11,
+          "direction": "positive",
+          "pass": false,
+          "per_window_ic_count": 11
+        },
+        "offhours_trade_ratio": {
+          "mean_ic": NaN,
+          "abs_t_stat": NaN,
+          "positive_windows": 0,
+          "negative_windows": 0,
+          "sign_consistent_windows": 0,
+          "direction": "unknown",
+          "pass": false,
+          "per_window_ic_count": 0,
+          "reason": "no_valid_windows"
+        }
+      },
+      "min_passing_features": 2,
+      "ic_threshold": 0.015,
+      "abs_tstat_threshold": 2.0,
+      "sign_consistent_windows_min": 7,
+      "n_windows_used": 11
+    },
+    "per_reason_ic": {
+      "per_reason": {
+        "weak_window": {
+          "trade_imbalance_proxy": -0.006676,
+          "late_day_aggressiveness": 0.013714,
+          "offhours_trade_ratio": null
+        }
+      },
+      "top_reason_by_feature": {
+        "trade_imbalance_proxy": "weak_window",
+        "late_day_aggressiveness": "weak_window",
+        "offhours_trade_ratio": null
+      }
+    }
+  },
+  "notes": [
+    "SEC event window deferred to Week 5 (see plan Task 3 footnote)",
+    "Stage note: pilot-minute-proxy",
+    "Data-readiness IC gate is diagnostic-only; not an alpha-adoption criterion."
+  ]
+}
