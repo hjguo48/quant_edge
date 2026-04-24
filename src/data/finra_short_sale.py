@@ -204,7 +204,8 @@ class FINRAShortSaleSource(DataSource):
         except ImportError as exc:  # pragma: no cover
             raise DataSourceError("requests is not installed.") from exc
         session = requests.Session()
-        session.trust_env = False
+        # trust_env=True (default) so HTTPS_PROXY / HTTP_PROXY env vars are honored.
+        # WSL2 direct egress is blocked by Cloudflare WAF on cdn.finra.org.
         session.headers.update({"User-Agent": FINRA_USER_AGENT})
         self._http_session = session
         return session

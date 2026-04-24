@@ -55,9 +55,9 @@ class GradesEvent(Base):
     event_date: Mapped[date] = mapped_column(sa.Date, nullable=False)
     knowledge_time: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     analyst_firm: Mapped[str] = mapped_column(sa.String(128), nullable=False)
-    prior_grade: Mapped[str | None] = mapped_column(sa.String(16))
-    new_grade: Mapped[str] = mapped_column(sa.String(16), nullable=False)
-    action: Mapped[str] = mapped_column(sa.String(16), nullable=False)
+    prior_grade: Mapped[str | None] = mapped_column(sa.String(64))
+    new_grade: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    action: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     grade_score_change: Mapped[int] = mapped_column(sa.SmallInteger, nullable=False)
 
 
