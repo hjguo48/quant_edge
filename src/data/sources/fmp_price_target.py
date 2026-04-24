@@ -123,28 +123,45 @@ class FMPPriceTargetSource(DataSource):
         return payload if isinstance(payload, dict) else None
 
     @DataSource.retryable()
-    def _request_legacy(self, ticker: str) -> list[dict[str, Any]] | None:
-        self._before_request(f"price-target/{ticker}")
+    def _request_news_page(self, ticker: str, page: int, limit: int = 100) -> list[dict[str, Any]]:
+        """Fetch one page of /stable/price-target-news for per-analyst history.
+
+        Replaces retired /api/v4/price-target (403 "Legacy Endpoint" since 2025-08).
+        FMP hard-caps limit at 100 and ignores from/to — pagination via page=0,1,2,...
+        """
+        self._before_request(f"price-target-news/{ticker}?page={page}")
         response = self._get_session().get(
-            f"{self.legacy_base_url}/price-target",
-            params={"symbol": ticker, "apikey": self.api_key},
+            f"{self.stable_base_url}/price-target-news",
+            params={"symbol": ticker, "page": page, "limit": limit, "apikey": self.api_key},
             timeout=30,
         )
         response_text = getattr(response, "text", "")
         if response.status_code in {404, 410}:
-            return None
-        if response.status_code == 403 and "Legacy Endpoint" in response_text:
-            return None
+            return []
         if not response.ok:
             self.classify_http_error(
                 response.status_code,
                 response_text,
-                context=f"price-target/{ticker}",
+                context=f"price-target-news/{ticker}",
             )
         payload = response.json()
         if not isinstance(payload, list):
             return []
         return payload
+
+    def _request_news_all(self, ticker: str, max_pages: int = 20) -> list[dict[str, Any]]:
+        """Pull all available per-analyst events via pagination.
+
+        Terminates when a page returns < page_size records (tail of history).
+        """
+        page_size = 100
+        all_rows: list[dict[str, Any]] = []
+        for page in range(max_pages):
+            batch = self._request_news_page(ticker, page=page, limit=page_size)
+            all_rows.extend(batch)
+            if len(batch) < page_size:
+                break
+        return all_rows
 
     def fetch_ticker(self, ticker: str) -> pd.DataFrame:
         normalized_ticker = self.normalize_tickers([ticker])[0]
@@ -169,37 +186,33 @@ class FMPPriceTargetSource(DataSource):
                     },
                 )
 
-        legacy_payload = self._request_legacy(normalized_ticker)
-        if legacy_payload is None:
-            logger.warning(
-                "fmp_price_target legacy endpoint unavailable for {}; falling back to consensus snapshot only",
-                normalized_ticker,
-            )
-        else:
-            for record in legacy_payload:
-                event_date = _parse_date(record.get("publishedDate"))
+        news_records = self._request_news_all(normalized_ticker)
+        for record in news_records:
+            published_raw = record.get("publishedDate")
+            event_date = _parse_date(published_raw)
+            # Prefer split-adjusted target; fallback to raw priceTarget.
+            target_price = _decimal_or_none(record.get("adjPriceTarget"))
+            if target_price is None:
                 target_price = _decimal_or_none(record.get("priceTarget"))
-                if target_price is None:
-                    target_price = _decimal_or_none(record.get("adjPriceTarget"))
-                analyst_firm = _clean_text(record.get("analystCompany")) or _clean_text(record.get("analystName"))
-                if event_date is None or target_price is None or analyst_firm is None:
-                    continue
-                target_change = _decimal_or_none(record.get("targetChange"))
-                prior_target = None
-                if target_change is not None:
-                    prior_target = target_price - target_change
-                rows.append(
-                    {
-                        "ticker": normalized_ticker,
-                        "event_date": event_date,
-                        "knowledge_time": _end_of_day_utc(event_date),
-                        "analyst_firm": analyst_firm,
-                        "target_price": target_price,
-                        "prior_target": prior_target,
-                        "price_when_published": None,
-                        "is_consensus": False,
-                    },
-                )
+            analyst_firm = _clean_text(record.get("analystCompany")) or _clean_text(record.get("analystName"))
+            if event_date is None or target_price is None or analyst_firm is None:
+                continue
+            # publishedDate from news endpoint has precise UTC timestamp (ISO8601),
+            # so knowledge_time can be set to actual publication time rather than
+            # end-of-day — more accurate PIT discipline.
+            kt = _parse_iso_utc(published_raw) or _end_of_day_utc(event_date)
+            rows.append(
+                {
+                    "ticker": normalized_ticker,
+                    "event_date": event_date,
+                    "knowledge_time": kt,
+                    "analyst_firm": analyst_firm,
+                    "target_price": target_price,
+                    "prior_target": None,
+                    "price_when_published": _decimal_or_none(record.get("priceWhenPosted")),
+                    "is_consensus": False,
+                },
+            )
 
         frame = self.dataframe_or_empty(rows, PRICE_TARGET_COLUMNS)
         if not frame.empty:
@@ -359,6 +372,23 @@ def _decimal_or_none(raw_value: Any) -> Decimal | None:
 def _end_of_day_utc(day_value: date) -> datetime:
     local_dt = datetime.combine(day_value, time(hour=23, minute=59), tzinfo=EASTERN)
     return local_dt.astimezone(timezone.utc)
+
+
+def _parse_iso_utc(raw_value: Any) -> datetime | None:
+    """Parse FMP publishedDate (e.g. '2026-04-17T13:34:10.000Z') → tz-aware UTC datetime."""
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip()
+    if not text:
+        return None
+    try:
+        normalized = text.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(normalized)
+    except (TypeError, ValueError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _ensure_utc(value: datetime) -> datetime:

@@ -68,11 +68,10 @@ def test_fetch_ticker_parses_ratings_and_pit_knowledge_time() -> None:
                     {
                         "date": "2026-04-23",
                         "rating": "A",
-                        "ratingScore": 4,
-                        "ratingRecommendation": "Strong Buy",
-                        "dcfRating": 3.25,
-                        "peRating": 2.75,
-                        "roeRating": 4.5,
+                        "overallScore": 4,
+                        "discountedCashFlowScore": 3.25,
+                        "priceToEarningsScore": 2.75,
+                        "returnOnEquityScore": 4.5,
                     },
                 ],
             ),
@@ -101,11 +100,11 @@ def test_fetch_ticker_retries_on_5xx_then_succeeds() -> None:
                 payload=[
                     {
                         "date": "2026-04-23",
-                        "ratingScore": 5,
-                        "ratingRecommendation": "Buy",
-                        "dcfRating": 4,
-                        "peRating": 4,
-                        "roeRating": 5,
+                        "rating": "B",
+                        "overallScore": 5,
+                        "discountedCashFlowScore": 4,
+                        "priceToEarningsScore": 4,
+                        "returnOnEquityScore": 5,
                     },
                 ],
             ),
@@ -134,11 +133,11 @@ def test_fetch_historical_persists_and_updates_row(db_engine) -> None:
                 payload=[
                     {
                         "date": "2026-04-23",
-                        "ratingScore": 4,
-                        "ratingRecommendation": "Buy",
-                        "dcfRating": 2.0,
-                        "peRating": 2.0,
-                        "roeRating": 3.0,
+                        "rating": "B",
+                        "overallScore": 4,
+                        "discountedCashFlowScore": 2.0,
+                        "priceToEarningsScore": 2.0,
+                        "returnOnEquityScore": 3.0,
                     },
                 ],
             ),
@@ -146,11 +145,11 @@ def test_fetch_historical_persists_and_updates_row(db_engine) -> None:
                 payload=[
                     {
                         "date": "2026-04-23",
-                        "ratingScore": 5,
-                        "ratingRecommendation": "Strong Buy",
-                        "dcfRating": 3.0,
-                        "peRating": 3.0,
-                        "roeRating": 4.0,
+                        "rating": "A",
+                        "overallScore": 5,
+                        "discountedCashFlowScore": 3.0,
+                        "priceToEarningsScore": 3.0,
+                        "returnOnEquityScore": 4.0,
                     },
                 ],
             ),
@@ -164,4 +163,4 @@ def test_fetch_historical_persists_and_updates_row(db_engine) -> None:
     with session_factory() as session:
         row = session.execute(sa.select(RatingEvent)).scalar_one()
     assert row.rating_score == 5
-    assert row.rating_recommendation == "Strong Buy"
+    assert row.rating_recommendation == "A"

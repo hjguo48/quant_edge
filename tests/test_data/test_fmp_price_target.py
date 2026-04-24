@@ -70,7 +70,7 @@ def _truncate_table(db_engine) -> None:
         conn.execute(sa.text("truncate table price_target_events restart identity"))
 
 
-def test_fetch_ticker_merges_consensus_and_legacy_rows() -> None:
+def test_fetch_ticker_merges_consensus_and_per_analyst_news_rows() -> None:
     now_dt = datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)
     fake_session = _FakeSession(
         [
@@ -85,12 +85,13 @@ def test_fetch_ticker_merges_consensus_and_legacy_rows() -> None:
             _FakeResponse(
                 payload=[
                     {
-                        "publishedDate": "2026-04-23T08:00:00",
+                        "symbol": "AAPL",
+                        "publishedDate": "2026-04-23T08:00:00.000Z",
                         "analystName": "Jane Doe",
                         "analystCompany": "Acme Research",
                         "adjPriceTarget": 205,
                         "priceTarget": 210,
-                        "targetChange": 10,
+                        "priceWhenPosted": 200,
                     },
                 ],
             ),
@@ -104,57 +105,71 @@ def test_fetch_ticker_merges_consensus_and_legacy_rows() -> None:
     analyst_row = frame.loc[~frame["is_consensus"]].iloc[0]
     assert consensus_row["knowledge_time"] == now_dt
     assert consensus_row["target_price"] == Decimal("210")
-    assert analyst_row["knowledge_time"] == datetime(2026, 4, 24, 3, 59, tzinfo=timezone.utc)
-    assert analyst_row["prior_target"] == Decimal("200")
+    # knowledge_time now uses precise publishedDate UTC, not end-of-day ET.
+    assert analyst_row["knowledge_time"] == datetime(2026, 4, 23, 8, 0, tzinfo=timezone.utc)
+    assert analyst_row["target_price"] == Decimal("205")  # adjPriceTarget preferred
+    assert analyst_row["price_when_published"] == Decimal("200")
+    # news endpoint does not provide targetChange; prior_target stays None.
+    assert analyst_row["prior_target"] is None
 
 
-def test_fetch_ticker_legacy_404_falls_back_to_consensus_only(monkeypatch: pytest.MonkeyPatch) -> None:
-    warnings: list[tuple[str, tuple[Any, ...]]] = []
-
-    class _FakeLogger:
-        def warning(self, message: str, *args: Any) -> None:
-            warnings.append((message, args))
-
+def test_fetch_ticker_news_404_keeps_consensus_only() -> None:
     fake_session = _FakeSession(
         [
             _FakeResponse(payload={"symbol": "AAPL", "targetConsensus": 210}),
             _FakeResponse(status_code=404, text="not found"),
         ],
     )
-    monkeypatch.setattr(price_target_module, "logger", _FakeLogger())
 
     frame = _client(fake_session, now_fn=lambda: datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)).fetch_ticker("AAPL")
 
     assert len(frame) == 1
     assert bool(frame["is_consensus"].iloc[0]) is True
-    assert warnings
 
 
-def test_fetch_ticker_legacy_403_deprecation_falls_back_to_consensus_only(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    warnings: list[tuple[str, tuple[Any, ...]]] = []
-
-    class _FakeLogger:
-        def warning(self, message: str, *args: Any) -> None:
-            warnings.append((message, args))
-
+def test_fetch_ticker_news_pagination_terminates_on_short_page() -> None:
+    # Page 0 returns 100 rows (full page) → request page 1.
+    # Page 1 returns 2 rows (<100) → terminate pagination.
+    page0_records = [
+        {
+            "symbol": "AAPL",
+            "publishedDate": f"2026-04-{(idx % 25) + 1:02d}T08:00:00.000Z",
+            "analystCompany": f"Firm {idx}",
+            "adjPriceTarget": 200 + idx,
+            "priceTarget": 200 + idx,
+        }
+        for idx in range(100)
+    ]
+    page1_records = [
+        {
+            "symbol": "AAPL",
+            "publishedDate": "2023-01-15T08:00:00.000Z",
+            "analystCompany": "Older Firm",
+            "adjPriceTarget": 150,
+            "priceTarget": 150,
+        },
+        {
+            "symbol": "AAPL",
+            "publishedDate": "2022-11-01T08:00:00.000Z",
+            "analystCompany": "Even Older Firm",
+            "adjPriceTarget": 140,
+            "priceTarget": 140,
+        },
+    ]
     fake_session = _FakeSession(
         [
             _FakeResponse(payload={"symbol": "AAPL", "targetConsensus": 210}),
-            _FakeResponse(
-                status_code=403,
-                text="Legacy Endpoint : Due to Legacy endpoints being no longer supported",
-            ),
+            _FakeResponse(payload=page0_records),
+            _FakeResponse(payload=page1_records),
         ],
     )
-    monkeypatch.setattr(price_target_module, "logger", _FakeLogger())
 
     frame = _client(fake_session, now_fn=lambda: datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)).fetch_ticker("AAPL")
 
-    assert len(frame) == 1
-    assert bool(frame["is_consensus"].iloc[0]) is True
-    assert warnings
+    # 1 consensus + 100 page0 + 2 page1 = 103 rows total.
+    assert len(frame) == 103
+    # Only 3 HTTP calls (consensus + 2 news pages, not page 2).
+    assert len(fake_session.calls) == 3
 
 
 def test_fetch_ticker_retries_on_429_then_succeeds() -> None:
