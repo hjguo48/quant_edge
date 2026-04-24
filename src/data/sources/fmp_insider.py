@@ -171,20 +171,26 @@ class FMPInsiderSource(DataSource):
 
 
 def _dec(v):
-    if v is None: return None
+    if v is None:
+        return None
     try:
         f = float(v)
         return None if (math.isnan(f) or math.isinf(f)) else Decimal(str(v))
-    except: return None
+    except Exception:
+        return None
 
 def _intv(v):
-    if v is None: return None
+    if v is None:
+        return None
     try:
         f = float(v)
         return None if (math.isnan(f) or math.isinf(f)) else int(f)
-    except: return None
+    except Exception:
+        return None
 
 def _clean(val):
-    if val is None: return None
-    if isinstance(val, float) and (math.isnan(val) or math.isinf(val)): return None
+    if val is None:
+        return None
+    if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+        return None
     return val

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 import pandas as pd
 
+from src.config import settings
 from src.features.alternative import ALTERNATIVE_FEATURE_NAMES
 from src.features.fundamental import FUNDAMENTAL_FEATURE_NAMES, compute_fundamental_features
 from src.features.intraday import INTRADAY_FEATURE_NAMES, compute_intraday_features
@@ -31,6 +33,9 @@ class FeatureRegistry:
     def __init__(self) -> None:
         self._registry: dict[str, FeatureDefinition] = {}
         self._register_defaults()
+
+    def __len__(self) -> int:
+        return len(self._registry)
 
     def register(
         self,
@@ -75,6 +80,54 @@ class FeatureRegistry:
             self.register(name, "intraday", description, compute_intraday_features)
         for name, description in _TRADE_MICROSTRUCTURE_FEATURE_METADATA.items():
             self.register(name, "trade_microstructure", description, compute_trade_microstructure_features)
+        if settings.ENABLE_SHORTING_FEATURES:
+            self._register_shorting_features()
+        if settings.ENABLE_ANALYST_PROXY_FEATURES:
+            self._register_analyst_proxy_features()
+
+    def _register_shorting_features(self) -> None:
+        from src.features.shorting import (
+            compute_abnormal_off_exchange_shorting,
+            compute_short_sale_accel,
+            compute_short_sale_ratio_1d,
+            compute_short_sale_ratio_5d,
+        )
+
+        compute_map = {
+            "short_sale_ratio_1d": compute_short_sale_ratio_1d,
+            "short_sale_ratio_5d": compute_short_sale_ratio_5d,
+            "short_sale_accel": compute_short_sale_accel,
+            "abnormal_off_exchange_shorting": compute_abnormal_off_exchange_shorting,
+        }
+        for name, metadata in _SHORTING_FEATURE_METADATA.items():
+            self.register(name, "shorting", metadata["description"], compute_map[name])
+
+    def _register_analyst_proxy_features(self) -> None:
+        from src.features.analyst_proxy import (
+            compute_consensus_upside,
+            compute_coverage_change_proxy,
+            compute_downgrade_count,
+            compute_financial_health_trend,
+            compute_net_grade_change,
+            compute_target_dispersion_proxy,
+            compute_target_price_drift,
+            compute_upgrade_count,
+        )
+
+        compute_map = {
+            "net_grade_change_5d": partial(compute_net_grade_change, horizon_days=5),
+            "net_grade_change_20d": partial(compute_net_grade_change, horizon_days=20),
+            "net_grade_change_60d": partial(compute_net_grade_change, horizon_days=60),
+            "upgrade_count": compute_upgrade_count,
+            "downgrade_count": compute_downgrade_count,
+            "consensus_upside": compute_consensus_upside,
+            "target_price_drift": compute_target_price_drift,
+            "target_dispersion_proxy": compute_target_dispersion_proxy,
+            "coverage_change_proxy": compute_coverage_change_proxy,
+            "financial_health_trend": compute_financial_health_trend,
+        }
+        for name, metadata in _ANALYST_PROXY_FEATURE_METADATA.items():
+            self.register(name, "analyst_proxy", metadata["description"], compute_map[name])
 
 
 _TECHNICAL_FEATURE_METADATA = {
@@ -333,6 +386,82 @@ _TRADE_MICROSTRUCTURE_FEATURE_METADATA = {
     "off_exchange_volume_ratio": "TRF/off-exchange dollar volume share using exchange, TRF id, or TRF timestamp.",
 }
 
+_SHORTING_FEATURE_METADATA = {
+    "short_sale_ratio_1d": {
+        "description": "FINRA one-day short sale ratio using combined CNMS, ADF, and BNY daily files.",
+        "source": "FINRA RegSho daily",
+        "horizon_applicability": ["1d", "5d", "20d"],
+    },
+    "short_sale_ratio_5d": {
+        "description": "Five-session average of FINRA short sale ratio across CNMS, ADF, and BNY.",
+        "source": "FINRA RegSho daily",
+        "horizon_applicability": ["5d", "20d", "60d"],
+    },
+    "short_sale_accel": {
+        "description": "Difference between five-session and twenty-session FINRA short sale ratio averages.",
+        "source": "FINRA RegSho daily",
+        "horizon_applicability": ["20d", "60d"],
+    },
+    "abnormal_off_exchange_shorting": {
+        "description": "ADF short-sale ratio z-score versus the trailing 90-session baseline.",
+        "source": "FINRA RegSho daily",
+        "horizon_applicability": ["5d", "20d", "60d"],
+    },
+}
+
+_ANALYST_PROXY_FEATURE_METADATA = {
+    "net_grade_change_5d": {
+        "description": "Net grade score change over the trailing five calendar days.",
+        "source": "FMP /stable/grades",
+        "horizon_applicability": ["5d", "20d"],
+    },
+    "net_grade_change_20d": {
+        "description": "Net grade score change over the trailing twenty calendar days.",
+        "source": "FMP /stable/grades",
+        "horizon_applicability": ["20d", "60d"],
+    },
+    "net_grade_change_60d": {
+        "description": "Net grade score change over the trailing sixty calendar days.",
+        "source": "FMP /stable/grades",
+        "horizon_applicability": ["60d"],
+    },
+    "upgrade_count": {
+        "description": "Count of positive grade score changes over the trailing twenty calendar days.",
+        "source": "FMP /stable/grades",
+        "horizon_applicability": ["20d", "60d"],
+    },
+    "downgrade_count": {
+        "description": "Count of negative grade score changes over the trailing twenty calendar days.",
+        "source": "FMP /stable/grades",
+        "horizon_applicability": ["20d", "60d"],
+    },
+    "consensus_upside": {
+        "description": "Latest consensus target price upside versus the most recent PIT-visible close.",
+        "source": "FMP /stable/price-target-consensus + stock_prices",
+        "horizon_applicability": ["20d", "60d"],
+    },
+    "target_price_drift": {
+        "description": "Normalized slope of per-analyst price targets over the trailing sixty calendar days.",
+        "source": "FMP /api/v4/price-target + stock_prices",
+        "horizon_applicability": ["60d"],
+    },
+    "target_dispersion_proxy": {
+        "description": "Coefficient of variation for the latest per-firm price targets observed in the trailing sixty days.",
+        "source": "FMP /api/v4/price-target",
+        "horizon_applicability": ["20d", "60d"],
+    },
+    "coverage_change_proxy": {
+        "description": "Change in distinct analyst-firm coverage between the recent and prior sixty-day windows.",
+        "source": "FMP /api/v4/price-target",
+        "horizon_applicability": ["60d"],
+    },
+    "financial_health_trend": {
+        "description": "Change in FMP rating score between the latest observation and the latest observation at least sixty days prior.",
+        "source": "FMP /stable/ratings-historical",
+        "horizon_applicability": ["60d"],
+    },
+}
+
 _COMPOSITE_FEATURE_METADATA = {
     "ret_vol_interaction_20d": "20-day return interacted with 20-day volume ratio.",
     "ret_vol_interaction_60d": "60-day return interacted with 20-day volume ratio.",
@@ -370,3 +499,7 @@ assert len(SECTOR_ROTATION_FEATURE_NAMES) == 5
 assert len(INTRADAY_FEATURE_NAMES) == 9
 assert len(TRADE_MICROSTRUCTURE_FEATURE_NAMES) == 5
 assert len(COMPOSITE_FEATURE_NAMES) == 26
+
+
+def build_feature_registry() -> FeatureRegistry:
+    return FeatureRegistry()

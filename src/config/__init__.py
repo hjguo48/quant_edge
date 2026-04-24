@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"
     ENABLE_TRADE_MICROSTRUCTURE_FEATURES: bool = False
+    ENABLE_SHORTING_FEATURES: bool = False
+    ENABLE_ANALYST_PROXY_FEATURES: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",
