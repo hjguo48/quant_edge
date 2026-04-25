@@ -54,10 +54,16 @@ def _ensure_table(db_engine) -> None:
     RatingEvent.__table__.create(bind=db_engine, checkfirst=True)
 
 
+_TEST_TICKER = "TSTRTG"  # unique prefix avoids clobbering real SP500 data
+
+
 def _truncate_table(db_engine) -> None:
     _ensure_table(db_engine)
     with db_engine.begin() as conn:
-        conn.execute(sa.text("truncate table ratings_events"))
+        conn.execute(
+            sa.text("DELETE FROM ratings_events WHERE ticker = :t"),
+            {"t": _TEST_TICKER},
+        )
 
 
 def test_fetch_ticker_parses_ratings_and_pit_knowledge_time() -> None:
@@ -68,11 +74,10 @@ def test_fetch_ticker_parses_ratings_and_pit_knowledge_time() -> None:
                     {
                         "date": "2026-04-23",
                         "rating": "A",
-                        "ratingScore": 4,
-                        "ratingRecommendation": "Strong Buy",
-                        "dcfRating": 3.25,
-                        "peRating": 2.75,
-                        "roeRating": 4.5,
+                        "overallScore": 4,
+                        "discountedCashFlowScore": 3.25,
+                        "priceToEarningsScore": 2.75,
+                        "returnOnEquityScore": 4.5,
                     },
                 ],
             ),
@@ -93,6 +98,29 @@ def test_fetch_ticker_returns_empty_on_404() -> None:
     assert frame.empty
 
 
+def test_fetch_ticker_raises_on_schema_drift() -> None:
+    """If FMP renames overallScore (e.g. overall_score), we must fail loud."""
+    from src.data.sources.base import DataSourceError
+
+    fake_session = _FakeSession(
+        [
+            _FakeResponse(
+                payload=[
+                    {
+                        "date": "2026-04-23",
+                        "rating": "A",
+                        "overall_score": 4,  # snake_case renamed — adapter expects overallScore
+                        "dcfRating": 3.25,
+                    },
+                ],
+            ),
+        ],
+    )
+
+    with pytest.raises(DataSourceError, match="schema"):
+        _client(fake_session).fetch_ticker("AAPL")
+
+
 def test_fetch_ticker_retries_on_5xx_then_succeeds() -> None:
     fake_session = _FakeSession(
         [
@@ -101,11 +129,11 @@ def test_fetch_ticker_retries_on_5xx_then_succeeds() -> None:
                 payload=[
                     {
                         "date": "2026-04-23",
-                        "ratingScore": 5,
-                        "ratingRecommendation": "Buy",
-                        "dcfRating": 4,
-                        "peRating": 4,
-                        "roeRating": 5,
+                        "rating": "B",
+                        "overallScore": 5,
+                        "discountedCashFlowScore": 4,
+                        "priceToEarningsScore": 4,
+                        "returnOnEquityScore": 5,
                     },
                 ],
             ),
@@ -134,11 +162,11 @@ def test_fetch_historical_persists_and_updates_row(db_engine) -> None:
                 payload=[
                     {
                         "date": "2026-04-23",
-                        "ratingScore": 4,
-                        "ratingRecommendation": "Buy",
-                        "dcfRating": 2.0,
-                        "peRating": 2.0,
-                        "roeRating": 3.0,
+                        "rating": "B",
+                        "overallScore": 4,
+                        "discountedCashFlowScore": 2.0,
+                        "priceToEarningsScore": 2.0,
+                        "returnOnEquityScore": 3.0,
                     },
                 ],
             ),
@@ -146,11 +174,11 @@ def test_fetch_historical_persists_and_updates_row(db_engine) -> None:
                 payload=[
                     {
                         "date": "2026-04-23",
-                        "ratingScore": 5,
-                        "ratingRecommendation": "Strong Buy",
-                        "dcfRating": 3.0,
-                        "peRating": 3.0,
-                        "roeRating": 4.0,
+                        "rating": "A",
+                        "overallScore": 5,
+                        "discountedCashFlowScore": 3.0,
+                        "priceToEarningsScore": 3.0,
+                        "returnOnEquityScore": 4.0,
                     },
                 ],
             ),
@@ -158,10 +186,12 @@ def test_fetch_historical_persists_and_updates_row(db_engine) -> None:
     )
     client = _client(fake_session)
 
-    assert client.fetch_historical(["AAPL"], date(2026, 4, 1), date(2026, 4, 30)) == 1
-    assert client.fetch_historical(["AAPL"], date(2026, 4, 1), date(2026, 4, 30)) == 1
+    assert client.fetch_historical([_TEST_TICKER], date(2026, 4, 1), date(2026, 4, 30)) == 1
+    assert client.fetch_historical([_TEST_TICKER], date(2026, 4, 1), date(2026, 4, 30)) == 1
 
     with session_factory() as session:
-        row = session.execute(sa.select(RatingEvent)).scalar_one()
+        row = session.execute(
+            sa.select(RatingEvent).where(RatingEvent.ticker == _TEST_TICKER)
+        ).scalar_one()
     assert row.rating_score == 5
-    assert row.rating_recommendation == "Strong Buy"
+    assert row.rating_recommendation == "A"

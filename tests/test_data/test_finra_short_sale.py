@@ -86,7 +86,7 @@ def _sample_file(rows: int = 50) -> str:
     lines = [header]
     for index in range(rows):
         lines.append(
-            f"20260423|T{index:02d}|{100 + index}|{10 + index}|{1000 + index}|CNMS",
+            f"20150615|T{index:02d}|{100 + index}|{10 + index}|{1000 + index}|CNMS",
         )
     return "\n".join(lines)
 
@@ -95,7 +95,7 @@ def _legacy_file() -> str:
     return "\n".join(
         [
             "Date|Symbol|ShortVolume|TotalVolume|Market",
-            "20260423|AAPL|120|1000|CNMS",
+            "20150615|TSTFR|120|1000|CNMS",
         ],
     )
 
@@ -108,10 +108,22 @@ def _ensure_table(db_engine) -> None:
     ShortSaleVolume.__table__.create(bind=db_engine, checkfirst=True)
 
 
+_TEST_TICKER = "TSTFR"  # unique prefix avoids clobbering real FINRA data
+
+
 def _truncate_table(db_engine) -> None:
     _ensure_table(db_engine)
     with db_engine.begin() as conn:
-        conn.execute(sa.text("truncate table short_sale_volume_daily"))
+        # NEVER truncate the full table — production has 13M+ rows.
+        # Remove TEST_TICKER + numeric-suffixed test stubs (T00..T49 from _sample_file).
+        conn.execute(
+            sa.text(
+                "DELETE FROM short_sale_volume_daily "
+                "WHERE ticker = :t "
+                "OR (ticker ~ '^T[0-9]+$' AND trade_date < '2021-01-01')"
+            ),
+            {"t": _TEST_TICKER},
+        )
 
 
 def test_fetch_day_parses_pipe_delimited_file_and_legacy_short_exempt_fallback() -> None:
@@ -131,13 +143,13 @@ def test_fetch_day_parses_pipe_delimited_file_and_legacy_short_exempt_fallback()
     )
     client = _client(fake_session)
 
-    frame, etag = client.fetch_day(date(2026, 4, 23), "CNMS")
-    legacy_frame, legacy_etag = client.fetch_day(date(2026, 4, 23), "CNMS")
+    frame, etag = client.fetch_day(date(2015, 6, 15), "CNMS")
+    legacy_frame, legacy_etag = client.fetch_day(date(2015, 6, 15), "CNMS")
 
     assert len(frame) == 50
     assert etag == "etag-1"
     assert frame["ticker"].iloc[0] == "T00"
-    assert frame["knowledge_time"].iloc[0] == datetime(2026, 4, 23, 22, 0, tzinfo=timezone.utc)
+    assert frame["knowledge_time"].iloc[0] == datetime(2015, 6, 15, 22, 0, tzinfo=timezone.utc)
     assert frame["short_exempt_volume"].iloc[0] == 10
     assert legacy_etag == "etag-legacy"
     assert len(legacy_frame) == 1
@@ -168,8 +180,8 @@ def test_fetch_day_skips_malformed_lines_with_warning(monkeypatch: pytest.Monkey
                 text="\n".join(
                     [
                         "Date|Symbol|ShortVolume|ShortExemptVolume|TotalVolume|Market",
-                        "20260423|AAPL|100|10|1000|CNMS",
-                        "20260423|MSFT|101|11|1001",
+                        "20150615|TSTFR|100|10|1000|CNMS",
+                        "20150615|MSFT|101|11|1001",
                     ],
                 ),
             ),
@@ -177,10 +189,10 @@ def test_fetch_day_skips_malformed_lines_with_warning(monkeypatch: pytest.Monkey
     )
     monkeypatch.setattr(finra_module, "logger", _FakeLogger())
 
-    frame, _ = _client(fake_session).fetch_day(date(2026, 4, 23), "CNMS")
+    frame, _ = _client(fake_session).fetch_day(date(2015, 6, 15), "CNMS")
 
     assert len(frame) == 1
-    assert frame["ticker"].tolist() == ["AAPL"]
+    assert frame["ticker"].tolist() == [_TEST_TICKER]
     assert warnings
     assert "malformed line" in warnings[0][0]
 
@@ -193,7 +205,7 @@ def test_fetch_day_retries_429_then_succeeds() -> None:
         ],
     )
 
-    frame, etag = _client(fake_session).fetch_day(date(2026, 4, 23), "CNMS")
+    frame, etag = _client(fake_session).fetch_day(date(2015, 6, 15), "CNMS")
 
     assert len(frame) == 1
     assert etag == "etag-retry"
@@ -206,7 +218,7 @@ def test_fetch_day_raises_on_persistent_429() -> None:
     )
 
     with pytest.raises(DataSourceTransientError):
-        _client(fake_session).fetch_day(date(2026, 4, 23), "CNMS")
+        _client(fake_session).fetch_day(date(2015, 6, 15), "CNMS")
 
     assert len(fake_session.get_calls) == _retry_config().max_attempts
 
@@ -217,9 +229,9 @@ def test_fetch_historical_skips_when_etag_unchanged_unless_force_refetch(db_engi
     with session_factory() as session:
         session.execute(
             insert(ShortSaleVolume).values(
-                ticker="AAPL",
-                trade_date=date(2026, 4, 23),
-                knowledge_time=datetime(2026, 4, 23, 22, 0, tzinfo=timezone.utc),
+                ticker=_TEST_TICKER,
+                trade_date=date(2015, 6, 15),
+                knowledge_time=datetime(2015, 6, 15, 22, 0, tzinfo=timezone.utc),
                 market="CNMS",
                 short_volume=100,
                 short_exempt_volume=10,
@@ -238,14 +250,14 @@ def test_fetch_historical_skips_when_etag_unchanged_unless_force_refetch(db_engi
     client = _client(fake_session)
 
     skipped = client.fetch_historical(
-        start_date=date(2026, 4, 23),
-        end_date=date(2026, 4, 23),
+        start_date=date(2015, 6, 15),
+        end_date=date(2015, 6, 15),
         markets=["CNMS"],
         session_factory=session_factory,
     )
     forced = client.fetch_historical(
-        start_date=date(2026, 4, 23),
-        end_date=date(2026, 4, 23),
+        start_date=date(2015, 6, 15),
+        end_date=date(2015, 6, 15),
         markets=["CNMS"],
         session_factory=session_factory,
         force_refetch=True,
@@ -263,9 +275,9 @@ def test_fetch_historical_etag_changed_reparses_and_upserts(db_engine) -> None:
     with session_factory() as session:
         session.execute(
             insert(ShortSaleVolume).values(
-                ticker="AAPL",
-                trade_date=date(2026, 4, 23),
-                knowledge_time=datetime(2026, 4, 23, 22, 0, tzinfo=timezone.utc),
+                ticker=_TEST_TICKER,
+                trade_date=date(2015, 6, 15),
+                knowledge_time=datetime(2015, 6, 15, 22, 0, tzinfo=timezone.utc),
                 market="CNMS",
                 short_volume=100,
                 short_exempt_volume=10,
@@ -283,7 +295,7 @@ def test_fetch_historical_etag_changed_reparses_and_upserts(db_engine) -> None:
                 text="\n".join(
                     [
                         "Date|Symbol|ShortVolume|ShortExemptVolume|TotalVolume|Market",
-                        "20260423|AAPL|250|15|1200|CNMS",
+                        "20150615|TSTFR|250|15|1200|CNMS",
                     ],
                 ),
                 headers={"ETag": '"etag-new"'},
@@ -291,10 +303,10 @@ def test_fetch_historical_etag_changed_reparses_and_upserts(db_engine) -> None:
         ],
     )
 
-    now_dt = datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)
+    now_dt = datetime(2015, 6, 16, 12, 0, tzinfo=timezone.utc)
     inserted = _client(fake_session, now_fn=lambda: now_dt).fetch_historical(
-        start_date=date(2026, 4, 23),
-        end_date=date(2026, 4, 23),
+        start_date=date(2015, 6, 15),
+        end_date=date(2015, 6, 15),
         markets=["CNMS"],
         session_factory=session_factory,
     )
@@ -303,8 +315,8 @@ def test_fetch_historical_etag_changed_reparses_and_upserts(db_engine) -> None:
     with session_factory() as session:
         row = session.execute(
             sa.select(ShortSaleVolume).where(
-                ShortSaleVolume.ticker == "AAPL",
-                ShortSaleVolume.trade_date == date(2026, 4, 23),
+                ShortSaleVolume.ticker == _TEST_TICKER,
+                ShortSaleVolume.trade_date == date(2015, 6, 15),
                 ShortSaleVolume.market == "CNMS",
             ),
         ).scalar_one()
@@ -317,12 +329,12 @@ def test_fetch_historical_etag_changed_reparses_and_upserts(db_engine) -> None:
 def test_etag_change_advances_knowledge_time(db_engine) -> None:
     _truncate_table(db_engine)
     session_factory = _session_factory(db_engine)
-    original_kt = datetime(2026, 4, 23, 22, 0, tzinfo=timezone.utc)
+    original_kt = datetime(2015, 6, 15, 22, 0, tzinfo=timezone.utc)
     with session_factory() as session:
         session.execute(
             insert(ShortSaleVolume).values(
-                ticker="AAPL",
-                trade_date=date(2026, 4, 23),
+                ticker=_TEST_TICKER,
+                trade_date=date(2015, 6, 15),
                 knowledge_time=original_kt,
                 market="CNMS",
                 short_volume=100,
@@ -341,18 +353,18 @@ def test_etag_change_advances_knowledge_time(db_engine) -> None:
                 text="\n".join(
                     [
                         "Date|Symbol|ShortVolume|ShortExemptVolume|TotalVolume|Market",
-                        "20260423|AAPL|250|15|1200|CNMS",
+                        "20150615|TSTFR|250|15|1200|CNMS",
                     ],
                 ),
                 headers={"ETag": '"etag-new"'},
             ),
         ],
     )
-    now_dt = datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)
+    now_dt = datetime(2015, 6, 16, 12, 0, tzinfo=timezone.utc)
 
     _client(fake_session, now_fn=lambda: now_dt).fetch_historical(
-        start_date=date(2026, 4, 23),
-        end_date=date(2026, 4, 23),
+        start_date=date(2015, 6, 15),
+        end_date=date(2015, 6, 15),
         markets=["CNMS"],
         session_factory=session_factory,
     )
@@ -360,8 +372,8 @@ def test_etag_change_advances_knowledge_time(db_engine) -> None:
     with session_factory() as session:
         updated = session.execute(
             sa.select(ShortSaleVolume.knowledge_time).where(
-                ShortSaleVolume.ticker == "AAPL",
-                ShortSaleVolume.trade_date == date(2026, 4, 23),
+                ShortSaleVolume.ticker == _TEST_TICKER,
+                ShortSaleVolume.trade_date == date(2015, 6, 15),
                 ShortSaleVolume.market == "CNMS",
             ),
         ).scalar_one()
@@ -394,7 +406,7 @@ def test_fetch_incremental_returns_persisted_frame(
     class _FixedDate(date):
         @classmethod
         def today(cls) -> date:
-            return cls(2026, 4, 23)
+            return cls(2015, 6, 15)
 
     fake_session = _FakeSession(
         head_responses=[
@@ -409,7 +421,7 @@ def test_fetch_incremental_returns_persisted_frame(
     monkeypatch.setattr(finra_module, "date", _FixedDate)
     monkeypatch.setattr(finra_module, "get_session_factory", lambda: session_factory)
 
-    frame = _client(fake_session).fetch_incremental(["AAPL"], date(2026, 4, 23))
+    frame = _client(fake_session).fetch_incremental([_TEST_TICKER], date(2015, 6, 15))
 
     assert not frame.empty
     assert list(frame.columns) == [column.name for column in ShortSaleVolume.__table__.columns]

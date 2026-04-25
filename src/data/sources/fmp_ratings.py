@@ -96,10 +96,12 @@ class FMPRatingsSource(DataSource):
     @DataSource.retryable()
     def _request_ticker(self, ticker: str) -> list[dict[str, Any]]:
         self._before_request(f"ratings-historical/{ticker}")
+        # limit=5000 returns ~20 years of daily snapshots. FMP ignores `page` and
+        # `from`/`to` on this endpoint — `limit` is the only depth control.
         response = self._get_session().get(
             f"{self.base_url}/ratings-historical",
-            params={"symbol": ticker, "apikey": self.api_key},
-            timeout=30,
+            params={"symbol": ticker, "limit": 5000, "apikey": self.api_key},
+            timeout=60,
         )
         if response.status_code == 404:
             return []
@@ -116,10 +118,13 @@ class FMPRatingsSource(DataSource):
 
     def fetch_ticker(self, ticker: str) -> pd.DataFrame:
         normalized_ticker = self.normalize_tickers([ticker])[0]
+        payload = self._request_ticker(normalized_ticker)
         rows: list[dict[str, Any]] = []
-        for record in self._request_ticker(normalized_ticker):
+        for record in payload:
             event_date = _parse_date(record.get("date"))
-            rating_score = _int_or_none(record.get("ratingScore"))
+            # FMP /stable/ratings-historical schema (2025+): `overallScore` not
+            # `ratingScore`; financial ratios use *Score naming.
+            rating_score = _int_or_none(record.get("overallScore"))
             if event_date is None or rating_score is None:
                 continue
             rows.append(
@@ -128,11 +133,22 @@ class FMPRatingsSource(DataSource):
                     "event_date": event_date,
                     "knowledge_time": _end_of_day_utc(event_date),
                     "rating_score": rating_score,
-                    "rating_recommendation": _clean_text(record.get("ratingRecommendation")),
-                    "dcf_rating": _decimal_or_none(record.get("dcfRating")),
-                    "pe_rating": _decimal_or_none(record.get("peRating")),
-                    "roe_rating": _decimal_or_none(record.get("roeRating")),
+                    # The letter grade (A/B/C/D) is the closest analog to a
+                    # recommendation tag in this endpoint; no dedicated field exists.
+                    "rating_recommendation": _clean_text(record.get("rating")),
+                    "dcf_rating": _decimal_or_none(record.get("discountedCashFlowScore")),
+                    "pe_rating": _decimal_or_none(record.get("priceToEarningsScore")),
+                    "roe_rating": _decimal_or_none(record.get("returnOnEquityScore")),
                 },
+            )
+        # Fail loud on schema drift: if FMP returned rows but we parsed zero,
+        # the expected fields (date + overallScore) are renamed/missing.
+        if payload and not rows:
+            sample_keys = sorted(payload[0].keys()) if isinstance(payload[0], dict) else []
+            raise DataSourceError(
+                f"fmp_ratings: payload non-empty ({len(payload)} rows) but zero parsed for "
+                f"{normalized_ticker}. Likely FMP schema change. Received keys: {sample_keys}. "
+                "Required: date + overallScore."
             )
         frame = self.dataframe_or_empty(rows, RATINGS_COLUMNS)
         if not frame.empty:

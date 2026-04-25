@@ -45,6 +45,8 @@ mlruns_*.db
 # Large data directories (cached, reproducible)
 data/backtest/
 data/features/all_features_batches/
+data/reports/week5/
+data/universe/
 
 .ipynb_checkpoints/
 

@@ -66,7 +66,9 @@ class PriceTargetEvent(Base):
 class FMPPriceTargetSource(DataSource):
     source_name = "fmp_price_target"
     stable_base_url = "https://financialmodelingprep.com/stable"
-    legacy_base_url = "https://financialmodelingprep.com/api/v4"
+    # Note: retired /api/v4/price-target endpoint returns 403 "Legacy Endpoint"
+    # since FMP 2025-08 cut-off. Per-analyst history now comes from
+    # /stable/price-target-news via paginated _request_news_page.
 
     def __init__(
         self,
@@ -123,28 +125,78 @@ class FMPPriceTargetSource(DataSource):
         return payload if isinstance(payload, dict) else None
 
     @DataSource.retryable()
-    def _request_legacy(self, ticker: str) -> list[dict[str, Any]] | None:
-        self._before_request(f"price-target/{ticker}")
+    def _request_news_page(self, ticker: str, page: int, limit: int = 100) -> list[dict[str, Any]]:
+        """Fetch one page of /stable/price-target-news for per-analyst history.
+
+        Replaces retired /api/v4/price-target (403 "Legacy Endpoint" since 2025-08).
+        FMP hard-caps limit at 100 and ignores from/to — pagination via page=0,1,2,...
+        """
+        self._before_request(f"price-target-news/{ticker}?page={page}")
         response = self._get_session().get(
-            f"{self.legacy_base_url}/price-target",
-            params={"symbol": ticker, "apikey": self.api_key},
+            f"{self.stable_base_url}/price-target-news",
+            params={"symbol": ticker, "page": page, "limit": limit, "apikey": self.api_key},
             timeout=30,
         )
         response_text = getattr(response, "text", "")
         if response.status_code in {404, 410}:
-            return None
-        if response.status_code == 403 and "Legacy Endpoint" in response_text:
-            return None
+            return []
         if not response.ok:
             self.classify_http_error(
                 response.status_code,
                 response_text,
-                context=f"price-target/{ticker}",
+                context=f"price-target-news/{ticker}",
             )
         payload = response.json()
         if not isinstance(payload, list):
             return []
         return payload
+
+    def _request_news_all(self, ticker: str, max_pages: int = 50) -> list[dict[str, Any]]:
+        """Pull all available per-analyst events via pagination.
+
+        Terminates when:
+        - page returns 0 rows (true tail of history)
+        - OR two consecutive pages have identical content (pagination broken)
+
+        A short-but-non-empty page is logged but treated as terminal (FMP default
+        behavior). A full page at max_pages cap also warns loudly since we may
+        have truncated history.
+        """
+        page_size = 100
+        all_rows: list[dict[str, Any]] = []
+        prev_signature: tuple | None = None
+        terminated_naturally = False
+        for page in range(max_pages):
+            batch = self._request_news_page(ticker, page=page, limit=page_size)
+            if not batch:
+                terminated_naturally = True
+                break
+            # Detect broken pagination (same content two pages in a row)
+            signature = tuple(
+                (r.get("publishedDate"), r.get("analystCompany"), r.get("priceTarget"))
+                for r in batch[:5]
+            )
+            if prev_signature is not None and signature == prev_signature:
+                logger.warning(
+                    "fmp_price_target: page {} for {} returned duplicate content "
+                    "(signature match with previous page); stopping pagination to avoid loop.",
+                    page,
+                    ticker,
+                )
+                break
+            prev_signature = signature
+            all_rows.extend(batch)
+            if len(batch) < page_size:
+                terminated_naturally = True
+                break
+        if not terminated_naturally:
+            logger.warning(
+                "fmp_price_target: news pagination hit max_pages={} for {} with a still-full "
+                "final page; history may be truncated. Bump max_pages if this recurs.",
+                max_pages,
+                ticker,
+            )
+        return all_rows
 
     def fetch_ticker(self, ticker: str) -> pd.DataFrame:
         normalized_ticker = self.normalize_tickers([ticker])[0]
@@ -169,41 +221,64 @@ class FMPPriceTargetSource(DataSource):
                     },
                 )
 
-        legacy_payload = self._request_legacy(normalized_ticker)
-        if legacy_payload is None:
-            logger.warning(
-                "fmp_price_target legacy endpoint unavailable for {}; falling back to consensus snapshot only",
-                normalized_ticker,
-            )
-        else:
-            for record in legacy_payload:
-                event_date = _parse_date(record.get("publishedDate"))
+        news_records = self._request_news_all(normalized_ticker)
+        news_rows: list[dict[str, Any]] = []
+        for record in news_records:
+            published_raw = record.get("publishedDate")
+            event_date = _parse_date(published_raw)
+            # Prefer split-adjusted target; fallback to raw priceTarget.
+            target_price = _decimal_or_none(record.get("adjPriceTarget"))
+            if target_price is None:
                 target_price = _decimal_or_none(record.get("priceTarget"))
-                if target_price is None:
-                    target_price = _decimal_or_none(record.get("adjPriceTarget"))
-                analyst_firm = _clean_text(record.get("analystCompany")) or _clean_text(record.get("analystName"))
-                if event_date is None or target_price is None or analyst_firm is None:
-                    continue
-                target_change = _decimal_or_none(record.get("targetChange"))
-                prior_target = None
-                if target_change is not None:
-                    prior_target = target_price - target_change
-                rows.append(
-                    {
-                        "ticker": normalized_ticker,
-                        "event_date": event_date,
-                        "knowledge_time": _end_of_day_utc(event_date),
-                        "analyst_firm": analyst_firm,
-                        "target_price": target_price,
-                        "prior_target": prior_target,
-                        "price_when_published": None,
-                        "is_consensus": False,
-                    },
-                )
+            analyst_firm = _clean_text(record.get("analystCompany")) or _clean_text(record.get("analystName"))
+            if event_date is None or target_price is None or analyst_firm is None:
+                continue
+            # PIT-facing knowledge_time = EOD(event_date) so the lag-rule gate
+            # (knowledge_time >= EOD) stays satisfied. For same-day same-firm
+            # dedupe we need a recency signal that is NOT EOD (which would be
+            # identical across revisions) — use the raw publishedDate timestamp,
+            # kept only for in-frame sorting and never persisted.
+            pub_ts = _parse_iso_utc(published_raw)
+            news_rows.append(
+                {
+                    "ticker": normalized_ticker,
+                    "event_date": event_date,
+                    "knowledge_time": _end_of_day_utc(event_date),
+                    "analyst_firm": analyst_firm,
+                    "target_price": target_price,
+                    "prior_target": None,
+                    "price_when_published": _decimal_or_none(record.get("priceWhenPosted")),
+                    "is_consensus": False,
+                    "_publication_ts": pub_ts,  # sort key for dedupe, not persisted
+                },
+            )
+
+        if news_rows:
+            # Dedupe same (ticker, event_date, analyst_firm, is_consensus) keeping
+            # the row with the latest publication timestamp. Without this ordering
+            # by the raw pub_ts (since knowledge_time is EOD-constant for same-day
+            # revisions), HTTP response order would decide the winner.
+            news_frame = pd.DataFrame(news_rows)
+            news_frame["_publication_ts"] = pd.to_datetime(news_frame["_publication_ts"], utc=True)
+            news_frame.sort_values(
+                ["ticker", "event_date", "is_consensus", "analyst_firm", "_publication_ts"],
+                inplace=True,
+                na_position="first",
+            )
+            news_frame = news_frame.drop_duplicates(
+                subset=["ticker", "event_date", "is_consensus", "analyst_firm"],
+                keep="last",
+            ).reset_index(drop=True)
+            news_frame = news_frame.drop(columns=["_publication_ts"])
+            rows.extend(news_frame.to_dict(orient="records"))
 
         frame = self.dataframe_or_empty(rows, PRICE_TARGET_COLUMNS)
         if not frame.empty:
-            frame.sort_values(["ticker", "event_date", "is_consensus", "analyst_firm"], inplace=True)
+            frame.sort_values(
+                ["ticker", "event_date", "is_consensus", "analyst_firm"],
+                inplace=True,
+                na_position="first",
+            )
             frame.reset_index(drop=True, inplace=True)
         return frame
 
@@ -337,6 +412,29 @@ def _parse_date(raw_value: Any) -> date | None:
         return None
 
 
+def _parse_iso_utc(raw_value: Any) -> datetime | None:
+    """Parse FMP publishedDate (e.g. '2026-04-17T13:34:10.000Z') -> tz-aware UTC.
+
+    Used as a dedupe sort key so same-day same-firm revisions order by actual
+    publication time, not HTTP response order. The returned timestamp is NOT
+    persisted (knowledge_time stays at EOD for lag-rule alignment).
+    """
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip()
+    if not text:
+        return None
+    try:
+        # 'Z' suffix → ISO+00:00; also accept naive / offset-bearing strings.
+        normalized = text.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(normalized)
+    except (TypeError, ValueError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def _clean_text(raw_value: Any) -> str | None:
     if raw_value is None:
         return None
@@ -359,6 +457,8 @@ def _decimal_or_none(raw_value: Any) -> Decimal | None:
 def _end_of_day_utc(day_value: date) -> datetime:
     local_dt = datetime.combine(day_value, time(hour=23, minute=59), tzinfo=EASTERN)
     return local_dt.astimezone(timezone.utc)
+
+
 
 
 def _ensure_utc(value: datetime) -> datetime:

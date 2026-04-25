@@ -124,7 +124,11 @@ class FMPEarningsCalendarSource(DataSource):
         rows: list[dict[str, Any]] = []
         chunk_start = start_date
         while chunk_start <= end_date:
-            chunk_end = min(chunk_start + timedelta(days=364), end_date)
+            # FMP /stable/earnings-calendar caps each request at 4000 records AND
+            # max 90-day from/to range. In dense periods (recent years) 90 days
+            # blows past 4000 and FMP returns only the *tail* of the window.
+            # 30-day chunks stay under both caps reliably. 5yr backfill ≈ 60 calls.
+            chunk_end = min(chunk_start + timedelta(days=29), end_date)
             for record in self._request_chunk(chunk_start, chunk_end):
                 announce_date = _parse_date(record.get("date"))
                 ticker = _clean_text(record.get("symbol"))

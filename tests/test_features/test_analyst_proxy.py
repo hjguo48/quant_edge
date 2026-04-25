@@ -294,30 +294,34 @@ def test_compute_downgrade_count_filters_future_knowledge_time(analyst_sf: sessi
     assert result == 0
 
 
-def test_compute_consensus_upside_uses_latest_consensus_and_latest_close(analyst_sf: sessionmaker) -> None:
+def test_compute_consensus_upside_uses_per_analyst_avg_and_latest_close(analyst_sf: sessionmaker) -> None:
     as_of = date(2026, 4, 23)
     _seed(
         analyst_sf,
         [
+            # Per-analyst targets in 60-day lookback. Avg = (110 + 120) / 2 = 115.
+            # Note: consensus_upside now proxies via per-analyst mean since the
+            # FMP consensus snapshot only has fetch-time knowledge_time and is
+            # therefore PIT-invisible at historical as_of.
             PriceTargetEvent(
                 ticker=TEST_TICKER,
                 event_date=date(2026, 4, 1),
                 knowledge_time=_kt(date(2026, 4, 1)),
-                analyst_firm=None,
+                analyst_firm="Firm A",
                 target_price=Decimal("110.0"),
                 prior_target=None,
                 price_when_published=None,
-                is_consensus=True,
+                is_consensus=False,
             ),
             PriceTargetEvent(
                 ticker=TEST_TICKER,
                 event_date=date(2026, 4, 20),
                 knowledge_time=_kt(date(2026, 4, 20)),
-                analyst_firm=None,
+                analyst_firm="Firm B",
                 target_price=Decimal("120.0"),
                 prior_target=None,
                 price_when_published=None,
-                is_consensus=True,
+                is_consensus=False,
             ),
             StockPrice(
                 ticker=TEST_TICKER,
@@ -348,7 +352,8 @@ def test_compute_consensus_upside_uses_latest_consensus_and_latest_close(analyst
 
     result = compute_consensus_upside(TEST_TICKER, as_of, session_factory=analyst_sf)
 
-    assert result == pytest.approx(0.2)
+    # avg(110, 120) = 115; close (latest PIT-visible) = 100; (115-100)/100 = 0.15
+    assert result == pytest.approx(0.15)
 
 
 def test_compute_consensus_upside_returns_none_without_consensus(analyst_sf: sessionmaker) -> None:
@@ -385,11 +390,11 @@ def test_compute_consensus_upside_filters_future_knowledge_time(analyst_sf: sess
                 ticker=TEST_TICKER,
                 event_date=date(2026, 4, 20),
                 knowledge_time=_future_kt(as_of),
-                analyst_firm=None,
+                analyst_firm="Firm A",
                 target_price=Decimal("120.0"),
                 prior_target=None,
                 price_when_published=None,
-                is_consensus=True,
+                is_consensus=False,
             ),
             StockPrice(
                 ticker=TEST_TICKER,

@@ -342,13 +342,16 @@ class FINRAShortSaleSource(DataSource):
                         )
                         continue
 
-            row_market = str(record.get("Market") or "").strip().upper() or market
+            # Use the FINRA file prefix (CNMS / ADF / BNY) as the venue marker.
+            # The CSV "Market" column carries downstream exchange codes (e.g. "Q,N",
+            # "B,Q,N") which are NOT the venue we read the file from. Storing those
+            # broke abnormal_off_exchange_shorting (filter market='ADF' returned 0).
             rows.append(
                 {
                     "ticker": ticker,
                     "trade_date": trade_date,
                     "knowledge_time": _knowledge_time(trade_date),
-                    "market": row_market,
+                    "market": market,
                     "short_volume": short_volume,
                     "short_exempt_volume": short_exempt_volume,
                     "total_volume": total_volume,
