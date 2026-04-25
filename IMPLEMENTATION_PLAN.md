@@ -412,22 +412,33 @@ minute_incremental:
 
 ---
 
-### Week 6: Family 归一 + 覆盖率诊断
+### Week 6: Family 归一 + 覆盖率诊断 **[✅ DONE 2026-04-25 PR #6 merged]**
 
 **目标**：每个 horizon 拥有自己的家族配置。
 
-**任务**：
-- 所有新特征写入 family registry
-- 做 family coverage report
-- 做 missingness economic meaning 审计
-- 对 `is_missing` 去伪存真，删除 vendor bias 列
-- 产出每个 horizon 的候选 family 清单
+**已交付 (PR #6, 2 commits, +3500 lines)**:
+- ✅ Family coverage report — `scripts/run_family_coverage_report.py` (sample 20 tickers × 12 months)
+- ✅ Missingness audit — `scripts/run_missingness_audit.py` (161 features 分类)
+- ✅ Horizon families config — `configs/research/horizon_families.yaml` (1D/5D/20D/60D × 包含/排除 families)
+- ✅ 共用 helper `scripts/_week6_family_utils.py` (348 LOC)
+- ✅ Codex strict review 修 3 critical bugs:
+  - C1: trade_microstructure 5 features (intraday flag-off) 重分类为 `sample_disabled_pipeline` 而非 vendor_bias
+  - C2: high_vix_x_beta composite 加显式 input-validity 检查 (vix_z + stock_beta_252)
+  - C3: summary 拆分为 `vendor_bias`/`data_source_block`/`sample_disabled_pipeline` 三个独立 keys
 
-**产出**：
-- `data/reports/family_coverage_report.json`
-- `data/reports/missingness_audit.json`
+**Audit 最终结果** (sample 20 tickers × 12 months):
+- keep: 142 features (88%)
+- convert_to_imputed: 12 features (sparse but real)
+- data_source_block: 1 (`abnormal_off_exchange_shorting` — FINRA ADF 封禁)
+- sample_disabled_pipeline: 5 (`trade_microstructure` family, intraday data 路径关闭)
+- vendor_bias: 0 (genuinely zero, 之前 review 找的 7 个都是 false positive)
 
-**Gate**: 每个特征唯一 family, 保留的 is_missing 都能解释经济含义
+**产出**:
+- `data/reports/family_coverage_report.json` (15 families × monthly coverage)
+- `data/reports/missingness_audit.json` (summary-only, 29 lines)
+- `data/reports/missingness_audit_full.json` (per-feature 详细, gitignored)
+
+**Gate**: ✅ 每特征唯一 family (15 families × 161 features), 所有 keep 的 is_missing 都有 family-level rationale 解释
 
 ---
 
