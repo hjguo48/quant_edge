@@ -1,6 +1,7 @@
 # ruff: noqa: E402
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
@@ -67,6 +68,8 @@ SCREENING_SIGN_WINDOW_THRESHOLD = 7
 WEEK5_FAMILIES = frozenset({"shorting", "analyst_proxy"})
 SHORTING_FEATURES = frozenset(registry_module._SHORTING_FEATURE_METADATA)
 ANALYST_PROXY_FEATURES = frozenset(registry_module._ANALYST_PROXY_FEATURE_METADATA)
+WEEK7_PANEL_CACHE_SCHEMA_VERSION = 2
+WEEK7_PANEL_TABLE_SET_VERSION = "week7_pit_v2"
 
 
 @dataclass(frozen=True)
@@ -241,6 +244,38 @@ def panel_meta_path(cache_path: Path) -> Path:
     return cache_path.with_suffix(".meta.json")
 
 
+def _hash_str_sequence(values: Sequence[str]) -> str:
+    digest = hashlib.sha1()
+    for value in values:
+        digest.update(str(value).encode("utf-8"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def _safe_ratio(numerator: float | int | None, denominator: float | int | None) -> float:
+    if numerator is None or denominator in (None, 0):
+        return np.nan
+    numerator_value = float(numerator)
+    denominator_value = float(denominator)
+    if denominator_value == 0.0:
+        return np.nan
+    return float(numerator_value / denominator_value)
+
+
+def _safe_ratio_pair(value: tuple[float, float] | None) -> float:
+    if value is None:
+        return np.nan
+    return _safe_ratio(value[0], value[1])
+
+
+def _visible_frame_as_of(frame: pd.DataFrame, *, trade_date: date) -> pd.DataFrame:
+    if frame.empty or "knowledge_time" not in frame.columns:
+        return frame.copy()
+    cutoff = pd.Timestamp(as_of_end_utc(trade_date))
+    visible = frame.loc[pd.to_datetime(frame["knowledge_time"], utc=True) <= cutoff].copy()
+    return visible
+
+
 def build_or_load_week7_panel(
     *,
     context: PanelContext,
@@ -252,26 +287,32 @@ def build_or_load_week7_panel(
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     meta_path = panel_meta_path(cache_path)
     parquet_path = historical_feature_parquet or select_historical_feature_parquet()
+    registry = FeatureRegistry()
+    family_by_feature, cache_feature_names = build_registry_feature_maps(registry)
+    requested_feature_names = list(dict.fromkeys(str(name) for name in feature_names))
     expected_meta = {
+        "cache_schema_version": WEEK7_PANEL_CACHE_SCHEMA_VERSION,
+        "table_set_version": WEEK7_PANEL_TABLE_SET_VERSION,
         "start_date": context.start_date.isoformat(),
         "end_date": context.end_date.isoformat(),
-        "sampled_tickers": list(context.sampled_tickers),
-        "sampled_trade_dates": [trade_date.isoformat() for trade_date in context.sampled_trade_dates],
-        "feature_names": list(feature_names),
+        "sampled_tickers_hash": _hash_str_sequence(context.sampled_tickers),
+        "sampled_trade_dates_hash": _hash_str_sequence(
+            [trade_date.isoformat() for trade_date in context.sampled_trade_dates],
+        ),
+        "cached_feature_count": len(cache_feature_names),
         "historical_feature_parquet": str(parquet_path) if parquet_path is not None else None,
     }
     if cache_path.exists() and meta_path.exists():
         existing_meta = json.loads(meta_path.read_text(encoding="utf-8"))
         if existing_meta == expected_meta:
             logger.info("loading cached Week 7 sample panel from {}", cache_path)
-            return pd.read_parquet(cache_path)
+            cached = pd.read_parquet(cache_path)
+            if requested_feature_names:
+                cached = cached.loc[cached["feature_name"].isin(requested_feature_names)].copy()
+            return cached.reset_index(drop=True)
 
-    feature_names = list(dict.fromkeys(str(name) for name in feature_names))
-    family_by_feature, _ = build_registry_feature_maps(
-        registry_module.FeatureRegistry(),
-    )
-    feature_store_names = [name for name in feature_names if family_by_feature.get(name) not in WEEK5_FAMILIES]
-    week5_names = [name for name in feature_names if family_by_feature.get(name) in WEEK5_FAMILIES]
+    feature_store_names = [name for name in cache_feature_names if family_by_feature.get(name) not in WEEK5_FAMILIES]
+    week5_names = [name for name in cache_feature_names if family_by_feature.get(name) in WEEK5_FAMILIES]
 
     frames: list[pd.DataFrame] = []
     if feature_store_names and parquet_path is not None:
@@ -302,8 +343,9 @@ def build_or_load_week7_panel(
             ),
         )
 
-    if frames:
-        panel = pd.concat(frames, ignore_index=True)
+    non_empty_frames = [frame for frame in frames if not frame.empty]
+    if non_empty_frames:
+        panel = pd.concat(non_empty_frames, ignore_index=True)
     else:
         panel = pd.DataFrame(columns=["ticker", "trade_date", "feature_name", "feature_value"])
 
@@ -324,7 +366,9 @@ def build_or_load_week7_panel(
         panel["ticker"].nunique() if not panel.empty else 0,
         panel["feature_name"].nunique() if not panel.empty else 0,
     )
-    return panel
+    if requested_feature_names:
+        panel = panel.loc[panel["feature_name"].isin(requested_feature_names)].copy()
+    return panel.reset_index(drop=True)
 
 
 def load_feature_store_panel(
@@ -466,6 +510,7 @@ def build_shorting_panel(
             ShortSaleVolume.ticker.label("ticker"),
             ShortSaleVolume.trade_date.label("trade_date"),
             ShortSaleVolume.market.label("market"),
+            ShortSaleVolume.knowledge_time.label("knowledge_time"),
             sa.func.sum(ShortSaleVolume.short_volume).label("short_volume"),
             sa.func.sum(ShortSaleVolume.total_volume).label("total_volume"),
         )
@@ -475,46 +520,76 @@ def build_shorting_panel(
             ShortSaleVolume.trade_date <= end_date,
             ShortSaleVolume.knowledge_time <= as_of_end_utc(end_date),
         )
-        .group_by(ShortSaleVolume.ticker, ShortSaleVolume.trade_date, ShortSaleVolume.market)
-        .order_by(ShortSaleVolume.ticker, ShortSaleVolume.trade_date, ShortSaleVolume.market)
+        .group_by(
+            ShortSaleVolume.ticker,
+            ShortSaleVolume.trade_date,
+            ShortSaleVolume.market,
+            ShortSaleVolume.knowledge_time,
+        )
+        .order_by(
+            ShortSaleVolume.ticker,
+            ShortSaleVolume.knowledge_time,
+            ShortSaleVolume.trade_date,
+            ShortSaleVolume.market,
+        )
     )
     with factory() as session:
         rows = session.execute(stmt).mappings().all()
-    frame = pd.DataFrame(rows, columns=["ticker", "trade_date", "market", "short_volume", "total_volume"])
+    frame = pd.DataFrame(
+        rows,
+        columns=["ticker", "trade_date", "market", "knowledge_time", "short_volume", "total_volume"],
+    )
     if frame.empty:
         return pd.DataFrame(columns=["ticker", "trade_date", "feature_name", "feature_value"])
     frame["trade_date"] = pd.to_datetime(frame["trade_date"]).dt.date
+    frame["knowledge_time"] = pd.to_datetime(frame["knowledge_time"], utc=True)
     frame["short_volume"] = pd.to_numeric(frame["short_volume"], errors="coerce")
     frame["total_volume"] = pd.to_numeric(frame["total_volume"], errors="coerce")
-    frame["ratio"] = np.where(frame["total_volume"].fillna(0.0) > 0.0, frame["short_volume"] / frame["total_volume"], np.nan)
 
     sessions = tuple(
         session.date() for session in XNYS.sessions_in_range(pd.Timestamp(start_date), pd.Timestamp(end_date))
     )
     position_by_session = {session: idx for idx, session in enumerate(sessions)}
+    sorted_trade_dates = sorted(dict.fromkeys(trade_dates))
+    session_by_trade_date = {trade_date: current_or_previous_session(trade_date) for trade_date in sorted_trade_dates}
+    cutoff_by_trade_date = {
+        trade_date: pd.Timestamp(as_of_end_utc(trade_date))
+        for trade_date in sorted_trade_dates
+    }
     rows_out: list[dict[str, object]] = []
     requested = set(requested_features)
 
     for ticker, ticker_frame in frame.groupby("ticker", sort=True):
-        combined = (
-            ticker_frame.groupby("trade_date", as_index=False)[["short_volume", "total_volume"]]
-            .sum()
-            .sort_values("trade_date")
-        )
-        combined["ratio"] = np.where(
-            combined["total_volume"].fillna(0.0) > 0.0,
-            combined["short_volume"] / combined["total_volume"],
-            np.nan,
-        )
-        combined_ratio = combined.set_index("trade_date")["ratio"]
-        adf_ratio = (
-            ticker_frame.loc[ticker_frame["market"] == "ADF", ["trade_date", "ratio"]]
-            .drop_duplicates(subset=["trade_date"], keep="last")
-            .set_index("trade_date")["ratio"]
-        )
+        ticker_rows = ticker_frame.sort_values(["knowledge_time", "trade_date", "market"]).itertuples(index=False)
+        ticker_rows = list(ticker_rows)
+        pointer = 0
+        market_state: dict[tuple[date, str], tuple[float, float]] = {}
+        combined_state: dict[date, tuple[float, float]] = {}
+        adf_ratio_state: dict[date, float] = {}
 
-        for trade_date in trade_dates:
-            session = current_or_previous_session(trade_date)
+        for trade_date in sorted_trade_dates:
+            cutoff = cutoff_by_trade_date[trade_date]
+            while pointer < len(ticker_rows) and ticker_rows[pointer].knowledge_time <= cutoff:
+                row = ticker_rows[pointer]
+                session_key = row.trade_date
+                market_key = (row.trade_date, str(row.market))
+                short_value = float(row.short_volume) if pd.notna(row.short_volume) else 0.0
+                total_value = float(row.total_volume) if pd.notna(row.total_volume) else 0.0
+
+                prior_market_state = market_state.get(market_key)
+                combined_short, combined_total = combined_state.get(session_key, (0.0, 0.0))
+                if prior_market_state is not None:
+                    combined_short -= prior_market_state[0]
+                    combined_total -= prior_market_state[1]
+                market_state[market_key] = (short_value, total_value)
+                combined_short += short_value
+                combined_total += total_value
+                combined_state[session_key] = (combined_short, combined_total)
+                if str(row.market) == "ADF":
+                    adf_ratio_state[session_key] = _safe_ratio(short_value, total_value)
+                pointer += 1
+
+            session = session_by_trade_date[trade_date]
             session_position = position_by_session.get(session)
             if session_position is None:
                 continue
@@ -524,23 +599,31 @@ def build_shorting_panel(
                         "ticker": ticker,
                         "trade_date": trade_date,
                         "feature_name": "short_sale_ratio_1d",
-                        "feature_value": combined_ratio.get(session),
+                        "feature_value": _safe_ratio_pair(combined_state.get(session)),
                     },
                 )
             if "short_sale_ratio_5d" in requested:
                 recent = list(sessions[max(0, session_position - 4) : session_position + 1])
-                ratios = combined_ratio.reindex(recent).dropna()
+                ratios = [
+                    _safe_ratio_pair(combined_state.get(recent_session))
+                    for recent_session in recent
+                ]
+                ratios = [ratio for ratio in ratios if pd.notna(ratio)]
                 rows_out.append(
                     {
                         "ticker": ticker,
                         "trade_date": trade_date,
                         "feature_name": "short_sale_ratio_5d",
-                        "feature_value": float(ratios.mean()) if len(ratios) >= 3 else np.nan,
+                        "feature_value": float(np.mean(ratios)) if len(ratios) >= 3 else np.nan,
                     },
                 )
             if "short_sale_accel" in requested:
                 recent = list(sessions[max(0, session_position - 19) : session_position + 1])
-                ratios = combined_ratio.reindex(recent).dropna()
+                ratios = [
+                    _safe_ratio_pair(combined_state.get(recent_session))
+                    for recent_session in recent
+                ]
+                ratios = pd.Series([ratio for ratio in ratios if pd.notna(ratio)], dtype=float)
                 ma_5 = ratios.tail(5)
                 ma_20 = ratios.tail(20)
                 value = np.nan
@@ -559,8 +642,11 @@ def build_shorting_panel(
                 if len(recent) < 2:
                     value = np.nan
                 else:
-                    today_ratio = adf_ratio.get(recent[-1])
-                    history = adf_ratio.reindex(recent[:-1]).dropna()
+                    today_ratio = adf_ratio_state.get(recent[-1], np.nan)
+                    history = pd.Series(
+                        [adf_ratio_state.get(recent_session, np.nan) for recent_session in recent[:-1]],
+                        dtype=float,
+                    ).dropna()
                     std = float(history.std(ddof=0)) if len(history) >= 60 else 0.0
                     if pd.isna(today_ratio) or len(history) < 60 or std <= 0.0:
                         value = np.nan
@@ -591,66 +677,93 @@ def build_analyst_proxy_panel(
     requested = set(requested_features)
     min_trade_date = min(trade_dates)
     max_trade_date = max(trade_dates)
-    lookback_start = min_trade_date - timedelta(days=130)
+    grade_lookback_start = min_trade_date - timedelta(days=60)
+    target_lookback_start = min_trade_date - timedelta(days=120)
+    price_lookback_start = min_trade_date - timedelta(days=130)
+    needs_grade_rows = bool(
+        requested & {"net_grade_change_5d", "net_grade_change_20d", "net_grade_change_60d", "upgrade_count", "downgrade_count"},
+    )
+    needs_target_rows = bool(
+        requested & {"consensus_upside", "target_price_drift", "target_dispersion_proxy", "coverage_change_proxy"},
+    )
+    needs_rating_rows = "financial_health_trend" in requested
+    needs_close_rows = bool(requested & {"consensus_upside", "target_price_drift"})
 
     with factory() as session:
-        grades_rows = session.execute(
-            sa.select(
-                GradesEvent.ticker,
-                GradesEvent.event_date,
-                GradesEvent.grade_score_change,
-            ).where(
-                GradesEvent.ticker.in_([str(ticker).upper() for ticker in tickers]),
-                GradesEvent.event_date >= lookback_start,
-                GradesEvent.event_date <= max_trade_date,
-                GradesEvent.knowledge_time <= as_of_end_utc(max_trade_date),
-            ).order_by(GradesEvent.ticker, GradesEvent.event_date, GradesEvent.id)
-        ).mappings().all()
-        targets_rows = session.execute(
-            sa.select(
-                PriceTargetEvent.ticker,
-                PriceTargetEvent.event_date,
-                PriceTargetEvent.knowledge_time,
-                PriceTargetEvent.analyst_firm,
-                PriceTargetEvent.target_price,
-                PriceTargetEvent.is_consensus,
-            ).where(
-                PriceTargetEvent.ticker.in_([str(ticker).upper() for ticker in tickers]),
-                PriceTargetEvent.event_date >= lookback_start,
-                PriceTargetEvent.event_date <= max_trade_date,
-                PriceTargetEvent.knowledge_time <= as_of_end_utc(max_trade_date),
-            ).order_by(
-                PriceTargetEvent.ticker,
-                PriceTargetEvent.event_date,
-                PriceTargetEvent.knowledge_time,
-                PriceTargetEvent.id,
-            )
-        ).mappings().all()
-        ratings_rows = session.execute(
-            sa.select(
-                RatingEvent.ticker,
-                RatingEvent.event_date,
-                RatingEvent.rating_score,
-            ).where(
-                RatingEvent.ticker.in_([str(ticker).upper() for ticker in tickers]),
-                RatingEvent.event_date >= lookback_start,
-                RatingEvent.event_date <= max_trade_date,
-                RatingEvent.knowledge_time <= as_of_end_utc(max_trade_date),
-            ).order_by(RatingEvent.ticker, RatingEvent.event_date)
-        ).mappings().all()
-        price_rows = session.execute(
-            sa.select(
-                StockPrice.ticker,
-                StockPrice.trade_date,
-                StockPrice.knowledge_time,
-                StockPrice.close,
-            ).where(
-                StockPrice.ticker.in_([str(ticker).upper() for ticker in tickers]),
-                StockPrice.trade_date >= lookback_start,
-                StockPrice.trade_date <= max_trade_date,
-                StockPrice.knowledge_time <= as_of_end_utc(max_trade_date),
-            ).order_by(StockPrice.ticker, StockPrice.knowledge_time, StockPrice.trade_date)
-        ).mappings().all()
+        grades_rows = (
+            session.execute(
+                sa.select(
+                    GradesEvent.ticker,
+                    GradesEvent.event_date,
+                    GradesEvent.knowledge_time,
+                    GradesEvent.grade_score_change,
+                ).where(
+                    GradesEvent.ticker.in_([str(ticker).upper() for ticker in tickers]),
+                    GradesEvent.event_date >= grade_lookback_start,
+                    GradesEvent.event_date <= max_trade_date,
+                    GradesEvent.knowledge_time <= as_of_end_utc(max_trade_date),
+                ).order_by(GradesEvent.ticker, GradesEvent.knowledge_time, GradesEvent.event_date)
+            ).mappings().all()
+            if needs_grade_rows
+            else []
+        )
+        targets_rows = (
+            session.execute(
+                sa.select(
+                    PriceTargetEvent.ticker,
+                    PriceTargetEvent.event_date,
+                    PriceTargetEvent.knowledge_time,
+                    PriceTargetEvent.analyst_firm,
+                    PriceTargetEvent.target_price,
+                ).where(
+                    PriceTargetEvent.ticker.in_([str(ticker).upper() for ticker in tickers]),
+                    PriceTargetEvent.event_date >= target_lookback_start,
+                    PriceTargetEvent.event_date <= max_trade_date,
+                    PriceTargetEvent.knowledge_time <= as_of_end_utc(max_trade_date),
+                    PriceTargetEvent.is_consensus.is_(False),
+                ).order_by(
+                    PriceTargetEvent.ticker,
+                    PriceTargetEvent.knowledge_time,
+                    PriceTargetEvent.event_date,
+                    PriceTargetEvent.analyst_firm,
+                )
+            ).mappings().all()
+            if needs_target_rows
+            else []
+        )
+        ratings_rows = (
+            session.execute(
+                sa.select(
+                    RatingEvent.ticker,
+                    RatingEvent.event_date,
+                    RatingEvent.knowledge_time,
+                    RatingEvent.rating_score,
+                ).where(
+                    RatingEvent.ticker.in_([str(ticker).upper() for ticker in tickers]),
+                    RatingEvent.event_date <= max_trade_date,
+                    RatingEvent.knowledge_time <= as_of_end_utc(max_trade_date),
+                ).order_by(RatingEvent.ticker, RatingEvent.knowledge_time, RatingEvent.event_date)
+            ).mappings().all()
+            if needs_rating_rows
+            else []
+        )
+        price_rows = (
+            session.execute(
+                sa.select(
+                    StockPrice.ticker,
+                    StockPrice.trade_date,
+                    StockPrice.knowledge_time,
+                    StockPrice.close,
+                ).where(
+                    StockPrice.ticker.in_([str(ticker).upper() for ticker in tickers]),
+                    StockPrice.trade_date >= price_lookback_start,
+                    StockPrice.trade_date <= max_trade_date,
+                    StockPrice.knowledge_time <= as_of_end_utc(max_trade_date),
+                ).order_by(StockPrice.ticker, StockPrice.knowledge_time, StockPrice.trade_date)
+            ).mappings().all()
+            if needs_close_rows
+            else []
+        )
 
     grades = pd.DataFrame(grades_rows)
     targets = pd.DataFrame(targets_rows)
@@ -658,148 +771,281 @@ def build_analyst_proxy_panel(
     prices = pd.DataFrame(price_rows)
 
     if not grades.empty:
+        grades["ticker"] = grades["ticker"].astype(str).str.upper()
         grades["event_date"] = pd.to_datetime(grades["event_date"]).dt.date
+        grades["knowledge_time"] = pd.to_datetime(grades["knowledge_time"], utc=True)
         grades["grade_score_change"] = pd.to_numeric(grades["grade_score_change"], errors="coerce")
+        grades.sort_values(["ticker", "knowledge_time", "event_date"], inplace=True)
     if not targets.empty:
+        targets["ticker"] = targets["ticker"].astype(str).str.upper()
         targets["event_date"] = pd.to_datetime(targets["event_date"]).dt.date
         targets["knowledge_time"] = pd.to_datetime(targets["knowledge_time"], utc=True)
         targets["target_price"] = pd.to_numeric(targets["target_price"], errors="coerce")
         targets["analyst_firm"] = targets["analyst_firm"].where(targets["analyst_firm"].notna())
+        targets.sort_values(["ticker", "knowledge_time", "event_date", "analyst_firm"], inplace=True)
     if not ratings.empty:
+        ratings["ticker"] = ratings["ticker"].astype(str).str.upper()
         ratings["event_date"] = pd.to_datetime(ratings["event_date"]).dt.date
+        ratings["knowledge_time"] = pd.to_datetime(ratings["knowledge_time"], utc=True)
         ratings["rating_score"] = pd.to_numeric(ratings["rating_score"], errors="coerce")
-    close_lookup = build_visible_close_lookup(
-        price_rows=prices,
-        tickers=tickers,
-        trade_dates=trade_dates,
+        ratings.sort_values(["ticker", "knowledge_time", "event_date"], inplace=True)
+    close_lookup = (
+        build_visible_close_lookup(
+            price_rows=prices,
+            tickers=tickers,
+            trade_dates=trade_dates,
+        )
+        if needs_close_rows
+        else {}
     )
 
     rows_out: list[dict[str, object]] = []
-    normalized_trade_dates = list(trade_dates)
+    normalized_trade_dates = sorted(dict.fromkeys(trade_dates))
+    trade_ordinals = np.array([trade_date.toordinal() for trade_date in normalized_trade_dates], dtype=int)
+    cutoff_by_trade_date = {
+        trade_date: pd.Timestamp(as_of_end_utc(trade_date))
+        for trade_date in normalized_trade_dates
+    }
 
     for ticker in [str(item).upper() for item in tickers]:
-        ticker_grades = grades.loc[grades["ticker"] == ticker].copy() if not grades.empty else pd.DataFrame()
-        ticker_targets = targets.loc[targets["ticker"] == ticker].copy() if not targets.empty else pd.DataFrame()
-        ticker_ratings = ratings.loc[ratings["ticker"] == ticker].copy() if not ratings.empty else pd.DataFrame()
-        if not ticker_targets.empty:
-            ticker_targets = ticker_targets.loc[ticker_targets["is_consensus"] == False].copy()  # noqa: E712
+        ticker_grades = grades.loc[grades["ticker"] == ticker].reset_index(drop=True) if not grades.empty else pd.DataFrame()
+        ticker_targets = targets.loc[targets["ticker"] == ticker].reset_index(drop=True) if not targets.empty else pd.DataFrame()
+        ticker_ratings = ratings.loc[ratings["ticker"] == ticker].reset_index(drop=True) if not ratings.empty else pd.DataFrame()
 
-        for trade_date in normalized_trade_dates:
-            if "net_grade_change_5d" in requested:
-                rows_out.append(
-                    {
-                        "ticker": ticker,
-                        "trade_date": trade_date,
-                        "feature_name": "net_grade_change_5d",
-                        "feature_value": sum_grade_changes(ticker_grades, trade_date=trade_date, horizon_days=5),
-                    },
+        grade_ptr = 0
+        target_ptr = 0
+        rating_ptr = 0
+
+        grade_cutoffs = ticker_grades["knowledge_time"].to_numpy(dtype="datetime64[ns]") if not ticker_grades.empty else np.array([], dtype="datetime64[ns]")
+        grade_event_ord = (
+            np.array([value.toordinal() for value in ticker_grades["event_date"]], dtype=int)
+            if not ticker_grades.empty
+            else np.array([], dtype=int)
+        )
+        grade_changes = ticker_grades["grade_score_change"].to_numpy(dtype=float) if not ticker_grades.empty else np.array([], dtype=float)
+
+        target_cutoffs = ticker_targets["knowledge_time"].to_numpy(dtype="datetime64[ns]") if not ticker_targets.empty else np.array([], dtype="datetime64[ns]")
+        target_event_ord = (
+            np.array([value.toordinal() for value in ticker_targets["event_date"]], dtype=int)
+            if not ticker_targets.empty
+            else np.array([], dtype=int)
+        )
+        target_prices = ticker_targets["target_price"].to_numpy(dtype=float) if not ticker_targets.empty else np.array([], dtype=float)
+        target_firms = ticker_targets["analyst_firm"].fillna("").astype(str).to_numpy() if not ticker_targets.empty else np.array([], dtype=object)
+
+        rating_cutoffs = ticker_ratings["knowledge_time"].to_numpy(dtype="datetime64[ns]") if not ticker_ratings.empty else np.array([], dtype="datetime64[ns]")
+        rating_event_ord = (
+            np.array([value.toordinal() for value in ticker_ratings["event_date"]], dtype=int)
+            if not ticker_ratings.empty
+            else np.array([], dtype=int)
+        )
+        rating_scores = ticker_ratings["rating_score"].to_numpy(dtype=float) if not ticker_ratings.empty else np.array([], dtype=float)
+
+        for trade_date, trade_ordinal in zip(normalized_trade_dates, trade_ordinals, strict=True):
+            cutoff_ts = cutoff_by_trade_date[trade_date].tz_convert("UTC").tz_localize(None)
+            cutoff = cutoff_ts.to_datetime64()
+            while grade_ptr < len(grade_cutoffs) and grade_cutoffs[grade_ptr] <= cutoff:
+                grade_ptr += 1
+            while target_ptr < len(target_cutoffs) and target_cutoffs[target_ptr] <= cutoff:
+                target_ptr += 1
+            while rating_ptr < len(rating_cutoffs) and rating_cutoffs[rating_ptr] <= cutoff:
+                rating_ptr += 1
+
+            if needs_grade_rows:
+                visible_grade_events = grade_event_ord[:grade_ptr]
+                visible_grade_changes = grade_changes[:grade_ptr]
+                for horizon_days, feature_name in (
+                    (5, "net_grade_change_5d"),
+                    (20, "net_grade_change_20d"),
+                    (60, "net_grade_change_60d"),
+                ):
+                    if feature_name not in requested:
+                        continue
+                    start_ordinal = (trade_date - timedelta(days=horizon_days)).toordinal()
+                    mask = (visible_grade_events >= start_ordinal) & (visible_grade_events <= trade_ordinal)
+                    value = float(visible_grade_changes[mask].sum()) if mask.any() else 0.0
+                    rows_out.append(
+                        {
+                            "ticker": ticker,
+                            "trade_date": trade_date,
+                            "feature_name": feature_name,
+                            "feature_value": value,
+                        },
+                    )
+                if "upgrade_count" in requested:
+                    start_ordinal = (trade_date - timedelta(days=20)).toordinal()
+                    mask = (
+                        (visible_grade_events >= start_ordinal)
+                        & (visible_grade_events <= trade_ordinal)
+                        & (visible_grade_changes > 0)
+                    )
+                    rows_out.append(
+                        {
+                            "ticker": ticker,
+                            "trade_date": trade_date,
+                            "feature_name": "upgrade_count",
+                            "feature_value": float(mask.sum()),
+                        },
+                    )
+                if "downgrade_count" in requested:
+                    start_ordinal = (trade_date - timedelta(days=20)).toordinal()
+                    mask = (
+                        (visible_grade_events >= start_ordinal)
+                        & (visible_grade_events <= trade_ordinal)
+                        & (visible_grade_changes < 0)
+                    )
+                    rows_out.append(
+                        {
+                            "ticker": ticker,
+                            "trade_date": trade_date,
+                            "feature_name": "downgrade_count",
+                            "feature_value": float(mask.sum()),
+                        },
+                    )
+
+            if needs_target_rows:
+                visible_target_events = target_event_ord[:target_ptr]
+                visible_target_prices = target_prices[:target_ptr]
+                visible_target_firms = target_firms[:target_ptr]
+
+                start_60 = (trade_date - timedelta(days=60)).toordinal()
+                start_120 = (trade_date - timedelta(days=120)).toordinal()
+                recent_target_mask = (
+                    (visible_target_events >= start_60)
+                    & (visible_target_events <= trade_ordinal)
+                    & np.isfinite(visible_target_prices)
                 )
-            if "net_grade_change_20d" in requested:
-                rows_out.append(
-                    {
-                        "ticker": ticker,
-                        "trade_date": trade_date,
-                        "feature_name": "net_grade_change_20d",
-                        "feature_value": sum_grade_changes(ticker_grades, trade_date=trade_date, horizon_days=20),
-                    },
+                coverage_mask = (visible_target_events >= start_120) & (visible_target_events <= trade_ordinal)
+                latest_close = close_lookup.get((ticker, trade_date))
+
+                latest_firm_indices: list[int] = []
+                seen_firms: set[str] = set()
+                for index in np.flatnonzero(recent_target_mask)[::-1]:
+                    firm = visible_target_firms[index]
+                    if not firm or firm in seen_firms:
+                        continue
+                    seen_firms.add(firm)
+                    latest_firm_indices.append(int(index))
+                latest_firm_indices.reverse()
+                latest_prices = (
+                    np.array([visible_target_prices[index] for index in latest_firm_indices], dtype=float)
+                    if latest_firm_indices
+                    else np.array([], dtype=float)
                 )
-            if "net_grade_change_60d" in requested:
-                rows_out.append(
-                    {
-                        "ticker": ticker,
-                        "trade_date": trade_date,
-                        "feature_name": "net_grade_change_60d",
-                        "feature_value": sum_grade_changes(ticker_grades, trade_date=trade_date, horizon_days=60),
-                    },
-                )
-            if "upgrade_count" in requested:
-                rows_out.append(
-                    {
-                        "ticker": ticker,
-                        "trade_date": trade_date,
-                        "feature_name": "upgrade_count",
-                        "feature_value": count_grade_changes(
-                            ticker_grades,
-                            trade_date=trade_date,
-                            horizon_days=20,
-                            positive=True,
-                        ),
-                    },
-                )
-            if "downgrade_count" in requested:
-                rows_out.append(
-                    {
-                        "ticker": ticker,
-                        "trade_date": trade_date,
-                        "feature_name": "downgrade_count",
-                        "feature_value": count_grade_changes(
-                            ticker_grades,
-                            trade_date=trade_date,
-                            horizon_days=20,
-                            positive=False,
-                        ),
-                    },
-                )
-            if "consensus_upside" in requested:
-                rows_out.append(
-                    {
-                        "ticker": ticker,
-                        "trade_date": trade_date,
-                        "feature_name": "consensus_upside",
-                        "feature_value": compute_consensus_upside_from_frame(
-                            ticker_targets,
-                            trade_date=trade_date,
-                            latest_close=close_lookup.get((ticker, trade_date)),
-                        ),
-                    },
-                )
-            if "target_price_drift" in requested:
-                rows_out.append(
-                    {
-                        "ticker": ticker,
-                        "trade_date": trade_date,
-                        "feature_name": "target_price_drift",
-                        "feature_value": compute_target_price_drift_from_frame(
-                            ticker_targets,
-                            trade_date=trade_date,
-                            latest_close=close_lookup.get((ticker, trade_date)),
-                        ),
-                    },
-                )
-            if "target_dispersion_proxy" in requested:
-                rows_out.append(
-                    {
-                        "ticker": ticker,
-                        "trade_date": trade_date,
-                        "feature_name": "target_dispersion_proxy",
-                        "feature_value": compute_target_dispersion_from_frame(
-                            ticker_targets,
-                            trade_date=trade_date,
-                        ),
-                    },
-                )
-            if "coverage_change_proxy" in requested:
-                rows_out.append(
-                    {
-                        "ticker": ticker,
-                        "trade_date": trade_date,
-                        "feature_name": "coverage_change_proxy",
-                        "feature_value": compute_coverage_change_from_frame(
-                            ticker_targets,
-                            trade_date=trade_date,
-                        ),
-                    },
-                )
-            if "financial_health_trend" in requested:
+
+                if "consensus_upside" in requested:
+                    if latest_prices.size == 0 or latest_close in (None, 0) or pd.isna(latest_close):
+                        value = np.nan
+                    else:
+                        consensus_target = float(np.nanmean(latest_prices))
+                        value = float((consensus_target - float(latest_close)) / float(latest_close))
+                    rows_out.append(
+                        {
+                            "ticker": ticker,
+                            "trade_date": trade_date,
+                            "feature_name": "consensus_upside",
+                            "feature_value": value,
+                        },
+                    )
+
+                if "target_price_drift" in requested:
+                    drift_indices = np.flatnonzero(recent_target_mask)
+                    if (
+                        drift_indices.size == 0
+                        or latest_close in (None, 0)
+                        or pd.isna(latest_close)
+                        or np.unique(visible_target_events[drift_indices]).size < 5
+                    ):
+                        value = np.nan
+                    else:
+                        x = visible_target_events[drift_indices].astype(float)
+                        x = x - float(x.min())
+                        if np.unique(x).size < 2:
+                            value = np.nan
+                        else:
+                            slope = float(np.polyfit(x, visible_target_prices[drift_indices], 1)[0])
+                            value = float((slope * 60.0) / float(latest_close))
+                    rows_out.append(
+                        {
+                            "ticker": ticker,
+                            "trade_date": trade_date,
+                            "feature_name": "target_price_drift",
+                            "feature_value": value,
+                        },
+                    )
+
+                if "target_dispersion_proxy" in requested:
+                    if latest_prices.size < 3:
+                        value = np.nan
+                    else:
+                        mean_value = float(np.nanmean(latest_prices))
+                        value = np.nan if mean_value == 0.0 else float(np.nanstd(latest_prices, ddof=0) / mean_value)
+                    rows_out.append(
+                        {
+                            "ticker": ticker,
+                            "trade_date": trade_date,
+                            "feature_name": "target_dispersion_proxy",
+                            "feature_value": value,
+                        },
+                    )
+
+                if "coverage_change_proxy" in requested:
+                    coverage_indices = np.flatnonzero(coverage_mask)
+                    if coverage_indices.size == 0:
+                        value = np.nan
+                    else:
+                        recent_start = start_60
+                        prior_start = start_120
+                        prior_end = recent_start
+                        prior_firms = {
+                            visible_target_firms[index]
+                            for index in coverage_indices
+                            if visible_target_firms[index]
+                            and prior_start <= visible_target_events[index] <= prior_end
+                        }
+                        if not prior_firms:
+                            value = np.nan
+                        else:
+                            recent_firms = {
+                                visible_target_firms[index]
+                                for index in coverage_indices
+                                if visible_target_firms[index]
+                                and recent_start <= visible_target_events[index] <= trade_ordinal
+                            }
+                            value = float(len(recent_firms) - len(prior_firms))
+                    rows_out.append(
+                        {
+                            "ticker": ticker,
+                            "trade_date": trade_date,
+                            "feature_name": "coverage_change_proxy",
+                            "feature_value": value,
+                        },
+                    )
+
+            if needs_rating_rows and "financial_health_trend" in requested:
+                visible_rating_events = rating_event_ord[:rating_ptr]
+                visible_rating_scores = rating_scores[:rating_ptr]
+                current_indices = np.flatnonzero(visible_rating_events <= trade_ordinal)
+                prior_cutoff = (trade_date - timedelta(days=365)).toordinal()
+                prior_indices = np.flatnonzero(visible_rating_events <= prior_cutoff)
+                if current_indices.size == 0 or prior_indices.size == 0:
+                    value = np.nan
+                else:
+                    current_event = visible_rating_events[current_indices].max()
+                    current_score = float(
+                        visible_rating_scores[current_indices[visible_rating_events[current_indices] == current_event][-1]],
+                    )
+                    prior_event = visible_rating_events[prior_indices].max()
+                    prior_score = float(
+                        visible_rating_scores[prior_indices[visible_rating_events[prior_indices] == prior_event][-1]],
+                    )
+                    value = float(current_score - prior_score)
                 rows_out.append(
                     {
                         "ticker": ticker,
                         "trade_date": trade_date,
                         "feature_name": "financial_health_trend",
-                        "feature_value": compute_financial_health_trend_from_frame(
-                            ticker_ratings,
-                            trade_date=trade_date,
-                        ),
+                        "feature_value": value,
                     },
                 )
 
@@ -844,20 +1090,28 @@ def build_visible_close_lookup(
 
 
 def sum_grade_changes(frame: pd.DataFrame, *, trade_date: date, horizon_days: int) -> float:
-    if frame.empty:
-        return np.nan
+    visible = _visible_frame_as_of(frame, trade_date=trade_date)
+    if visible.empty:
+        return 0.0
     start_date = trade_date - timedelta(days=horizon_days)
-    window = frame.loc[(frame["event_date"] >= start_date) & (frame["event_date"] <= trade_date), "grade_score_change"].dropna()
+    window = visible.loc[
+        (visible["event_date"] >= start_date) & (visible["event_date"] <= trade_date),
+        "grade_score_change",
+    ].dropna()
     if window.empty:
         return 0.0
     return float(window.sum())
 
 
 def count_grade_changes(frame: pd.DataFrame, *, trade_date: date, horizon_days: int, positive: bool) -> float:
-    if frame.empty:
+    visible = _visible_frame_as_of(frame, trade_date=trade_date)
+    if visible.empty:
         return 0.0
     start_date = trade_date - timedelta(days=horizon_days)
-    window = frame.loc[(frame["event_date"] >= start_date) & (frame["event_date"] <= trade_date), "grade_score_change"].dropna()
+    window = visible.loc[
+        (visible["event_date"] >= start_date) & (visible["event_date"] <= trade_date),
+        "grade_score_change",
+    ].dropna()
     if positive:
         return float((window > 0).sum())
     return float((window < 0).sum())
@@ -866,8 +1120,11 @@ def count_grade_changes(frame: pd.DataFrame, *, trade_date: date, horizon_days: 
 def compute_consensus_upside_from_frame(frame: pd.DataFrame, *, trade_date: date, latest_close: float | None) -> float:
     if frame.empty or latest_close is None or latest_close == 0:
         return np.nan
+    visible = _visible_frame_as_of(frame, trade_date=trade_date)
+    if visible.empty:
+        return np.nan
     start_date = trade_date - timedelta(days=60)
-    window = frame.loc[(frame["event_date"] >= start_date) & (frame["event_date"] <= trade_date)].copy()
+    window = visible.loc[(visible["event_date"] >= start_date) & (visible["event_date"] <= trade_date)].copy()
     if window.empty:
         return np.nan
     window.sort_values(["event_date", "knowledge_time"], inplace=True)
@@ -886,8 +1143,14 @@ def compute_consensus_upside_from_frame(frame: pd.DataFrame, *, trade_date: date
 def compute_target_price_drift_from_frame(frame: pd.DataFrame, *, trade_date: date, latest_close: float | None) -> float:
     if frame.empty or latest_close is None or latest_close == 0:
         return np.nan
+    visible = _visible_frame_as_of(frame, trade_date=trade_date)
+    if visible.empty:
+        return np.nan
     start_date = trade_date - timedelta(days=60)
-    window = frame.loc[(frame["event_date"] >= start_date) & (frame["event_date"] <= trade_date), ["event_date", "target_price"]].copy()
+    window = visible.loc[
+        (visible["event_date"] >= start_date) & (visible["event_date"] <= trade_date),
+        ["event_date", "target_price"],
+    ].copy()
     window["target_price"] = pd.to_numeric(window["target_price"], errors="coerce")
     window.dropna(subset=["target_price"], inplace=True)
     if window.empty or window["event_date"].nunique() < 5:
@@ -902,10 +1165,11 @@ def compute_target_price_drift_from_frame(frame: pd.DataFrame, *, trade_date: da
 
 
 def compute_target_dispersion_from_frame(frame: pd.DataFrame, *, trade_date: date) -> float:
-    if frame.empty:
+    visible = _visible_frame_as_of(frame, trade_date=trade_date)
+    if visible.empty:
         return np.nan
     start_date = trade_date - timedelta(days=60)
-    window = frame.loc[(frame["event_date"] >= start_date) & (frame["event_date"] <= trade_date)].copy()
+    window = visible.loc[(visible["event_date"] >= start_date) & (visible["event_date"] <= trade_date)].copy()
     window.dropna(subset=["analyst_firm", "target_price"], inplace=True)
     if window.empty:
         return np.nan
@@ -923,12 +1187,13 @@ def compute_target_dispersion_from_frame(frame: pd.DataFrame, *, trade_date: dat
 
 
 def compute_coverage_change_from_frame(frame: pd.DataFrame, *, trade_date: date) -> float:
-    if frame.empty:
+    visible = _visible_frame_as_of(frame, trade_date=trade_date)
+    if visible.empty:
         return np.nan
     recent_start = trade_date - timedelta(days=60)
     prior_start = trade_date - timedelta(days=120)
     prior_end = recent_start
-    window = frame.loc[(frame["event_date"] >= prior_start) & (frame["event_date"] <= trade_date)].copy()
+    window = visible.loc[(visible["event_date"] >= prior_start) & (visible["event_date"] <= trade_date)].copy()
     window.dropna(subset=["analyst_firm"], inplace=True)
     if window.empty or not (window["event_date"] <= prior_end).any():
         return np.nan
@@ -946,13 +1211,21 @@ def compute_coverage_change_from_frame(frame: pd.DataFrame, *, trade_date: date)
 
 
 def compute_financial_health_trend_from_frame(frame: pd.DataFrame, *, trade_date: date) -> float:
-    if frame.empty:
+    visible = _visible_frame_as_of(frame, trade_date=trade_date)
+    if visible.empty:
         return np.nan
-    current = frame.loc[frame["event_date"] <= trade_date, "rating_score"].dropna()
-    prior = frame.loc[frame["event_date"] <= (trade_date - timedelta(days=60)), "rating_score"].dropna()
+    normalized = visible.copy()
+    normalized["rating_score"] = pd.to_numeric(normalized["rating_score"], errors="coerce")
+    normalized.dropna(subset=["rating_score"], inplace=True)
+    if normalized.empty:
+        return np.nan
+    normalized.sort_values(["event_date", "knowledge_time"], inplace=True)
+    normalized = normalized.drop_duplicates(subset=["event_date"], keep="last")
+    current = normalized.loc[normalized["event_date"] <= trade_date]
+    prior = normalized.loc[normalized["event_date"] <= (trade_date - timedelta(days=365))]
     if current.empty or prior.empty:
         return np.nan
-    return float(current.iloc[-1] - prior.iloc[-1])
+    return float(current["rating_score"].iloc[-1] - prior["rating_score"].iloc[-1])
 
 
 def current_or_previous_session(value: date) -> date:

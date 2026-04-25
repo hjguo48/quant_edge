@@ -23,6 +23,28 @@ def test_parse_horizon_labels_accepts_numeric_and_suffix() -> None:
     assert ablation_module.parse_horizon_labels("20,60d") == ["20d", "60d"]
 
 
+def test_resolve_output_path_accepts_single_horizon_file_output(tmp_path: Path) -> None:
+    file_path = tmp_path / "family_ablation_60d_pitfix.json"
+    assert (
+        ablation_module.resolve_output_path(file_path, horizon_label="60d", single_horizon=True)
+        == file_path
+    )
+    assert (
+        ablation_module.resolve_output_path(tmp_path / "reports", horizon_label="60d", single_horizon=False)
+        == (tmp_path / "reports" / "family_ablation_60d.json")
+    )
+
+
+def test_resolve_screening_dir_prefers_pitfix_sibling_for_pitfix_output(tmp_path: Path) -> None:
+    pitfix_dir = tmp_path / "ic_v7_pitfix"
+    pitfix_dir.mkdir()
+    output_path = tmp_path / "family_ablation_60d_pitfix.json"
+    assert ablation_module.resolve_screening_dir(
+        output=output_path,
+        screening_dir=ablation_module.DEFAULT_SCREENING_DIR,
+    ) == pitfix_dir
+
+
 def test_build_family_feature_sets_keeps_only_passed_rows() -> None:
     retained_rows = pd.DataFrame(
         [
@@ -220,3 +242,87 @@ def test_main_writes_family_ablation_json(tmp_path: Path, monkeypatch) -> None:
     assert output_path.exists()
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["baseline_full_ic"] == 0.03
+
+
+def test_main_accepts_single_horizon_file_output(tmp_path: Path, monkeypatch) -> None:
+    definitions = [
+        FeatureDefinition(name="alpha", category="technical", description="x", compute_fn=lambda **_: None),
+    ]
+    monkeypatch.setattr(ablation_module, "build_feature_registry", lambda: _FakeRegistry(definitions))
+    monkeypatch.setattr(
+        ablation_module,
+        "build_registry_feature_maps",
+        lambda registry: ({"alpha": "technical"}, ["alpha"]),
+    )
+    monkeypatch.setattr(
+        ablation_module,
+        "load_horizon_families",
+        lambda path: {
+            "60d": {"families": ["technical"], "excluded_families": [], "rationale": "x"},
+        },
+    )
+    monkeypatch.setattr(ablation_module, "load_missingness_exclusion_map", lambda path: {})
+    monkeypatch.setattr(
+        ablation_module,
+        "build_panel_context",
+        lambda **kwargs: SimpleNamespace(
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 31),
+            sampled_tickers=("AAA",),
+            sampled_trade_dates=(date(2024, 1, 5),),
+            universe_size=503,
+        ),
+    )
+    monkeypatch.setattr(ablation_module, "horizon_feature_names", lambda **kwargs: ["alpha"])
+    monkeypatch.setattr(
+        ablation_module,
+        "build_or_load_week7_panel",
+        lambda **kwargs: pd.DataFrame(
+            [{"ticker": "AAA", "trade_date": date(2024, 1, 5), "feature_name": "alpha", "feature_value": 1.0}],
+        ),
+    )
+    monkeypatch.setattr(
+        ablation_module,
+        "load_retained_rows",
+        lambda screening_dir, horizon_label: pd.DataFrame(
+            [{"feature": "alpha", "family": "technical", "status": "PASS"}],
+        ),
+    )
+    monkeypatch.setattr(
+        ablation_module,
+        "load_label_series",
+        lambda **kwargs: pd.Series(
+            [0.1],
+            index=pd.MultiIndex.from_tuples([(pd.Timestamp("2024-01-05"), "AAA")], names=["trade_date", "ticker"]),
+            name="excess_return",
+        ),
+    )
+    monkeypatch.setattr(
+        ablation_module,
+        "generate_family_ablation_report",
+        lambda **kwargs: {
+            "generated_at": "2026-04-25T00:00:00+00:00",
+            "horizon": kwargs["horizon_label"],
+            "model_type": "ridge_baseline",
+            "baseline_full_ic": 0.03,
+            "baseline_full_t_stat": 2.5,
+            "baseline_window_count": 11,
+            "retained_feature_count": 1,
+            "only_one_family": [{"family": "technical", "feature_count": 1, "ic": 0.03, "t_stat": 2.5, "window_count": 11, "rank": 1}],
+            "leave_one_family_out": [{"family": "technical", "feature_count_removed": 1, "feature_count_remaining": 0, "ic": None, "t_stat": None, "ic_delta": None, "window_count": 0, "rank": None}],
+        },
+    )
+
+    output_path = tmp_path / "family_ablation_60d_pitfix.json"
+    exit_code = ablation_module.main(
+        [
+            "--enable-flags",
+            "--horizon",
+            "60",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert exit_code == 0
+    assert output_path.exists()

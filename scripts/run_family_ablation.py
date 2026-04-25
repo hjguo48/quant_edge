@@ -81,6 +81,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--end-date", type=parse_date_arg, default=None)
     parser.add_argument("--sample-tickers", type=int, default=DEFAULT_SAMPLE_TICKERS)
     parser.add_argument("--rebalance-weekday", type=int, default=DEFAULT_REBALANCE_WEEKDAY)
+    parser.add_argument("--horizon", default=None)
     parser.add_argument("--horizons", default="1d,5d,20d,60d")
     parser.add_argument("--enable-flags", action="store_true")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_DIR)
@@ -105,6 +106,22 @@ def parse_horizon_labels(value: str) -> list[str]:
     if not labels:
         raise ValueError("At least one horizon must be selected.")
     return list(dict.fromkeys(labels))
+
+
+def resolve_output_path(output: Path, *, horizon_label: str, single_horizon: bool) -> Path:
+    if single_horizon and output.suffix.lower() == ".json":
+        return output
+    return output / f"family_ablation_{horizon_label}.json"
+
+
+def resolve_screening_dir(*, output: Path, screening_dir: Path) -> Path:
+    if screening_dir != DEFAULT_SCREENING_DIR:
+        return screening_dir
+    if output.suffix.lower() == ".json" and "_pitfix" in output.stem:
+        pitfix_dir = output.parent / "ic_v7_pitfix"
+        if pitfix_dir.exists():
+            return pitfix_dir
+    return screening_dir
 
 
 def build_family_feature_sets(
@@ -332,8 +349,15 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     output_dir = args.output
-    output_dir.mkdir(parents=True, exist_ok=True)
-    horizons = parse_horizon_labels(args.horizons)
+    horizon_arg = args.horizon or args.horizons
+    horizons = parse_horizon_labels(horizon_arg)
+    screening_dir = resolve_screening_dir(output=output_dir, screening_dir=args.screening_dir)
+    if output_dir.suffix.lower() == ".json":
+        if len(horizons) != 1:
+            raise RuntimeError("--output may be a .json file only when exactly one horizon is selected.")
+        output_dir.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     with temporary_enable_week5_flags(args.enable_flags):
         registry = build_feature_registry()
@@ -366,7 +390,7 @@ def main(argv: list[str] | None = None) -> int:
         payload_summary = summarize_panel_coverage(panel, sorted(union_features))
 
         for horizon_label in horizons:
-            retained_rows = load_retained_rows(args.screening_dir, horizon_label)
+            retained_rows = load_retained_rows(screening_dir, horizon_label)
             retained_features = retained_rows.loc[retained_rows["status"] == "PASS", "feature"].astype(str).tolist()
             filled_matrix = fill_feature_matrix(matrix.reindex(columns=retained_features))
             label_series = load_label_series(
@@ -389,7 +413,14 @@ def main(argv: list[str] | None = None) -> int:
                 "universe_size": context.universe_size,
             }
             report["panel"] = payload_summary
-            write_json(output_dir / f"family_ablation_{horizon_label}.json", report)
+            write_json(
+                resolve_output_path(
+                    output_dir,
+                    horizon_label=horizon_label,
+                    single_horizon=(len(horizons) == 1),
+                ),
+                report,
+            )
 
     return 0
 

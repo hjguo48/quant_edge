@@ -1,0 +1,170 @@
+{
+  "baseline_full_ic": 0.037112,
+  "baseline_full_t_stat": 3.409408,
+  "baseline_window_count": 11,
+  "generated_at": "2026-04-25T13:03:55.570269+00:00",
+  "horizon": "60d",
+  "leave_one_family_out": [
+    {
+      "family": "earnings",
+      "feature_count_remaining": 45,
+      "feature_count_removed": 7,
+      "ic": 0.023547,
+      "ic_delta": -0.013565,
+      "rank": 1,
+      "t_stat": 2.026026,
+      "window_count": 11
+    },
+    {
+      "family": "technical",
+      "feature_count_remaining": 29,
+      "feature_count_removed": 23,
+      "ic": 0.028661,
+      "ic_delta": -0.008451,
+      "rank": 2,
+      "t_stat": 3.171981,
+      "window_count": 11
+    },
+    {
+      "family": "composite",
+      "feature_count_remaining": 40,
+      "feature_count_removed": 12,
+      "ic": 0.034168,
+      "ic_delta": -0.002944,
+      "rank": 3,
+      "t_stat": 3.028945,
+      "window_count": 11
+    },
+    {
+      "family": "insider",
+      "feature_count_remaining": 50,
+      "feature_count_removed": 2,
+      "ic": 0.035745,
+      "ic_delta": -0.001367,
+      "rank": 4,
+      "t_stat": 3.319428,
+      "window_count": 11
+    },
+    {
+      "family": "analyst_proxy",
+      "feature_count_remaining": 51,
+      "feature_count_removed": 1,
+      "ic": 0.036443,
+      "ic_delta": -0.000669,
+      "rank": 5,
+      "t_stat": 3.336661,
+      "window_count": 11
+    },
+    {
+      "family": "sec_filing",
+      "feature_count_remaining": 51,
+      "feature_count_removed": 1,
+      "ic": 0.036958,
+      "ic_delta": -0.000154,
+      "rank": 6,
+      "t_stat": 3.421951,
+      "window_count": 11
+    },
+    {
+      "family": "short_interest",
+      "feature_count_remaining": 51,
+      "feature_count_removed": 1,
+      "ic": 0.037662,
+      "ic_delta": 0.00055,
+      "rank": 7,
+      "t_stat": 3.452048,
+      "window_count": 11
+    },
+    {
+      "family": "fundamental",
+      "feature_count_remaining": 47,
+      "feature_count_removed": 5,
+      "ic": 0.055022,
+      "ic_delta": 0.01791,
+      "rank": 8,
+      "t_stat": 5.016502,
+      "window_count": 11
+    }
+  ],
+  "model_type": "ridge_baseline",
+  "only_one_family": [
+    {
+      "family": "earnings",
+      "feature_count": 7,
+      "ic": 0.063197,
+      "rank": 1,
+      "t_stat": 7.428405,
+      "window_count": 11
+    },
+    {
+      "family": "technical",
+      "feature_count": 23,
+      "ic": 0.049317,
+      "rank": 2,
+      "t_stat": 3.581105,
+      "window_count": 11
+    },
+    {
+      "family": "analyst_proxy",
+      "feature_count": 1,
+      "ic": 0.034447,
+      "rank": 3,
+      "t_stat": 4.43881,
+      "window_count": 11
+    },
+    {
+      "family": "short_interest",
+      "feature_count": 1,
+      "ic": 0.032408,
+      "rank": 4,
+      "t_stat": 3.714934,
+      "window_count": 11
+    },
+    {
+      "family": "insider",
+      "feature_count": 2,
+      "ic": 0.026993,
+      "rank": 5,
+      "t_stat": 3.386197,
+      "window_count": 11
+    },
+    {
+      "family": "sec_filing",
+      "feature_count": 1,
+      "ic": 0.024777,
+      "rank": 6,
+      "t_stat": 2.922144,
+      "window_count": 11
+    },
+    {
+      "family": "composite",
+      "feature_count": 12,
+      "ic": 0.007596,
+      "rank": 7,
+      "t_stat": 0.715599,
+      "window_count": 11
+    },
+    {
+      "family": "fundamental",
+      "feature_count": 5,
+      "ic": -0.002429,
+      "rank": 8,
+      "t_stat": -0.22665,
+      "window_count": 11
+    }
+  ],
+  "panel": {
+    "dates": 457,
+    "features": 144,
+    "rows": 3017668,
+    "tickers": 50
+  },
+  "retained_feature_count": 52,
+  "sample": {
+    "end_date": "2025-02-28",
+    "sample_tickers": 50,
+    "sample_trade_dates": 457,
+    "start_date": "2016-03-01",
+    "universe_size": 503
+  }
+}
