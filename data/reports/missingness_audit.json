@@ -1,0 +1,29 @@
+{
+  "date_range": {
+    "end": "2026-04-24",
+    "start": "2025-05-01"
+  },
+  "generated_at": "2026-04-25T07:25:30.197740+00:00",
+  "summary": {
+    "convert_to_imputed": 12,
+    "data_source_block": 1,
+    "data_source_block_features": [
+      "abnormal_off_exchange_shorting"
+    ],
+    "drop": 1,
+    "dropped_features": [
+      "abnormal_off_exchange_shorting"
+    ],
+    "keep": 143,
+    "sample_disabled_features": [
+      "large_trade_ratio",
+      "late_day_aggressiveness",
+      "off_exchange_volume_ratio",
+      "offhours_trade_ratio",
+      "trade_imbalance_proxy"
+    ],
+    "sample_disabled_pipeline": 5,
+    "vendor_bias": 0
+  },
+  "universe_size": 503
+}
