@@ -221,21 +221,73 @@ def test_fmp_parse_knowledge_time_rejects_kt_le_event_time() -> None:
     assert parsed is not None
 
 
-def test_short_interest_knowledge_time_uses_8_business_day_lag() -> None:
-    """FINRA publishes short interest ~8 business days after settlement.
-
-    Previous code used a flat 3 calendar-day offset which let backtest "see"
-    short-interest 5+ days too early (data audit P1-3). Lock the new convention.
+def test_short_interest_knowledge_time_uses_7_business_day_lag() -> None:
+    """FINRA publishes short-interest reports on the 7th business day after
+    settlement (publication schedule). Earlier flat 3-calendar-day or 8-BD
+    heuristics either leaked or were one publication day too late (data audit
+    P1-3 + Codex deep review).
     """
     from src.data.sources.polygon_short_interest import _add_business_days
 
-    # Friday settlement → kt 8 BD later spans weekends, lands on Wednesday
-    assert _add_business_days(date(2026, 1, 16), 8) == date(2026, 1, 28)
-    # Mid-month settlement on Wednesday → 8 BD later lands on Monday two weeks out
-    assert _add_business_days(date(2026, 4, 15), 8) == date(2026, 4, 27)
-    # Weekend in middle of n=8 still produces business day result
-    result = _add_business_days(date(2025, 12, 31), 8)
+    # Wednesday mid-month settlement → publication 7 BD later on the next Friday
+    assert _add_business_days(date(2026, 4, 15), 7) == date(2026, 4, 24)
+    # Friday settlement → 7 BD later spans one weekend, lands on Tuesday
+    assert _add_business_days(date(2026, 1, 16), 7) == date(2026, 1, 27)
+    # Result is always a business day
+    result = _add_business_days(date(2025, 12, 31), 7)
     assert result.weekday() < 5
+
+
+def test_fmp_fallback_knowledge_time_is_period_aware() -> None:
+    """SEC filing deadlines bound how soon results are public:
+      - 10-Q (Q1/Q2/Q3): up to 45 days after period end.
+      - 10-K (Q4 / FY): up to 90 days after fiscal year end (non-accelerated
+        filer ceiling).
+    The fallback (used when vendor acceptedDate is missing or non-causal) must
+    pick the right ceiling so backtests cannot peek inside the filing window.
+    Codex deep review flagged the previous flat 45-day fallback as still leaky
+    on Q4 / 10-K rows.
+    """
+    fy_end = date(2025, 12, 31)
+    quarterly = FMPDataSource._fallback_knowledge_time(fy_end, "2025Q3")
+    annual = FMPDataSource._fallback_knowledge_time(fy_end, "2025Q4")
+    fy_alt = FMPDataSource._fallback_knowledge_time(fy_end, "2025FY")
+    no_period = FMPDataSource._fallback_knowledge_time(fy_end)
+
+    assert (quarterly.date() - fy_end).days == 45
+    assert (annual.date() - fy_end).days == 90
+    assert (fy_alt.date() - fy_end).days == 90
+    # No fiscal_period context falls back to the safer quarterly default.
+    assert (no_period.date() - fy_end).days == 45
+
+
+def test_fmp_parse_knowledge_time_q4_requires_60_day_lag() -> None:
+    """A vendor acceptedDate inside the 60-day 10-K deadline for a Q4 row is
+    treated as non-causal and falls through to the conservative 90-day
+    fallback. Quarterly rows (Q1/Q2/Q3) keep the trivial > event_time floor.
+    """
+    fy_end = date(2025, 12, 31)
+    # Q4 with 30-day lag: implausible 10-K filing speed, must reject
+    parsed = FMPDataSource._parse_knowledge_time(
+        {"acceptedDate": "2026-01-30 16:00:00"},
+        event_time=fy_end,
+        fiscal_period="2025Q4",
+    )
+    assert parsed is None
+    # Q4 with 65-day lag: realistic large accelerated filer 10-K, accept
+    parsed = FMPDataSource._parse_knowledge_time(
+        {"acceptedDate": "2026-03-06 16:00:00"},
+        event_time=fy_end,
+        fiscal_period="2025Q4",
+    )
+    assert parsed is not None
+    # Q3 with same 30-day lag: realistic 10-Q, accept (period-aware floor)
+    parsed = FMPDataSource._parse_knowledge_time(
+        {"acceptedDate": "2025-10-30 16:00:00"},
+        event_time=date(2025, 9, 30),
+        fiscal_period="2025Q3",
+    )
+    assert parsed is not None
 
 
 def test_polygon_historical_knowledge_time_is_next_day_market_close() -> None:

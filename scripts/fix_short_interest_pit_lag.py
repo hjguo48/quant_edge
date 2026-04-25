@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """Repair short_interest rows whose ``knowledge_time`` was set with the legacy
-hard-coded ``settlement_date + 3 calendar days`` heuristic instead of the
-FINRA-correct ``settlement_date + 8 business days`` reporting cycle.
+``settlement_date + 3 calendar days`` heuristic instead of the FINRA-correct
+``settlement_date + 7 business days`` publication cycle.
 
 Background: ``src/data/sources/polygon_short_interest.py`` previously stored
-all 122,377 rows with ``kt = settlement_date + 3`` calendar days at 23:59 UTC,
-which is 5+ days too early relative to FINRA's actual mid- and end-of-month
-publication schedule. Backtests using these rows saw short-interest signals
-days before they were publicly available, biasing IC upward.
-
-This script recomputes the canonical kt per distinct ``settlement_date`` and
-issues one UPDATE per date. Source-side fix is in
-``polygon_short_interest._add_business_days`` to prevent regression.
+all rows with ``kt = settlement_date + 3 calendar days``, which is 5+ days
+ahead of FINRA's actual mid-/end-of-month publication. An interim audit fix
+used 8 BD; Codex deep review confirmed the official schedule is reports due
+on T+2 BD and publication on T+7 BD, so the canonical kt is settlement +
+7 business days.
 
 Usage:
     python scripts/fix_short_interest_pit_lag.py [--dry-run]
@@ -44,7 +41,7 @@ def add_business_days(start: date, n: int) -> date:
 
 def expected_kt(settlement_date: date) -> datetime:
     return datetime.combine(
-        add_business_days(settlement_date, 8),
+        add_business_days(settlement_date, 7),
         datetime.max.time(),
         tzinfo=timezone.utc,
     )

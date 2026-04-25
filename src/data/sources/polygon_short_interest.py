@@ -1,13 +1,14 @@
 """Polygon Short Interest data source.
 
 Fetches bi-weekly short interest from /stocks/v1/short-interest.
-PIT: knowledge_time = settlement_date + 8 business days (FINRA standard).
+PIT: knowledge_time = settlement_date + 7 business days (FINRA publication).
 
-FINRA publishes short-interest reports roughly 8 business days after each
-mid-month and end-of-month settlement. The previous heuristic of
-``settlement_date + 3 calendar days`` was too aggressive and let backtests
-"see" short-interest data 5+ days before it was actually public — flagged in
-the data audit on 2026-04-25 (P1-3, 122k rows affected).
+FINRA's short-interest schedule: brokers must report by the second business
+day after settlement and FINRA publishes on the seventh business day after
+settlement (with holiday handling). The previous heuristic of
+``settlement_date + 3 calendar days`` was too aggressive (audit P1-3, 122k
+rows). An interim fix used 8 BD which is one publication day too late;
+Codex deep review flagged the schedule mismatch.
 """
 
 from __future__ import annotations
@@ -109,8 +110,8 @@ class PolygonShortInterestSource(DataSource):
                 sdate = date.fromisoformat(sd)
             except (ValueError, TypeError):
                 continue
-            # PIT: FINRA publishes short interest ~8 business days after settlement
-            kt = datetime.combine(_add_business_days(sdate, 8), datetime.max.time(), tzinfo=timezone.utc)
+            # PIT: FINRA publishes short interest 7 business days after settlement
+            kt = datetime.combine(_add_business_days(sdate, 7), datetime.max.time(), tzinfo=timezone.utc)
             rows.append({
                 "ticker": ticker.upper(),
                 "settlement_date": sdate,

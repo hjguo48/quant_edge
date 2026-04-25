@@ -279,8 +279,8 @@ class FMPDataSource(DataSource):
 
                 fiscal_period = self._derive_fiscal_period(row, event_time)
                 knowledge_time = self._parse_knowledge_time(
-                    row, event_time=event_time
-                ) or self._fallback_knowledge_time(event_time)
+                    row, event_time=event_time, fiscal_period=fiscal_period
+                ) or self._fallback_knowledge_time(event_time, fiscal_period)
                 if endpoint == "income-statement" or fiscal_period not in canonical_anchors:
                     canonical_anchors[fiscal_period] = FundamentalAnchor(
                         fiscal_period=fiscal_period,
@@ -398,7 +398,7 @@ class FMPDataSource(DataSource):
 
             knowledge_time = self._knowledge_time_from_calendar_date(declaration_date or dividend_date)
             if knowledge_time is None:
-                knowledge_time = self._fallback_knowledge_time(anchor.event_time)
+                knowledge_time = self._fallback_knowledge_time(anchor.event_time, anchor.fiscal_period)
 
             dividend_history.append((dividend_date, dividend_value))
             annual_dividend = self._rolling_annual_dividend(dividend_history, as_of_date=dividend_date)
@@ -461,7 +461,7 @@ class FMPDataSource(DataSource):
 
             knowledge_time = self._knowledge_time_from_calendar_date(earnings_date)
             if knowledge_time is None:
-                knowledge_time = self._fallback_knowledge_time(anchor.event_time)
+                knowledge_time = self._fallback_knowledge_time(anchor.event_time, anchor.fiscal_period)
 
             for metric_name in CONSENSUS_METRIC_NAMES:
                 dedupe_key = (anchor.fiscal_period, metric_name, knowledge_time)
@@ -628,14 +628,22 @@ class FMPDataSource(DataSource):
         row: dict[str, Any],
         *,
         event_time: date | None = None,
+        fiscal_period: str | None = None,
     ) -> datetime | None:
         """Parse FMP acceptedDate / fillingDate into UTC knowledge_time.
 
-        When ``event_time`` is provided, the parsed timestamp must be strictly
-        after ``event_time``. Vendor data occasionally returns acceptedDate equal
-        to (or before) the fiscal period end — that is impossible in reality
-        (10-Q is filed 35-45 days after quarter end) and would create PIT leak,
-        so such rows fall through to the conservative fallback.
+        SEC filing deadlines bound how soon a fiscal period's results can be
+        public. We require the parsed timestamp to clear the floor for the
+        period type:
+          - 10-K (Q4 / fiscal year end): 60 days (large accelerated filer
+            deadline; the absolute fastest filing pace allowed for S&P 500
+            issuers).
+          - 10-Q (Q1/Q2/Q3): strictly > event_time. Real deadlines are 40-45
+            days; vendor occasionally backdates ``acceptedDate`` to fiscal end,
+            and the trivial ``> event_time`` floor is enough to catch that.
+
+        When ``event_time`` is omitted we keep the legacy permissive behavior so
+        unit tests and other callers without period context still work.
         """
         for candidate in ("acceptedDate", "fillingDate"):
             raw_value = row.get(candidate)
@@ -653,19 +661,36 @@ class FMPDataSource(DataSource):
             else:
                 parsed = timestamp.tz_convert(timezone.utc).to_pydatetime()
 
-            if event_time is not None and parsed.date() <= event_time:
-                # Vendor returned a non-causal acceptedDate (kt <= fiscal end).
-                # Skip and let the caller fall back to the conservative offset.
-                continue
+            if event_time is not None:
+                lag_days = (parsed.date() - event_time).days
+                min_lag = 60 if FMPDataSource._is_annual_period(fiscal_period) else 1
+                if lag_days < min_lag:
+                    # Vendor returned a non-causal or implausibly-fast filing.
+                    # Skip and fall back to the conservative offset.
+                    continue
 
             return parsed
 
         return None
 
     @staticmethod
-    def _fallback_knowledge_time(event_time: date) -> datetime:
+    def _is_annual_period(fiscal_period: str | None) -> bool:
+        if fiscal_period is None:
+            return False
+        period_upper = str(fiscal_period).upper()
+        return period_upper.endswith("Q4") or period_upper.endswith("FY")
+
+    @staticmethod
+    def _fallback_knowledge_time(
+        event_time: date,
+        fiscal_period: str | None = None,
+    ) -> datetime:
+        # 10-K (Q4 / FY) is due up to 90 days after fiscal year end for the
+        # slowest filer class; use that as a safe ceiling. 10-Q (Q1/Q2/Q3) is
+        # bounded by 45 days (large/accelerated/non-accelerated converge there).
+        offset_days = 90 if FMPDataSource._is_annual_period(fiscal_period) else 45
         conservative_time = datetime.combine(
-            event_time + timedelta(days=45),
+            event_time + timedelta(days=offset_days),
             time(16, 0),
             tzinfo=ZoneInfo("America/New_York"),
         )
