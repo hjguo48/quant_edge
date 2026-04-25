@@ -442,26 +442,52 @@ minute_incremental:
 
 ---
 
-### Week 7: Per-horizon IC Screening + Family Ablation
+### Week 7: Per-horizon IC Screening + Family Ablation ✅ DONE 2026-04-25 (PR #7 merged ab5f9ea)
 
 **目标**：1D/5D/20D 不再共用 60D 特征集。
 
-**任务**：
-- 分别跑 1D / 5D / 20D / 60D IC screening
-- 跑 `only_one_family` 消融
-- 跑 `leave_one_family_out` 消融
-- 分 horizon 产出 retained 候选集
+**交付**：
+- PR #7 merged 2026-04-25 (commits 711ff69 + 482e297 + 439872e)
+- 新脚本: `scripts/run_per_horizon_ic_screening.py`, `scripts/run_family_ablation.py`, `scripts/_week7_ic_utils.py` (1145 LOC 共享 panel/screening/ablation helpers)
+- 改 `scripts/run_ic_screening.py`: 加 `--allow-missing-intraday` CLI flag (默认 False fail-closed) + label cache fail-loud guard
+- 测试: 124 pytest pass, ruff clean
+- 经 superpowers:code-reviewer agent 审 — verdict PASS_WITH_FOLLOWUPS
 
-**预处理 TODO (Week 7 开前需处理)**:
-- [ ] `scripts/run_ic_screening.py` 加 `--allow-missing-intraday` CLI flag, `build_or_load_feature_cache` 传透; 默认 False (研究 fail-closed), 显式 opt-in tolerant. 否则默认 2016-03~2025-06 范围会因 minute coverage gap 直接 raise IntradayHistoryError.
+**Codex 修了 5 处 critical / high bug (439872e)**:
+- C1 PIT leak: per-trade-date `knowledge_time <= as_of_end_utc(trade_date)` 流式 pointer (build_shorting_panel + build_analyst_proxy_panel + helpers)
+- C2 panel cache key 去掉 feature_names, 跨 horizon 共享单 parquet
+- C3 financial_health_trend lookback 130d → 365d + (event_date, knowledge_time) tiebreaker
+- C4 `is_consensus` 进 SQL WHERE
+- P1 build_analyst_proxy_panel 向量化 (numpy event_ord/prices/firms 数组 + np.flatnonzero mask, 50t × 9yr 78s)
 
-**复用/新增**：
-- `scripts/run_ic_screening.py` (复用, --horizon)
-- `scripts/run_family_ablation.py` (**新建**)
+**Sample 范围**: 50 ticker × 9 年 (2016-03 → 2025-02), 457 trade dates, 155 features, panel ~3.2M 行
 
-**Gate**:
-- 每个 horizon 有自己的 top features / top families
-- 明确回答"最值钱的前三个 family 是什么"
+**4 horizon 头部信号 (sampled)**:
+| horizon | 主导 regime | 头部 features |
+|---|---|---|
+| 1D | mean reversion | ret_5d -0.038, ret_10d -0.032, value_mom_pb -0.031 |
+| 5D | vol + 弱 mean reversion | atr_14 +0.034, gk_vol +0.032, vol_rank/vol_20d +0.029 |
+| 20D | vol + earnings | atr_14 +0.048, vol_60d +0.039, earnings_surprise_latest +0.026, insider_role_skew_30d +0.029 |
+| 60D | analyst proxy + vol + earnings | **target_dispersion_proxy +0.122**, vol_60d +0.078, stock_beta_252 +0.075, atr_14 +0.068, insider_buy_value -0.040 |
+
+**60D Family Ablation 核心发现**:
+- baseline_full_ic = 0.037 (52 retained features, PIT 修后与修前完全相同 — 60D 上 PIT 泄漏影响极小)
+- only_one_family Top: **earnings 0.063 (t=7.43, 7 feat) → technical 0.049 → analyst_proxy 0.034**
+- leave_one_family_out: **drop fundamental → IC +0.018 → 0.055** (Phase E 主优化路径)
+
+**Gate 验证**:
+- ✅ 每个 horizon 有自己的 top features / top families
+- ✅ 60D 最值钱 family 排序: earnings → technical → analyst_proxy
+- ✅ 明确指出 fundamental 在 60D 反向贡献
+
+**Caveat**:
+- 当前数字均 sampled 50 ticker, 全宇宙 503 ticker × 9 年 IC 还需独立验证 (推算 ~13 min)
+- 14 个 W5 Tranche A 特征 sample 上多数落 FAIL, 加进来没让 IC 涨 (full-universe 可能不同)
+
+**Follow-up (非阻塞, 后续单 PR)**:
+- 旧 `compute_*_from_frame` non-PIT-aware helpers 留着备用, 确认无 caller 后清理
+- `run_family_ablation.py` `--screening-dir` 用 `_pitfix` 文件名启发式有点 fragile, 可换 `--screening-dir` 显式参数
+- PR comment 补一句 net_grade_change_20d 在 20D horizon 也微调 (透明度)
 
 ---
 
