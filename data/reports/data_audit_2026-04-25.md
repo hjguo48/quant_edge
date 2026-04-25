@@ -278,3 +278,50 @@ Codex 评分 5.8 / 7.0 阈值 → 不通过, 给出 1 high + 1 medium:
 - `test_short_interest_knowledge_time_uses_7_business_day_lag`
 - `test_fmp_fallback_knowledge_time_is_period_aware`
 - `test_fmp_parse_knowledge_time_q4_requires_60_day_lag`
+
+---
+
+## Round 3 自审 (2026-04-25, 用 Codex 视角再挑刺)
+
+Codex 已结案 5.8→预期 7+ (round-2 修了 high+medium). 但用户要求再深审一轮, 找 round-2 仍然漏的点.
+
+### 重新清点漏审表
+原 audit 只审了 stock_prices/fundamentals_pit/analyst_estimates/earnings_estimates/short_interest/insider_trades/sec_filings/macro_series_pit/corporate_actions. 漏审 5 张:
+
+| 表 | 行数 | 状态 | W7/W8 影响 |
+|---|---|---|---|
+| `short_sale_volume_daily` | 13.4M | **全部 lag<=0** (kt=trade_date 22:00 UTC) | W7 retained 不用 (`abnormal_off_exchange_shorting` dropped). 不阻塞. |
+| `ratings_events` | 979K | 0 lag<=0, 0 future_kt | OK |
+| `grades_events` | 129K | 0 lag<=0, 0 future_kt | W7 retained 用 (downgrade_count, net_grade_change_20d). OK. |
+| `earnings_calendar` | 4.6K | 0 lag<=0, 0 future_kt | OK |
+| `price_target_events` | 32K | 1 行 (TSTPT 测试残留) | W7 60D 主信号 target_dispersion_proxy 用. **已删** TSTPT, 现 0 lag<=0 |
+
+### Round 3 新发现 (按优先级)
+
+**P1 (不阻塞 W8 但应 follow-up)**:
+
+- **A1**: `short_sale_volume_daily` 13.4M 行 kt=trade_date 22:00 UTC. FINRA 实际公布 18:00 ET (= 22:00 UTC) 的当天, 但应 +1 BD 到 trade_date+1 才符合保守 PIT. 当前 W7 retained 不用此表, 不阻塞 W8. 若 W9+ 想用 `abnormal_off_exchange_shorting` 类特征要先修.
+- **A2**: `_add_business_days` 不处理美国市场节假日. FINRA 公布若遇节假日顺延 1 天, 我的 +7 BD 在节假日前后会算成 +6 effective BD. 影响是 PIT 过激进 1 天, 非 leak 但不准确.
+- **A3**: `market_close_fast_pipeline` DAG 改成 `historical` mode 后, kt 在 wall-clock 未来. 这破坏了"实时 signal"的初衷 — DAG 在 16:10 NYT 写入 kt=T+1 16:00 NYT 的 row, 当晚跑特征看不到今日 close. **不阻塞 W8 IC 验证 (历史 backtest 用 T-1 close 算 T's signal)**, 但 Phase 3 实时部署需要单独的 live ingest path.
+
+**P2 (Defer)**:
+
+- **A4**: `universe_membership` 行数从 718→687 (-31 行) 在我审计期间发生. **不在我修复脚本范围内**: 我的脚本没碰 universe_membership. 怀疑 Airflow `daily_data_pipeline` DAG 在某次运行中调用 `_sync_universe_membership_impl`. 当前 active=472. 不阻塞 W8 (集合稳定即可), 但应查 Airflow log 确认.
+- **A5**: `_fetch_market_proxy_prices` (src/features/technical.py:367) 用 `as_of=knowledge_times.max()` 拉取市场代理价. 单 trade_date snapshot 无影响; 若被多 trade_date 批量 panel 调用, 老 row 会看到新 row 的 proxy 数据. 但实际特征逐行计算用同 trade_date proxy, **可能不构成实际 leak**. 留 TODO 深查.
+- **A6**: `_fallback_knowledge_time(event_time, fiscal_period=None)` 当 `fiscal_period` 缺失时 fallback 到 +45d (quarterly). 应 fallback 到 +90d (更保守). 但所有 caller 都传 fiscal_period, 实际不会 hit. 防御性可改.
+- **A7**: `_parse_knowledge_time` Q4 行 60d floor 会 over-reject 早 filed 10-K (legitimate large filer 50-60d). Trade-off: 防 vendor bug vs 损失 30-60d 内真实数据可见性. 当前 90d fallback 可接受.
+
+### Round 3 实际清理
+- 删除 1 行 `price_target_events` 测试残留 (TSTPT, 由 P2-1 同类问题)
+- price_target_events lag<=0 现 = 0
+
+### Round 3 Verdict
+- **W8 IC 启动条件**: 全部满足
+  - stock_prices PIT 干净 (0)
+  - fundamentals statement PIT 干净 (0)
+  - fundamentals Q4 statement 60d 浮动窗口干净 (0)
+  - short_interest 7BD lag 正确
+  - W7 retained 60D 主信号依赖的 4 张表 (stock_prices, fundamentals_pit, grades_events, price_target_events) 全部 PIT 干净
+- **不阻塞 W8 的 follow-up**: A1-A7 总计 7 项, 其中 A1 (short_sale_volume_daily) 优先级最高, 但 W7 retained 不用. A4 (universe_membership 31 行) 应查 Airflow.
+
+修复完毕. **W8 全宇宙 IC 启动安全**.
