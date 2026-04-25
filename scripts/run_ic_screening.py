@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from __future__ import annotations
 
 import argparse
@@ -195,6 +196,7 @@ def main(argv: list[str] | None = None) -> int:
         feature_output_path=feature_output_path,
         batch_dir=batch_dir,
         manifest_path=manifest_path,
+        allow_missing_intraday=bool(args.allow_missing_intraday),
     )
     labels = build_or_load_labels(
         tickers=tickers,
@@ -241,6 +243,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--rebalance-weekday", type=int, default=DEDUP_REBALANCE_WEEKDAY)
     parser.add_argument("--ridge-feature-limit", type=int, default=RIDGE_FEATURE_LIMIT)
     parser.add_argument("--tree-feature-limit", type=int, default=TREE_FEATURE_LIMIT)
+    parser.add_argument(
+        "--allow-missing-intraday",
+        action="store_true",
+        help="Allow missing intraday minute history and backfill intraday-derived rows with NaN instead of raising.",
+    )
     parser.add_argument("--feature-output", default="data/features/all_features.parquet")
     parser.add_argument("--label-output", default="data/labels/forward_returns_5d.parquet")
     parser.add_argument("--report-output", default="data/features/ic_screening_report.csv")
@@ -390,6 +397,8 @@ def run_feature_pipeline_fast(
     start_date: date | datetime,
     end_date: date | datetime,
     as_of: date | datetime,
+    *,
+    allow_missing_intraday: bool = False,
 ) -> pd.DataFrame:
     normalized_tickers = tuple(dict.fromkeys(ticker.strip().upper() for ticker in tickers if ticker))
     if not normalized_tickers:
@@ -476,8 +485,27 @@ def run_feature_pipeline_fast(
         output_end=end,
         as_of=as_of_ts,
     )
+    intraday = pipeline_module._empty_feature_frame()
+    if allow_missing_intraday:
+        minute_history = pipeline_module.load_intraday_minute_history(
+            tickers=normalized_tickers,
+            start_trade_date=start - timedelta(days=90),
+            end_trade_date=end,
+            as_of=as_of_ts,
+            allow_missing=True,
+        )
+        intraday = pipeline_module.compute_intraday_features(
+            minute_df=minute_history,
+            daily_prices_df=stock_prices,
+        )
+        if not intraday.empty:
+            intraday = intraday.loc[
+                (pd.to_datetime(intraday["trade_date"]).dt.date >= start)
+                & (pd.to_datetime(intraday["trade_date"]).dt.date <= end)
+            ].copy()
+
     macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
-    base_features = pd.concat([technical, fundamentals, alternative, macro], ignore_index=True)
+    base_features = pd.concat([technical, fundamentals, alternative, intraday, macro], ignore_index=True)
     composite = pipeline_module.compute_composite_features(base_features)
     all_features = pd.concat([base_features, composite], ignore_index=True)
 
@@ -599,12 +627,16 @@ def build_or_load_feature_cache(
         feature_end=feature_end,
         as_of=as_of,
         batch_size=batch_size,
+        allow_missing_intraday=allow_missing_intraday,
     )
     force_rebuild = not feature_output_path.exists()
     if manifest_path.exists():
         existing_manifest = json.loads(manifest_path.read_text())
         if existing_manifest != expected_manifest:
-            if feature_output_path.exists():
+            intraday_mode_changed = (
+                bool(existing_manifest.get("allow_missing_intraday", False)) != bool(allow_missing_intraday)
+            )
+            if feature_output_path.exists() and not intraday_mode_changed:
                 logger.info(
                     "using existing legacy feature cache at {}; missing indicators will be synthesized downstream",
                     feature_output_path,
@@ -612,7 +644,10 @@ def build_or_load_feature_cache(
                 manifest_tickers = [str(ticker).upper() for ticker in existing_manifest.get("tickers", tickers)]
                 manifest_batch_size = int(existing_manifest.get("batch_size", batch_size))
             else:
-                logger.info("feature cache manifest changed at {}; rebuilding screening batches in place", manifest_path)
+                logger.info(
+                    "feature cache manifest changed at {}; rebuilding screening batches in place",
+                    manifest_path,
+                )
                 force_rebuild = True
                 write_json_atomic(manifest_path, expected_manifest)
         else:
@@ -764,6 +799,7 @@ def build_manifest(
     feature_end: date,
     as_of: date,
     batch_size: int,
+    allow_missing_intraday: bool,
 ) -> dict[str, Any]:
     return {
         "tickers": tickers,
@@ -771,6 +807,7 @@ def build_manifest(
         "feature_end_date": feature_end.isoformat(),
         "as_of": as_of.isoformat(),
         "batch_size": batch_size,
+        "allow_missing_intraday": bool(allow_missing_intraday),
         "report_schema_version": REPORT_SCHEMA_VERSION,
         "candidate_feature_names": list(CANDIDATE_FEATURE_NAMES),
     }
@@ -1037,7 +1074,38 @@ def build_or_load_labels(
     if label_output_path.exists():
         logger.info("using existing label cache at {}", label_output_path)
         labels = pd.read_parquet(label_output_path)
+        if "horizon" not in labels.columns:
+            logger.warning("label cache {} is missing the horizon column; rebuilding cache", label_output_path)
+            label_output_path.unlink()
+            return build_or_load_labels(
+                tickers=tickers,
+                feature_start=feature_start,
+                feature_end=feature_end,
+                label_end=label_end,
+                as_of=as_of,
+                horizon=horizon,
+                label_output_path=label_output_path,
+            )
+        cached_horizons = set(pd.to_numeric(labels["horizon"], errors="coerce").dropna().astype(int).tolist())
+        if cached_horizons and cached_horizons != {int(horizon)}:
+            logger.warning(
+                "label cache {} contains horizons {} but {}D was requested; rebuilding cache",
+                label_output_path,
+                sorted(cached_horizons),
+                horizon,
+            )
+            label_output_path.unlink()
+            return build_or_load_labels(
+                tickers=tickers,
+                feature_start=feature_start,
+                feature_end=feature_end,
+                label_end=label_end,
+                as_of=as_of,
+                horizon=horizon,
+                label_output_path=label_output_path,
+            )
         labels["trade_date"] = pd.to_datetime(labels["trade_date"]).dt.date
+        labels = labels.loc[pd.to_numeric(labels["horizon"], errors="coerce") == int(horizon), LABEL_COLUMNS].copy()
         return labels
 
     label_tickers = tickers + ["SPY"]
@@ -1523,7 +1591,6 @@ def selection_priority(row: pd.Series) -> tuple[float, float, float, int, str]:
     stability_score = float(row.get("stability_score", float("nan")))
     window_ic = float(row.get("window_signed_ic_mean", float("nan")))
     rank_ic_value = float(row.get("rank_ic", float("nan")))
-    sign_consistency = float(row.get("sign_consistency", float("nan")))
     return (
         -np.inf if pd.isna(stability_score) else stability_score,
         -np.inf if pd.isna(abs(window_ic)) else abs(window_ic),

@@ -299,7 +299,7 @@ def test_compute_lag_rule_gate_detects_offender(seeded_sf: sessionmaker) -> None
 
 
 def test_compute_source_integrity_gate_passes(seeded_sf: sessionmaker) -> None:
-    event_day = date(2026, 1, 15)
+    event_day = date(2099, 1, 15)
     _seed(
         seeded_sf,
         [
@@ -358,10 +358,10 @@ def test_compute_source_integrity_gate_passes(seeded_sf: sessionmaker) -> None:
     )
 
     result = gate_module.compute_source_integrity_gate(
-        start_date=date(2026, 1, 1),
-        end_date=date(2026, 1, 31),
+        start_date=date(2099, 1, 1),
+        end_date=date(2099, 1, 31),
         session_factory=seeded_sf,
-        today=date(2026, 2, 1),
+        today=date(2099, 2, 1),
     )
 
     assert result["status"] == "PASS"
@@ -369,7 +369,7 @@ def test_compute_source_integrity_gate_passes(seeded_sf: sessionmaker) -> None:
 
 
 def test_compute_source_integrity_gate_fails_on_sparse_fields(seeded_sf: sessionmaker) -> None:
-    event_day = date(2026, 1, 15)
+    event_day = date(2099, 1, 15)
     _seed(
         seeded_sf,
         [
@@ -398,10 +398,10 @@ def test_compute_source_integrity_gate_fails_on_sparse_fields(seeded_sf: session
     )
 
     result = gate_module.compute_source_integrity_gate(
-        start_date=date(2026, 1, 1),
-        end_date=date(2026, 1, 31),
+        start_date=date(2099, 1, 1),
+        end_date=date(2099, 1, 31),
         session_factory=seeded_sf,
-        today=date(2026, 2, 1),
+        today=date(2099, 2, 1),
     )
 
     assert result["status"] == "FAIL"
