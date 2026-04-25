@@ -497,6 +497,17 @@ def test_fmp_paginates_beyond_first_limit(monkeypatch: pytest.MonkeyPatch) -> No
     assert page_calls == [0, 1]
 
 
+@pytest.mark.skip(
+    reason=(
+        "DESTRUCTIVE — calls builder.backfill_universe_membership which "
+        "internally `DELETE`s real rows in [start_date, end_date] before "
+        "rebuilding from FMP/Wikipedia. The conftest db_engine fixture is "
+        "wired to the production engine, so running this test wipes live "
+        "universe_membership data (data audit 2026-04-25 round 3 root cause). "
+        "Re-enable only after the test is moved onto an isolated test database "
+        "or backfill_universe_membership accepts an injectable session."
+    ),
+)
 def test_backfill_universe_membership_reconstructs_history(
     db_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,

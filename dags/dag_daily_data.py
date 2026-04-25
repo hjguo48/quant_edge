@@ -318,12 +318,11 @@ def _sync_universe_membership_impl(*, repo_root: Path, context: dict[str, Any]) 
         latest_trade_date = conn.execute(text("select max(trade_date) from stock_prices")).scalar() or date.today()
 
     refresh = ensure_monthly_universe_membership(latest_trade_date)
-    return _result(
-        "sync_universe_membership",
-        "ok",
-        trade_date=latest_trade_date.isoformat(),
-        **refresh,
-    )
+    # ensure_monthly_universe_membership already populates trade_date in
+    # refresh, so we cannot pass it again as a separate kwarg — that triggered
+    # 'multiple values for keyword argument trade_date' for every scheduled run
+    # since 2026-04-15 and silently disabled the daily universe sync.
+    return _result("sync_universe_membership", "ok", **refresh)
 
 
 def sync_universe_membership(**context: Any) -> dict[str, Any]:

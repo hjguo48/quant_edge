@@ -325,3 +325,50 @@ Codex 已结案 5.8→预期 7+ (round-2 修了 high+medium). 但用户要求再
 - **不阻塞 W8 的 follow-up**: A1-A7 总计 7 项, 其中 A1 (short_sale_volume_daily) 优先级最高, 但 W7 retained 不用. A4 (universe_membership 31 行) 应查 Airflow.
 
 修复完毕. **W8 全宇宙 IC 启动安全**.
+
+---
+
+## Round 3 后续修复 (用户要求 "一并修复" 后)
+
+3 项怀疑点逐一处理:
+
+### A5 — _fetch_market_proxy_prices max(kt) 路径
+**结论**: 不是 leak. 追代码: `market_return_5d(T) = SPY[T]/SPY[T-5] - 1` (pct_change 不向前看), merge on trade_date 后每行只用自己 trade_date 的 SPY. as_of=max(kt) 只是 fetch 范围, 不影响 per-row 计算. **dismissed, 无需修.**
+
+### A4 — universe_membership 31 行消失根因
+**根因找到 (重大发现)**: `tests/test_data/test_sources.py::test_backfill_universe_membership_reconstructs_history` 用 conftest `db_engine` 直接连**生产 DB**, 调用 `backfill_universe_membership(2024-01-01, 2025-12-31)` (内部 DELETE+REBUILD with mocked constituents=['AAA','CCC']). **我跑 pytest 全部 tests 时触发**, 删掉真实 universe_membership 行换成测试 mock 数据.
+
+**修复**:
+- 跑 `scripts/backfill_universe_membership.py --start-date 2024-01-01 --end-date 2025-12-31` 重建. `active today: 472 → 503` 恢复, `membership_rows: 687 → 1221`.
+- 测试加 `@pytest.mark.skip` 注释, 防止再被触发. 后续要独立测试 DB 才能再启用.
+- 顺手修 `dag_daily_data.py::_sync_universe_membership_impl` 的 `_result()` 多 trade_date kwarg bug (Airflow 自 2026-04-15 起所有 sync 任务都失败的根因).
+
+### A1 — short_sale_volume_daily kt convention
+**修复**:
+- `src/data/finra_short_sale.py::_knowledge_time`: `trade_date 18:00 NYT` → `trade_date+1 16:00 NYT` (匹配 stock_prices lag-1 convention)
+- `scripts/fix_short_sale_volume_pit_lag.py`: 13.4M 行一次性 SQL UPDATE
+- 测试更新: `test_fetch_day_parses_pipe_delimited_file_and_legacy_short_exempt_fallback` 期望值 22:00 UTC → 20:00 UTC (next day)
+- 新加 `test_knowledge_time_uses_lag_one_next_day_close` 锁定新约定
+
+### Round 3 后续完整状态 (修后实测)
+
+| 指标 | 状态 |
+|---|---|
+| stock_prices lag<=0 | 0 |
+| fundamentals_pit statement kt<=evt | 0 |
+| fundamentals_pit Q4 statement lag<60d | 0 (Codex 阻塞项) |
+| short_interest min lag | 9 calendar days (=7 BD spanning weekend) |
+| **short_sale_volume_daily lag<=0** | **0** (新增, 13.4M 行修复) |
+| **universe_membership active today** | **503** (恢复, 之前被测试污染至 472) |
+| price_target_events lag<=0 | 0 |
+| pytest tests/test_data/ | 90 pass / 1 skipped (destructive test) |
+| ruff check 改动文件 | 全清 |
+
+### 仍 follow-up (真不阻塞 W8)
+- A2 `_add_business_days` 不处理 US market holidays (过保守, 非 leak)
+- A3 `market_close_fast_pipeline` DAG 实时语义 (Phase 3 影响)
+- A6 `_fallback_knowledge_time` 默认 45d 防御性 (不 hit)
+- A7 Q4 60d floor over-reject (trade-off, 当前选保守)
+- 测试 `test_fmp_price_target.py` 用 TSTPT 仍污染 prod DB (留 1 row 残留, 不阻塞)
+
+**所有阻塞项消除. 等用户 GO 进 W8 全宇宙 IC.**
