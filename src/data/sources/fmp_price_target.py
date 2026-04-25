@@ -154,22 +154,44 @@ class FMPPriceTargetSource(DataSource):
     def _request_news_all(self, ticker: str, max_pages: int = 50) -> list[dict[str, Any]]:
         """Pull all available per-analyst events via pagination.
 
-        Terminates when a page returns < page_size records (tail of history).
-        Warns loudly if max_pages is reached with a still-full page (i.e. more
-        history exists than we pulled) so silent truncation cannot happen.
+        Terminates when:
+        - page returns 0 rows (true tail of history)
+        - OR two consecutive pages have identical content (pagination broken)
+
+        A short-but-non-empty page is logged but treated as terminal (FMP default
+        behavior). A full page at max_pages cap also warns loudly since we may
+        have truncated history.
         """
         page_size = 100
         all_rows: list[dict[str, Any]] = []
-        last_full_batch = True
+        prev_signature: tuple | None = None
+        terminated_naturally = False
         for page in range(max_pages):
             batch = self._request_news_page(ticker, page=page, limit=page_size)
+            if not batch:
+                terminated_naturally = True
+                break
+            # Detect broken pagination (same content two pages in a row)
+            signature = tuple(
+                (r.get("publishedDate"), r.get("analystCompany"), r.get("priceTarget"))
+                for r in batch[:5]
+            )
+            if prev_signature is not None and signature == prev_signature:
+                logger.warning(
+                    "fmp_price_target: page {} for {} returned duplicate content "
+                    "(signature match with previous page); stopping pagination to avoid loop.",
+                    page,
+                    ticker,
+                )
+                break
+            prev_signature = signature
             all_rows.extend(batch)
             if len(batch) < page_size:
-                last_full_batch = False
+                terminated_naturally = True
                 break
-        if last_full_batch:
+        if not terminated_naturally:
             logger.warning(
-                "fmp_price_target: news pagination hit max_pages=%s for %s with a still-full "
+                "fmp_price_target: news pagination hit max_pages={} for {} with a still-full "
                 "final page; history may be truncated. Bump max_pages if this recurs.",
                 max_pages,
                 ticker,
@@ -200,6 +222,7 @@ class FMPPriceTargetSource(DataSource):
                 )
 
         news_records = self._request_news_all(normalized_ticker)
+        news_rows: list[dict[str, Any]] = []
         for record in news_records:
             published_raw = record.get("publishedDate")
             event_date = _parse_date(published_raw)
@@ -210,12 +233,13 @@ class FMPPriceTargetSource(DataSource):
             analyst_firm = _clean_text(record.get("analystCompany")) or _clean_text(record.get("analystName"))
             if event_date is None or target_price is None or analyst_firm is None:
                 continue
-            # Use EOD(event_date) for PIT consistency with the lag-rule gate
-            # (which requires knowledge_time >= end_of_day_ET(event_date)).
-            # Intraday publication precision adds no value for cross-sectional
-            # alpha and would cause spurious lag-rule violations. Preserve the
-            # actual publication timestamp as a separate column if ever needed.
-            rows.append(
+            # PIT-facing knowledge_time = EOD(event_date) so the lag-rule gate
+            # (knowledge_time >= EOD) stays satisfied. For same-day same-firm
+            # dedupe we need a recency signal that is NOT EOD (which would be
+            # identical across revisions) — use the raw publishedDate timestamp,
+            # kept only for in-frame sorting and never persisted.
+            pub_ts = _parse_iso_utc(published_raw)
+            news_rows.append(
                 {
                     "ticker": normalized_ticker,
                     "event_date": event_date,
@@ -225,25 +249,37 @@ class FMPPriceTargetSource(DataSource):
                     "prior_target": None,
                     "price_when_published": _decimal_or_none(record.get("priceWhenPosted")),
                     "is_consensus": False,
+                    "_publication_ts": pub_ts,  # sort key for dedupe, not persisted
                 },
             )
 
-        frame = self.dataframe_or_empty(rows, PRICE_TARGET_COLUMNS)
-        if not frame.empty:
-            # Persistence PK is (ticker, event_date, analyst_firm) + is_consensus.
-            # News endpoint can emit multiple same-day notes from the same firm.
-            # Sort by knowledge_time ASC then drop_duplicates(keep="last") so the
-            # most recent revision wins the upsert, not whichever arrived last
-            # in HTTP response order.
-            frame.sort_values(
-                ["ticker", "event_date", "is_consensus", "analyst_firm", "knowledge_time"],
+        if news_rows:
+            # Dedupe same (ticker, event_date, analyst_firm, is_consensus) keeping
+            # the row with the latest publication timestamp. Without this ordering
+            # by the raw pub_ts (since knowledge_time is EOD-constant for same-day
+            # revisions), HTTP response order would decide the winner.
+            news_frame = pd.DataFrame(news_rows)
+            news_frame["_publication_ts"] = pd.to_datetime(news_frame["_publication_ts"], utc=True)
+            news_frame.sort_values(
+                ["ticker", "event_date", "is_consensus", "analyst_firm", "_publication_ts"],
                 inplace=True,
                 na_position="first",
             )
-            frame = frame.drop_duplicates(
+            news_frame = news_frame.drop_duplicates(
                 subset=["ticker", "event_date", "is_consensus", "analyst_firm"],
                 keep="last",
             ).reset_index(drop=True)
+            news_frame = news_frame.drop(columns=["_publication_ts"])
+            rows.extend(news_frame.to_dict(orient="records"))
+
+        frame = self.dataframe_or_empty(rows, PRICE_TARGET_COLUMNS)
+        if not frame.empty:
+            frame.sort_values(
+                ["ticker", "event_date", "is_consensus", "analyst_firm"],
+                inplace=True,
+                na_position="first",
+            )
+            frame.reset_index(drop=True, inplace=True)
         return frame
 
     def fetch_historical(
@@ -374,6 +410,29 @@ def _parse_date(raw_value: Any) -> date | None:
         return date.fromisoformat(text[:10])
     except (TypeError, ValueError):
         return None
+
+
+def _parse_iso_utc(raw_value: Any) -> datetime | None:
+    """Parse FMP publishedDate (e.g. '2026-04-17T13:34:10.000Z') -> tz-aware UTC.
+
+    Used as a dedupe sort key so same-day same-firm revisions order by actual
+    publication time, not HTTP response order. The returned timestamp is NOT
+    persisted (knowledge_time stays at EOD for lag-rule alignment).
+    """
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip()
+    if not text:
+        return None
+    try:
+        # 'Z' suffix → ISO+00:00; also accept naive / offset-bearing strings.
+        normalized = text.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(normalized)
+    except (TypeError, ValueError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _clean_text(raw_value: Any) -> str | None:

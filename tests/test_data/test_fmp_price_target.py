@@ -179,6 +179,42 @@ def test_fetch_ticker_news_pagination_terminates_on_short_page() -> None:
     assert len(fake_session.calls) == 3
 
 
+def test_fetch_ticker_news_dedupes_same_day_same_firm_by_publication_time() -> None:
+    """Same (event_date, analyst_firm) revisions: latest publishedDate wins, not payload order.
+
+    Regresses a critical bug where EOD-based knowledge_time made same-day
+    revisions tie on sort, so HTTP response order decided the winner.
+    """
+    older = {
+        "symbol": "AAPL",
+        "publishedDate": "2026-04-23T08:00:00.000Z",
+        "analystCompany": "Acme Research",
+        "adjPriceTarget": 200,
+        "priceTarget": 200,
+    }
+    newer = {
+        "symbol": "AAPL",
+        "publishedDate": "2026-04-23T15:00:00.000Z",
+        "analystCompany": "Acme Research",
+        "adjPriceTarget": 250,
+        "priceTarget": 250,
+    }
+
+    for order_label, payload in [("older-first", [older, newer]), ("newer-first", [newer, older])]:
+        fake_session = _FakeSession(
+            [
+                _FakeResponse(payload={"symbol": "AAPL", "targetConsensus": 210}),
+                _FakeResponse(payload=payload),
+            ],
+        )
+        frame = _client(fake_session, now_fn=lambda: datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc)).fetch_ticker("AAPL")
+        analyst_rows = frame.loc[~frame["is_consensus"]]
+        assert len(analyst_rows) == 1, f"{order_label}: expected 1 dedup'd row"
+        assert analyst_rows.iloc[0]["target_price"] == Decimal("250"), (
+            f"{order_label}: newer publishedDate should win regardless of HTTP order"
+        )
+
+
 def test_fetch_ticker_retries_on_429_then_succeeds() -> None:
     fake_session = _FakeSession(
         [
