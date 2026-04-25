@@ -28,6 +28,7 @@ redisdata/
 # Large report files (>100MB, exceeds GitHub limit)
 data/reports/portfolio_optimization_comparison.json
 data/reports/*_audit_*.json
+data/reports/missingness_audit_full.json
 
 .DS_Store
 Thumbs.db

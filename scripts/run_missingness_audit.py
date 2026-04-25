@@ -34,7 +34,7 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 DEFAULT_OUTPUT = Path("data/reports/missingness_audit.json")
-VENDOR_RELATED_CATEGORIES = frozenset({"vendor_bias", "data_source_block"})
+FULL_REPORT_SUFFIX = "_full"
 
 FEATURE_RULE_OVERRIDES: dict[str, dict[str, str]] = {
     "abnormal_off_exchange_shorting": {
@@ -98,28 +98,63 @@ def generate_missingness_audit(
     observations: pd.DataFrame,
     family_by_feature: dict[str, str],
 ) -> dict[str, Any]:
-    features: list[dict[str, Any]] = []
     feature_names = sorted(family_by_feature)
+    feature_missing_rates: list[dict[str, Any]] = []
     for feature_name in feature_names:
         family = family_by_feature[feature_name]
         feature_obs = observations.loc[observations["feature_name"] == feature_name]
         missing_rate = float(feature_obs["is_missing"].mean()) if not feature_obs.empty else 1.0
+        feature_missing_rates.append(
+            {
+                "feature": feature_name,
+                "family": family,
+                "missing_rate": round(missing_rate, 6),
+            },
+        )
+
+    family_all_missing = {
+        family: all(item["missing_rate"] >= 1.0 for item in feature_missing_rates if item["family"] == family)
+        for family in sorted(set(family_by_feature.values()))
+    }
+
+    features: list[dict[str, Any]] = []
+    for item in feature_missing_rates:
+        feature_name = str(item["feature"])
+        family = str(item["family"])
+        missing_rate = float(item["missing_rate"])
         classification = classify_missingness(feature_name=feature_name, family=family, missing_rate=missing_rate)
         features.append(
             {
                 "feature": feature_name,
                 "family": family,
-                "missing_rate": round(missing_rate, 6),
+                "missing_rate": missing_rate,
                 "category": classification["category"],
                 "rationale": classification["rationale"],
                 "recommendation": classification["recommendation"],
             },
         )
+    for item in features:
+        if family_all_missing[item["family"]] and item["feature"] not in FEATURE_RULE_OVERRIDES:
+            item.update(
+                {
+                    "category": "sample_disabled_pipeline",
+                    "rationale": (
+                        "Every sampled feature in this family is absent on the panel, which points to a disabled "
+                        "upstream dependency or sampling-path limitation rather than genuine vendor bias."
+                    ),
+                    "recommendation": "re_run_with_dependencies",
+                },
+            )
 
     keep_count = sum(1 for item in features if item["recommendation"] == "keep")
     drop_count = sum(1 for item in features if str(item["recommendation"]).startswith("drop"))
     convert_count = sum(1 for item in features if item["recommendation"] == "convert_to_imputed")
-    vendor_bias_count = sum(1 for item in features if item["category"] in VENDOR_RELATED_CATEGORIES)
+    vendor_bias_count = sum(1 for item in features if item["category"] == "vendor_bias")
+    data_source_block_count = sum(1 for item in features if item["category"] == "data_source_block")
+    sample_disabled_count = sum(1 for item in features if item["category"] == "sample_disabled_pipeline")
+    dropped_features = sorted(item["feature"] for item in features if str(item["recommendation"]).startswith("drop"))
+    data_source_block_features = sorted(item["feature"] for item in features if item["category"] == "data_source_block")
+    sample_disabled_features = sorted(item["feature"] for item in features if item["category"] == "sample_disabled_pipeline")
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -134,6 +169,11 @@ def generate_missingness_audit(
             "drop": drop_count,
             "convert_to_imputed": convert_count,
             "vendor_bias": vendor_bias_count,
+            "data_source_block": data_source_block_count,
+            "sample_disabled_pipeline": sample_disabled_count,
+            "dropped_features": dropped_features,
+            "data_source_block_features": data_source_block_features,
+            "sample_disabled_features": sample_disabled_features,
         },
     }
 
@@ -263,6 +303,19 @@ def classify_missingness(*, feature_name: str, family: str, missing_rate: float)
     }
 
 
+def build_missingness_summary_report(full_report: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "generated_at": full_report["generated_at"],
+        "date_range": full_report["date_range"],
+        "universe_size": full_report["universe_size"],
+        "summary": full_report["summary"],
+    }
+
+
+def full_report_output_path(output_path: Path) -> Path:
+    return output_path.with_name(f"{output_path.stem}{FULL_REPORT_SUFFIX}{output_path.suffix}")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     with temporary_enable_week5_flags(args.enable_flags):
@@ -275,14 +328,17 @@ def main(argv: list[str] | None = None) -> int:
             sample_dates_per_month=args.sample_dates_per_month,
         )
         observations = collect_feature_observations(context, registry=registry)
-        report = generate_missingness_audit(
+        full_report = generate_missingness_audit(
             context=context,
             observations=observations,
             family_by_feature=family_by_feature,
         )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    summary_report = build_missingness_summary_report(full_report)
+    full_output = full_report_output_path(args.output)
+    args.output.write_text(json.dumps(summary_report, indent=2, sort_keys=True), encoding="utf-8")
+    full_output.write_text(json.dumps(full_report, indent=2, sort_keys=True), encoding="utf-8")
     return 0
 
 
