@@ -278,7 +278,9 @@ class FMPDataSource(DataSource):
                     continue
 
                 fiscal_period = self._derive_fiscal_period(row, event_time)
-                knowledge_time = self._parse_knowledge_time(row) or self._fallback_knowledge_time(event_time)
+                knowledge_time = self._parse_knowledge_time(
+                    row, event_time=event_time
+                ) or self._fallback_knowledge_time(event_time)
                 if endpoint == "income-statement" or fiscal_period not in canonical_anchors:
                     canonical_anchors[fiscal_period] = FundamentalAnchor(
                         fiscal_period=fiscal_period,
@@ -622,7 +624,19 @@ class FMPDataSource(DataSource):
         return f"{event_time.year}{quarter}"
 
     @staticmethod
-    def _parse_knowledge_time(row: dict[str, Any]) -> datetime | None:
+    def _parse_knowledge_time(
+        row: dict[str, Any],
+        *,
+        event_time: date | None = None,
+    ) -> datetime | None:
+        """Parse FMP acceptedDate / fillingDate into UTC knowledge_time.
+
+        When ``event_time`` is provided, the parsed timestamp must be strictly
+        after ``event_time``. Vendor data occasionally returns acceptedDate equal
+        to (or before) the fiscal period end — that is impossible in reality
+        (10-Q is filed 35-45 days after quarter end) and would create PIT leak,
+        so such rows fall through to the conservative fallback.
+        """
         for candidate in ("acceptedDate", "fillingDate"):
             raw_value = row.get(candidate)
             if not raw_value:
@@ -633,11 +647,18 @@ class FMPDataSource(DataSource):
                 continue
 
             if timestamp.tzinfo is None:
-                localized = timestamp.to_pydatetime().replace(
+                parsed = timestamp.to_pydatetime().replace(
                     tzinfo=ZoneInfo("America/New_York"),
-                )
-                return localized.astimezone(timezone.utc)
-            return timestamp.tz_convert(timezone.utc).to_pydatetime()
+                ).astimezone(timezone.utc)
+            else:
+                parsed = timestamp.tz_convert(timezone.utc).to_pydatetime()
+
+            if event_time is not None and parsed.date() <= event_time:
+                # Vendor returned a non-causal acceptedDate (kt <= fiscal end).
+                # Skip and let the caller fall back to the conservative offset.
+                continue
+
+            return parsed
 
         return None
 

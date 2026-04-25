@@ -186,6 +186,110 @@ def test_polygon_fetch_historical_uses_provider_ticker_but_persists_canonical_ti
     assert persisted["frame"]["ticker"].tolist() == ["BF-B"]
 
 
+def test_fmp_parse_knowledge_time_rejects_kt_le_event_time() -> None:
+    """Vendor sometimes returns acceptedDate <= fiscal-period end (impossible in
+    reality — 10-Q files 35-45 days after quarter end). The parser must reject
+    those values so the conservative ``_fallback_knowledge_time`` is used, or
+    early-period fundamental features leak future information into backtests
+    (data audit P0-2).
+    """
+    # Vendor reports acceptedDate exactly on fiscal period end → reject
+    parsed = FMPDataSource._parse_knowledge_time(
+        {"acceptedDate": "2025-12-31 00:00:00"},
+        event_time=date(2025, 12, 31),
+    )
+    assert parsed is None
+
+    # Vendor reports acceptedDate before fiscal period end → reject
+    parsed = FMPDataSource._parse_knowledge_time(
+        {"acceptedDate": "2025-12-30 16:00:00"},
+        event_time=date(2025, 12, 31),
+    )
+    assert parsed is None
+
+    # Realistic acceptedDate (35 days after quarter end) → accept
+    parsed = FMPDataSource._parse_knowledge_time(
+        {"acceptedDate": "2026-02-04 14:23:55"},
+        event_time=date(2025, 12, 31),
+    )
+    assert parsed == datetime(2026, 2, 4, 19, 23, 55, tzinfo=timezone.utc)
+
+    # event_time omitted → no validation, accept anything parseable
+    parsed = FMPDataSource._parse_knowledge_time(
+        {"acceptedDate": "2025-12-31 00:00:00"},
+    )
+    assert parsed is not None
+
+
+def test_short_interest_knowledge_time_uses_8_business_day_lag() -> None:
+    """FINRA publishes short interest ~8 business days after settlement.
+
+    Previous code used a flat 3 calendar-day offset which let backtest "see"
+    short-interest 5+ days too early (data audit P1-3). Lock the new convention.
+    """
+    from src.data.sources.polygon_short_interest import _add_business_days
+
+    # Friday settlement → kt 8 BD later spans weekends, lands on Wednesday
+    assert _add_business_days(date(2026, 1, 16), 8) == date(2026, 1, 28)
+    # Mid-month settlement on Wednesday → 8 BD later lands on Monday two weeks out
+    assert _add_business_days(date(2026, 4, 15), 8) == date(2026, 4, 27)
+    # Weekend in middle of n=8 still produces business day result
+    result = _add_business_days(date(2025, 12, 31), 8)
+    assert result.weekday() < 5
+
+
+def test_polygon_historical_knowledge_time_is_next_day_market_close() -> None:
+    """The historical mode must produce knowledge_time = trade_date + 1 day at 16:00 NYT.
+
+    Without this lag-1 convention, backtest with as_of = trade_date EOD UTC would see
+    today's close while computing today's signal (PIT leak). Locking the convention here
+    so future refactors cannot silently regress the data audit P0-1 fix.
+    """
+    kt = PolygonDataSource._historical_knowledge_time(date(2026, 4, 17))
+    assert kt == datetime(2026, 4, 18, 20, 0, tzinfo=timezone.utc)
+    # Friday → Saturday is intentional: kt is a wall-clock convention, not a business day.
+    kt_friday = PolygonDataSource._historical_knowledge_time(date(2026, 4, 24))
+    assert kt_friday == datetime(2026, 4, 25, 20, 0, tzinfo=timezone.utc)
+
+
+def test_polygon_fetch_historical_default_mode_emits_lag_one_knowledge_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = PolygonDataSource(api_key="test-key")
+
+    def fake_list_aggs(
+        ticker: str,
+        start_date: date,
+        end_date: date,
+        *,
+        adjusted: bool,
+    ) -> dict[date, dict[str, object]]:
+        return {
+            date(2026, 4, 17): {
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.5 if adjusted else 100.0,
+                "volume": 1_000,
+            },
+        }
+
+    persisted: dict[str, pd.DataFrame] = {}
+
+    def fake_persist_prices(frame: pd.DataFrame, *, batch_size: int = 1_000) -> int:
+        persisted["frame"] = frame.copy()
+        return len(frame)
+
+    monkeypatch.setattr(source, "_list_aggs", fake_list_aggs)
+    monkeypatch.setattr(source, "persist_prices", fake_persist_prices)
+
+    frame = source.fetch_historical(["AAPL"], date(2026, 4, 17), date(2026, 4, 17))
+
+    expected_kt = datetime(2026, 4, 18, 20, 0, tzinfo=timezone.utc)
+    assert list(frame["knowledge_time"]) == [expected_kt]
+    assert list(persisted["frame"]["knowledge_time"]) == [expected_kt]
+
+
 def test_build_universe_historical_path_applies_adv_filter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

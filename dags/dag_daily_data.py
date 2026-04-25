@@ -412,8 +412,7 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
             request_start,
             market_data_end,
             tickers=tracked_tickers,
-            knowledge_time_mode="observed_at",
-            observed_at=as_of,
+            knowledge_time_mode="historical",
         )
         if frame.empty:
             skipped_tickers = sorted(tracked_ticker_set)
@@ -433,8 +432,7 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
                             [ticker],
                             request_start,
                             market_data_end,
-                            knowledge_time_mode="observed_at",
-                            observed_at=as_of,
+                            knowledge_time_mode="historical",
                         )
                     except Exception:
                         LOGGER.exception(
@@ -468,8 +466,7 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
                     [ticker],
                     request_start,
                     market_data_end,
-                    knowledge_time_mode="observed_at",
-                    observed_at=as_of,
+                    knowledge_time_mode="historical",
                 )
             except Exception:
                 LOGGER.exception("daily_data_pipeline failed to fetch incremental Polygon bars for %s", ticker)
