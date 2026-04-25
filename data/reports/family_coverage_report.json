@@ -1,0 +1,1015 @@
+{
+  "date_range": {
+    "end": "2026-04-24",
+    "start": "2025-05-01"
+  },
+  "families": {
+    "analyst": {
+      "feature_count": 3,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.65,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.65,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.633333,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.633333,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.633333,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.616667,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.616667,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.616667,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.6,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.6,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.6,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.55,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "analyst_proxy": {
+      "feature_count": 10,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.27,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.265,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.29,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.275,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.29,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.125,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.1,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.155,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.13,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.08,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.11,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.185,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "composite": {
+      "feature_count": 26,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.038462,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.038462,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.123077,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.123077,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.038462,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.165385,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.080769,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.038462,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.038462,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.059615,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.038462,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.038462,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "daily": {
+      "feature_count": 2,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.0,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "earnings": {
+      "feature_count": 10,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.0,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "fundamental": {
+      "feature_count": 17,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.014706,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.008824,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.2,
+          "month": "2025-07",
+          "tickers_with_data": 19
+        },
+        {
+          "missing_rate": 0.202941,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.008824,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.294118,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.108824,
+          "month": "2025-11",
+          "tickers_with_data": 19
+        },
+        {
+          "missing_rate": 0.008824,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.008824,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.055882,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.005882,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.005882,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "insider": {
+      "feature_count": 8,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.0375,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.04375,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.04375,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.04375,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.04375,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.04375,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.04375,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0375,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0375,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.01875,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.025,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.025,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "intraday": {
+      "feature_count": 9,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.083333,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.077778,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.05,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.044444,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.05,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.061111,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.033333,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.038889,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.022222,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.022222,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.016667,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.033333,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "macro": {
+      "feature_count": 10,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.0,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "sec_filing": {
+      "feature_count": 8,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.0,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "sector_rotation": {
+      "feature_count": 5,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.0,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "short_interest": {
+      "feature_count": 7,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.064286,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.064286,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "shorting": {
+      "feature_count": 4,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.25,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.25,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "technical": {
+      "feature_count": 37,
+      "first_available_date": "2025-05-16",
+      "last_available_date": "2026-04-02",
+      "monthly_coverage": [
+        {
+          "missing_rate": 0.006757,
+          "month": "2025-05",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.006757,
+          "month": "2025-06",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.002703,
+          "month": "2025-07",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.002703,
+          "month": "2025-08",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.002703,
+          "month": "2025-09",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-10",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-11",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2025-12",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-01",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-02",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-03",
+          "tickers_with_data": 20
+        },
+        {
+          "missing_rate": 0.0,
+          "month": "2026-04",
+          "tickers_with_data": 20
+        }
+      ]
+    },
+    "trade_microstructure": {
+      "feature_count": 5,
+      "first_available_date": null,
+      "last_available_date": null,
+      "monthly_coverage": [
+        {
+          "missing_rate": 1.0,
+          "month": "2025-05",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2025-06",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2025-07",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2025-08",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2025-09",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2025-10",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2025-11",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2025-12",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2026-01",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2026-02",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2026-03",
+          "tickers_with_data": 0
+        },
+        {
+          "missing_rate": 1.0,
+          "month": "2026-04",
+          "tickers_with_data": 0
+        }
+      ]
+    }
+  },
+  "generated_at": "2026-04-25T06:45:35.592288+00:00",
+  "universe_size": 503
+}

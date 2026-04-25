@@ -1,0 +1,79 @@
+as_of: 2026-04-25
+
+horizons:
+  1d:
+    families:
+      - daily
+      - intraday
+      - technical
+      - composite
+    excluded_families:
+      - analyst
+      - analyst_proxy
+      - earnings
+      - fundamental
+      - insider
+      - macro
+      - sec_filing
+      - sector_rotation
+      - short_interest
+      - shorting
+      - trade_microstructure
+    rationale: "1D models should stay on fast-moving price and execution information; slower filing and macro families decay too slowly."
+  5d:
+    families:
+      - daily
+      - earnings
+      - intraday
+      - technical
+      - trade_microstructure
+      - composite
+    excluded_families:
+      - analyst
+      - analyst_proxy
+      - fundamental
+      - insider
+      - macro
+      - sec_filing
+      - sector_rotation
+      - short_interest
+      - shorting
+    rationale: "5D can still exploit intraday and microstructure context, with earnings events added as the main medium-speed catalyst family."
+  20d:
+    families:
+      - daily
+      - earnings
+      - analyst
+      - analyst_proxy
+      - insider
+      - intraday
+      - sec_filing
+      - shorting
+      - technical
+      - trade_microstructure
+      - composite
+    excluded_families:
+      - fundamental
+      - macro
+      - sector_rotation
+      - short_interest
+    rationale: "20D horizons can absorb analyst revision, filing, insider, and shorting signals while still keeping faster technical context."
+  60d:
+    families:
+      - daily
+      - earnings
+      - analyst
+      - analyst_proxy
+      - fundamental
+      - insider
+      - macro
+      - sec_filing
+      - sector_rotation
+      - short_interest
+      - shorting
+      - technical
+      - composite
+    excluded_families:
+      - intraday
+      - trade_microstructure
+    rationale: "60D models should emphasize slower-moving fundamental, macro, sector, and positioning families while excluding short-lived execution signals."
