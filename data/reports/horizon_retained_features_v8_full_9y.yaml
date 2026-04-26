@@ -1,0 +1,153 @@
+generated_at: '2026-04-26T03:30:11.748982+00:00'
+horizons:
+  1d:
+    retained:
+    - atr_14
+    - bb_position
+    - breadth_pct_above_20dma
+    - cci_20
+    - gap_pct
+    - high_52w_ratio
+    - intraday_ret
+    - liquidity_momentum
+    - macd_histogram
+    - mean_reversion_combo
+    - mom_vol_adj_20d
+    - momentum_rank_20d
+    - overnight_ret
+    - residual_ret_5d
+    - ret_10d
+    - ret_20d
+    - ret_5d
+    - ret_vol_interaction_20d
+    - return_dispersion_20d
+    - rsi_14
+    - rsi_28
+    - stoch_d
+    - stoch_k
+    - stock_beta_252
+    - trend_confirmation
+    - vol_60d
+    - vol_scaled_reversal_5d
+    - vwap_deviation
+    top_3_families:
+    - technical
+    - composite
+    - intraday
+  5d:
+    retained:
+    - above_20dma
+    - amihud
+    - atr_14
+    - bb_position
+    - breadth_pct_above_20dma
+    - cci_20
+    - gk_vol
+    - idio_vol
+    - liquidity_momentum
+    - macd_histogram
+    - macd_signal
+    - mom_vol_adj_20d
+    - momentum_rank_20d
+    - ret_20d
+    - ret_vol_interaction_20d
+    - return_dispersion_20d
+    - rsi_14
+    - rsi_28
+    - trend_confirmation
+    - vol_20d
+    - vol_60d
+    - vol_rank
+    top_3_families:
+    - technical
+    - composite
+  20d:
+    retained:
+    - amihud
+    - atr_14
+    - bb_width
+    - cci_20
+    - fcf_mom_20d
+    - gap_pct
+    - gk_vol
+    - high_52w_ratio
+    - idio_vol
+    - insider_buy_value
+    - insider_cluster_buy_30d_w
+    - insider_role_skew_30d
+    - liquidity_momentum
+    - low_52w_ratio
+    - macd_signal
+    - mom_vol_adj_20d
+    - momentum_rank_20d
+    - obv_slope
+    - overnight_ret
+    - quality_value_roe_pb
+    - realized_vol_1d
+    - ret_10d
+    - ret_20d
+    - ret_vol_interaction_20d
+    - return_dispersion_20d
+    - rsi_14
+    - rsi_28
+    - stoch_d
+    - stock_beta_252
+    - trend_confirmation
+    - value_mom_pb
+    - vol_20d
+    - vol_60d
+    - vol_rank
+    top_3_families:
+    - technical
+    - composite
+    - intraday
+  60d:
+    retained:
+    - accruals
+    - amihud
+    - asset_growth
+    - atr_14
+    - bb_width
+    - credit_widening_x_leverage
+    - current_ratio
+    - debt_to_equity
+    - dividend_yield
+    - ev_ebitda
+    - gk_vol
+    - high_52w_ratio
+    - high_vix_x_beta
+    - idio_vol
+    - insider_buy_intensity_20d
+    - insider_buy_value
+    - insider_cluster_buy
+    - insider_cluster_buy_30d_w
+    - insider_net_buy_ratio
+    - insider_net_intensity_60d
+    - insider_role_skew_30d
+    - low_52w_ratio
+    - pb_ratio
+    - quality_value_roe_pb
+    - short_sale_ratio_5d
+    - stoch_d
+    - stock_beta_252
+    - value_mom_pb
+    - vol_20d
+    - vol_60d
+    - vol_rank
+    top_3_families:
+    - technical
+    - fundamental
+    - insider
+source:
+  description: "503t \xD7 9y full universe IC screening, PIT-fixed (data audit 2026-04-25),\
+    \ chunk+merge (3\xD73y exact)"
+  panel_chunks:
+  - ic_v8_chunk1 (2016-03-01~2019-02-28)
+  - ic_v8_chunk2 (2019-03-01~2022-02-28)
+  - ic_v8_chunk3 (2022-03-01~2025-02-28)
+  frozen_universe: data/features/frozen_universe_503.json (as_of 2025-02-28)
+  thresholds:
+    mean_ic: 0.015
+    t_stat: 2.0
+    sign_consistent_windows: 7
+  gates: screening_status from _week7_ic_utils

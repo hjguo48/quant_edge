@@ -1,0 +1,118 @@
+{
+  "1d": {
+    "horizon": "1d",
+    "duplicate_rows": 0,
+    "merged_rows": 30388,
+    "chunk_rows_total": 30388,
+    "actual_min_date": "2016-04-22",
+    "actual_max_date": "2025-02-28",
+    "unique_features": 70,
+    "per_chunk_bounds": [
+      {
+        "dir": "data/reports/ic_v8_chunk1",
+        "rows": 9676,
+        "min_date": "2016-04-22",
+        "max_date": "2019-02-22"
+      },
+      {
+        "dir": "data/reports/ic_v8_chunk2",
+        "rows": 10164,
+        "min_date": "2019-03-01",
+        "max_date": "2022-02-25"
+      },
+      {
+        "dir": "data/reports/ic_v8_chunk3",
+        "rows": 10548,
+        "min_date": "2022-03-04",
+        "max_date": "2025-02-28"
+      }
+    ]
+  },
+  "5d": {
+    "horizon": "5d",
+    "duplicate_rows": 0,
+    "merged_rows": 34898,
+    "chunk_rows_total": 34898,
+    "actual_min_date": "2016-04-22",
+    "actual_max_date": "2025-02-28",
+    "unique_features": 80,
+    "per_chunk_bounds": [
+      {
+        "dir": "data/reports/ic_v8_chunk1",
+        "rows": 11146,
+        "min_date": "2016-04-22",
+        "max_date": "2019-02-22"
+      },
+      {
+        "dir": "data/reports/ic_v8_chunk2",
+        "rows": 11664,
+        "min_date": "2019-03-01",
+        "max_date": "2022-02-25"
+      },
+      {
+        "dir": "data/reports/ic_v8_chunk3",
+        "rows": 12088,
+        "min_date": "2022-03-04",
+        "max_date": "2025-02-28"
+      }
+    ]
+  },
+  "20d": {
+    "horizon": "20d",
+    "duplicate_rows": 0,
+    "merged_rows": 44564,
+    "chunk_rows_total": 44564,
+    "actual_min_date": "2016-04-22",
+    "actual_max_date": "2025-02-28",
+    "unique_features": 107,
+    "per_chunk_bounds": [
+      {
+        "dir": "data/reports/ic_v8_chunk1",
+        "rows": 13734,
+        "min_date": "2016-04-22",
+        "max_date": "2019-02-22"
+      },
+      {
+        "dir": "data/reports/ic_v8_chunk2",
+        "rows": 14865,
+        "min_date": "2019-03-01",
+        "max_date": "2022-02-25"
+      },
+      {
+        "dir": "data/reports/ic_v8_chunk3",
+        "rows": 15965,
+        "min_date": "2022-03-04",
+        "max_date": "2025-02-28"
+      }
+    ]
+  },
+  "60d": {
+    "horizon": "60d",
+    "duplicate_rows": 0,
+    "merged_rows": 51408,
+    "chunk_rows_total": 51408,
+    "actual_min_date": "2016-04-22",
+    "actual_max_date": "2025-02-28",
+    "unique_features": 125,
+    "per_chunk_bounds": [
+      {
+        "dir": "data/reports/ic_v8_chunk1",
+        "rows": 15340,
+        "min_date": "2016-04-22",
+        "max_date": "2019-02-22"
+      },
+      {
+        "dir": "data/reports/ic_v8_chunk2",
+        "rows": 17329,
+        "min_date": "2019-03-01",
+        "max_date": "2022-02-25"
+      },
+      {
+        "dir": "data/reports/ic_v8_chunk3",
+        "rows": 18739,
+        "min_date": "2022-03-04",
+        "max_date": "2025-02-28"
+      }
+    ]
+  }
+}

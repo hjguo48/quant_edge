@@ -4,6 +4,7 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
+from pathlib import Path
 from typing import Any
 
 import exchange_calendars as xcals
@@ -93,13 +94,22 @@ def build_sample_context(
     universe_fetcher: Callable[[date, str], list[str]] = get_historical_members,
     session_factory: Callable | None = None,
     index_name: str = "SP500",
+    frozen_universe_path: Path | None = None,
 ) -> SampleContext:
     effective_end = end_date or latest_available_trade_date(session_factory=session_factory)
     effective_start = start_date or trailing_month_window(effective_end)[0]
     if effective_start > effective_end:
         raise ValueError("start_date must be on or before end_date.")
 
-    universe = tuple(sorted(set(universe_fetcher(effective_end, index_name))))
+    if frozen_universe_path is not None:
+        # Load a pre-frozen ticker list so multiple chunked screenings share the
+        # exact same universe (chunk+merge equivalence requires this; otherwise
+        # universe_fetcher(end_date) drifts between chunks).
+        import json as _json
+        payload = _json.loads(Path(frozen_universe_path).read_text())
+        universe = tuple(sorted(set(payload["tickers"])))
+    else:
+        universe = tuple(sorted(set(universe_fetcher(effective_end, index_name))))
     sampled_tickers = _sample_items(universe, sample_tickers, seed=42)
     sampled_trade_dates = sample_monthly_trade_dates(
         start_date=effective_start,

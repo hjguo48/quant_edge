@@ -99,6 +99,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--mean-ic-threshold", type=float, default=SCREENING_MEAN_IC_THRESHOLD)
     parser.add_argument("--t-stat-threshold", type=float, default=SCREENING_T_STAT_THRESHOLD)
     parser.add_argument("--sign-window-threshold", type=int, default=SCREENING_SIGN_WINDOW_THRESHOLD)
+    parser.add_argument(
+        "--frozen-universe-path",
+        type=Path,
+        default=None,
+        help="Path to a frozen ticker JSON (from scripts/freeze_universe.py). "
+             "When set, build_sample_context skips its date-dependent universe "
+             "fetcher and uses this list — required for chunked-merge "
+             "equivalence so all chunks share one ticker set.",
+    )
     return parser.parse_args(argv)
 
 
@@ -114,6 +123,7 @@ def screen_horizon_features(
     t_stat_threshold: float,
     sign_window_threshold: int,
     windows: list[Any],
+    raw_ic_collector: list[dict[str, Any]] | None = None,
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for feature_name in all_features:
@@ -153,6 +163,18 @@ def screen_horizon_features(
             label_series=label_series,
             windows=windows,
         )
+        if raw_ic_collector is not None:
+            daily_ic = metrics.get("daily_ic")
+            if daily_ic is not None and not daily_ic.empty:
+                for trade_dt, ic_value in daily_ic.items():
+                    if pd.isna(ic_value):
+                        continue
+                    raw_ic_collector.append({
+                        "feature": feature_name,
+                        "family": family,
+                        "trade_date": pd.Timestamp(trade_dt).date(),
+                        "ic_value": float(ic_value),
+                    })
         status = screening_status(
             mean_ic=metrics["mean_ic"],
             t_stat=metrics["t_stat"],
@@ -194,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
             end_date=args.end_date,
             sample_tickers=args.sample_tickers,
             rebalance_weekday=args.rebalance_weekday,
+            frozen_universe_path=args.frozen_universe_path,
         )
 
         union_features: set[str] = set()
@@ -237,6 +260,7 @@ def main(argv: list[str] | None = None) -> int:
                 included_families=config["families"],
                 missingness_exclusions=missingness_exclusions,
             )
+            raw_ic_rows: list[dict[str, Any]] = []
             rows = screen_horizon_features(
                 feature_matrix=feature_matrix,
                 label_series=label_series,
@@ -248,9 +272,16 @@ def main(argv: list[str] | None = None) -> int:
                 t_stat_threshold=args.t_stat_threshold,
                 sign_window_threshold=args.sign_window_threshold,
                 windows=list(screening_windows()),
+                raw_ic_collector=raw_ic_rows,
             )
             rows.to_csv(csv_output_path(output_dir, horizon_label), index=False)
             report_rows_by_horizon[horizon_label] = rows
+            # Dump per-(feature, trade_date) raw IC for chunked-merge workflows.
+            # Caller can concat these across chunks and recompute exact W7
+            # mean_ic / t_stat / sign_consistent_windows via merge_chunked_ic.py.
+            if raw_ic_rows:
+                raw_path = output_dir / f"raw_ic_{horizon_label}.parquet"
+                pd.DataFrame(raw_ic_rows).to_parquet(raw_path, index=False)
 
         retained_payload = build_retained_features_payload(report_rows_by_horizon=report_rows_by_horizon)
         retained_payload["generated_at"] = datetime.now(timezone.utc).isoformat()
