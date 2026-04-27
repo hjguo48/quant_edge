@@ -27,7 +27,7 @@ cd "$REPO_ROOT"
 
 source .venv/bin/activate
 
-BUNDLE="data/models/bundles/w12_60d_ridge_swbuf_v2/bundle.json"
+BUNDLE="data/models/bundles/w12_60d_ridge_swbuf_v3/bundle.json"
 REF_FM="data/features/walkforward_v9full9y_fm_60d.parquet"
 REPORT_DIR="data/reports/greyscale"
 LOG_DIR="$REPORT_DIR/logs"
@@ -66,7 +66,7 @@ payload = {
     "status": "failure",
     "stage": "$stage",
     "message": """$message""",
-    "bundle_version": "w12_60d_ridge_swbuf_v2",
+    "bundle_version": "w12_60d_ridge_swbuf_v3",
     "generated_at_utc": datetime.now(timezone.utc).isoformat(),
     "log_file": "$LOG_FILE",
     "run_id": "$RUN_ID",
@@ -94,7 +94,7 @@ fusion_scores = score_vectors.get("fusion") or score_vectors.get("FUSION") or {}
 
 payload = {
     "status": "success",
-    "bundle_version": "w12_60d_ridge_swbuf_v2",
+    "bundle_version": "w12_60d_ridge_swbuf_v3",
     "generated_at_utc": datetime.now(timezone.utc).isoformat(),
     "latest_report_path": str(weeks[-1]) if weeks else None,
     "signal_date": latest.get("live_outputs", {}).get("signal_date"),
@@ -138,7 +138,7 @@ import exchange_calendars as xcals
 import pandas as pd
 
 # Bundle exists
-bundle_path = Path("data/models/bundles/w12_60d_ridge_swbuf_v2/bundle.json")
+bundle_path = Path("data/models/bundles/w12_60d_ridge_swbuf_v3/bundle.json")
 if not bundle_path.exists():
     print(f"FAIL: bundle missing: {bundle_path}")
     sys.exit(2)

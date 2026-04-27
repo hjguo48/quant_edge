@@ -66,7 +66,20 @@ DEFAULT_REPORT = "data/reports/walkforward_v9full9y_60d_ridge_13w.json"
 DEFAULT_FEATURE_MATRIX = "data/features/walkforward_v9full9y_fm_60d.parquet"
 DEFAULT_LABEL = "data/labels/forward_returns_60d_v9full9y.parquet"
 DEFAULT_FROZEN_UNIVERSE = "data/features/frozen_universe_503.json"
-DEFAULT_BUNDLE_VERSION = "w12_60d_ridge_swbuf_v1"
+DEFAULT_BUNDLE_VERSION = "w12_60d_ridge_swbuf_v3"
+
+DEFAULT_LIVE_UNIVERSE_POLICY = {
+    "min_history_days": 90,
+    "max_stale_days": 7,
+    "recency_window_days": 30,
+    "min_adv_dollars": 1_000_000.0,
+    "adv_window_days": 20,
+    "min_continuous_price_days": 200,
+    "price_continuity_window_days": 365,
+    "min_required_features_present": 26,
+    "benchmark_ticker": "SPY",
+    "index_name": "SP500",
+}
 DEFAULT_BUNDLE_BASE = "data/models/bundles"
 LEGACY_BUNDLE_POINTER = "data/models/fusion_model_bundle_60d.json"
 
@@ -255,9 +268,16 @@ def main(argv: list[str] | None = None) -> int:
         "max_weight": CHAMPION_PORTFOLIO["max_weight"],
         "min_holdings": CHAMPION_PORTFOLIO["min_holdings"],
         "cost_model": CHAMPION_COST,
+        # Research universe (frozen, immutable, for forensic reproducibility):
+        "research_universe_snapshot_path": str(universe_dst.relative_to(REPO_ROOT)),
+        "research_universe_snapshot_count": int(eligible_count),
+        # Live universe (dynamic, rule-based admission policy):
+        "live_universe_mode": "dynamic_admission_policy",
+        "live_universe_policy": DEFAULT_LIVE_UNIVERSE_POLICY,
+        # Backward-compat: keep eligible_universe_path so v1/v2-aware callers
+        # can still load this bundle. Runtime should prefer live_universe_policy.
         "eligible_universe_path": str(universe_dst.relative_to(REPO_ROOT)),
         "eligible_universe_count": int(eligible_count),
-        "live_universe_mode": "active_sp500_intersect_bundle_snapshot",
         "source_artifacts": {
             "walkforward_report": str((REPO_ROOT / args.report).relative_to(REPO_ROOT)),
             "feature_matrix_path": str((REPO_ROOT / args.feature_matrix_path).relative_to(REPO_ROOT)),

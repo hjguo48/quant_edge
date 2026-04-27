@@ -130,30 +130,63 @@ def main(argv: list[str] | None = None) -> int:
     if live_trade_date is None:
         raise RuntimeError("No PIT-visible trade date available for greyscale live run.")
 
-    live_universe = load_live_universe(trade_date=live_trade_date, as_of=as_of, benchmark_ticker=args.benchmark_ticker)
-    live_universe = apply_universe_filters(
-        tickers=live_universe,
-        limit=args.limit_tickers,
-        requested_tickers=args.tickers,
-    )
-    # W12 patch: bundle may declare an eligible_universe_path (frozen training snapshot).
-    # If present, intersect live universe with it so we never trade names absent during training.
-    eligible_universe_path = bundle.get("eligible_universe_path")
-    if eligible_universe_path:
-        eligible_path = Path(eligible_universe_path)
-        if not eligible_path.is_absolute():
-            eligible_path = REPO_ROOT / eligible_path
-        if eligible_path.exists():
-            eligible_payload = json.loads(eligible_path.read_text())
-            eligible_set = {str(t).upper() for t in eligible_payload.get("tickers", [])}
-            before_count = len(live_universe)
-            live_universe = [t for t in live_universe if str(t).upper() in eligible_set]
-            logger.info(
-                "bundle universe filter: live {} → eligible-intersect {} (snapshot={})",
-                before_count, len(live_universe), eligible_path.name,
+    # W13: prefer dynamic live-universe admission policy if bundle declares one.
+    # Fallback to legacy frozen eligible_universe_path for v1/v2 bundles.
+    live_universe_diagnostics: dict[str, Any] | None = None
+    live_policy_dict = bundle.get("live_universe_policy")
+    if live_policy_dict and bundle.get("live_universe_mode") == "dynamic_admission_policy":
+        from src.universe.live_resolver import resolve_live_universe, LiveUniversePolicy
+        from src.data.db.session import get_engine
+        live_required_features = [f for f in retained_features if not str(f).startswith("is_missing_")]
+        live_policy = LiveUniversePolicy.from_dict(live_policy_dict)
+        engine = get_engine()
+        with engine.connect() as conn:
+            resolve_result = resolve_live_universe(
+                as_of=as_of,
+                trade_date=live_trade_date,
+                required_features=live_required_features,
+                policy=live_policy,
+                conn=conn,
             )
-        else:
-            logger.warning("bundle eligible_universe_path missing on disk: {}", eligible_path)
+        live_universe = resolve_result.admitted_tickers
+        live_universe_diagnostics = resolve_result.summary()
+        logger.info(
+            "W13 dynamic universe: candidates {} → admitted {} (rejected {})",
+            live_universe_diagnostics["candidate_count"],
+            live_universe_diagnostics["admitted_count"],
+            live_universe_diagnostics["rejected_count"],
+        )
+        if live_universe_diagnostics["rejection_buckets"]:
+            logger.info("rejection_buckets={}", live_universe_diagnostics["rejection_buckets"])
+        live_universe = apply_universe_filters(
+            tickers=live_universe,
+            limit=args.limit_tickers,
+            requested_tickers=args.tickers,
+        )
+    else:
+        # Legacy v1/v2 path: active SP500 ∩ frozen eligible_universe_path.
+        live_universe = load_live_universe(trade_date=live_trade_date, as_of=as_of, benchmark_ticker=args.benchmark_ticker)
+        live_universe = apply_universe_filters(
+            tickers=live_universe,
+            limit=args.limit_tickers,
+            requested_tickers=args.tickers,
+        )
+        eligible_universe_path = bundle.get("eligible_universe_path")
+        if eligible_universe_path:
+            eligible_path = Path(eligible_universe_path)
+            if not eligible_path.is_absolute():
+                eligible_path = REPO_ROOT / eligible_path
+            if eligible_path.exists():
+                eligible_payload = json.loads(eligible_path.read_text())
+                eligible_set = {str(t).upper() for t in eligible_payload.get("tickers", [])}
+                before_count = len(live_universe)
+                live_universe = [t for t in live_universe if str(t).upper() in eligible_set]
+                logger.info(
+                    "bundle universe filter: live {} → eligible-intersect {} (snapshot={})",
+                    before_count, len(live_universe), eligible_path.name,
+                )
+            else:
+                logger.warning("bundle eligible_universe_path missing on disk: {}", eligible_path)
     if not live_universe:
         raise RuntimeError("No live universe tickers were available for the PIT-visible trade date.")
 
@@ -514,6 +547,7 @@ def main(argv: list[str] | None = None) -> int:
             "gross_exposure_after_risk": float(constrained.gross_exposure),
             "cash_weight_after_risk": float(constrained.cash_weight),
         },
+        "live_universe_diagnostics": live_universe_diagnostics,
         "feature_drift_psi": json_safe(psi_report_data) if psi_report_data else None,
         "notes": [
             "Fusion ranking uses cross-sectional z-scored model outputs with rolling-IC weights.",

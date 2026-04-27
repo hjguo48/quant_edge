@@ -1,10 +1,10 @@
 {
   "status": "success",
-  "bundle_version": "w12_60d_ridge_swbuf_v3",
-  "generated_at_utc": "2026-04-27T13:30:19.315491+00:00",
+  "bundle_version": "w12_60d_ridge_swbuf_v2",
+  "generated_at_utc": "2026-04-27T12:34:14.987166+00:00",
   "latest_report_path": "data/reports/greyscale/week_01.json",
   "signal_date": "2026-04-24",
-  "ticker_count": 498,
+  "ticker_count": 477,
   "layer1_pass": true,
   "layer2_pass": true,
   "layer3_pass": true,
