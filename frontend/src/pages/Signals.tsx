@@ -13,6 +13,8 @@ interface Prediction {
   percentile: number;
   sector?: string | null;
   company_name?: string | null;
+  recent_prices?: number[];
+  recent_excess_cum?: number[];
 }
 
 interface LatestPredictionsResponse {
@@ -44,19 +46,6 @@ function hashTickerSeed(value: string): number {
     hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
   }
   return hash;
-}
-
-function generateDirectionalSparkData(score: number, seedKey: string): number[] {
-  const base = 50;
-  const direction = score > 0 ? 1 : -1;
-  const magnitude = Math.max(8, Math.min(Math.abs(score) * 5, 30));
-  const seed = hashTickerSeed(seedKey);
-
-  return Array.from({ length: 10 }, (_, index) => {
-    const normalizedNoise = Math.sin(seed + (index + 1) * 12.9898) * 43758.5453;
-    const noise = ((normalizedNoise - Math.floor(normalizedNoise)) - 0.5) * 4;
-    return base + direction * (index / 9) * magnitude + noise;
-  });
 }
 
 const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?: (ticker: string) => void }) => {
@@ -135,10 +124,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         rank: prediction.rank,
         sector: prediction.sector || "—",
         shuffleKey: hashTickerSeed(prediction.ticker + ":" + prediction.rank),
-        sparkData: generateDirectionalSparkData(
-          prediction.score,
-          `${prediction.ticker}:${prediction.rank}:${prediction.score.toFixed(6)}`,
-        ),
+        recentPrices: prediction.recent_prices || [],
+        recentExcessCum: prediction.recent_excess_cum || [],
       };
     });
   }, [predictions]);
@@ -381,7 +368,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                   tier={s.tier}
                   confidence={s.confidence}
                   score={s.score}
-                  sparkData={s.sparkData}
+                  recentPrices={s.recentPrices}
+                  recentExcessCum={s.recentExcessCum}
                   sector={s.sector}
                   onClick={() => onSelectSignal(s.ticker)}
                 />

@@ -12,7 +12,9 @@ interface SignalRowProps {
   tier?: Conviction;
   confidence?: number;
   score?: number;
-  sparkData?: number[];
+  sparkData?: number[];          // legacy fallback
+  recentPrices?: number[];       // 20-day close
+  recentExcessCum?: number[];    // 19-day cumulative excess vs SPY
   sector?: string;
   onClick?: () => void;
 }
@@ -41,6 +43,8 @@ const SignalRow = ({
   confidence = 78,
   score = 0.0,
   sparkData = [],
+  recentPrices,
+  recentExcessCum,
   sector = "—",
   onClick = () => {},
 }: SignalRowProps) => {
@@ -51,6 +55,33 @@ const SignalRow = ({
   const directionClass = style.tagClass;
   const directionLabel = style.tagLabel;
   const isPositive = style.sparkPositive;
+
+  // Trend data: default = real 20-day close prices; on hover = cumulative excess vs SPY.
+  // Falls back to legacy `sparkData` only if no real data is supplied (e.g. detached usage).
+  const hasReal = (recentPrices && recentPrices.length >= 2) || (recentExcessCum && recentExcessCum.length >= 2);
+  let trendData: number[];
+  let trendMode: "price" | "excess" | "synthetic";
+  if (hasReal) {
+    if (hovered && recentExcessCum && recentExcessCum.length >= 2) {
+      trendData = recentExcessCum;
+      trendMode = "excess";
+    } else if (recentPrices && recentPrices.length >= 2) {
+      trendData = recentPrices;
+      trendMode = "price";
+    } else {
+      trendData = recentExcessCum ?? [];
+      trendMode = "excess";
+    }
+  } else {
+    trendData = sparkData;
+    trendMode = "synthetic";
+  }
+  // Derive sparkPositive from the latest data direction when in real-data mode,
+  // so a stock that's actually falling shows red even if it's still tier=LONG.
+  let sparkPositive = isPositive;
+  if (trendMode !== "synthetic" && trendData.length >= 2) {
+    sparkPositive = trendData[trendData.length - 1] >= trendData[0];
+  }
 
   const sColor = getSectorColor(sector);
 
@@ -101,8 +132,14 @@ const SignalRow = ({
       </div>
 
       {/* Trend */}
-      <div className="w-24 flex justify-center flex-shrink-0">
-        <MiniSparkline data={sparkData} positive={isPositive} width={80} height={32} animated={hovered} />
+      <div
+        className="w-24 flex flex-col items-center justify-center flex-shrink-0"
+        title={trendMode === "price" ? "20D close (hover for excess vs SPY)" : trendMode === "excess" ? "20D cumulative excess vs SPY" : ""}
+      >
+        <MiniSparkline data={trendData} positive={sparkPositive} width={80} height={32} animated={hovered} />
+        <span className="text-[8px] text-muted-foreground/50 uppercase tracking-wider mt-0.5">
+          {trendMode === "excess" ? "vs SPY" : trendMode === "price" ? "20D" : ""}
+        </span>
       </div>
 
       {/* Sector */}
