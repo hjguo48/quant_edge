@@ -501,17 +501,31 @@ def simulate_score_weighted_controlled(
     weight_shrinkage: float = 0.0,
     no_trade_zone: float = 0.0,
     turnover_penalty_lambda: float = 0.0,
+    directional_throttle_signal: pd.Series | None = None,
+    adverse_buy_threshold: float = 1.0,
+    adverse_sell_threshold: float = 1.0,
+    adverse_trade_scale: float = 0.5,
 ) -> PortfolioBacktestResult:
     """Score-weighted portfolio with full turnover controls.
 
     Args:
         execution: Pre-computed execution price frame from prepare_execution_price_frame().
+        directional_throttle_signal: Optional Series indexed by (trade_date, ticker)
+            carrying a directional signal z (e.g., 1D z-score). When |z| exceeds the
+            corresponding threshold and direction is adverse to the intended trade,
+            scale that ticker's Δw by adverse_trade_scale.
+        adverse_buy_threshold: |z| threshold for adverse-buy detection (z < -threshold
+            on a buy = scale down the buy).
+        adverse_sell_threshold: |z| threshold for adverse-sell detection (z > +threshold
+            on a sell = scale down the sell).
+        adverse_trade_scale: Scale factor (0..1) applied to adverse Δw.
 
     Turnover controls (applied in order):
     1. Hysteresis: sell_buffer_pct widens exit band, min_trade_weight skips small trades
     2. Weight shrinkage: w_final = (1 - shrinkage) * w_target + shrinkage * w_prev
     3. No-trade zone: positions where |Δw| < no_trade_zone keep previous weight
     4. Turnover penalty: dampens score changes by penalizing distance from current weights
+    5. Directional throttle: scale Δw against adverse short-horizon signal (W11 1D throttle)
     """
     if predictions.empty:
         return _empty_backtest_result()
@@ -639,6 +653,34 @@ def simulate_score_weighted_controlled(
 
         if not target_weights:
             continue
+
+        # --- W11 1D throttle: scale Δw against adverse short-horizon signal
+        if directional_throttle_signal is not None:
+            try:
+                throttle_today = directional_throttle_signal.xs(signal_date, level="trade_date")
+            except KeyError:
+                throttle_today = None
+            if throttle_today is not None and not throttle_today.empty:
+                previous_for_throttle = current_weights
+                throttled_targets = dict(target_weights)
+                for ticker in set(target_weights) | set(previous_for_throttle):
+                    delta = target_weights.get(ticker, 0.0) - previous_for_throttle.get(ticker, 0.0)
+                    if abs(delta) < 1e-12:
+                        continue
+                    z1 = float(throttle_today.get(ticker, 0.0))
+                    if not math.isfinite(z1):
+                        continue
+                    is_buy = delta > 0.0
+                    is_sell = delta < 0.0
+                    adverse = (is_buy and z1 <= -adverse_buy_threshold) or \
+                              (is_sell and z1 >= adverse_sell_threshold)
+                    if adverse:
+                        new_target = previous_for_throttle.get(ticker, 0.0) + adverse_trade_scale * delta
+                        if abs(new_target) < 1e-12:
+                            throttled_targets.pop(ticker, None)
+                        else:
+                            throttled_targets[ticker] = float(new_target)
+                target_weights = throttled_targets
 
         # --- Execute and track
         previous_weights = current_weights.copy()
