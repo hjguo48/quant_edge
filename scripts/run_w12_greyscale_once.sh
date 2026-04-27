@@ -257,6 +257,13 @@ if ! .venv/bin/python scripts/run_greyscale_monitor.py \
     exit 3
 fi
 
+echo "----- compute realized paper P&L (W13.2) -----"
+# Non-fatal: P&L cannot be computed for a fresh signal date until next trading
+# day's data lands in stock_prices. We always run it so partial / pending
+# horizons are visible in the dashboard.
+PYTHONPATH="$REPO_ROOT" .venv/bin/python scripts/compute_realized_returns.py \
+    --report-dir "$REPORT_DIR" 2>&1 || echo "WARN: realized-returns computation non-zero exit (non-fatal)"
+
 echo "----- write success heartbeat -----"
 write_success
 

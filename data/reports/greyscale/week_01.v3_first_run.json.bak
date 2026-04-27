@@ -1,6 +1,6 @@
 {
   "db_state": {
-    "as_of_utc": "2026-04-27T13:35:23+00:00",
+    "as_of_utc": "2026-04-25T20:00:00+00:00",
     "latest_pit_trade_date": "2026-04-24",
     "latest_stored_trade_date": "2026-04-24",
     "stock_universe_size": 498,
@@ -9,7 +9,7 @@
   "dry_run": true,
   "feature_drift_psi": null,
   "feature_pipeline": {
-    "batch_id": "671ce644-1217-425c-b028-ad2d53381c45",
+    "batch_id": "ceeb822f-c660-4684-975c-db7e4da11b31",
     "end_date": "2026-04-24",
     "feature_matrix_shape": {
       "n_features": 62,
@@ -43,7 +43,7 @@
     "temperature": 0.0,
     "weight_source": "seed_w11_avg_weights"
   },
-  "generated_at_utc": "2026-04-27T13:37:46.699563+00:00",
+  "generated_at_utc": "2026-04-27T13:26:56.201413+00:00",
   "live_outputs": {
     "pairwise_rank_correlation": {},
     "signal_date": "2026-04-24",
@@ -247,7 +247,7 @@
   "live_universe_diagnostics": {
     "active_universe_source": "universe_membership+admission",
     "admitted_count": 498,
-    "as_of": "2026-04-27T13:35:23+00:00",
+    "as_of": "2026-04-25T20:00:00+00:00",
     "candidate_count": 502,
     "rejected_count": 4,
     "rejection_buckets": {
@@ -1100,12 +1100,12 @@
             "action": "greyscale_features_generated",
             "actor": "run_greyscale_live",
             "details": {
-              "feature_batch_id": "671ce644-1217-425c-b028-ad2d53381c45",
+              "feature_batch_id": "ceeb822f-c660-4684-975c-db7e4da11b31",
               "feature_rows_live_date": 139546,
               "trade_date": "2026-04-24"
             },
             "level": "INFO",
-            "timestamp_utc": "2026-04-27T13:37:46.699491+00:00"
+            "timestamp_utc": "2026-04-27T13:26:56.201338+00:00"
           },
           {
             "action": "greyscale_fusion_scored",
@@ -1120,7 +1120,7 @@
               "weight_source": "seed_w11_avg_weights"
             },
             "level": "INFO",
-            "timestamp_utc": "2026-04-27T13:37:46.699512+00:00"
+            "timestamp_utc": "2026-04-27T13:26:56.201359+00:00"
           },
           {
             "action": "greyscale_portfolio_risk_evaluated",
@@ -1134,18 +1134,18 @@
               ]
             },
             "level": "INFO",
-            "timestamp_utc": "2026-04-27T13:37:46.699517+00:00"
+            "timestamp_utc": "2026-04-27T13:26:56.201364+00:00"
           },
           {
             "action": "operational_risk_evaluated",
             "actor": "risk_engine",
             "details": {
               "fail_safe": false,
-              "runtime_seconds": 136.59774482389912,
+              "runtime_seconds": 147.52293311292306,
               "timeout_severity": "green"
             },
             "level": "INFO",
-            "timestamp_utc": "2026-04-27T13:37:46.699539+00:00"
+            "timestamp_utc": "2026-04-27T13:26:56.201389+00:00"
           }
         ],
         "fail_safe_alert": {
@@ -1162,7 +1162,7 @@
           "check_name": "timeout",
           "fail_safe_mode": false,
           "halt_pipeline": false,
-          "message": "Pipeline runtime 136.6s is within the allowed limit.",
+          "message": "Pipeline runtime 147.5s is within the allowed limit.",
           "severity": "green"
         }
       },
