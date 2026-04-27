@@ -216,7 +216,7 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
       .slice(0, 5)
       .map(p => ({
         ticker: p.ticker,
-        direction: p.score > 0 ? "long" : "short",
+        direction: p.score > 0 ? "long" : "neutral",
         confidence: Math.round(p.percentile),
         score: p.score
       }));
@@ -511,13 +511,13 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
                     >
                       <div>
                         <div className="text-sm font-bold text-foreground">{s.ticker}</div>
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${s.direction === "long" ? "tag-bull" : "tag-bear"}`}>
-                          {s.direction === "long" ? "LONG" : "SHORT"}
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${s.direction === "long" ? "tag-bull" : "tag-neutral"}`}>
+                          {s.direction === "long" ? "LONG" : "BUFFER"}
                         </span>
                       </div>
                       <div className="text-right">
                         <div className="text-[10px] text-muted-foreground font-medium">{s.confidence}% conf</div>
-                        <div className={`text-sm font-bold font-mono ${s.direction === "long" ? "text-bull" : "text-bear"}`}>
+                        <div className={`text-sm font-bold font-mono ${s.direction === "long" ? "text-bull" : "text-muted-foreground"}`}>
                           {s.score > 0 ? "+" : ""}{s.score.toFixed(4)}
                         </div>
                       </div>

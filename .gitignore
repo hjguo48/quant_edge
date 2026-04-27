@@ -58,3 +58,8 @@ htmlcov/
 # Frontend
 frontend/node_modules/
 frontend/dist/
+
+# Greyscale runtime state (per-host)
+data/reports/greyscale/.w12_greyscale.lock
+data/reports/greyscale/.watchdog_state.json
+data/reports/greyscale/logs/

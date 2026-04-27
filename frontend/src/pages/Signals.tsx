@@ -22,7 +22,7 @@ interface LatestPredictionsResponse {
   predictions: Prediction[];
 }
 
-const DIRECTIONS = ["All", "Long", "Short"];
+const DIRECTIONS = ["All", "Active", "Buffer"];
 const PAGE_SIZE = 10;
 const SORT_OPTIONS = [
   { key: "none", label: "Default" },
@@ -155,7 +155,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
     return predictions.map((prediction) => ({
       ticker: prediction.ticker,
       name: prediction.company_name || prediction.ticker,
-      direction: prediction.score > 0 ? ("long" as const) : ("short" as const),
+      direction: prediction.score > 0 ? ("long" as const) : ("neutral" as const),
       confidence: Math.round(prediction.percentile),
       score: prediction.score,
       rank: prediction.rank,
@@ -174,8 +174,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase()) || s.name.toLowerCase().includes(search.toLowerCase());
         const matchDir =
           direction === "All" ||
-          (direction === "Long" && s.direction === "long") ||
-          (direction === "Short" && s.direction === "short");
+          (direction === "Active" && s.direction === "long") ||
+          (direction === "Buffer" && s.direction === "neutral");
         const matchConf = s.confidence >= minConf;
         const matchSector = sectorFilter === "All Sectors" || s.sector === sectorFilter;
         return matchSearch && matchDir && matchConf && matchSector;
@@ -198,8 +198,8 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const longCount = predictions.filter((p) => p.score > 0).length;
-  const shortCount = predictions.filter((p) => p.score <= 0).length;
+  const activeCount = predictions.filter((p) => p.score > 0).length;
+  const bufferCount = predictions.filter((p) => p.score <= 0).length;
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5">
@@ -208,7 +208,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         <div>
           <h2 className="text-xl font-bold text-foreground font-black uppercase tracking-widest">Signal Feed</h2>
           <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-[0.2em] font-medium">
-            Week {data?.week_number || "—"} · {formatDateShort(data?.signal_date)} · <span className="text-bull font-bold">{longCount} long</span> · <span className="text-bear font-bold">{shortCount} short</span> · Not investment advice
+            Week {data?.week_number || "—"} · {formatDateShort(data?.signal_date)} · <span className="text-bull font-bold">{activeCount} active</span> · <span className="text-muted-foreground font-bold">{bufferCount} buffer-held</span> · Not investment advice
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -184,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("saved model to {}", model_path)
 
     universe_src = REPO_ROOT / args.frozen_universe
-    universe_dst = bundle_dir / "frozen_universe_503.json"
+    universe_dst = bundle_dir / universe_src.name
     shutil.copy2(universe_src, universe_dst)
     universe_payload = json.loads(universe_dst.read_text())
     eligible_count = len(universe_payload.get("tickers", []))
@@ -281,7 +281,7 @@ def main(argv: list[str] | None = None) -> int:
     checksum_targets = {
         "bundle.json": bundle_path,
         "model.pkl": model_path,
-        "frozen_universe_503.json": universe_dst,
+        universe_dst.name: universe_dst,
     }
     checksums = {name: sha256_of(path) for name, path in checksum_targets.items()}
     provenance_checksums = {}
