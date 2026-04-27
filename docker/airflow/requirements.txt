@@ -14,3 +14,4 @@ loguru==0.7.3
 polygon-api-client==1.16.3
 pyarrow==16.1.0
 celery[redis]==5.5.3
+exchange_calendars==4.5.5
