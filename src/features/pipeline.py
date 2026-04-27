@@ -123,6 +123,7 @@ class FeaturePipeline:
         as_of: date | datetime,
         *,
         allow_missing_intraday: bool = False,
+        skip_intraday: bool = False,
     ) -> pd.DataFrame:
         """Generate PIT-safe features for market dates in the requested window.
 
@@ -213,22 +214,29 @@ class FeaturePipeline:
             output_end=end,
             as_of=as_of_ts,
         )
-        minute_history = load_intraday_minute_history(
-            tickers=normalized_tickers,
-            start_trade_date=start - timedelta(days=90),
-            end_trade_date=end,
-            as_of=as_of_ts,
-            allow_missing=allow_missing_intraday,
-        )
-        intraday = compute_intraday_features(
-            minute_df=minute_history,
-            daily_prices_df=stock_prices,
-        )
-        if not intraday.empty:
-            intraday = intraday.loc[
-                (pd.to_datetime(intraday["trade_date"]).dt.date >= start)
-                & (pd.to_datetime(intraday["trade_date"]).dt.date <= end)
-            ].copy()
+        # W12: bundle may declare intraday-free retained features. In that case the
+        # caller (e.g. run_greyscale_live with W10 60D champion) sets skip_intraday=True
+        # to avoid loading 503-ticker × 90d minute history (17M+ rows = OOM at 14GB cap).
+        if skip_intraday:
+            logger.info("skip_intraday=True; using empty intraday frame")
+            intraday = _empty_feature_frame()
+        else:
+            minute_history = load_intraday_minute_history(
+                tickers=normalized_tickers,
+                start_trade_date=start - timedelta(days=90),
+                end_trade_date=end,
+                as_of=as_of_ts,
+                allow_missing=allow_missing_intraday,
+            )
+            intraday = compute_intraday_features(
+                minute_df=minute_history,
+                daily_prices_df=stock_prices,
+            )
+            if not intraday.empty:
+                intraday = intraday.loc[
+                    (pd.to_datetime(intraday["trade_date"]).dt.date >= start)
+                    & (pd.to_datetime(intraday["trade_date"]).dt.date <= end)
+                ].copy()
         macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
 
         # FINRA short-sale features (W12 fix: previously absent from live pipeline,

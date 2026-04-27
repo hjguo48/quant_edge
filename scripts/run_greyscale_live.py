@@ -190,12 +190,17 @@ def main(argv: list[str] | None = None) -> int:
         raise RuntimeError("No PIT prices returned for greyscale live execution.")
 
     pipeline = FeaturePipeline()
+    # W12: skip intraday minute load when bundle has no intraday features.
+    # 503 tickers × 90d minute bars OOMs at the 14GB ulimit cap.
+    from src.features.intraday import INTRADAY_FEATURE_NAMES as _INTRADAY_NAMES
+    skip_intraday = not (set(retained_features) & set(_INTRADAY_NAMES))
     features_long = pipeline.run(
         tickers=live_universe,
         start_date=live_trade_date,
         end_date=live_trade_date,
         as_of=as_of,
         allow_missing_intraday=True,
+        skip_intraday=skip_intraday,
     )
     if features_long.empty:
         raise RuntimeError("FeaturePipeline returned no rows for greyscale live execution.")
