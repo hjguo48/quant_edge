@@ -59,7 +59,7 @@ interface RebalanceResponse {
   orders: RebalanceOrder[];
 }
 
-const HOLDINGS_PAGE_SIZE = 10;
+const HOLDINGS_PAGE_SIZE = 5;
 
 const Portfolio = () => {
   const [tab, setTab] = useState("holdings");
