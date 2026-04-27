@@ -16,8 +16,8 @@ interface PortfolioCurrentResponse {
   holding_count: number;
   gross_exposure: number;
   cash_weight: number;
-  portfolio_beta: number;
-  cvar_95: number;
+  portfolio_beta: number | null;
+  cvar_95: number | null;
   turnover: number;
   risk_pass: boolean;
   holdings: PortfolioHolding[];
@@ -30,8 +30,8 @@ interface PortfolioSummaryResponse {
   gross_exposure: number;
   cash_weight: number;
   turnover: number;
-  portfolio_beta: number;
-  cvar_95: number;
+  portfolio_beta: number | null;
+  cvar_95: number | null;
   risk_pass: boolean;
 }
 
@@ -128,19 +128,21 @@ const Portfolio = () => {
         changeLabel: "Net invested", 
         trend: "up" as const 
       },
-      { 
-        label: "Portfolio Beta", 
-        value: summary.portfolio_beta.toFixed(2), 
-        change: 0, 
-        changeLabel: "vs. Benchmark", 
-        trend: "neutral" as const 
+      {
+        label: "Portfolio Beta",
+        value: summary.portfolio_beta != null ? summary.portfolio_beta.toFixed(2) : "—",
+        change: 0,
+        changeLabel: summary.portfolio_beta != null ? "vs. Benchmark" : "Not computed (W13 shadow mode)",
+        trend: "neutral" as const
       },
-      { 
-        label: "CVaR (95%)", 
-        value: `${(summary.cvar_95 * 100).toFixed(2)}%`, 
-        change: summary.risk_pass ? 0 : 1, 
-        changeLabel: summary.risk_pass ? "Risk check passed" : "Risk limit breach", 
-        trend: summary.risk_pass ? "up" as const : "down" as const 
+      {
+        label: "CVaR (95%)",
+        value: summary.cvar_95 != null ? `${(summary.cvar_95 * 100).toFixed(2)}%` : "—",
+        change: summary.risk_pass ? 0 : 1,
+        changeLabel: summary.cvar_95 != null
+          ? (summary.risk_pass ? "Risk check passed" : "Risk limit breach")
+          : "Layer 3 shadow mode — see week_*.json",
+        trend: summary.cvar_95 != null && !summary.risk_pass ? "down" as const : "neutral" as const,
       },
     ];
   }, [summary]);

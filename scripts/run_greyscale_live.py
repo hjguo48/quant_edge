@@ -424,11 +424,20 @@ def main(argv: list[str] | None = None) -> int:
             top_beta_contributors=[],
         )
 
+    # Codex P2 fix: feed `constrained_layer3` (which has full audit_trail,
+    # cvar_99, beta, sector deviations) into the layer3 risk-check summary so
+    # `risk_checks.layer3_portfolio` reflects the actual Layer 3 evaluation
+    # regardless of enforcement mode. The synthetic shadow-mode `constrained`
+    # has audit_trail=[] / cvar_99=None / beta=None, which would make
+    # summarize_portfolio_checks structurally fail.
+    # `pass` here is informational under shadow mode (the wrapper's
+    # critical-alert path already gates on LAYER3_ENFORCEMENT_MODE).
     portfolio_checks = summarize_portfolio_checks(
-        constrained=constrained,
+        constrained=constrained_layer3,
         benchmark_weights=benchmark_weights,
         sector_map=sector_map,
     )
+    portfolio_checks["enforcement_mode"] = LAYER3_ENFORCEMENT_MODE
 
     # Layer 3 shadow diagnostics — recorded every run, regardless of enforcement.
     layer3_would_remove = sorted(set(raw_weights) - set(constrained_layer3.weights))
@@ -604,11 +613,17 @@ def main(argv: list[str] | None = None) -> int:
             },
             "layer2_signal": signal_state,
             "layer3_portfolio": {
+                # Codex P2 fix: in shadow mode the synthetic `constrained` has
+                # empty audit_trail / null cvar / null beta. Expose the actual
+                # Layer 3 evaluation here (informational) so downstream
+                # consumers see real risk-engine output.
                 "pass": bool(portfolio_checks["overall_pass"]),
+                "enforcement_mode": LAYER3_ENFORCEMENT_MODE,
                 "checks": portfolio_checks,
-                "beta_contributions": constrained.beta_contributions,
-                "top_beta_contributors": constrained.top_beta_contributors,
-                "report": constrained.to_dict(),
+                "beta_contributions": constrained_layer3.beta_contributions,
+                "top_beta_contributors": constrained_layer3.top_beta_contributors,
+                "report": constrained_layer3.to_dict(),
+                "actual_book_report": constrained.to_dict(),
             },
             "layer4_operational": {
                 "pass": bool(not operational_report.halt_pipeline),

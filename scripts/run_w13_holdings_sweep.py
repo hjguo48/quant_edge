@@ -694,9 +694,18 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("Stage 2: loading PIT prices")
     signal_dates = pd.DatetimeIndex(predictions.index.get_level_values("trade_date")).sort_values().unique()
     tickers = sorted(set(predictions.index.get_level_values("ticker").astype(str).tolist()) | {benchmark_ticker})
-    price_start = pd.Timestamp(signal_dates.min()).date()
+    # Codex P1 fix: pre-load LIVE_HISTORY_LOOKBACK_DAYS + buffer of price history
+    # before the first signal date so Layer 3's 400-day trailing window is full
+    # for early periods. Without this preroll, early CVaR/correlation inputs get
+    # silently truncated and bias trigger rates downward at the start of the run.
+    history_preroll_days = LIVE_HISTORY_LOOKBACK_DAYS + 30
+    price_start = (pd.Timestamp(signal_dates.min()) - pd.Timedelta(days=history_preroll_days)).date()
     price_end = (pd.Timestamp(signal_dates.max()) + pd.Timedelta(days=args.price_buffer_days)).date()
     prices = get_prices_pit(tickers=tickers, start_date=price_start, end_date=price_end, as_of=as_of)
+    logger.info(
+        "price load span: {} → {} (preroll={}d before first signal {})",
+        price_start, price_end, history_preroll_days, signal_dates.min(),
+    )
     if prices.empty:
         raise RuntimeError("No PIT prices returned for sweep.")
 
