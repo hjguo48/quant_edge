@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { TrendingUp, TrendingDown, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import StatCard from "../components/StatCard";
 import { fetchApi } from "../hooks/useApi";
@@ -59,12 +59,20 @@ interface RebalanceResponse {
   orders: RebalanceOrder[];
 }
 
+const HOLDINGS_PAGE_SIZE = 10;
+
 const Portfolio = () => {
   const [tab, setTab] = useState("holdings");
   const [budgetStr, setBudgetStr] = useState("100000");
   const [prevBudgetStr, setBudgetStrPrev] = useState("100000");
   const totalBudget = parseInt(budgetStr) || 0;
   const [debouncedTotalBudget, setDebouncedTotalBudget] = useState(100000);
+  const [holdingsPage, setHoldingsPage] = useState(1);
+
+  // Reset Optimal Allocation page when switching tabs
+  useEffect(() => {
+    setHoldingsPage(1);
+  }, [tab]);
 
   // Debounce budget calculation to avoid excessive API calls and layout flickering
   useEffect(() => {
@@ -329,68 +337,140 @@ const Portfolio = () => {
           </div>
         </div>
 
-        {tab === "holdings" && (
-          <div className="animate-in fade-in duration-500">
-            <div className="flex items-center px-6 py-3 border-b border-border bg-muted/20 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-              <div className="w-32">Security</div>
-              <div className="flex-1">Target Weight</div>
-              <div className="w-32 text-right">Alpha Score</div>
-              <div className="w-32 text-center">Direction</div>
-              <div className="w-10" />
-            </div>
-            {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="px-6 py-5 border-b border-border flex items-center gap-4 animate-pulse">
-                  <div className="w-32 h-5 bg-muted rounded" />
-                  <div className="flex-1 h-3 bg-muted rounded" />
-                  <div className="w-32 h-5 bg-muted rounded" />
-                  <div className="w-32 h-5 bg-muted rounded" />
-                </div>
-              ))
-            ) : current?.holdings.map((h, i) => {
-              const isLong = h.score > 0;
-              return (
-                <div
-                  key={h.ticker}
-                  className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-primary/[0.02] transition-colors group"
-                  style={{ animationDelay: `${i * 30}ms` }}
-                >
-                  <div className="w-32">
-                    <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{h.ticker}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">Equity Component</div>
+        {tab === "holdings" && (() => {
+          const allHoldings = current?.holdings ?? [];
+          const totalHoldingsPages = Math.max(1, Math.ceil(allHoldings.length / HOLDINGS_PAGE_SIZE));
+          const safePage = Math.min(holdingsPage, totalHoldingsPages);
+          const paginatedHoldings = allHoldings.slice(
+            (safePage - 1) * HOLDINGS_PAGE_SIZE,
+            safePage * HOLDINGS_PAGE_SIZE,
+          );
+          return (
+            <div className="animate-in fade-in duration-500">
+              <div className="flex items-center px-6 py-3 border-b border-border bg-muted/20 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                <div className="w-32">Security</div>
+                <div className="flex-1">Target Weight</div>
+                <div className="w-32 text-right">Alpha Score</div>
+                <div className="w-32 text-center">Direction</div>
+                <div className="w-10" />
+              </div>
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="px-6 py-5 border-b border-border flex items-center gap-4 animate-pulse">
+                    <div className="w-32 h-5 bg-muted rounded" />
+                    <div className="flex-1 h-3 bg-muted rounded" />
+                    <div className="w-32 h-5 bg-muted rounded" />
+                    <div className="w-32 h-5 bg-muted rounded" />
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4">
-                      <div className="w-48 h-2 bg-muted rounded-full overflow-hidden border border-white/5">
-                        <div
-                          className={`h-full rounded-full transition-all duration-1000 ${isLong ? 'bar-glow-bull' : 'bar-glow-bear'}`}
-                          style={{
-                            width: `${Math.min(100, h.weight * 100 * 5)}%`,
-                            backgroundColor: isLong ? "#00C805" : "#FF5252",
-                          }}
-                        />
+                ))
+              ) : paginatedHoldings.map((h, i) => {
+                const isLong = h.score > 0;
+                return (
+                  <div
+                    key={h.ticker}
+                    className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-primary/[0.02] transition-colors group"
+                    style={{ animationDelay: `${i * 30}ms` }}
+                  >
+                    <div className="w-32">
+                      <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{h.ticker}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">Equity Component</div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4">
+                        <div className="w-48 h-2 bg-muted rounded-full overflow-hidden border border-white/5">
+                          <div
+                            className={`h-full rounded-full transition-all duration-1000 ${isLong ? 'bar-glow-bull' : 'bar-glow-bear'}`}
+                            style={{
+                              width: `${Math.min(100, h.weight * 100 * 5)}%`,
+                              backgroundColor: isLong ? "#00C805" : "#FF5252",
+                            }}
+                          />
+                        </div>
+                        <span className={`text-xs font-black font-mono ${isLong ? "text-bull" : "text-bear"}`}>
+                          {(h.weight * 100).toFixed(2)}%
+                        </span>
                       </div>
-                      <span className={`text-xs font-black font-mono ${isLong ? "text-bull" : "text-bear"}`}>
-                        {(h.weight * 100).toFixed(2)}%
+                    </div>
+                    <div className="w-32 text-right">
+                      <span className="text-xs font-mono font-bold text-foreground/80 bg-muted/50 px-2 py-1 rounded">{h.score.toFixed(4)}</span>
+                    </div>
+                    <div className="w-32 flex justify-center">
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border shadow-sm ${isLong ? "bg-bull/10 border-bull/30 text-bull" : "bg-bear/10 border-bear/30 text-bear"}`}>
+                        {isLong ? "BULLISH" : "BEARISH"}
                       </span>
                     </div>
+                    <div className="w-10 flex justify-end">
+                      <ArrowRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                    </div>
                   </div>
-                  <div className="w-32 text-right">
-                    <span className="text-xs font-mono font-bold text-foreground/80 bg-muted/50 px-2 py-1 rounded">{h.score.toFixed(4)}</span>
-                  </div>
-                  <div className="w-32 flex justify-center">
-                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border shadow-sm ${isLong ? "bg-bull/10 border-bull/30 text-bull" : "bg-bear/10 border-bear/30 text-bear"}`}>
-                      {isLong ? "BULLISH" : "BEARISH"}
-                    </span>
-                  </div>
-                  <div className="w-10 flex justify-end">
-                    <ArrowRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                );
+              })}
+
+              {/* Pagination Controls — mirrors Signal Feed */}
+              {totalHoldingsPages > 1 && !isLoading && (
+                <div className="flex items-center justify-between px-4 py-6">
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
+                    Showing <span className="text-foreground">{(safePage - 1) * HOLDINGS_PAGE_SIZE + 1}</span> to <span className="text-foreground">{Math.min(safePage * HOLDINGS_PAGE_SIZE, allHoldings.length)}</span> of <span className="text-foreground">{allHoldings.length}</span>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setHoldingsPage(1)}
+                      disabled={safePage === 1}
+                      className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
+                      title="First Page"
+                    >
+                      <ChevronsLeft size={16} />
+                    </button>
+                    <button
+                      onClick={() => setHoldingsPage(p => Math.max(1, p - 1))}
+                      disabled={safePage === 1}
+                      className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: Math.min(5, totalHoldingsPages) }).map((_, i) => {
+                        let pageNum = safePage;
+                        if (totalHoldingsPages <= 5) pageNum = i + 1;
+                        else if (safePage <= 3) pageNum = i + 1;
+                        else if (safePage >= totalHoldingsPages - 2) pageNum = totalHoldingsPages - 4 + i;
+                        else pageNum = safePage - 2 + i;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setHoldingsPage(pageNum)}
+                            className={`w-9 h-9 rounded-xl text-[10px] font-medium uppercase transition-all border ${
+                              safePage === pageNum ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-muted/30 text-muted-foreground border-white/5 hover:text-foreground"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      onClick={() => setHoldingsPage(p => Math.min(totalHoldingsPages, p + 1))}
+                      disabled={safePage === totalHoldingsPages}
+                      className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
+                      title="Next Page"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                    <button
+                      onClick={() => setHoldingsPage(totalHoldingsPages)}
+                      disabled={safePage === totalHoldingsPages}
+                      className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
+                      title="Last Page"
+                    >
+                      <ChevronsRight size={16} />
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              )}
+            </div>
+          );
+        })()}
 
         {tab === "trades" && (
           <div className="animate-in slide-in-from-bottom-2 duration-500">
