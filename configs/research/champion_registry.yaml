@@ -1,20 +1,37 @@
-# 各 horizon 的当前 champion 与候选升级队列。
-as_of: 2026-04-17
+# 各 horizon 的当前 champion 与候选升级队列 (W12 refresh 2026-04-27).
+as_of: 2026-04-27
 
 champions:
   60D:
-    current: v5_no_analyst
+    current: w12_60d_ridge_swbuf_v1
+    bundle_path: data/models/bundles/w12_60d_ridge_swbuf_v1/bundle.json
+    artifact_path: data/models/bundles/w12_60d_ridge_swbuf_v1/model.pkl
     candidates: []
+    notes: |
+      W11 layered fusion FAIL (V1-V3 全输 V0).
+      score_weighted_buffered + 60D Ridge alone 保留为 production champion.
+      Backtest: net 7.34% / IR 0.72 / Sharpe 0.84 / DD 14.0%.
+      W10 triple gate PASS, capacity to $25M, bootstrap p=0.035.
   20D:
     current: null
     candidates: []
+    notes: |
+      W10 P1-1 truth table tested at 20D: net 4.4% / IR 0.49 (相对 60D 弱).
+      未升 production. 留作 future fusion candidate (但 W11 已证明 fusion 在
+      当前数据上 destructive).
   10D:
     current: null
     candidates: []
+    notes: 未研究.
   5D:
     current: null
     candidates: []
+    notes: |
+      W10.5 supplement 跑过: net 1.65% / IR 0.30 (weak).
+      不建议作为独立 horizon.
   1D:
     current: null
     candidates: []
-
+    notes: |
+      W10.5 supplement 跑过: net 1.45% / IR 0.29 (weak).
+      可能用作 throttle 信号 (W11 V3 测过, 帮助有限).

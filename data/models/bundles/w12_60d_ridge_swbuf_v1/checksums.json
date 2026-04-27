@@ -1,0 +1,14 @@
+{
+  "bundle.json": "edd1b9c1f520bb3ed472558b723806f366e75af3a5b427c0a3cb28704f3fb4dc",
+  "frozen_universe_503.json": "373651d4a1a3e6eebb03ec353eea23292b42a98e4355831e01e118c6cbb9bcae",
+  "model.pkl": "7ee907d43c6dcf82df3828879ce9b064df77f9e905015e8b2f0728c959056025",
+  "provenance": {
+    "data/reports/W10_stress_test_verdict_2026-04-27.md": "6cc83ad5d8b1e33d98cce054fe1dbadd632579c82e194356aa1cbda2c963631a",
+    "data/reports/W10_verdict_2026-04-26.md": "7191b9acd48f4eb230fd508f1ba5a12050db5418f7f218eebc24ca77b976b2c2",
+    "data/reports/W11_verdict_2026-04-27.md": "ca06bb783b4abae936dd2f82304c23a064d038669c1917bbedd8e9413e4d025f",
+    "data/reports/w10_capacity_sweep.json": "197181fbc762c6bbd5c8b979066be607f1290cb075b08133e290977ba8b58852",
+    "data/reports/w10_stress_tests.json": "1bcbec35e231b598c83f56f85f5d77ff4defdf287be20e81b6cbbb8aba13dd20",
+    "data/reports/w10_truth_table_60d.json": "c54039653bf98203458f29a44203957d22ef424c5f1b20bcce7a37d0408a3d9a",
+    "data/reports/walkforward_v9full9y_60d_ridge_13w.json": "92aa5c88a21d1ea600c37cee702752a5eaf65b5301e6f5e62ab00276b3bbc7d1"
+  }
+}
