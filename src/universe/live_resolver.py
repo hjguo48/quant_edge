@@ -169,16 +169,19 @@ def resolve_live_universe(
         FROM (
             SELECT
                 ticker,
-                trade_date,
                 COALESCE(adj_close, close) AS adj_close,
-                volume
+                volume,
+                ROW_NUMBER() OVER (
+                    PARTITION BY ticker
+                    ORDER BY trade_date DESC
+                ) AS rn
             FROM stock_prices
             WHERE ticker = ANY(:tickers)
               AND trade_date >= :adv_start
               AND trade_date <= :trade_date
               AND knowledge_time <= :as_of
-            ORDER BY ticker, trade_date DESC
         ) recent
+        WHERE rn <= :adv_window_days
         GROUP BY ticker
         """
     )
@@ -214,6 +217,7 @@ def resolve_live_universe(
         {
             "tickers": candidates,
             "adv_start": adv_start,
+            "adv_window_days": policy.adv_window_days,
             "trade_date": trade_date,
             "as_of": as_of,
         },
