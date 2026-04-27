@@ -1,0 +1,1075 @@
+{
+  "db_state": {
+    "as_of_utc": "2026-04-11T00:00:00+00:00",
+    "latest_pit_trade_date": "2026-04-09",
+    "latest_stored_trade_date": "2026-04-24",
+    "stock_universe_size": 48,
+    "universe_membership_live_count": 503
+  },
+  "dry_run": true,
+  "feature_drift_psi": null,
+  "feature_pipeline": {
+    "batch_id": "73c7332d-8171-4bbf-8b14-55bb14bbe485",
+    "end_date": "2026-04-09",
+    "feature_matrix_shape": {
+      "n_features": 62,
+      "n_stocks": 48
+    },
+    "feature_rows_live_date": 13764,
+    "feature_rows_total": 13764,
+    "start_date": "2025-03-05"
+  },
+  "fusion": {
+    "historical_live_ic_frame": [],
+    "historical_live_ic_points": 0,
+    "live_weights": {
+      "ridge": 1.0
+    },
+    "regime": {
+      "regime": "low",
+      "regime_adjusted_model_weights": {
+        "ridge": 1.0
+      },
+      "scalar": 1.0,
+      "vix": 19.49,
+      "weights": {
+        "unknown": 1.0
+      }
+    },
+    "rolling_window_rebalance_points": 12,
+    "seed_weights": {
+      "ridge": 1.0
+    },
+    "temperature": 0.0,
+    "weight_source": "seed_w11_avg_weights"
+  },
+  "generated_at_utc": "2026-04-27T07:12:26.331947+00:00",
+  "live_outputs": {
+    "pairwise_rank_correlation": {},
+    "signal_date": "2026-04-09",
+    "target_weights_after_risk": {
+      "A": 0.04,
+      "ABNB": 0.04,
+      "ACN": 0.04,
+      "ADBE": 0.04,
+      "ADSK": 0.039999999999999994,
+      "AIZ": 0.04,
+      "AKAM": 0.04,
+      "ALB": 0.04,
+      "ALGN": 0.04,
+      "ALLE": 0.04,
+      "AMD": 0.04,
+      "AME": 0.04,
+      "AMP": 0.04,
+      "ANET": 0.04,
+      "AOS": 0.04,
+      "APA": 0.04,
+      "APO": 0.04,
+      "APTV": 0.04,
+      "ARE": 0.04,
+      "AXON": 0.04
+    },
+    "target_weights_raw": {
+      "A": 0.049999999999999996,
+      "ABNB": 0.049999999999999996,
+      "ACN": 0.049999999999999996,
+      "ADBE": 0.049999999999999996,
+      "ADSK": 0.04999999999999999,
+      "AIZ": 0.049999999999999996,
+      "AKAM": 0.049999999999999996,
+      "ALB": 0.049999999999999996,
+      "ALGN": 0.049999999999999996,
+      "ALLE": 0.049999999999999996,
+      "AMD": 0.049999999999999996,
+      "AME": 0.049999999999999996,
+      "AMP": 0.049999999999999996,
+      "ANET": 0.049999999999999996,
+      "AOS": 0.049999999999999996,
+      "APA": 0.049999999999999996,
+      "APO": 0.049999999999999996,
+      "APTV": 0.049999999999999996,
+      "ARE": 0.049999999999999996,
+      "AXON": 0.049999999999999996
+    },
+    "top_10_fusion_scores": [
+      {
+        "score": 0.14063004126192413,
+        "ticker": "ALB"
+      },
+      {
+        "score": 0.13875645598492467,
+        "ticker": "AXON"
+      },
+      {
+        "score": 0.13846758520328986,
+        "ticker": "APTV"
+      },
+      {
+        "score": 0.13599953158457162,
+        "ticker": "ALGN"
+      },
+      {
+        "score": 0.13428043341785784,
+        "ticker": "ARE"
+      },
+      {
+        "score": 0.12945738510854987,
+        "ticker": "APA"
+      },
+      {
+        "score": 0.12838398549104457,
+        "ticker": "AOS"
+      },
+      {
+        "score": 0.12008629029126958,
+        "ticker": "ABNB"
+      },
+      {
+        "score": 0.11318866966564857,
+        "ticker": "ADBE"
+      },
+      {
+        "score": 0.11311162179894037,
+        "ticker": "ACN"
+      }
+    ],
+    "top_10_holdings_after_risk": [
+      {
+        "ticker": "A",
+        "weight": 0.04
+      },
+      {
+        "ticker": "ABNB",
+        "weight": 0.04
+      },
+      {
+        "ticker": "ACN",
+        "weight": 0.04
+      },
+      {
+        "ticker": "ADBE",
+        "weight": 0.04
+      },
+      {
+        "ticker": "AIZ",
+        "weight": 0.04
+      },
+      {
+        "ticker": "AKAM",
+        "weight": 0.04
+      },
+      {
+        "ticker": "ALB",
+        "weight": 0.04
+      },
+      {
+        "ticker": "ALGN",
+        "weight": 0.04
+      },
+      {
+        "ticker": "ALLE",
+        "weight": 0.04
+      },
+      {
+        "ticker": "AMD",
+        "weight": 0.04
+      }
+    ],
+    "top_10_model_scores": {
+      "ridge": [
+        {
+          "score": 0.14063004126192413,
+          "ticker": "ALB"
+        },
+        {
+          "score": 0.13875645598492467,
+          "ticker": "AXON"
+        },
+        {
+          "score": 0.13846758520328986,
+          "ticker": "APTV"
+        },
+        {
+          "score": 0.13599953158457162,
+          "ticker": "ALGN"
+        },
+        {
+          "score": 0.13428043341785784,
+          "ticker": "ARE"
+        },
+        {
+          "score": 0.12945738510854987,
+          "ticker": "APA"
+        },
+        {
+          "score": 0.12838398549104457,
+          "ticker": "AOS"
+        },
+        {
+          "score": 0.12008629029126958,
+          "ticker": "ABNB"
+        },
+        {
+          "score": 0.11318866966564857,
+          "ticker": "ADBE"
+        },
+        {
+          "score": 0.11311162179894037,
+          "ticker": "ACN"
+        }
+      ]
+    }
+  },
+  "model_bundle": {
+    "horizon_days": 60,
+    "models": {
+      "ridge": "data/models/bundles/w12_60d_ridge_swbuf_v1/model.pkl"
+    },
+    "path": "/home/jiahao/quant_edge/data/models/bundles/w12_60d_ridge_swbuf_v1/bundle.json",
+    "retained_feature_count": 62,
+    "window_id": "W11"
+  },
+  "notes": [
+    "Fusion ranking uses cross-sectional z-scored model outputs with rolling-IC weights.",
+    "Regime adjusts per-model fusion weights (blend toward equal-weight) to change cross-sectional rankings.",
+    "Portfolio scheme: score_weighted (Phase B optimal turnover controls).",
+    "PSI monitoring checks feature distribution drift against historical reference.",
+    "Dry-run mode writes a report but does not place trades or persist audit rows."
+  ],
+  "portfolio_metrics": {
+    "cash_weight_after_risk": 0.19999999999999984,
+    "gross_exposure_after_risk": 0.8000000000000002,
+    "holding_count_after_risk": 20,
+    "portfolio_scheme": "score_weighted",
+    "turnover_controls": {
+      "enabled": true,
+      "max_weight": 0.05,
+      "min_holdings": 20,
+      "min_trade_weight": 0.01,
+      "no_trade_zone": 0.0,
+      "selection_pct": 0.2,
+      "sell_buffer_pct": 0.25,
+      "turnover_penalty_lambda": 0.0,
+      "weight_shrinkage": 0.0,
+      "weighting_scheme": "score_weighted"
+    },
+    "turnover_vs_previous": 0.4
+  },
+  "risk_checks": {
+    "layer1_data": {
+      "pass": true,
+      "report": {
+        "api_health_alert": {
+          "consecutive_failures": 0,
+          "error_count": 0,
+          "halt_pipeline": false,
+          "max_consecutive_failures": 3,
+          "mean_response_time": 0.0,
+          "message": "API health stable: mean_response_time=0.000s, errors=0.",
+          "severity": "green",
+          "switch_to_backup": false
+        },
+        "feature_distribution_alerts": [
+          {
+            "current_sample_size": 48,
+            "feature_name": "is_missing_high_vix_x_beta",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature is_missing_high_vix_x_beta drifted relative to the trailing 60D distribution (KS p=1.471e-105).",
+            "p_value": 1.471463955261966e-105,
+            "severity": "yellow",
+            "statistic": 1.0
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "is_missing_short_sale_ratio_5d",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature is_missing_short_sale_ratio_5d drifted relative to the trailing 60D distribution (KS p=1.471e-105).",
+            "p_value": 1.471463955261966e-105,
+            "severity": "yellow",
+            "statistic": 1.0
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "insider_buy_intensity_20d",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature insider_buy_intensity_20d drifted relative to the trailing 60D distribution (KS p=1.005e-16).",
+            "p_value": 1.0054156927893448e-16,
+            "severity": "yellow",
+            "statistic": 0.5996527777777778
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "short_sale_ratio_5d",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature short_sale_ratio_5d drifted relative to the trailing 60D distribution (KS p=6.878e-13).",
+            "p_value": 6.877889076666671e-13,
+            "severity": "yellow",
+            "statistic": 0.5302083333333333
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "insider_cluster_buy",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature insider_cluster_buy drifted relative to the trailing 60D distribution (KS p=1.396e-10).",
+            "p_value": 1.395934149426326e-10,
+            "severity": "yellow",
+            "statistic": 0.48159722222222223
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "insider_cluster_buy_30d_w",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature insider_cluster_buy_30d_w drifted relative to the trailing 60D distribution (KS p=2.83e-09).",
+            "p_value": 2.829839653758951e-09,
+            "severity": "yellow",
+            "statistic": 0.4510416666666667
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "credit_widening_x_leverage",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature credit_widening_x_leverage drifted relative to the trailing 60D distribution (KS p=7.696e-06).",
+            "p_value": 7.696274990435212e-06,
+            "severity": "yellow",
+            "statistic": 0.35555555555555557
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "high_vix_x_beta",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature high_vix_x_beta drifted relative to the trailing 60D distribution (KS p=3.747e-05).",
+            "p_value": 3.746753202696349e-05,
+            "severity": "yellow",
+            "statistic": 0.3326388888888889
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "insider_buy_value",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature insider_buy_value drifted relative to the trailing 60D distribution (KS p=4.714e-05).",
+            "p_value": 4.7140656133547416e-05,
+            "severity": "yellow",
+            "statistic": 0.32916666666666666
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "insider_role_skew_30d",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature insider_role_skew_30d drifted relative to the trailing 60D distribution (KS p=0.003338).",
+            "p_value": 0.00333849120481439,
+            "severity": "yellow",
+            "statistic": 0.25555555555555554
+          },
+          {
+            "current_sample_size": 48,
+            "feature_name": "insider_net_buy_ratio",
+            "historical_sample_size": 2880,
+            "lookback_days": 60,
+            "message": "Feature insider_net_buy_ratio drifted relative to the trailing 60D distribution (KS p=0.00425).",
+            "p_value": 0.004249840461585965,
+            "severity": "yellow",
+            "statistic": 0.25069444444444444
+          }
+        ],
+        "halt_pipeline": false,
+        "missing_rate_alert": {
+          "check_name": "missing_rate",
+          "halt_pipeline": false,
+          "message": "Observed 48 / 48 tickers; missing_rate=0.00%.",
+          "observed_value": 0.0,
+          "severity": "green",
+          "threshold_red": 0.15,
+          "threshold_yellow": 0.05
+        },
+        "overall_severity": "yellow"
+      },
+      "severity": "yellow"
+    },
+    "layer2_signal": {
+      "challenger_ic": 0.0,
+      "fusion_ic": null,
+      "history_dates": 0,
+      "history_rows": 0,
+      "pass": true,
+      "recommend_switch": false,
+      "report": {
+        "matured_history_points": 0,
+        "message": "Insufficient matured live history for rolling signal-risk checks; the greyscale run stays on seeded fusion weights.",
+        "mode": "cold_start_seed_weights",
+        "required_points": 12
+      },
+      "severity": "green"
+    },
+    "layer3_portfolio": {
+      "beta_contributions": {
+        "A": 0.0504287434488668,
+        "ABNB": 0.051932247073609786,
+        "ACN": 0.03477768992864706,
+        "ADBE": 0.02928004505017221,
+        "ADSK": 0.035640600609376794,
+        "AIZ": 0.023275137756736584,
+        "AKAM": 0.041714887914374055,
+        "ALB": 0.07187445112170411,
+        "ALGN": 0.05962455201939371,
+        "ALLE": 0.03159729189225926,
+        "AMD": 0.09137564892721275,
+        "AME": 0.03955949004096904,
+        "AMP": 0.04560981490941668,
+        "ANET": 0.08208286201946725,
+        "AOS": 0.03546019785450748,
+        "APA": 0.018407276889616825,
+        "APO": 0.05361633715271099,
+        "APTV": 0.059302955789918066,
+        "ARE": 0.039077311673108454,
+        "AXON": 0.04980229645057672
+      },
+      "checks": {
+        "checks": {
+          "audit_trail_complete": {
+            "limit": 8,
+            "pass": true,
+            "value": 8
+          },
+          "beta_bounds": {
+            "bounds": [
+              0.7,
+              1.3
+            ],
+            "pass": true,
+            "value": 0.9444398385226447
+          },
+          "cash_non_negative": {
+            "limit": 0.0,
+            "pass": true,
+            "value": 0.19999999999999984
+          },
+          "cvar_floor": {
+            "limit": -0.05,
+            "pass": true,
+            "value": -0.04932890835607639
+          },
+          "gross_exposure_non_negative": {
+            "limit": 0.0,
+            "pass": true,
+            "value": 0.8000000000000002
+          },
+          "max_single_stock_weight": {
+            "limit": 0.1,
+            "pass": true,
+            "value": 0.04
+          },
+          "min_holdings": {
+            "limit": 20,
+            "pass": true,
+            "value": 20
+          },
+          "sector_deviation_cap": {
+            "limit": 0.15,
+            "pass": true,
+            "value": 0.10416666666666666
+          },
+          "stress_test": {
+            "limit": -0.12,
+            "pass": true,
+            "value": -0.0755551870818116
+          },
+          "turnover_cap": {
+            "limit": 0.4,
+            "pass": true,
+            "value": 0.4
+          }
+        },
+        "max_abs_sector_deviation_vs_equal_weight_universe": 0.10416666666666666,
+        "overall_pass": true,
+        "sector_deviation_vs_equal_weight_universe": {
+          "Basic Materials": -0.0016666666666666635,
+          "Consumer Cyclical": -0.003333333333333327,
+          "Consumer Defensive": -0.020833333333333332,
+          "Energy": 0.01916666666666667,
+          "Financial Services": -0.08833333333333332,
+          "Healthcare": -0.024166666666666656,
+          "Industrials": 0.035,
+          "Real Estate": -0.0225,
+          "Technology": 0.010833333333333334,
+          "Utilities": -0.10416666666666666
+        },
+        "triggered_rules": [
+          "cvar_haircut"
+        ],
+        "warnings": [
+          "CVaR -0.0617 breached the floor -0.0500; applied 1 20% gross haircut round(s)."
+        ]
+      },
+      "pass": true,
+      "report": {
+        "audit_trail": [
+          {
+            "action": "cap_weights",
+            "after": {
+              "max_weight": 0.049999999999999996
+            },
+            "before": {
+              "limit": 0.1,
+              "max_weight": 0.049999999999999996
+            },
+            "message": "Cap each name at the maximum single-stock weight.",
+            "priority": "P0",
+            "rule_name": "single_stock_cap",
+            "triggered": false
+          },
+          {
+            "action": "trim_overweight_sectors",
+            "after": {
+              "max_abs_deviation": 0.10416666666666669,
+              "sector_weights": {
+                "Basic Materials": 0.049999999999999996,
+                "Consumer Cyclical": 0.09999999999999999,
+                "Energy": 0.049999999999999996,
+                "Financial Services": 0.15,
+                "Healthcare": 0.09999999999999999,
+                "Industrials": 0.19999999999999998,
+                "Real Estate": 0.049999999999999996,
+                "Technology": 0.3
+              }
+            },
+            "before": {
+              "max_abs_deviation": 0.10416666666666669,
+              "sector_weights": {
+                "Basic Materials": 0.049999999999999996,
+                "Consumer Cyclical": 0.09999999999999999,
+                "Energy": 0.049999999999999996,
+                "Financial Services": 0.15,
+                "Healthcare": 0.09999999999999999,
+                "Industrials": 0.19999999999999998,
+                "Real Estate": 0.049999999999999996,
+                "Technology": 0.3
+              }
+            },
+            "message": "Keep sector deviation versus benchmark within the configured band.",
+            "priority": "P0",
+            "rule_name": "sector_deviation_cap",
+            "triggered": false
+          },
+          {
+            "action": "scale_down_gross",
+            "after": {
+              "cvar_99": -0.04932890835607639,
+              "gross_exposure": 0.8000000000000002,
+              "iterations": 1
+            },
+            "before": {
+              "cvar_99": -0.06166113544509547,
+              "floor": -0.05,
+              "gross_exposure": 1.0
+            },
+            "message": "Reduce gross exposure by 20% per round for up to three rounds if 99% CVaR breaches the floor.",
+            "priority": "P0",
+            "rule_name": "cvar_haircut",
+            "triggered": true
+          },
+          {
+            "action": "tilt_toward_target_beta",
+            "after": {
+              "portfolio_beta": 0.9444398385226447,
+              "target_bounds": [
+                0.8,
+                1.2
+              ]
+            },
+            "before": {
+              "hard_bounds": [
+                0.7,
+                1.3
+              ],
+              "portfolio_beta": 0.9444398385226447
+            },
+            "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+            "priority": "P1",
+            "rule_name": "beta_alignment",
+            "triggered": false
+          },
+          {
+            "action": "remove_redundant_names",
+            "after": {
+              "high_corr_pairs": 0
+            },
+            "before": {
+              "high_corr_pairs": 0
+            },
+            "message": "Trim highly correlated duplicate positions.",
+            "priority": "P1",
+            "rule_name": "correlation_dedup",
+            "triggered": false
+          },
+          {
+            "action": "blend_with_current_weights",
+            "after": {
+              "turnover": 0.4
+            },
+            "before": {
+              "limit": 0.4,
+              "turnover": 0.4
+            },
+            "message": "Cap one-period turnover at the configured limit.",
+            "priority": "P1",
+            "rule_name": "turnover_cap",
+            "triggered": false
+          },
+          {
+            "action": "add_small_satellite_positions",
+            "after": {
+              "holding_count": 20
+            },
+            "before": {
+              "holding_count": 20,
+              "minimum": 20
+            },
+            "message": "Maintain a diversified minimum number of holdings.",
+            "priority": "P2",
+            "rule_name": "minimum_holdings",
+            "triggered": false
+          },
+          {
+            "action": "warning_only",
+            "after": {
+              "stressed_return": -0.0755551870818116
+            },
+            "before": {
+              "shock": -0.1,
+              "warning_threshold": -0.12
+            },
+            "message": "Run a simple market shock stress test without modifying weights.",
+            "priority": "P2",
+            "rule_name": "stress_test",
+            "triggered": false
+          }
+        ],
+        "beta_contributions": {
+          "A": 0.0504287434488668,
+          "ABNB": 0.051932247073609786,
+          "ACN": 0.03477768992864706,
+          "ADBE": 0.02928004505017221,
+          "ADSK": 0.035640600609376794,
+          "AIZ": 0.023275137756736584,
+          "AKAM": 0.041714887914374055,
+          "ALB": 0.07187445112170411,
+          "ALGN": 0.05962455201939371,
+          "ALLE": 0.03159729189225926,
+          "AMD": 0.09137564892721275,
+          "AME": 0.03955949004096904,
+          "AMP": 0.04560981490941668,
+          "ANET": 0.08208286201946725,
+          "AOS": 0.03546019785450748,
+          "APA": 0.018407276889616825,
+          "APO": 0.05361633715271099,
+          "APTV": 0.059302955789918066,
+          "ARE": 0.039077311673108454,
+          "AXON": 0.04980229645057672
+        },
+        "cash_weight": 0.19999999999999984,
+        "cvar_99": -0.04932890835607639,
+        "gross_exposure": 0.8000000000000002,
+        "holding_count": 20,
+        "portfolio_beta": 0.9444398385226447,
+        "sector_weights": {
+          "Basic Materials": 0.04,
+          "Consumer Cyclical": 0.08,
+          "Energy": 0.04,
+          "Financial Services": 0.12,
+          "Healthcare": 0.08,
+          "Industrials": 0.16,
+          "Real Estate": 0.04,
+          "Technology": 0.24
+        },
+        "top_beta_contributors": [
+          {
+            "beta": 2.284391223180319,
+            "contribution": 0.09137564892721275,
+            "ticker": "AMD",
+            "weight": 0.04
+          },
+          {
+            "beta": 2.0520715504866813,
+            "contribution": 0.08208286201946725,
+            "ticker": "ANET",
+            "weight": 0.04
+          },
+          {
+            "beta": 1.7968612780426028,
+            "contribution": 0.07187445112170411,
+            "ticker": "ALB",
+            "weight": 0.04
+          },
+          {
+            "beta": 1.4906138004848428,
+            "contribution": 0.05962455201939371,
+            "ticker": "ALGN",
+            "weight": 0.04
+          },
+          {
+            "beta": 1.4825738947479516,
+            "contribution": 0.059302955789918066,
+            "ticker": "APTV",
+            "weight": 0.04
+          },
+          {
+            "beta": 1.3404084288177747,
+            "contribution": 0.05361633715271099,
+            "ticker": "APO",
+            "weight": 0.04
+          },
+          {
+            "beta": 1.2983061768402446,
+            "contribution": 0.051932247073609786,
+            "ticker": "ABNB",
+            "weight": 0.04
+          },
+          {
+            "beta": 1.26071858622167,
+            "contribution": 0.0504287434488668,
+            "ticker": "A",
+            "weight": 0.04
+          },
+          {
+            "beta": 1.245057411264418,
+            "contribution": 0.04980229645057672,
+            "ticker": "AXON",
+            "weight": 0.04
+          },
+          {
+            "beta": 1.140245372735417,
+            "contribution": 0.04560981490941668,
+            "ticker": "AMP",
+            "weight": 0.04
+          }
+        ],
+        "turnover": 0.4,
+        "warnings": [
+          "CVaR -0.0617 breached the floor -0.0500; applied 1 20% gross haircut round(s)."
+        ],
+        "weights": {
+          "A": 0.04,
+          "ABNB": 0.04,
+          "ACN": 0.04,
+          "ADBE": 0.04,
+          "ADSK": 0.039999999999999994,
+          "AIZ": 0.04,
+          "AKAM": 0.04,
+          "ALB": 0.04,
+          "ALGN": 0.04,
+          "ALLE": 0.04,
+          "AMD": 0.04,
+          "AME": 0.04,
+          "AMP": 0.04,
+          "ANET": 0.04,
+          "AOS": 0.04,
+          "APA": 0.04,
+          "APO": 0.04,
+          "APTV": 0.04,
+          "ARE": 0.04,
+          "AXON": 0.04
+        }
+      },
+      "top_beta_contributors": [
+        {
+          "beta": 2.284391223180319,
+          "contribution": 0.09137564892721275,
+          "ticker": "AMD",
+          "weight": 0.04
+        },
+        {
+          "beta": 2.0520715504866813,
+          "contribution": 0.08208286201946725,
+          "ticker": "ANET",
+          "weight": 0.04
+        },
+        {
+          "beta": 1.7968612780426028,
+          "contribution": 0.07187445112170411,
+          "ticker": "ALB",
+          "weight": 0.04
+        },
+        {
+          "beta": 1.4906138004848428,
+          "contribution": 0.05962455201939371,
+          "ticker": "ALGN",
+          "weight": 0.04
+        },
+        {
+          "beta": 1.4825738947479516,
+          "contribution": 0.059302955789918066,
+          "ticker": "APTV",
+          "weight": 0.04
+        },
+        {
+          "beta": 1.3404084288177747,
+          "contribution": 0.05361633715271099,
+          "ticker": "APO",
+          "weight": 0.04
+        },
+        {
+          "beta": 1.2983061768402446,
+          "contribution": 0.051932247073609786,
+          "ticker": "ABNB",
+          "weight": 0.04
+        },
+        {
+          "beta": 1.26071858622167,
+          "contribution": 0.0504287434488668,
+          "ticker": "A",
+          "weight": 0.04
+        },
+        {
+          "beta": 1.245057411264418,
+          "contribution": 0.04980229645057672,
+          "ticker": "AXON",
+          "weight": 0.04
+        },
+        {
+          "beta": 1.140245372735417,
+          "contribution": 0.04560981490941668,
+          "ticker": "AMP",
+          "weight": 0.04
+        }
+      ]
+    },
+    "layer4_operational": {
+      "pass": true,
+      "report": {
+        "audit_log": [
+          {
+            "action": "greyscale_features_generated",
+            "actor": "run_greyscale_live",
+            "details": {
+              "feature_batch_id": "73c7332d-8171-4bbf-8b14-55bb14bbe485",
+              "feature_rows_live_date": 13764,
+              "trade_date": "2026-04-09"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-27T07:12:26.331893+00:00"
+          },
+          {
+            "action": "greyscale_fusion_scored",
+            "actor": "run_greyscale_live",
+            "details": {
+              "regime": "low",
+              "regime_adjusted_weights": {
+                "ridge": 1.0
+              },
+              "regime_scalar": 1.0,
+              "top_ticker": "ALB",
+              "weight_source": "seed_w11_avg_weights"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-27T07:12:26.331909+00:00"
+          },
+          {
+            "action": "greyscale_portfolio_risk_evaluated",
+            "actor": "run_greyscale_live",
+            "details": {
+              "overall_pass": true,
+              "triggered_rules": [
+                "cvar_haircut"
+              ]
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-27T07:12:26.331912+00:00"
+          },
+          {
+            "action": "operational_risk_evaluated",
+            "actor": "risk_engine",
+            "details": {
+              "fail_safe": false,
+              "runtime_seconds": 44.76153397699818,
+              "timeout_severity": "green"
+            },
+            "level": "INFO",
+            "timestamp_utc": "2026-04-27T07:12:26.331930+00:00"
+          }
+        ],
+        "fail_safe_alert": {
+          "check_name": "fail_safe_mode",
+          "fail_safe_mode": false,
+          "halt_pipeline": false,
+          "message": "Fail-safe mode not required.",
+          "severity": "green"
+        },
+        "fail_safe_mode": false,
+        "halt_pipeline": false,
+        "overall_severity": "green",
+        "timeout_alert": {
+          "check_name": "timeout",
+          "fail_safe_mode": false,
+          "halt_pipeline": false,
+          "message": "Pipeline runtime 44.8s is within the allowed limit.",
+          "severity": "green"
+        }
+      },
+      "severity": "green"
+    }
+  },
+  "score_vectors": {
+    "fusion": {
+      "A": 0.10247452757262622,
+      "AAPL": 0.07812224718915281,
+      "ABBV": 0.09088157279167,
+      "ABNB": 0.12008629029126958,
+      "ABT": 0.08390540745730712,
+      "ACGL": 0.08429466343986586,
+      "ACN": 0.11311162179894037,
+      "ADBE": 0.11318866966564857,
+      "ADI": 0.09309014386463954,
+      "ADM": 0.08929239485673139,
+      "ADP": 0.08771592592390531,
+      "ADSK": 0.09430007951912187,
+      "AEE": 0.06885167140218687,
+      "AEP": 0.045561360531001543,
+      "AES": 0.07849100967983794,
+      "AFL": 0.06741191971513844,
+      "AIG": 0.07775884022776354,
+      "AIZ": 0.09882154401348744,
+      "AJG": 0.06712100719761262,
+      "AKAM": 0.10283702227806625,
+      "ALB": 0.14063004126192413,
+      "ALGN": 0.13599953158457162,
+      "ALL": 0.06024692707340017,
+      "ALLE": 0.10452717533318255,
+      "AMAT": 0.088409370217444,
+      "AMCR": 0.09254350138284734,
+      "AMD": 0.09661629391847287,
+      "AME": 0.09507934945267027,
+      "AMGN": 0.0739385529189214,
+      "AMP": 0.09859849151539576,
+      "AMT": 0.0649830744756031,
+      "AMZN": 0.08670033395201897,
+      "ANET": 0.10970471405082195,
+      "AON": 0.06053535659457958,
+      "AOS": 0.12838398549104457,
+      "APA": 0.12945738510854987,
+      "APD": 0.07339102593727709,
+      "APH": 0.08123370023101054,
+      "APO": 0.10706559145140973,
+      "APTV": 0.13846758520328986,
+      "ARE": 0.13428043341785784,
+      "ATO": 0.0476122030611444,
+      "AVB": 0.08720035808309594,
+      "AVGO": 0.08558215547753908,
+      "AVY": 0.09357684490231977,
+      "AWK": 0.061817111559833035,
+      "AXON": 0.13875645598492467,
+      "AXP": 0.06206716960658436
+    },
+    "fusion_pre_regime": {
+      "A": 0.4180125665694547,
+      "AAPL": -0.5914164465496515,
+      "ABBV": -0.06252825833073665,
+      "ABNB": 1.148039651525034,
+      "ABT": -0.3516980435801143,
+      "ACGL": -0.33556295166520567,
+      "ACN": 0.8589319120369997,
+      "ADBE": 0.8621256315092416,
+      "ADI": 0.029019460547533966,
+      "ADM": -0.12840144512372378,
+      "ADP": -0.1937478296929287,
+      "ADSK": 0.07917263447659952,
+      "AEE": -0.9756920881045047,
+      "AEP": -1.941101287889044,
+      "AES": -0.5761308325871805,
+      "AFL": -1.0353713913035663,
+      "AIG": -0.6064800678869261,
+      "AIZ": 0.2665923492026969,
+      "AJG": -1.0474300375923702,
+      "AKAM": 0.43303837388652044,
+      "ALB": 1.9996008992407064,
+      "ALGN": 1.8076611408178964,
+      "ALL": -1.3323682777333015,
+      "ALLE": 0.5030970913281987,
+      "AMAT": -0.1650037951361129,
+      "AMCR": 0.006360523797653337,
+      "AMD": 0.1751822885415167,
+      "AME": 0.11147423693798512,
+      "AMGN": -0.7648352111125698,
+      "AMP": 0.25734657593313337,
+      "AMT": -1.136049718530246,
+      "AMZN": -0.23584524257458422,
+      "ANET": 0.717711809778942,
+      "AON": -1.3204125543951233,
+      "AOS": 1.4919883144336754,
+      "APA": 1.536481918298229,
+      "APD": -0.7875308113616695,
+      "APH": -0.4624432693378627,
+      "APO": 0.6083172529212225,
+      "APTV": 1.9099646988189174,
+      "ARE": 1.7364026164187434,
+      "ATO": -1.856091591931793,
+      "AVB": -0.2151186881320153,
+      "AVGO": -0.28219497969206825,
+      "AVY": 0.04919375800195256,
+      "AWK": -1.2672823904325576,
+      "AXON": 1.9219387128920493,
+      "AXP": -1.256917207239037
+    },
+    "ridge": {
+      "A": 0.10247452757262622,
+      "AAPL": 0.07812224718915281,
+      "ABBV": 0.09088157279167,
+      "ABNB": 0.12008629029126958,
+      "ABT": 0.08390540745730712,
+      "ACGL": 0.08429466343986586,
+      "ACN": 0.11311162179894037,
+      "ADBE": 0.11318866966564857,
+      "ADI": 0.09309014386463954,
+      "ADM": 0.08929239485673139,
+      "ADP": 0.08771592592390531,
+      "ADSK": 0.09430007951912187,
+      "AEE": 0.06885167140218687,
+      "AEP": 0.045561360531001543,
+      "AES": 0.07849100967983794,
+      "AFL": 0.06741191971513844,
+      "AIG": 0.07775884022776354,
+      "AIZ": 0.09882154401348744,
+      "AJG": 0.06712100719761262,
+      "AKAM": 0.10283702227806625,
+      "ALB": 0.14063004126192413,
+      "ALGN": 0.13599953158457162,
+      "ALL": 0.06024692707340017,
+      "ALLE": 0.10452717533318255,
+      "AMAT": 0.088409370217444,
+      "AMCR": 0.09254350138284734,
+      "AMD": 0.09661629391847287,
+      "AME": 0.09507934945267027,
+      "AMGN": 0.0739385529189214,
+      "AMP": 0.09859849151539576,
+      "AMT": 0.0649830744756031,
+      "AMZN": 0.08670033395201897,
+      "ANET": 0.10970471405082195,
+      "AON": 0.06053535659457958,
+      "AOS": 0.12838398549104457,
+      "APA": 0.12945738510854987,
+      "APD": 0.07339102593727709,
+      "APH": 0.08123370023101054,
+      "APO": 0.10706559145140973,
+      "APTV": 0.13846758520328986,
+      "ARE": 0.13428043341785784,
+      "ATO": 0.0476122030611444,
+      "AVB": 0.08720035808309594,
+      "AVGO": 0.08558215547753908,
+      "AVY": 0.09357684490231977,
+      "AWK": 0.061817111559833035,
+      "AXON": 0.13875645598492467,
+      "AXP": 0.06206716960658436
+    }
+  },
+  "shap_values": {},
+  "week_number": 1
+}

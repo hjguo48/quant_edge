@@ -71,7 +71,9 @@ DEFAULT_BUNDLE_BASE = "data/models/bundles"
 LEGACY_BUNDLE_POINTER = "data/models/fusion_model_bundle_60d.json"
 
 CHAMPION_PORTFOLIO = {
-    "weighting_scheme": "score_weighted_buffered",
+    # NB: greyscale runner checks weighting_scheme == "score_weighted" exactly;
+    # the buffered-turnover variant is signalled by the buffer/min_trade fields.
+    "weighting_scheme": "score_weighted",
     "selection_pct": 0.20,
     "sell_buffer_pct": 0.25,
     "min_trade_weight": 0.01,
@@ -200,10 +202,11 @@ def main(argv: list[str] | None = None) -> int:
     bundle_manifest: dict[str, Any] = {
         "version": args.bundle_version,
         "cutoff_date": cutoff_date,
+        "window_id": final_window_id,  # top-level for run_greyscale_live consumption
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "generator_git_hash": git_hash,
         "model_type": "ridge_single_horizon",
-        "strategy_name": CHAMPION_PORTFOLIO["weighting_scheme"],
+        "strategy_name": "score_weighted_buffered",  # 描述用; runtime check 看 turnover_controls.weighting_scheme
         "horizon_days": int(horizon_days),
         "rebalance_weekday": int(rebalance_weekday),
         "execution_timing": "weekly Friday signal, T+1 open execution",

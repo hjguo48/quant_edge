@@ -17,8 +17,8 @@
   "execution_timing": "weekly Friday signal, T+1 open execution",
   "feature_fingerprint": "4e2869ce65f43f1b22ae7cad4b2a9f6601900f190454dc0362d93ae2832b8fcc",
   "fusion_temperature": 0.0,
-  "generated_at_utc": "2026-04-27T06:38:25.750727+00:00",
-  "generator_git_hash": "c6012704812ff444a323ba9a2f36749fb2de92f2",
+  "generated_at_utc": "2026-04-27T07:11:38.560960+00:00",
+  "generator_git_hash": "1c841e4c51da8ab87baa85ebe7106e8e7d70ec31",
   "horizon_days": 60,
   "live_universe_mode": "active_sp500_intersect_bundle_snapshot",
   "max_weight": 0.05,
@@ -269,7 +269,7 @@
     "sell_buffer_pct": 0.25,
     "turnover_penalty_lambda": 0.0,
     "weight_shrinkage": 0.0,
-    "weighting_scheme": "score_weighted_buffered"
+    "weighting_scheme": "score_weighted"
   },
   "version": "w12_60d_ridge_swbuf_v1",
   "window_dates": {
@@ -279,5 +279,6 @@
     "train_start": "2021-03-05",
     "validation_end": "2024-06-07",
     "validation_start": "2024-03-01"
-  }
+  },
+  "window_id": "W11"
 }
