@@ -136,6 +136,24 @@ def main(argv: list[str] | None = None) -> int:
         limit=args.limit_tickers,
         requested_tickers=args.tickers,
     )
+    # W12 patch: bundle may declare an eligible_universe_path (frozen training snapshot).
+    # If present, intersect live universe with it so we never trade names absent during training.
+    eligible_universe_path = bundle.get("eligible_universe_path")
+    if eligible_universe_path:
+        eligible_path = Path(eligible_universe_path)
+        if not eligible_path.is_absolute():
+            eligible_path = REPO_ROOT / eligible_path
+        if eligible_path.exists():
+            eligible_payload = json.loads(eligible_path.read_text())
+            eligible_set = {str(t).upper() for t in eligible_payload.get("tickers", [])}
+            before_count = len(live_universe)
+            live_universe = [t for t in live_universe if str(t).upper() in eligible_set]
+            logger.info(
+                "bundle universe filter: live {} → eligible-intersect {} (snapshot={})",
+                before_count, len(live_universe), eligible_path.name,
+            )
+        else:
+            logger.warning("bundle eligible_universe_path missing on disk: {}", eligible_path)
     if not live_universe:
         raise RuntimeError("No live universe tickers were available for the PIT-visible trade date.")
 
@@ -235,7 +253,25 @@ def main(argv: list[str] | None = None) -> int:
         high_threshold=args.high_vix_threshold,
     )
     regime_adjusted_weights = apply_regime_to_model_weights(live_weights, regime_scalar)
-    fusion_scores = combine_current_predictions(normalized_predictions, regime_adjusted_weights).rename(FUSION_NAME)
+    # W12 patch: respect bundle's declared score_space.
+    # - "normalized" (default, legacy): cross-sectional z-score then weighted-sum (multi-model fusion).
+    # - "raw": use the single active model's raw predictions directly (champion-faithful for W10
+    #   score_weighted_buffered, which fits Ridge on rank-normalized features and uses raw output).
+    score_space = str(bundle.get("score_space", "normalized")).lower()
+    if score_space == "raw":
+        active_model_names_for_raw = [m for m, w in regime_adjusted_weights.items() if abs(w) > 1e-12]
+        if len(active_model_names_for_raw) != 1:
+            raise RuntimeError(
+                f"score_space='raw' requires exactly 1 active model, got {len(active_model_names_for_raw)}: "
+                f"{active_model_names_for_raw}"
+            )
+        active_model = active_model_names_for_raw[0]
+        if active_model not in raw_predictions:
+            raise RuntimeError(f"score_space='raw' active model {active_model} missing from raw_predictions")
+        fusion_scores = raw_predictions[active_model].rename(FUSION_NAME)
+        logger.info("score_space=raw: using {} raw predictions ({} tickers)", active_model, len(fusion_scores))
+    else:
+        fusion_scores = combine_current_predictions(normalized_predictions, regime_adjusted_weights).rename(FUSION_NAME)
 
     overlay = NullOverlay()
     fused_scores_by_ticker = overlay.apply(

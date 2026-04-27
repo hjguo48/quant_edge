@@ -201,7 +201,16 @@ def summarize_monitoring(
         "model_consistency_above_threshold": {
             "value": float(np.mean(recent_pairwise)) if recent_pairwise else None,
             "threshold": float(model_consistency_threshold),
-            "passed": bool(recent_pairwise and np.mean(recent_pairwise) > model_consistency_threshold) if len(recent_weeks) >= required_weeks else None,
+            # W12 patch: skip pairwise-consistency check when single-model bundle is active.
+            # recent_pairwise is empty when there's only one model — that's not a fail.
+            "passed": (
+                None
+                if not recent_pairwise
+                else bool(np.mean(recent_pairwise) > model_consistency_threshold)
+                if len(recent_weeks) >= required_weeks
+                else None
+            ),
+            "skipped_reason": "single_model_bundle" if not recent_pairwise else None,
         },
     }
 
@@ -209,7 +218,13 @@ def summarize_monitoring(
         gate_status = "PENDING"
     elif not gate_ready:
         gate_status = "PENDING"
-    elif all(value["passed"] for value in checks.values()):
+    elif all(
+        value["passed"]
+        for value in checks.values()
+        # W12 patch: a None "passed" means the check is gracefully skipped (e.g., single-model
+        # bundle has no pairwise rank correlation), not a fail.
+        if value["passed"] is not None
+    ):
         gate_status = "PASS"
     else:
         gate_status = "FAIL"
