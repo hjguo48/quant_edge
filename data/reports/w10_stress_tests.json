@@ -1,0 +1,163 @@
+{
+  "bootstrap_sharpe_positive": {
+    "alpha": 0.05,
+    "block_size": 4,
+    "ci_high_95": 1.479571537134843,
+    "ci_low_95": -0.028760707215815945,
+    "method": "stationary_bootstrap",
+    "n_resamples": 5000,
+    "observed_sharpe": 0.7166596666247897,
+    "p_value_one_sided": 0.0348,
+    "significant": true
+  },
+  "champion": {
+    "annualized_sharpe": 0.7166596666247897,
+    "cost_mult": 1.0,
+    "gate_on": false,
+    "n_periods": 328,
+    "periods_per_year": 50.78507842306062,
+    "strategy": "score_weighted_buffered"
+  },
+  "dsr_conservative": {
+    "alpha": 0.1,
+    "dsr_stat": -0.41320072721807766,
+    "expected_max_sharpe": 0.8779488263916082,
+    "label": "DSR_conservative",
+    "method": "bailey_lopezdeprado_2014",
+    "n_observations": 328,
+    "n_trials_assumed": 8,
+    "observed_annualized_sharpe": 0.7166596666247897,
+    "p_value": 0.6602702223140118,
+    "sample_kurtosis": 11.451251428266266,
+    "sample_skew": 0.4509973796339858,
+    "se_sharpe_annual": 0.3903409387798435,
+    "sigma_sr_across_trials": 0.43050762398724957,
+    "significant": false
+  },
+  "dsr_local": {
+    "alpha": 0.05,
+    "dsr_stat": -0.00046766386851096074,
+    "expected_max_sharpe": 0.7168422149782577,
+    "label": "DSR_local",
+    "method": "bailey_lopezdeprado_2014",
+    "n_observations": 328,
+    "n_trials_assumed": 4,
+    "observed_annualized_sharpe": 0.7166596666247897,
+    "p_value": 0.5001865708833643,
+    "sample_kurtosis": 11.451251428266266,
+    "sample_skew": 0.4509973796339858,
+    "se_sharpe_annual": 0.3903409387798435,
+    "sigma_sr_across_trials": 0.43050762398724957,
+    "significant": false
+  },
+  "dsr_no_prior_search": {
+    "alpha": 0.05,
+    "dsr_stat": 1.8359838680128644,
+    "expected_max_sharpe": 0.0,
+    "label": "DSR_no_prior_search",
+    "method": "bailey_lopezdeprado_2014",
+    "n_observations": 328,
+    "n_trials_assumed": 1,
+    "observed_annualized_sharpe": 0.7166596666247897,
+    "p_value": 0.033180021279989994,
+    "sample_kurtosis": 11.451251428266266,
+    "sample_skew": 0.4509973796339858,
+    "se_sharpe_annual": 0.3903409387798435,
+    "sigma_sr_across_trials": 0.43050762398724957,
+    "significant": true
+  },
+  "generated_at_utc": "2026-04-27T02:56:20.343357+00:00",
+  "input_periods_parquet": "/home/jiahao/quant_edge/data/reports/w10_truth_table_60d_periods.parquet",
+  "spa_test": {
+    "alpha": 0.05,
+    "comparisons": [
+      {
+        "adjusted_p_value": 1.0,
+        "benchmark_mean_ic": 0.0015003660910713782,
+        "competitor": "black_litterman_buffered|cost=1.00|gate=False",
+        "competitor_mean_ic": -0.0010839944622393,
+        "mean_ic_delta": -0.0025843605533106785,
+        "n_observations": 328,
+        "p_value": 0.9822048958678471,
+        "significant": false,
+        "t_statistic": -2.1103166982289214
+      },
+      {
+        "adjusted_p_value": 1.0,
+        "benchmark_mean_ic": 0.0015003660910713782,
+        "competitor": "equal_weight_top_decile|cost=1.00|gate=False",
+        "competitor_mean_ic": -0.000341586742792804,
+        "mean_ic_delta": -0.0018419528338641823,
+        "n_observations": 328,
+        "p_value": 0.9990784189390355,
+        "significant": false,
+        "t_statistic": -3.1400729661692734
+      },
+      {
+        "adjusted_p_value": 1.0,
+        "benchmark_mean_ic": 0.0015003660910713782,
+        "competitor": "vol_inverse_buffered|cost=1.00|gate=False",
+        "competitor_mean_ic": -6.764245806100634e-06,
+        "mean_ic_delta": -0.001507130336877479,
+        "n_observations": 328,
+        "p_value": 0.9963223558060467,
+        "significant": false,
+        "t_statistic": -2.6971843248907277
+      }
+    ],
+    "method": "paired_t_test_holm_fallback",
+    "n_competitors": 3,
+    "n_significantly_better_than_champion": 0,
+    "null_hypothesis": "score_weighted_buffered|cost=1.00|gate=False is not worse than any competitor on aligned test-period IC.",
+    "overall_min_adjusted_p": 1.0,
+    "pass": true,
+    "rationale": "Competitors restricted to DISTINCT strategies (cost=1.0, gate=False) \u2014 same-strategy sensitivity-band variants are not legitimate competitors."
+  },
+  "trial_universe": {
+    "distinct_strategy_sharpes": {
+      "black_litterman_buffered|cost=1.00|gate=False": -0.2443913869849029,
+      "equal_weight_top_decile|cost=1.00|gate=False": -0.11605193617671632,
+      "score_weighted_buffered|cost=1.00|gate=False": 0.7166596666247897,
+      "vol_inverse_buffered|cost=1.00|gate=False": -0.005147498387280062
+    },
+    "n_distinct_strategies_for_dsr": 4,
+    "n_trials_actual": 24,
+    "rationale": "Cost bands (3) and gate states (2) are sensitivity tests on the same strategies, not independent methodological trials. Including them in N_trials would inflate E[max SR] artificially. We use the 4 distinct strategy families with default cost=1.0 / gate=False as the trial universe for DSR.",
+    "sigma_sr_across_distinct_strategies": 0.43050762398724957,
+    "trial_sharpes_all": {
+      "black_litterman_buffered|cost=0.75|gate=False": -0.22962097321641628,
+      "black_litterman_buffered|cost=0.75|gate=True": -0.3310488224768184,
+      "black_litterman_buffered|cost=1.00|gate=False": -0.2443913869849029,
+      "black_litterman_buffered|cost=1.00|gate=True": -0.34532059672674925,
+      "black_litterman_buffered|cost=1.25|gate=False": -0.25898414895732563,
+      "black_litterman_buffered|cost=1.25|gate=True": -0.35942811253786605,
+      "equal_weight_top_decile|cost=0.75|gate=False": -0.10994886186648806,
+      "equal_weight_top_decile|cost=0.75|gate=True": -0.2115786901424958,
+      "equal_weight_top_decile|cost=1.00|gate=False": -0.11605193617671632,
+      "equal_weight_top_decile|cost=1.00|gate=True": -0.21722449921377382,
+      "equal_weight_top_decile|cost=1.25|gate=False": -0.1221369720735975,
+      "equal_weight_top_decile|cost=1.25|gate=True": -0.22285533361426463,
+      "score_weighted_buffered|cost=0.75|gate=False": 0.7177933518900955,
+      "score_weighted_buffered|cost=0.75|gate=True": 0.495208557019554,
+      "score_weighted_buffered|cost=1.00|gate=False": 0.7166596666247897,
+      "score_weighted_buffered|cost=1.00|gate=True": 0.4941072589232275,
+      "score_weighted_buffered|cost=1.25|gate=False": 0.7155262869898527,
+      "score_weighted_buffered|cost=1.25|gate=True": 0.4930062783382546,
+      "vol_inverse_buffered|cost=0.75|gate=False": -0.004532052767830864,
+      "vol_inverse_buffered|cost=0.75|gate=True": -0.2764968785278383,
+      "vol_inverse_buffered|cost=1.00|gate=False": -0.005147498387280062,
+      "vol_inverse_buffered|cost=1.00|gate=True": -0.27705699373352943,
+      "vol_inverse_buffered|cost=1.25|gate=False": -0.005762881499056881,
+      "vol_inverse_buffered|cost=1.25|gate=True": -0.277617039149633
+    }
+  },
+  "verdict": {
+    "bootstrap_pass": true,
+    "dsr_conservative_pass": false,
+    "dsr_local_pass": false,
+    "dsr_no_prior_search_pass": true,
+    "interpretation": "DSR with n_trials>1 fails because 4 distinct strategies have widely varying Sharpes (-0.24 to +0.72), pumping E[max SR] near observed. Under no-prior-search (n=1), bootstrap, and SPA, champion is significant. The signal has positive alpha by within-strategy and against-competitor tests, but cannot be statistically distinguished from 'best of 4 random strategies' with this small OOS sample (328 weekly periods).",
+    "spa_pass": true,
+    "triple_pass": false
+  }
+}
