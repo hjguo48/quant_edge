@@ -132,6 +132,10 @@ preflight_once() {
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import exchange_calendars as xcals
+import pandas as pd
 
 # Bundle exists
 bundle_path = Path("data/models/bundles/w12_60d_ridge_swbuf_v1/bundle.json")
@@ -139,7 +143,7 @@ if not bundle_path.exists():
     print(f"FAIL: bundle missing: {bundle_path}")
     sys.exit(2)
 
-# DB reachable + PIT trade date
+# DB reachable + PIT trade date freshness vs expected market session
 sys.path.insert(0, ".")
 try:
     from scripts.run_live_pipeline import load_db_state
@@ -149,11 +153,41 @@ try:
     if latest is None:
         print("FAIL: no PIT trade date in stock_prices")
         sys.exit(2)
-    age_days = (as_of.date() - latest).days
-    if age_days > 7:
-        print(f"FAIL: PIT trade date too stale: {latest} ({age_days} days ago)")
+
+    # Expected latest visible session: account for T+1 PIT knowledge_time lag.
+    # At time T, latest fully-published session should be:
+    # - if today is a trading session and now is after T+1 publish time → today's previous session (today's data not yet visible)
+    # - otherwise → most recent past session
+    XNYS = xcals.get_calendar("XNYS")
+    ET = ZoneInfo("America/New_York")
+    today_et = as_of.astimezone(ET).date()
+    today_ts = pd.Timestamp(today_et)
+    # Always use previous_session as the conservative expected (T+1 lag means today's close not yet PIT-visible)
+    expected_latest = XNYS.previous_session(today_ts).date()
+    # Allow 1 session tolerance for upstream batch delays
+    tolerance_session = XNYS.previous_session(pd.Timestamp(expected_latest)).date()
+
+    if latest < tolerance_session:
+        sessions_behind = len(XNYS.sessions_in_range(pd.Timestamp(latest), pd.Timestamp(expected_latest))) - 1
+        print(f"FAIL: PIT trade date {latest} is {sessions_behind} sessions behind expected {expected_latest} (tolerance: {tolerance_session})")
         sys.exit(2)
-    print(f"OK: PIT trade date={latest} ({age_days} days ago)")
+    print(f"OK: PIT trade date={latest}, expected={expected_latest}, tolerance={tolerance_session}")
+
+    # W12 audit fix: validate per-feature recency in feature_store
+    # (catches silent feature dropout — e.g. shorting backfill ran once and never refreshed)
+    from src.data.db.session import get_engine
+    from src.models.bundle_validator import BundleValidator
+    bv = BundleValidator(bundle_path)
+    engine = get_engine()
+    with engine.connect() as conn:
+        rec = bv.validate_recency(conn, max_stale_days=7, min_coverage_count=100)
+    if not rec.passed:
+        if rec.stale_features:
+            print(f"FAIL: {len(rec.stale_features)} features stale (>7d): {rec.stale_features[:10]}")
+        if rec.sparse_features:
+            print(f"FAIL: {len(rec.sparse_features)} features sparse (<100 tickers): {rec.sparse_features[:10]}")
+        sys.exit(2)
+    print(f"OK: feature_store recency: {rec.metadata['feature_count_with_data']}/{rec.metadata['feature_count_checked']} features fresh")
     sys.exit(0)
 except SystemExit:
     raise

@@ -76,7 +76,11 @@ def check_url(url: str, timeout: int = 5) -> tuple[bool, str]:
 
 
 def get_db_latest_trade_date() -> tuple[bool, str]:
-    """Return (ok, message). Calls into project venv to query DB."""
+    """Return (ok, message). Calls into project venv to query DB.
+
+    Uses XNYS market calendar to compute expected latest PIT-visible session,
+    accounting for T+1 knowledge_time lag.
+    """
     try:
         env = os.environ.copy()
         env["PYTHONPATH"] = str(REPO_ROOT)
@@ -85,23 +89,38 @@ def get_db_latest_trade_date() -> tuple[bool, str]:
                 str(REPO_ROOT / ".venv/bin/python"),
                 "-c",
                 "from datetime import datetime, timezone\n"
+                "from zoneinfo import ZoneInfo\n"
+                "import exchange_calendars as xcals\n"
+                "import pandas as pd\n"
                 "from scripts.run_live_pipeline import load_db_state\n"
-                "db = load_db_state(as_of=datetime.now(timezone.utc))\n"
-                "print(db['latest_pit_trade_date'].isoformat() if db['latest_pit_trade_date'] else 'NONE')\n",
+                "as_of = datetime.now(timezone.utc)\n"
+                "db = load_db_state(as_of=as_of)\n"
+                "latest = db['latest_pit_trade_date']\n"
+                "if latest is None:\n"
+                "    print('NONE'); raise SystemExit(0)\n"
+                "XNYS = xcals.get_calendar('XNYS')\n"
+                "today_et = as_of.astimezone(ZoneInfo('America/New_York')).date()\n"
+                "expected = XNYS.previous_session(pd.Timestamp(today_et)).date()\n"
+                "tolerance = XNYS.previous_session(pd.Timestamp(expected)).date()\n"
+                "print(f'{latest.isoformat()}|{expected.isoformat()}|{tolerance.isoformat()}')\n",
             ],
             cwd=str(REPO_ROOT),
             capture_output=True, text=True, timeout=30, env=env,
         )
         if result.returncode != 0:
             return False, f"DB query failed: {result.stderr.strip()[:200]}"
-        date_str = result.stdout.strip()
-        if date_str == "NONE":
+        out = result.stdout.strip()
+        if out == "NONE":
             return False, "no PIT trade date"
-        latest = datetime.fromisoformat(date_str).date()
-        age = (datetime.now(timezone.utc).date() - latest).days
-        if age > DB_FRESHNESS_RED_DAYS:
-            return False, f"stale: {latest} ({age} days ago)"
-        return True, f"{latest} ({age} days ago)"
+        parts = out.split("|")
+        if len(parts) != 3:
+            return False, f"unexpected output: {out}"
+        latest = datetime.fromisoformat(parts[0]).date()
+        expected = datetime.fromisoformat(parts[1]).date()
+        tolerance = datetime.fromisoformat(parts[2]).date()
+        if latest < tolerance:
+            return False, f"stale: {latest} (expected {expected}, tolerance {tolerance})"
+        return True, f"{latest} (expected {expected})"
     except Exception as exc:
         return False, f"exception: {exc}"
 
