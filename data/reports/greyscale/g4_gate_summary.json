@@ -1,11 +1,11 @@
 {
-  "as_of_utc": "2026-04-25T20:00:00+00:00",
-  "generated_at_utc": "2026-04-27T17:21:16.819349+00:00",
+  "as_of_utc": "2026-04-27T17:46:33+00:00",
+  "generated_at_utc": "2026-04-27T17:49:13.473000+00:00",
   "horizon_days": 60,
   "latest_pit_trade_date": "2026-04-24",
   "per_week": [
     {
-      "generated_at_utc": "2026-04-27T17:20:52.018746+00:00",
+      "generated_at_utc": "2026-04-27T17:49:08.728373+00:00",
       "holding_count_after_risk": 34,
       "pairwise_rank_correlation": {
         "ridge__lightgbm": NaN,
@@ -21,7 +21,7 @@
       },
       "signal_date": "2026-04-24",
       "turnover_vs_previous": 0.0,
-      "week_number": 1,
+      "week_number": 2,
       "weight_source": "seed_w11_avg_weights"
     }
   ],

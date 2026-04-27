@@ -135,10 +135,14 @@ send_alert() {
     local subject="$2"
     local body="$3"
     if [ -f "$HOME/.config/quantedge/w12_alert.env" ]; then
-        python "$REPO_ROOT/scripts/send_w12_email_alert.py" \
+        # 90-second hard timeout — WSL2 IPv6 can transiently flake, the SNI
+        # fallback in send_w12_email_alert.py usually recovers within 30s but
+        # occasionally hangs longer. Better to log "alert send timeout" than
+        # block the wrapper indefinitely on a non-critical email.
+        timeout 90 python "$REPO_ROOT/scripts/send_w12_email_alert.py" \
             --severity "$severity" \
             --subject "$subject" \
-            --body "$body" || echo "WARNING: alert send failed"
+            --body "$body" || echo "WARNING: alert send failed (or timed out at 90s)"
     else
         echo "WARNING: alert config not found, skipping email"
     fi
@@ -319,6 +323,56 @@ if [ $HEALTH_EXIT -eq 10 ]; then
     echo "==================================================================="
     exit 10
 fi
+
+# All-green path — send confirmation email so silent days = real failure days.
+GREEN_BODY=$(python - <<'PY'
+import json
+from pathlib import Path
+
+p = Path("data/reports/greyscale/last_success.json")
+payload = json.loads(p.read_text()) if p.exists() else {}
+perf_path = Path("data/reports/greyscale/greyscale_performance.json")
+perf = json.loads(perf_path.read_text()) if perf_path.exists() else {}
+
+signal_date = payload.get("signal_date") or "?"
+ticker_count = payload.get("ticker_count") or "?"
+actual = payload.get("actual_holding_count") or payload.get("holding_count") or "?"
+shadow = payload.get("shadow_holding_count") or "?"
+shadow_cvar = payload.get("shadow_cvar_triggered")
+gate = payload.get("gate_status") or "?"
+matured = payload.get("matured_weeks") or 0
+mode = payload.get("layer3_enforcement_mode")
+mode_label = "shadow" if mode is False else ("enforcement" if mode is True else "?")
+
+# 1D paper P&L if available
+cum_1d = perf.get("cumulative", {}).get("1d", {}) if isinstance(perf, dict) else {}
+weeks_realized = cum_1d.get("weeks_realized") or 0
+cum_1d_return = cum_1d.get("return")
+cum_1d_excess = cum_1d.get("excess")
+
+lines = [
+    f"Signal date: {signal_date}",
+    f"Universe: {ticker_count} tickers",
+    f"Actual holdings: {actual}  |  Shadow Layer 3 holdings: {shadow}",
+    f"Layer 3 mode: {mode_label}  |  Shadow CVaR triggered: {shadow_cvar}",
+    f"Layers: L1={payload.get('layer1_pass')} L2={payload.get('layer2_pass')} L3={payload.get('layer3_pass')} L4={payload.get('layer4_pass')}",
+    f"Gate: {gate}  (matured weeks: {matured})",
+    "",
+    "Paper P&L (1D horizon, cumulative across realized weeks):",
+    f"  Weeks realized: {weeks_realized}",
+    f"  Cumulative return: {cum_1d_return:.4%}" if isinstance(cum_1d_return, (int, float)) else "  Cumulative return: pending",
+    f"  Cumulative excess vs SPY: {cum_1d_excess:.4%}" if isinstance(cum_1d_excess, (int, float)) else "  Cumulative excess: pending",
+    "",
+    "Reports:",
+    "  data/reports/greyscale/week_*.json",
+    "  data/reports/greyscale/greyscale_performance.json",
+    "  data/reports/greyscale/last_success.json",
+]
+print("\n".join(lines))
+PY
+)
+LATEST_SIGNAL_DATE=$(python -c "import json; print(json.load(open('$LAST_SUCCESS')).get('signal_date', '?'))")
+send_alert "GREEN" "[QuantEdge W12] greyscale OK — $LATEST_SIGNAL_DATE" "$GREEN_BODY"
 
 echo "==================================================================="
 echo "W12 greyscale wrapper completed cleanly: ${RUN_ID}"
