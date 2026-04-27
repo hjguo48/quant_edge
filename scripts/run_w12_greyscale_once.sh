@@ -258,11 +258,17 @@ if ! .venv/bin/python scripts/run_greyscale_monitor.py \
 fi
 
 echo "----- compute realized paper P&L (W13.2) -----"
-# Non-fatal: P&L cannot be computed for a fresh signal date until next trading
-# day's data lands in stock_prices. We always run it so partial / pending
-# horizons are visible in the dashboard.
-PYTHONPATH="$REPO_ROOT" .venv/bin/python scripts/compute_realized_returns.py \
-    --report-dir "$REPORT_DIR" 2>&1 || echo "WARN: realized-returns computation non-zero exit (non-fatal)"
+# Non-fatal but consistency-protected: if the script crashes, remove any prior
+# greyscale_performance.json so the dashboard can't keep serving a stale snapshot
+# alongside a fresh success heartbeat (Codex review Finding 2).
+PERFORMANCE_FILE="$REPORT_DIR/greyscale_performance.json"
+if PYTHONPATH="$REPO_ROOT" .venv/bin/python scripts/compute_realized_returns.py \
+        --report-dir "$REPORT_DIR" 2>&1; then
+    echo "realized-returns updated"
+else
+    echo "WARN: realized-returns computation non-zero exit; removing stale performance snapshot"
+    rm -f "$PERFORMANCE_FILE"
+fi
 
 echo "----- write success heartbeat -----"
 write_success

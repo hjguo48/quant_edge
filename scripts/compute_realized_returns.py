@@ -152,36 +152,46 @@ def compute_horizon_return(
     horizon_days: int,
     today: date,
 ) -> tuple[float | None, date | None, str]:
-    """Compute return from first trade_date >= signal_date+1 to N-th trading day after.
+    """Compute close-to-close return from signal_date close → N-th trading day after.
+
+    Convention (W13.2):
+      * Reference price = close on signal_date itself (or the most recent trading
+        day on or before signal_date if signal_date is not a trading day).
+      * 1D return = (close on first trading day strictly after signal_date) /
+                    (close on signal_date) - 1
+      * 5D return = same with 5th trading day after signal_date
+      * etc.
 
     Returns (return_pct, horizon_end_date, status).
     """
-    # The "entry" is the first trading day strictly after signal_date.
-    entry_date = signal_date.fromordinal(signal_date.toordinal() + 1)
-    entry = first_close_on_or_after(series, entry_date)
-    if entry is None:
+    if horizon_days < 1:
         return None, None, "pending"
-    entry_d, entry_px = entry
 
-    # Sorted trading days in series at or after entry_d
-    sorted_days = sorted(d for d in series if d >= entry_d)
-    if len(sorted_days) <= horizon_days:
-        # Not enough data yet
-        last_d = sorted_days[-1] if sorted_days else None
-        last_px = series[last_d] if last_d else None
-        if last_d is None or last_px is None or entry_px == 0:
-            return None, None, "pending"
-        # Partial: horizon not yet ended but we have at least 1 day
-        if last_d == entry_d:
-            return 0.0, last_d, "partial"
-        partial_return = (last_px - entry_px) / entry_px
-        return partial_return, last_d, "partial"
-    # Realized: take the (horizon_days)-th trading day's close after entry_d
-    end_d = sorted_days[horizon_days]
-    end_px = series[end_d]
-    if entry_px == 0:
+    # Reference price: the most recent close on or before signal_date.
+    ref: tuple[date, float] | None = None
+    for d in sorted(series, reverse=True):
+        if d <= signal_date:
+            ref = (d, series[d])
+            break
+    if ref is None or ref[1] == 0:
         return None, None, "pending"
-    return (end_px - entry_px) / entry_px, end_d, "realized" if end_d <= today else "partial"
+    _, ref_px = ref
+
+    # Trading days STRICTLY AFTER signal_date, ordered ascending.
+    forward_days = sorted(d for d in series if d > signal_date)
+    if not forward_days:
+        return None, None, "pending"
+
+    if len(forward_days) >= horizon_days:
+        # Realized — take the horizon_days-th trading day after signal_date.
+        end_d = forward_days[horizon_days - 1]
+        end_px = series[end_d]
+        return (end_px - ref_px) / ref_px, end_d, "realized" if end_d <= today else "partial"
+
+    # Partial — fewer than horizon_days trading days available; use latest.
+    end_d = forward_days[-1]
+    end_px = series[end_d]
+    return (end_px - ref_px) / ref_px, end_d, "partial"
 
 
 def compute_per_week(

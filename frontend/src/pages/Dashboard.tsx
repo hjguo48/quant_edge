@@ -252,8 +252,11 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
 
   const topSignals = useMemo(() => {
     if (!predictionsData?.predictions) return [];
+    // Long-only champion: rank by score descending so STRONG/LONG names lead and
+    // any buffer-held (negative-score) name falls to the bottom rather than
+    // ranking high on raw |score| (Codex review Finding 4).
     return [...predictionsData.predictions]
-      .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+      .sort((a, b) => b.score - a.score)
       .slice(0, 5)
       .map(p => {
         let tier: "strong" | "long" | "watch" | "buffer";
