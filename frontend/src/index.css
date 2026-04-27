@@ -401,18 +401,24 @@
   }
   /* Long-only conviction tiers (W12 score_weighted_buffered) */
   .tag-bull-strong {
-    background: rgba(0, 200, 5, 0.22);
-    color: #00E806;
-    border: 1px solid rgba(0, 200, 5, 0.5);
-    box-shadow: 0 0 8px rgba(0, 200, 5, 0.25);
-    font-weight: 700;
+    background: linear-gradient(135deg, rgba(0, 255, 140, 0.28) 0%, rgba(0, 200, 80, 0.22) 100%);
+    color: #5DFFA0;
+    border: 1px solid rgba(0, 255, 140, 0.65);
+    box-shadow: 0 0 14px rgba(0, 255, 140, 0.45), inset 0 0 6px rgba(0, 255, 140, 0.15);
+    text-shadow: 0 0 6px rgba(0, 255, 140, 0.55);
+    font-weight: 800;
+    letter-spacing: 0.03em;
   }
   .tag-bull-watch {
     background: rgba(255, 200, 60, 0.10);
     color: #C9A445;
     border: 1px solid rgba(255, 200, 60, 0.25);
   }
-  .text-bull-strong { color: #00E806; }
+  .text-bull-strong {
+    color: #5DFFA0;
+    text-shadow: 0 0 6px rgba(0, 255, 140, 0.45);
+    font-weight: 700;
+  }
   .text-bull-watch { color: #C9A445; }
 
   /* Robinhood Input Animations */

@@ -26,8 +26,8 @@ function deriveConviction(direction: SignalRowProps["direction"], confidence: nu
 }
 
 const TIER_STYLE: Record<Conviction, { tagClass: string; tagLabel: string; scoreClass: string; barFrom: string; barTo: string; sparkPositive: boolean }> = {
-  strong: { tagClass: "tag-bull-strong", tagLabel: "STRONG LONG", scoreClass: "text-bull-strong", barFrom: "#00E806", barTo: "#00C805", sparkPositive: true },
-  long:   { tagClass: "tag-bull",        tagLabel: "LONG",        scoreClass: "text-bull",        barFrom: "#00C805", barTo: "#00A804", sparkPositive: true },
+  strong: { tagClass: "tag-bull-strong", tagLabel: "STRONG LONG", scoreClass: "text-bull-strong", barFrom: "#5DFFA0", barTo: "#00E866", sparkPositive: true },
+  long:   { tagClass: "tag-bull",        tagLabel: "LONG",        scoreClass: "text-bull",        barFrom: "#00C805", barTo: "#008A04", sparkPositive: true },
   watch:  { tagClass: "tag-bull-watch",  tagLabel: "WATCH LONG",  scoreClass: "text-bull-watch",  barFrom: "#C9A445", barTo: "#9A7E32", sparkPositive: true },
   buffer: { tagClass: "tag-neutral",     tagLabel: "BUFFER",      scoreClass: "text-muted-foreground", barFrom: "#607B96", barTo: "#475569", sparkPositive: false },
   short:  { tagClass: "tag-bear",        tagLabel: "SHORT SIGNAL", scoreClass: "text-bear",       barFrom: "#FF5252", barTo: "#E04040", sparkPositive: false },
