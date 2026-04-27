@@ -45,7 +45,7 @@
   <Actions Context="Author">
     <Exec>
       <Command>C:\Windows\System32\wsl.exe</Command>
-      <Arguments>-d &lt;YOUR_DISTRO&gt; -u jiahao -- bash -lc "cd /home/jiahao/quant_edge/frontend &amp;&amp; exec npm run dev -- --host 0.0.0.0 --port 4173"</Arguments>
+      <Arguments>-d &lt;YOUR_DISTRO&gt; -u jiahao -- bash -lc "cd /home/jiahao/quant_edge/frontend &amp;&amp; exec npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"</Arguments>
     </Exec>
   </Actions>
 </Task>
