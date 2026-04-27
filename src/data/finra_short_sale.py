@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 import csv
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 import io
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
@@ -450,7 +450,17 @@ def _normalize_market(market: str) -> str:
 
 
 def _knowledge_time(trade_date: date) -> datetime:
-    local_dt = datetime.combine(trade_date, time(hour=18, minute=0), tzinfo=EASTERN)
+    """Conservative PIT knowledge_time for FINRA daily short-sale volume.
+
+    FINRA's RegSHO daily file is published at 18:00 ET on the trade date, but
+    feature pipelines use ``as_of = trade_date EOD NYT`` and that would let
+    today's short-sale volume leak into today's signal computation. We pin
+    ``knowledge_time = trade_date + 1 day at 16:00 NYT`` so the row is visible
+    only on the next business day, matching the lag-1 convention used by
+    ``PolygonDataSource._historical_knowledge_time`` for daily prices (data
+    audit 2026-04-25 P1 follow-up A1).
+    """
+    local_dt = datetime.combine(trade_date + timedelta(days=1), time(hour=16, minute=0), tzinfo=EASTERN)
     return local_dt.astimezone(timezone.utc)
 
 

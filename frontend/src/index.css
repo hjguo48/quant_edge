@@ -399,6 +399,19 @@
     color: var(--muted-foreground);
     border: 1px solid rgba(96, 123, 150, 0.2);
   }
+  /* Long-only conviction tiers (W12 score_weighted_buffered) */
+  .tag-bull-strong {
+    background: rgba(0, 255, 140, 0.14);
+    color: #00FF7F;
+    border: 1px solid rgba(0, 255, 140, 0.35);
+  }
+  .tag-bull-watch {
+    background: rgba(255, 200, 60, 0.10);
+    color: #C9A445;
+    border: 1px solid rgba(255, 200, 60, 0.25);
+  }
+  .text-bull-strong { color: #00FF7F; }
+  .text-bull-watch { color: #C9A445; }
 
   /* Robinhood Input Animations */
   @keyframes digit-slide-in {

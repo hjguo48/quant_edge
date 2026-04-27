@@ -10,6 +10,9 @@ class PredictionItem(BaseModel):
     percentile: float
     sector: str | None = None
     company_name: str | None = None
+    # W13.1 sparkline data — last 20 trading days. Empty list if data unavailable.
+    recent_prices: list[float] = Field(default_factory=list)
+    recent_excess_cum: list[float] = Field(default_factory=list)
 
 
 class PredictionResponse(BaseModel):

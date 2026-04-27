@@ -1,0 +1,69 @@
+{
+  "as_of_utc": "2026-04-27T09:23:34+00:00",
+  "generated_at_utc": "2026-04-27T09:25:26.151801+00:00",
+  "horizon_days": 60,
+  "latest_pit_trade_date": "2026-04-24",
+  "per_week": [
+    {
+      "generated_at_utc": "2026-04-27T09:25:22.870885+00:00",
+      "holding_count_after_risk": 48,
+      "pairwise_rank_correlation": {
+        "ridge__lightgbm": NaN,
+        "ridge__xgboost": NaN,
+        "xgboost__lightgbm": NaN
+      },
+      "realized_ics": {},
+      "risk_status": {
+        "layer1_pass": true,
+        "layer2_pass": true,
+        "layer3_pass": true,
+        "layer4_pass": true
+      },
+      "signal_date": "2026-04-24",
+      "turnover_vs_previous": 0.0,
+      "week_number": 1,
+      "weight_source": "seed_w11_avg_weights"
+    }
+  ],
+  "required_weeks": 4,
+  "summary": {
+    "checks": {
+      "live_ic_above_threshold": {
+        "passed": null,
+        "threshold": 0.02,
+        "value": null
+      },
+      "model_consistency_above_threshold": {
+        "passed": null,
+        "skipped_reason": "single_model_bundle",
+        "threshold": 0.5,
+        "value": null
+      },
+      "no_layer12_halts": {
+        "passed": null,
+        "threshold": 0,
+        "value": 0
+      },
+      "positive_ic_weeks": {
+        "passed": null,
+        "threshold": ">= 3/4",
+        "value": 0
+      },
+      "turnover_below_cap": {
+        "passed": null,
+        "threshold": 0.08,
+        "value": 0.0
+      }
+    },
+    "gate_rule": "PASS requires 5/5 checks after 4 matured weekly reports; otherwise PENDING or FAIL.",
+    "gate_status": "PENDING",
+    "layer12_halt_count": 0,
+    "matured_weeks": 0,
+    "mean_live_ic": null,
+    "mean_pairwise_rank_correlation": null,
+    "mean_turnover": 0.0,
+    "positive_live_ic_weeks": 0,
+    "reports_seen": 1,
+    "rolling_live_ic_std": null
+  }
+}

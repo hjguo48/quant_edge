@@ -399,6 +399,7 @@ def run_feature_pipeline_fast(
     as_of: date | datetime,
     *,
     allow_missing_intraday: bool = False,
+    skip_intraday: bool = False,
 ) -> pd.DataFrame:
     normalized_tickers = tuple(dict.fromkeys(ticker.strip().upper() for ticker in tickers if ticker))
     if not normalized_tickers:
@@ -486,7 +487,8 @@ def run_feature_pipeline_fast(
         as_of=as_of_ts,
     )
     intraday = pipeline_module._empty_feature_frame()
-    if allow_missing_intraday:
+    # W12 patch: skip 503 × 90d minute load when caller declares no intraday features needed.
+    if allow_missing_intraday and not skip_intraday:
         minute_history = pipeline_module.load_intraday_minute_history(
             tickers=normalized_tickers,
             start_trade_date=start - timedelta(days=90),
@@ -503,9 +505,31 @@ def run_feature_pipeline_fast(
                 (pd.to_datetime(intraday["trade_date"]).dt.date >= start)
                 & (pd.to_datetime(intraday["trade_date"]).dt.date <= end)
             ].copy()
+    elif skip_intraday:
+        logger.info("fast pipeline: skip_intraday=True, using empty intraday frame")
 
     macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
-    base_features = pd.concat([technical, fundamentals, alternative, intraday, macro], ignore_index=True)
+
+    # W12 patch: include FINRA shorting features (champion retains short_sale_ratio_5d).
+    # Without this, fast pipeline produces NaN for shorting columns → preprocess_features
+    # 0-fills + sets is_missing flag → Ridge gets degraded signal.
+    output_dates = sorted({
+        d.date() if hasattr(d, "date") else d
+        for d in pd.to_datetime(output_prices["trade_date"]).unique()
+    })
+    if output_dates:
+        from src.features.shorting import compute_shorting_features_batch
+        shorting = compute_shorting_features_batch(
+            tickers=normalized_tickers,
+            output_dates=output_dates,
+        )
+    else:
+        shorting = pipeline_module._empty_feature_frame()
+
+    base_features = pd.concat(
+        [technical, fundamentals, alternative, intraday, macro, shorting],
+        ignore_index=True,
+    )
     composite = pipeline_module.compute_composite_features(base_features)
     all_features = pd.concat([base_features, composite], ignore_index=True)
 

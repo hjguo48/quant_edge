@@ -1,0 +1,108 @@
+{
+  "as_of": "2026-03-31",
+  "capital_sizes_usd": [
+    1000000,
+    5000000,
+    10000000,
+    25000000
+  ],
+  "champion_params": {
+    "max_weight": 0.05,
+    "min_holdings": 20,
+    "min_trade_weight": 0.01,
+    "no_trade_zone": 0.0,
+    "selection_pct": 0.2,
+    "sell_buffer_pct": 0.25,
+    "turnover_penalty_lambda": 0.0,
+    "weight_shrinkage": 0.0
+  },
+  "champion_strategy": "score_weighted_buffered",
+  "cost_model": {
+    "eta": 0.426,
+    "gamma": 0.942
+  },
+  "generated_at_utc": "2026-04-27T03:31:35.994292+00:00",
+  "horizon_days": 60,
+  "report_path": "/home/jiahao/quant_edge/data/reports/walkforward_v9full9y_60d_ridge_13w.json",
+  "rows": [
+    {
+      "avg_turnover": 0.026511412374458625,
+      "cost_drag_ann": 0.014121410783862531,
+      "cost_drag_increase_vs_1m": 0.0,
+      "gross_ann_excess": 0.08747477089194389,
+      "initial_capital_usd": 1000000,
+      "ir": 0.7155987338941265,
+      "max_drawdown": 0.1404286141644984,
+      "n_periods": 328,
+      "net_ann_excess": 0.07335336010808136,
+      "pass_all": true,
+      "pass_cost_increase": true,
+      "pass_dd": true,
+      "pass_ir": true,
+      "pass_net": true,
+      "sharpe": 0.8383684127037494
+    },
+    {
+      "avg_turnover": 0.026511412374458625,
+      "cost_drag_ann": 0.014974291031219833,
+      "cost_drag_increase_vs_1m": 0.0008528802473573016,
+      "gross_ann_excess": 0.08747477089194389,
+      "initial_capital_usd": 5000000,
+      "ir": 0.7088140624053704,
+      "max_drawdown": 0.14053242295057536,
+      "n_periods": 328,
+      "net_ann_excess": 0.07250047986072405,
+      "pass_all": true,
+      "pass_cost_increase": true,
+      "pass_dd": true,
+      "pass_ir": true,
+      "pass_net": true,
+      "sharpe": 0.8355512600242891
+    },
+    {
+      "avg_turnover": 0.026511412374458625,
+      "cost_drag_ann": 0.015719762326744213,
+      "cost_drag_increase_vs_1m": 0.001598351542881682,
+      "gross_ann_excess": 0.08747477089194389,
+      "initial_capital_usd": 10000000,
+      "ir": 0.7028746195982156,
+      "max_drawdown": 0.1406146933420373,
+      "n_periods": 328,
+      "net_ann_excess": 0.07175500856519967,
+      "pass_all": true,
+      "pass_cost_increase": true,
+      "pass_dd": true,
+      "pass_ir": true,
+      "pass_net": true,
+      "sharpe": 0.8330996847310417
+    },
+    {
+      "avg_turnover": 0.026511412374458625,
+      "cost_drag_ann": 0.017464510608460104,
+      "cost_drag_increase_vs_1m": 0.003343099824597573,
+      "gross_ann_excess": 0.08747477089194389,
+      "initial_capital_usd": 25000000,
+      "ir": 0.6889331006929323,
+      "max_drawdown": 0.14078878818458176,
+      "n_periods": 328,
+      "net_ann_excess": 0.07001026028348378,
+      "pass_all": true,
+      "pass_cost_increase": true,
+      "pass_dd": true,
+      "pass_ir": true,
+      "pass_net": true,
+      "sharpe": 0.8273783163238017
+    }
+  ],
+  "verdict": {
+    "max_passing_capital_usd": 25000000,
+    "n_passing_capacities": 4,
+    "passed_at_10m": true,
+    "thresholds": {
+      "cost_drag_increase_max_vs_1m": 0.015,
+      "ir_min": 0.5,
+      "max_drawdown_max": 0.25,
+      "net_ann_excess_min": 0.05
+    }
+  }
+}

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<!--
+  QuantEdge W12 Daily Watchdog Task
+
+  Trigger:    Daily 09:00 local time
+  Action:     Calls WSL to run scripts/run_w12_watchdog.py
+  Behavior:   Sends email alert on RED/YELLOW conditions
+
+  Import via Task Scheduler:
+    1. Open Task Scheduler
+    2. Action → Import Task
+    3. Select this file
+    4. Replace <YOUR_DISTRO> in arguments with your actual WSL distro name
+-->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>QuantEdge W12 daily watchdog — heartbeat + service health.</Description>
+    <Author>QuantEdge</Author>
+  </RegistrationInfo>
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2026-04-28T09:00:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay>
+        <DaysInterval>1</DaysInterval>
+      </ScheduleByDay>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <ExecutionTimeLimit>PT15M</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>C:\Windows\System32\wsl.exe</Command>
+      <Arguments>-d &lt;YOUR_DISTRO&gt; -u jiahao -- bash -lc "cd /home/jiahao/quant_edge &amp;&amp; source .venv/bin/activate &amp;&amp; python scripts/run_w12_watchdog.py"</Arguments>
+    </Exec>
+  </Actions>
+</Task>

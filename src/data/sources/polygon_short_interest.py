@@ -1,7 +1,14 @@
 """Polygon Short Interest data source.
 
 Fetches bi-weekly short interest from /stocks/v1/short-interest.
-PIT: knowledge_time = settlement_date + 2 business days (T+2 reporting delay).
+PIT: knowledge_time = settlement_date + 7 business days (FINRA publication).
+
+FINRA's short-interest schedule: brokers must report by the second business
+day after settlement and FINRA publishes on the seventh business day after
+settlement (with holiday handling). The previous heuristic of
+``settlement_date + 3 calendar days`` was too aggressive (audit P1-3, 122k
+rows). An interim fix used 8 BD which is one publication day too late;
+Codex deep review flagged the schedule mismatch.
 """
 
 from __future__ import annotations
@@ -103,8 +110,8 @@ class PolygonShortInterestSource(DataSource):
                 sdate = date.fromisoformat(sd)
             except (ValueError, TypeError):
                 continue
-            # PIT: T+2 business days reporting delay
-            kt = datetime.combine(sdate + timedelta(days=3), datetime.max.time(), tzinfo=timezone.utc)
+            # PIT: FINRA publishes short interest 7 business days after settlement
+            kt = datetime.combine(_add_business_days(sdate, 7), datetime.max.time(), tzinfo=timezone.utc)
             rows.append({
                 "ticker": ticker.upper(),
                 "settlement_date": sdate,
@@ -161,6 +168,16 @@ class PolygonShortInterestSource(DataSource):
                 session.execute(stmt)
             session.commit()
             logger.info("polygon_short persisted {} rows", len(frame))
+
+
+def _add_business_days(start: date, n: int) -> date:
+    cur = start
+    added = 0
+    while added < n:
+        cur += timedelta(days=1)
+        if cur.weekday() < 5:
+            added += 1
+    return cur
 
 
 def _intv(v: Any) -> int | None:

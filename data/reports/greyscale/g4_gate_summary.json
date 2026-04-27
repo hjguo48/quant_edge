@@ -1,72 +1,12 @@
 {
-  "as_of_utc": "2026-04-17T07:13:52.126175+00:00",
-  "generated_at_utc": "2026-04-17T07:13:52.753252+00:00",
+  "as_of_utc": "2026-04-27T13:35:23+00:00",
+  "generated_at_utc": "2026-04-27T13:37:57.035548+00:00",
   "horizon_days": 60,
-  "latest_pit_trade_date": "2026-04-16",
+  "latest_pit_trade_date": "2026-04-24",
   "per_week": [
     {
-      "generated_at_utc": "2026-04-05T23:56:34.514753+00:00",
-      "holding_count_after_risk": 49,
-      "pairwise_rank_correlation": {
-        "ridge__lightgbm": 0.4274682864903004,
-        "ridge__xgboost": 0.23494905010718883,
-        "xgboost__lightgbm": 0.44471734008258
-      },
-      "realized_ics": {},
-      "risk_status": {
-        "layer1_pass": true,
-        "layer2_pass": true,
-        "layer3_pass": true,
-        "layer4_pass": true
-      },
-      "signal_date": "2026-04-02",
-      "turnover_vs_previous": 0.0,
-      "week_number": 1,
-      "weight_source": "seed_w11_avg_weights"
-    },
-    {
-      "generated_at_utc": "2026-04-11T04:18:20.341271+00:00",
-      "holding_count_after_risk": 79,
-      "pairwise_rank_correlation": {
-        "ridge__lightgbm": 0.38784966881514066,
-        "ridge__xgboost": 0.1469043352258164,
-        "xgboost__lightgbm": 0.4131423705738724
-      },
-      "realized_ics": {},
-      "risk_status": {
-        "layer1_pass": true,
-        "layer2_pass": true,
-        "layer3_pass": false,
-        "layer4_pass": false
-      },
-      "signal_date": "2026-04-09",
-      "turnover_vs_previous": 0.4,
-      "week_number": 2,
-      "weight_source": "seed_w11_avg_weights"
-    },
-    {
-      "generated_at_utc": "2026-04-12T13:24:17.845975+00:00",
-      "holding_count_after_risk": 61,
-      "pairwise_rank_correlation": {
-        "ridge__lightgbm": 0.35924471707415656,
-        "ridge__xgboost": 0.15563058224285498,
-        "xgboost__lightgbm": 0.4041172124979803
-      },
-      "realized_ics": {},
-      "risk_status": {
-        "layer1_pass": true,
-        "layer2_pass": true,
-        "layer3_pass": true,
-        "layer4_pass": true
-      },
-      "signal_date": "2026-04-10",
-      "turnover_vs_previous": 0.1633927364281729,
-      "week_number": 4,
-      "weight_source": "seed_w11_avg_weights"
-    },
-    {
-      "generated_at_utc": "2026-04-17T06:59:32.450752+00:00",
-      "holding_count_after_risk": 70,
+      "generated_at_utc": "2026-04-27T13:37:46.699563+00:00",
+      "holding_count_after_risk": 30,
       "pairwise_rank_correlation": {
         "ridge__lightgbm": NaN,
         "ridge__xgboost": NaN,
@@ -79,9 +19,9 @@
         "layer3_pass": true,
         "layer4_pass": true
       },
-      "signal_date": "2026-04-16",
-      "turnover_vs_previous": 0.052241241457553565,
-      "week_number": 5,
+      "signal_date": "2026-04-24",
+      "turnover_vs_previous": 0.0,
+      "week_number": 1,
       "weight_source": "seed_w11_avg_weights"
     }
   ],
@@ -90,16 +30,17 @@
     "checks": {
       "live_ic_above_threshold": {
         "passed": null,
-        "threshold": 0.06,
+        "threshold": 0.02,
         "value": null
       },
       "model_consistency_above_threshold": {
-        "passed": false,
+        "passed": null,
+        "skipped_reason": "single_model_bundle",
         "threshold": 0.5,
-        "value": 0.3304470625677657
+        "value": null
       },
       "no_layer12_halts": {
-        "passed": true,
+        "passed": null,
         "threshold": 0,
         "value": 0
       },
@@ -109,9 +50,9 @@
         "value": 0
       },
       "turnover_below_cap": {
-        "passed": true,
-        "threshold": 0.45,
-        "value": 0.15390849447143162
+        "passed": null,
+        "threshold": 0.08,
+        "value": 0.0
       }
     },
     "gate_rule": "PASS requires 5/5 checks after 4 matured weekly reports; otherwise PENDING or FAIL.",
@@ -119,10 +60,10 @@
     "layer12_halt_count": 0,
     "matured_weeks": 0,
     "mean_live_ic": null,
-    "mean_pairwise_rank_correlation": 0.3304470625677657,
-    "mean_turnover": 0.15390849447143162,
+    "mean_pairwise_rank_correlation": null,
+    "mean_turnover": 0.0,
     "positive_live_ic_weeks": 0,
-    "reports_seen": 4,
+    "reports_seen": 1,
     "rolling_live_ic_std": null
   }
 }

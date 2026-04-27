@@ -1,0 +1,10 @@
+{
+  "cache_schema_version": 2,
+  "cached_feature_count": 147,
+  "end_date": "2025-02-01",
+  "historical_feature_parquet": "data/features/all_features_v6.parquet",
+  "sampled_tickers_hash": "1b228cb15c4592326339765857764d869ce1fcef",
+  "sampled_trade_dates_hash": "0a69aaf9e88fd28c148be02ad62c8bbc0e6d3a84",
+  "start_date": "2023-02-01",
+  "table_set_version": "week7_pit_v2"
+}

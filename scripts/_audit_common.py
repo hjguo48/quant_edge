@@ -15,7 +15,7 @@ from src.config import settings
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-REPORT_DATE_TAG = "20260417"
+REPORT_DATE_TAG = "20260425"
 
 FEATURE_SOURCES = (
     ("technical", "src/features/technical.py", "TECHNICAL_FEATURE_NAMES"),

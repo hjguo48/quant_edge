@@ -130,12 +130,63 @@ def main(argv: list[str] | None = None) -> int:
     if live_trade_date is None:
         raise RuntimeError("No PIT-visible trade date available for greyscale live run.")
 
-    live_universe = load_live_universe(trade_date=live_trade_date, as_of=as_of, benchmark_ticker=args.benchmark_ticker)
-    live_universe = apply_universe_filters(
-        tickers=live_universe,
-        limit=args.limit_tickers,
-        requested_tickers=args.tickers,
-    )
+    # W13: prefer dynamic live-universe admission policy if bundle declares one.
+    # Fallback to legacy frozen eligible_universe_path for v1/v2 bundles.
+    live_universe_diagnostics: dict[str, Any] | None = None
+    live_policy_dict = bundle.get("live_universe_policy")
+    if live_policy_dict and bundle.get("live_universe_mode") == "dynamic_admission_policy":
+        from src.universe.live_resolver import resolve_live_universe, LiveUniversePolicy
+        from src.data.db.session import get_engine
+        live_required_features = [f for f in retained_features if not str(f).startswith("is_missing_")]
+        live_policy = LiveUniversePolicy.from_dict(live_policy_dict)
+        engine = get_engine()
+        with engine.connect() as conn:
+            resolve_result = resolve_live_universe(
+                as_of=as_of,
+                trade_date=live_trade_date,
+                required_features=live_required_features,
+                policy=live_policy,
+                conn=conn,
+            )
+        live_universe = resolve_result.admitted_tickers
+        live_universe_diagnostics = resolve_result.summary()
+        logger.info(
+            "W13 dynamic universe: candidates {} → admitted {} (rejected {})",
+            live_universe_diagnostics["candidate_count"],
+            live_universe_diagnostics["admitted_count"],
+            live_universe_diagnostics["rejected_count"],
+        )
+        if live_universe_diagnostics["rejection_buckets"]:
+            logger.info("rejection_buckets={}", live_universe_diagnostics["rejection_buckets"])
+        live_universe = apply_universe_filters(
+            tickers=live_universe,
+            limit=args.limit_tickers,
+            requested_tickers=args.tickers,
+        )
+    else:
+        # Legacy v1/v2 path: active SP500 ∩ frozen eligible_universe_path.
+        live_universe = load_live_universe(trade_date=live_trade_date, as_of=as_of, benchmark_ticker=args.benchmark_ticker)
+        live_universe = apply_universe_filters(
+            tickers=live_universe,
+            limit=args.limit_tickers,
+            requested_tickers=args.tickers,
+        )
+        eligible_universe_path = bundle.get("eligible_universe_path")
+        if eligible_universe_path:
+            eligible_path = Path(eligible_universe_path)
+            if not eligible_path.is_absolute():
+                eligible_path = REPO_ROOT / eligible_path
+            if eligible_path.exists():
+                eligible_payload = json.loads(eligible_path.read_text())
+                eligible_set = {str(t).upper() for t in eligible_payload.get("tickers", [])}
+                before_count = len(live_universe)
+                live_universe = [t for t in live_universe if str(t).upper() in eligible_set]
+                logger.info(
+                    "bundle universe filter: live {} → eligible-intersect {} (snapshot={})",
+                    before_count, len(live_universe), eligible_path.name,
+                )
+            else:
+                logger.warning("bundle eligible_universe_path missing on disk: {}", eligible_path)
     if not live_universe:
         raise RuntimeError("No live universe tickers were available for the PIT-visible trade date.")
 
@@ -172,12 +223,17 @@ def main(argv: list[str] | None = None) -> int:
         raise RuntimeError("No PIT prices returned for greyscale live execution.")
 
     pipeline = FeaturePipeline()
+    # W12: skip intraday minute load when bundle has no intraday features.
+    # 503 tickers × 90d minute bars OOMs at the 14GB ulimit cap.
+    from src.features.intraday import INTRADAY_FEATURE_NAMES as _INTRADAY_NAMES
+    skip_intraday = not (set(retained_features) & set(_INTRADAY_NAMES))
     features_long = pipeline.run(
         tickers=live_universe,
         start_date=live_trade_date,
         end_date=live_trade_date,
         as_of=as_of,
         allow_missing_intraday=True,
+        skip_intraday=skip_intraday,
     )
     if features_long.empty:
         raise RuntimeError("FeaturePipeline returned no rows for greyscale live execution.")
@@ -235,7 +291,25 @@ def main(argv: list[str] | None = None) -> int:
         high_threshold=args.high_vix_threshold,
     )
     regime_adjusted_weights = apply_regime_to_model_weights(live_weights, regime_scalar)
-    fusion_scores = combine_current_predictions(normalized_predictions, regime_adjusted_weights).rename(FUSION_NAME)
+    # W12 patch: respect bundle's declared score_space.
+    # - "normalized" (default, legacy): cross-sectional z-score then weighted-sum (multi-model fusion).
+    # - "raw": use the single active model's raw predictions directly (champion-faithful for W10
+    #   score_weighted_buffered, which fits Ridge on rank-normalized features and uses raw output).
+    score_space = str(bundle.get("score_space", "normalized")).lower()
+    if score_space == "raw":
+        active_model_names_for_raw = [m for m, w in regime_adjusted_weights.items() if abs(w) > 1e-12]
+        if len(active_model_names_for_raw) != 1:
+            raise RuntimeError(
+                f"score_space='raw' requires exactly 1 active model, got {len(active_model_names_for_raw)}: "
+                f"{active_model_names_for_raw}"
+            )
+        active_model = active_model_names_for_raw[0]
+        if active_model not in raw_predictions:
+            raise RuntimeError(f"score_space='raw' active model {active_model} missing from raw_predictions")
+        fusion_scores = raw_predictions[active_model].rename(FUSION_NAME)
+        logger.info("score_space=raw: using {} raw predictions ({} tickers)", active_model, len(fusion_scores))
+    else:
+        fusion_scores = combine_current_predictions(normalized_predictions, regime_adjusted_weights).rename(FUSION_NAME)
 
     overlay = NullOverlay()
     fused_scores_by_ticker = overlay.apply(
@@ -473,6 +547,7 @@ def main(argv: list[str] | None = None) -> int:
             "gross_exposure_after_risk": float(constrained.gross_exposure),
             "cash_weight_after_risk": float(constrained.cash_weight),
         },
+        "live_universe_diagnostics": live_universe_diagnostics,
         "feature_drift_psi": json_safe(psi_report_data) if psi_report_data else None,
         "notes": [
             "Fusion ranking uses cross-sectional z-scored model outputs with rolling-IC weights.",

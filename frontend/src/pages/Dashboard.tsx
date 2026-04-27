@@ -4,19 +4,52 @@ import { Info, Layers, BarChart2 } from "lucide-react";
 import StatCard from "../components/StatCard";
 import KLineChart from "../components/KLineChart";
 import HeatmapChart from "../components/HeatmapChart";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { fetchApi } from "../hooks/useApi";
 
-const factorData = [
-  { factor: "Momentum", ic: 0.142, positive: true },
-  { factor: "Value", ic: -0.038, positive: false },
-  { factor: "Quality", ic: 0.211, positive: true },
-  { factor: "Low Vol", ic: 0.087, positive: true },
-  { factor: "Growth", ic: 0.156, positive: true },
-  { factor: "Carry", ic: -0.021, positive: false },
-  { factor: "Reversal", ic: -0.063, positive: false },
-];
+interface GreyscaleHorizonWeek {
+  status: string;
+  portfolio_return: number | null;
+  spy_return: number | null;
+  excess: number | null;
+  tickers_used: number;
+  tickers_missing: number;
+  horizon_end_date: string | null;
+}
+
+interface GreyscaleWeeklyCurvePoint {
+  signal_date: string;
+  weekly_return: number | null;
+  weekly_spy: number | null;
+  weekly_excess: number | null;
+  cumulative_return: number | null;
+  cumulative_spy: number | null;
+  cumulative_excess: number | null;
+}
+
+interface GreyscaleHorizonCumulative {
+  return: number | null;
+  spy_return: number | null;
+  excess: number | null;
+  max_drawdown: number | null;
+  weeks_realized: number;
+  winrate_vs_spy: number | null;
+  weekly_curve: GreyscaleWeeklyCurvePoint[];
+}
+
+interface GreyscalePerformanceResponse {
+  as_of_utc: string | null;
+  today: string | null;
+  benchmark: string;
+  horizons_supported: number[];
+  per_week: Array<{
+    week_number: number;
+    signal_date: string | null;
+    horizons: Record<string, GreyscaleHorizonWeek>;
+  }>;
+  cumulative: Record<string, GreyscaleHorizonCumulative>;
+}
 
 interface MarketSector {
   sector: string;
@@ -197,6 +230,14 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     retry: false,
   });
 
+  const {
+    data: greyscalePerformance,
+  } = useQuery<GreyscalePerformanceResponse>({
+    queryKey: ["greyscalePerformance"],
+    queryFn: () => fetchApi<GreyscalePerformanceResponse>("/api/greyscale/performance"),
+    retry: false,
+  });
+
   const spyPrice = overview?.spy?.price || 0;
   const spyChangePct = overview?.spy?.change_pct || 0;
   const vixValue = overview?.vix?.value || 0;
@@ -211,15 +252,26 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
 
   const topSignals = useMemo(() => {
     if (!predictionsData?.predictions) return [];
+    // Long-only champion: rank by score descending so STRONG/LONG names lead and
+    // any buffer-held (negative-score) name falls to the bottom rather than
+    // ranking high on raw |score| (Codex review Finding 4).
     return [...predictionsData.predictions]
-      .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+      .sort((a, b) => b.score - a.score)
       .slice(0, 5)
-      .map(p => ({
-        ticker: p.ticker,
-        direction: p.score > 0 ? "long" : "short",
-        confidence: Math.round(p.percentile),
-        score: p.score
-      }));
+      .map(p => {
+        let tier: "strong" | "long" | "watch" | "buffer";
+        if (p.score <= 0) tier = "buffer";
+        else if (p.percentile >= 75) tier = "strong";
+        else if (p.percentile < 25) tier = "watch";
+        else tier = "long";
+        return {
+          ticker: p.ticker,
+          direction: p.score > 0 ? "long" : "neutral",
+          tier,
+          confidence: Math.round(p.percentile),
+          score: p.score
+        };
+      });
   }, [predictionsData]);
 
   // Default chart to top signal's ticker once loaded
@@ -445,33 +497,107 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
           )}
         </div>
 
-        {/* Factor IC */}
+        {/* Greyscale Paper Performance (W13.2) */}
         <div className="w-72 bg-card rounded-xl border border-border p-5 fade-in-up stagger-3 flex-shrink-0">
-          <h3 className="text-sm font-semibold text-foreground mb-1">Factor IC Scores</h3>
-          <p className="text-xs text-muted-foreground mb-4 font-medium">Information coefficient, 20-day</p>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={factorData} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
-              <XAxis type="number" domain={[-0.3, 0.3]} tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="factor" tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} width={55} />
-              <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.03)" }}
-                content={({ active, payload }: any) => {
-                  if (!active || !payload?.length) return null;
-                  const v = payload[0].value;
-                  return (
-                    <div className="bg-popover border border-border rounded-lg px-2.5 py-1.5 shadow-custom">
-                      <p className={`text-xs font-bold ${v >= 0 ? "text-bull" : "text-bear"}`}>IC: {v.toFixed(3)}</p>
+          {(() => {
+            // Pick the shortest horizon that has any non-pending data; default to 1d.
+            const horizonPref: ("1d" | "5d" | "20d" | "60d")[] = ["1d", "5d", "20d", "60d"];
+            const activeHorizon =
+              horizonPref.find((h) => (greyscalePerformance?.cumulative?.[h]?.weeks_realized ?? 0) > 0)
+              ?? horizonPref.find((h) => {
+                const lw = greyscalePerformance?.per_week?.[greyscalePerformance.per_week.length - 1];
+                return lw?.horizons?.[h]?.status && lw.horizons[h].status !== "pending";
+              })
+              ?? "1d";
+            const horizonLabel = activeHorizon.replace("d", "-day");
+            const cumBlock = greyscalePerformance?.cumulative?.[activeHorizon];
+            const latestWeek = greyscalePerformance?.per_week?.[greyscalePerformance.per_week.length - 1];
+            const latestBlock = latestWeek?.horizons?.[activeHorizon];
+            const cumReturn = cumBlock?.return ?? null;
+            const dd = cumBlock?.max_drawdown ?? null;
+            const winrate = cumBlock?.winrate_vs_spy ?? null;
+            const weeksRealized = cumBlock?.weeks_realized ?? 0;
+            const weeklyCurve = cumBlock?.weekly_curve ?? [];
+            const fmtPct = (v: number | null) => v == null ? "—" : `${(v * 100).toFixed(2)}%`;
+            const colorOf = (v: number | null) => v == null ? "text-muted-foreground" : v >= 0 ? "text-bull" : "text-bear";
+
+            const isPending = (latestBlock?.status === "pending") || cumReturn == null;
+
+            return (
+              <>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Greyscale Paper Performance</h3>
+                <p className="text-xs text-muted-foreground mb-4 font-medium">
+                  Paper P&amp;L ({horizonLabel} horizon) · vs SPY · dry-run only
+                </p>
+                {isPending ? (
+                  <div className="flex flex-col items-center justify-center h-[180px] border border-dashed border-border rounded-lg bg-surface text-xs text-muted-foreground space-y-1">
+                    <p className="font-bold uppercase tracking-widest">Awaiting first close</p>
+                    <p className="text-[10px] opacity-70 text-center px-2">
+                      Realized P&amp;L materializes once price data lands for the next trading day after signal_date
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">This Week</p>
+                        <p className={`text-base font-black font-mono ${colorOf(latestBlock?.portfolio_return ?? null)}`}>
+                          {fmtPct(latestBlock?.portfolio_return ?? null)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">vs SPY</p>
+                        <p className={`text-base font-black font-mono ${colorOf(latestBlock?.excess ?? null)}`}>
+                          {fmtPct(latestBlock?.excess ?? null)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Cumulative</p>
+                        <p className={`text-base font-black font-mono ${colorOf(cumReturn)}`}>
+                          {fmtPct(cumReturn)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Max DD</p>
+                        <p className={`text-base font-black font-mono ${colorOf(dd)}`}>
+                          {fmtPct(dd)}
+                        </p>
+                      </div>
                     </div>
-                  );
-                }}
-              />
-              <Bar dataKey="ic" radius={[0, 3, 3, 0]}>
-                {factorData.map((entry, i) => (
-                  <Cell key={i} fill={entry.ic >= 0 ? "#00C805" : "#FF5252"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                    {weeklyCurve.length > 0 && (
+                      <ResponsiveContainer width="100%" height={70}>
+                        <AreaChart data={weeklyCurve} margin={{ left: 0, right: 0, top: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0.3} />
+                              <stop offset="95%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="signal_date" hide />
+                          <YAxis hide domain={["auto", "auto"]} />
+                          <Area
+                            type="monotone"
+                            dataKey="cumulative_return"
+                            stroke={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"}
+                            strokeWidth={1.5}
+                            fill="url(#cumGrad)"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                    <div className="flex justify-between items-center mt-2 text-[10px] text-muted-foreground">
+                      <span>{weeksRealized} weeks realized</span>
+                      {winrate != null && (
+                        <span className={colorOf(winrate - 0.5)}>
+                          {(winrate * 100).toFixed(0)}% win
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -511,13 +637,13 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
                     >
                       <div>
                         <div className="text-sm font-bold text-foreground">{s.ticker}</div>
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${s.direction === "long" ? "tag-bull" : "tag-bear"}`}>
-                          {s.direction === "long" ? "LONG" : "SHORT"}
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${s.tier === "strong" ? "tag-bull-strong" : s.tier === "watch" ? "tag-bull-watch" : s.tier === "buffer" ? "tag-neutral" : "tag-bull"}`}>
+                          {s.tier === "strong" ? "STRONG" : s.tier === "watch" ? "WATCH" : s.tier === "buffer" ? "BUFFER" : "LONG"}
                         </span>
                       </div>
                       <div className="text-right">
                         <div className="text-[10px] text-muted-foreground font-medium">{s.confidence}% conf</div>
-                        <div className={`text-sm font-bold font-mono ${s.direction === "long" ? "text-bull" : "text-bear"}`}>
+                        <div className={`text-sm font-bold font-mono ${s.tier === "strong" ? "text-bull-strong" : s.tier === "watch" ? "text-bull-watch" : s.tier === "buffer" ? "text-muted-foreground" : "text-bull"}`}>
                           {s.score > 0 ? "+" : ""}{s.score.toFixed(4)}
                         </div>
                       </div>

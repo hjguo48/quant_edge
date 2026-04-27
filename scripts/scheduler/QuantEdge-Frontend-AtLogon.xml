@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<!--
+  QuantEdge Frontend (Vite dev server) — At Logon
+
+  Trigger:    User logon
+  Action:     Calls WSL to start Vite dev server on port 4173
+  Behavior:   Restart on failure
+
+  Import via Task Scheduler:
+    1. Open Task Scheduler
+    2. Action → Import Task
+    3. Select this file
+    4. Replace <YOUR_DISTRO> in arguments with your actual WSL distro name
+-->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>QuantEdge Vite frontend dev server on port 4173.</Description>
+    <Author>QuantEdge</Author>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <Enabled>true</Enabled>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>7</Priority>
+    <RestartOnFailure>
+      <Interval>PT1M</Interval>
+      <Count>3</Count>
+    </RestartOnFailure>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>C:\Windows\System32\wsl.exe</Command>
+      <Arguments>-d &lt;YOUR_DISTRO&gt; -u jiahao -- bash -lc "cd /home/jiahao/quant_edge/frontend &amp;&amp; exec npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"</Arguments>
+    </Exec>
+  </Actions>
+</Task>

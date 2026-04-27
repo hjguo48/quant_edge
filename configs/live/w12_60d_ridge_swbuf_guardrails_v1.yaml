@@ -1,0 +1,106 @@
+# W12 production guardrails for the 60D-only score_weighted_buffered champion.
+#
+# Policy: red status = hold_positions_and_alert (NOT auto-flatten, NOT auto-switch to SPY)
+# during W12 prep + first calendar weeks of greyscale. Manual review required to clear.
+#
+# Backtest baseline (60D Ridge, score_weighted_buffered, full 9y OOS):
+#   net_ann_excess = 7.34%, IR = 0.7156, Sharpe = 0.8384, Max DD = 14.04%
+#   weekly turnover = 2.65%, year cost drag = 1.41%
+#   mean_test_ic across 13 windows = 0.0699
+version: w12_60d_ridge_swbuf_guardrails_v1
+bundle_version: w12_60d_ridge_swbuf_v1
+generated_at_utc: 2026-04-27T00:00:00Z
+
+# ---------------------------------------------------------------------------
+# Layer 1: Data freshness, missingness, distribution shift
+# ---------------------------------------------------------------------------
+layer1_data:
+  # Per-feature missing rate
+  missing_rate_yellow: 0.05
+  missing_rate_red: 0.15
+  # Active universe coverage (intersect bundle frozen 503)
+  universe_coverage_yellow: 0.95
+  universe_coverage_red: 0.85
+  # Stock prices freshness
+  stale_trade_date_max_lag_days: 3
+  # PSI (population stability index) per feature
+  psi_alert_threshold: 0.25
+  psi_red_feature_count: 10
+  # Feature fill rate change vs training
+  fill_rate_change_threshold: 0.05
+
+# ---------------------------------------------------------------------------
+# Layer 2: Live signal health vs backtest expectation
+# ---------------------------------------------------------------------------
+layer2_signal:
+  # Backtest reference (from walkforward_v9full9y_60d_ridge_13w.json)
+  backtest_mean_ic: 0.0699
+  # Greyscale warmup — don't gate on signal until N matured weekly reports
+  warmup_matured_weeks: 4
+  # Rolling 4-week mean live IC
+  live_ic_mean_yellow: 0.02
+  live_ic_mean_red: 0.00
+  # Positive weeks count in last 4
+  positive_weeks_min_4w: 3
+  # Consecutive negative weeks → red
+  consecutive_negative_weeks_red: 2
+  # Live IC / backtest IC decay ratio
+  decay_ratio_yellow: 0.50
+  decay_ratio_red: 0.25
+
+# ---------------------------------------------------------------------------
+# Layer 3: Portfolio construction sanity
+# ---------------------------------------------------------------------------
+layer3_portfolio:
+  # Holdings count (bundle min_holdings)
+  holdings_min: 20
+  # Per-position weight cap (bundle max_weight)
+  max_weight: 0.05
+  # Sector exposure deviation vs SPY benchmark
+  sector_deviation_red: 0.15
+  # Weekly turnover (backtest mean = 2.65%)
+  weekly_turnover_mean_yellow: 0.08
+  weekly_turnover_mean_red: 0.20
+  # Cash / unfilled exposure (1D throttle can leave implicit cash)
+  cash_weight_yellow: 0.10
+  cash_weight_red: 0.25
+
+# ---------------------------------------------------------------------------
+# Layer 4: Operational / runtime
+# ---------------------------------------------------------------------------
+layer4_operational:
+  runtime_seconds_yellow: 900
+  runtime_seconds_red: 1800
+  # Critical alert threshold for paging oncall
+  critical_alert_count_red: 1
+
+# ---------------------------------------------------------------------------
+# Action policy (W12 prep + first 4 calendar weeks of greyscale)
+# ---------------------------------------------------------------------------
+actions:
+  # Yellow: monitor + alert, no portfolio change
+  yellow: alert_only
+  # Red: stop placing new orders, hold existing positions, alert + page oncall
+  red: hold_positions_and_alert
+  # Manual review required to clear red status (no auto-clear on next clean week)
+  manual_clear_required: true
+  # Do NOT auto-liquidate or auto-switch to SPY in W12 / first 4 greyscale weeks
+  auto_flatten: false
+  # Do NOT auto-switch champion to a fallback model
+  auto_swap_champion: false
+
+# ---------------------------------------------------------------------------
+# Rollback runbook (manual)
+# ---------------------------------------------------------------------------
+rollback:
+  # Steps to manually revert to SPY full exposure (if greyscale paper trading
+  # exposes a critical issue):
+  procedure:
+    - "1. Verify the alert is real (not a data freshness false positive)"
+    - "2. Suspend run_greyscale_live.py via cron / supervisor"
+    - "3. Document rollback decision in data/reports/rollback_log.md"
+    - "4. If real money was deployed, place SPY-only exit orders manually"
+    - "5. Page oncall (designated user) for joint review"
+    - "6. Do NOT modify bundle.json or guardrails config without joint sign-off"
+  oncall_user: "user (no shared oncall yet — single-operator deployment)"
+  estimated_response_sla_seconds: 1800

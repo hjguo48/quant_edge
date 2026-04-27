@@ -105,6 +105,7 @@ def build_panel_context(
     end_date: date | None = None,
     sample_tickers: int = DEFAULT_SAMPLE_TICKERS,
     rebalance_weekday: int = DEFAULT_REBALANCE_WEEKDAY,
+    frozen_universe_path: Path | None = None,
 ) -> PanelContext:
     default_start, default_end = default_screening_bounds()
     effective_start = start_date or default_start
@@ -114,6 +115,7 @@ def build_panel_context(
         end_date=effective_end,
         sample_tickers=sample_tickers,
         sample_dates_per_month=1,
+        frozen_universe_path=frozen_universe_path,
     )
     trade_dates = rebalance_trade_dates(
         start_date=effective_start,
@@ -1329,6 +1331,9 @@ def compute_feature_screening_metrics(
         "window_ics": window_ics,
         "daily_ic_count": int(len(daily_ic)),
         "n_obs": int(len(aligned)),
+        # Raw per-trade-date IC kept so caller can dump it for chunked-merge
+        # workflows (chunk + raw_ic parquet + exact W7 re-aggregation).
+        "daily_ic": daily_ic,
     }
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date, timedelta
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -18,6 +19,15 @@ class ValidationResult:
     passed: bool
     missing_features: list[str]
     extra_features: list[str]
+    metadata: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class RecencyValidationResult:
+    """Per-feature recency + coverage check (W12 audit hardening)."""
+    passed: bool
+    stale_features: list[str]  # features whose latest calc_date is too old
+    sparse_features: list[str]  # features with too few rows on latest calc_date
     metadata: dict[str, Any]
 
 
@@ -98,6 +108,106 @@ class BundleValidator:
             missing_features=missing_features,
             extra_features=extra_features,
             metadata=metadata,
+        )
+
+    def validate_recency(
+        self,
+        feature_store_session: Any,
+        *,
+        max_stale_days: int = 7,
+        min_coverage_count: int = 100,
+    ) -> RecencyValidationResult:
+        """W12 audit hardening: per-feature recency + coverage check.
+
+        For each required feature, verify:
+        - latest calc_date is within `max_stale_days` of today
+        - on its latest calc_date, at least `min_coverage_count` distinct tickers have values
+
+        This catches silent feature dropout (e.g. shorting backfill ran once and never again),
+        which the cheap fingerprint+distinct-name schema check would miss.
+        """
+        bundle = self.load_bundle()
+        required_features = sorted(
+            str(feature) for feature in (
+                bundle.get("required_features") or bundle.get("retained_features") or []
+            )
+        )
+        if not required_features:
+            raise BundleSchemaError(
+                f"Bundle {self.bundle_path} does not declare required_features.",
+            )
+
+        # Per-feature latest calc_date (cheap)
+        latest_rows = feature_store_session.execute(
+            text(
+                """
+                SELECT feature_name, MAX(calc_date) AS max_calc
+                FROM feature_store
+                WHERE feature_name = ANY(:feats)
+                GROUP BY feature_name
+                """
+            ),
+            {"feats": required_features},
+        )
+        latest_by_feature: dict[str, Any] = {
+            row["feature_name"]: row["max_calc"]
+            for row in latest_rows.mappings().all()
+        }
+
+        # Coverage on each feature's latest calc_date (one query per feature; ~62 fast queries)
+        feature_data: dict[str, dict[str, Any]] = {}
+        for feat, max_calc in latest_by_feature.items():
+            cov_row = feature_store_session.execute(
+                text(
+                    "SELECT COUNT(DISTINCT ticker) AS cov "
+                    "FROM feature_store WHERE feature_name = :f AND calc_date = :d"
+                ),
+                {"f": feat, "d": max_calc},
+            ).mappings().first()
+            feature_data[feat] = {
+                "latest_calc_date": max_calc,
+                "coverage": int(cov_row["cov"]) if cov_row else 0,
+            }
+
+        today = date.today()
+        threshold_date = today - timedelta(days=max_stale_days)
+        stale: list[str] = []
+        sparse: list[str] = []
+        seen_features = set(feature_data.keys())
+
+        for feat in required_features:
+            data = feature_data.get(feat)
+            if data is None:
+                # Feature has no rows at all → captured by validate_schema as missing.
+                # Skip here (don't double-flag).
+                continue
+            latest = data["latest_calc_date"]
+            if latest < threshold_date:
+                stale.append(feat)
+            if data["coverage"] < min_coverage_count:
+                sparse.append(feat)
+
+        passed = not stale and not sparse
+        return RecencyValidationResult(
+            passed=passed,
+            stale_features=sorted(stale),
+            sparse_features=sorted(sparse),
+            metadata={
+                "today": today.isoformat(),
+                "max_stale_days": max_stale_days,
+                "min_coverage_count": min_coverage_count,
+                "threshold_date": threshold_date.isoformat(),
+                "feature_count_checked": len(required_features),
+                "feature_count_with_data": len(seen_features),
+                "per_feature_stats": {
+                    name: {
+                        "latest_calc_date": d["latest_calc_date"].isoformat()
+                        if hasattr(d["latest_calc_date"], "isoformat") else str(d["latest_calc_date"]),
+                        "coverage": d["coverage"],
+                    }
+                    for name, d in feature_data.items()
+                },
+            },
         )
 
     def assert_valid(self, feature_store_session: Any) -> ValidationResult:

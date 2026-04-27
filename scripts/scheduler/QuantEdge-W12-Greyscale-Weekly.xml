@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<!--
+  QuantEdge W12 Weekly Greyscale Task
+
+  Trigger:    Saturday 06:15 Asia/Shanghai (≈ Friday 18:15 ET during DST)
+  Action:     Calls WSL to run scripts/run_w12_greyscale_once.sh
+  Behavior:   Wakes computer, runs missed tasks, retries on failure
+
+  Import via Task Scheduler:
+    1. Open Task Scheduler
+    2. Action → Import Task
+    3. Select this file
+    4. Verify trigger time + action path
+    5. Replace <YOUR_DISTRO> in arguments with your actual WSL distro name
+       (run `wsl -l -v` in PowerShell to list distros)
+-->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>QuantEdge W12 weekly greyscale paper-trading run (Y+ pipeline).</Description>
+    <Author>QuantEdge</Author>
+  </RegistrationInfo>
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2026-05-02T06:15:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByWeek>
+        <DaysOfWeek>
+          <Saturday />
+        </DaysOfWeek>
+        <WeeksInterval>1</WeeksInterval>
+      </ScheduleByWeek>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>true</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>true</WakeToRun>
+    <ExecutionTimeLimit>PT3H</ExecutionTimeLimit>
+    <Priority>7</Priority>
+    <RestartOnFailure>
+      <Interval>PT15M</Interval>
+      <Count>2</Count>
+    </RestartOnFailure>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>C:\Windows\System32\wsl.exe</Command>
+      <Arguments>-d &lt;YOUR_DISTRO&gt; -u jiahao -- bash -lc "cd /home/jiahao/quant_edge &amp;&amp; ./scripts/run_w12_greyscale_once.sh"</Arguments>
+    </Exec>
+  </Actions>
+</Task>

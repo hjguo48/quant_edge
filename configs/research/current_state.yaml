@@ -1,28 +1,48 @@
-# 当前 live champion 的唯一真相来源。
-as_of: 2026-04-17
+# 当前 live champion 的唯一真相来源 (W12 refresh 2026-04-27)
+as_of: 2026-04-27
 
 live_champion:
-  # 当前灰度中实际运行的版本标签。
-  version: v5_no_analyst
-  # 当前主策略 horizon。
+  # W12 bundle 版本标签
+  version: w12_60d_ridge_swbuf_v1
+  # 当前主策略 horizon
   horizon: 60D
-  # 当前主模型。
+  # 当前主模型
   model: Ridge
-  # 当前 bundle 使用的 retained feature 数量。
-  features: 19
-  # 当前 walk-forward 核心指标。
-  ic: 0.0623
-  t_stat: 2.17
-  p_value: 0.0254
-  # 当前 gate 结论。
-  g3_gate: 6/6 PASS
-  # 当前线上 bundle 与模型 artifact。
-  bundle_path: data/models/fusion_model_bundle_60d.json
-  artifact_path: data/models/fusion_ridge_60d_v5_no_analyst.pkl
-  # 当前主回测与 gate 报告。
-  walkforward_report: data/reports/walkforward_comparison_60d_v5_no_analyst.json
-  g3_gate_report: data/reports/g3_gate_v5_no_analyst.json
-  # 当前部署状态与最近灰度输出。
-  deploy_status: live
-  last_greyscale_report: data/reports/greyscale/week_05.json
-
+  # 当前 bundle retained feature 数量 (31 real + 31 missing flags = 62 total)
+  features: 62
+  features_real: 31
+  # 当前 walk-forward 核心指标 (W9.1 13-window, full 9y OOS)
+  ic: 0.0699
+  ic_std: 0.0791
+  ic_t_stat: 3.19
+  icir_per_window: 0.5678
+  # 当前 portfolio 指标 (W10 truth table, score_weighted_buffered, cost=1.0x, no gate)
+  net_ann_excess: 0.0734
+  ir: 0.7156
+  sharpe: 0.8384
+  max_drawdown: 0.1404
+  weekly_turnover: 0.0265
+  # W10/W11 verdict
+  w10_triple_gate: PASS
+  w10_capacity_validated_to_usd: 25_000_000
+  w10_stress_bootstrap_p: 0.035
+  w10_stress_spa_pass: true
+  w11_fusion_attempt: FAIL
+  w11_status: 60D-only champion 保留
+  # 当前线上 bundle 与模型 artifact
+  bundle_path: data/models/bundles/w12_60d_ridge_swbuf_v1/bundle.json
+  artifact_path: data/models/bundles/w12_60d_ridge_swbuf_v1/model.pkl
+  legacy_bundle_pointer: data/models/fusion_model_bundle_60d.json
+  guardrails_config: configs/live/w12_60d_ridge_swbuf_guardrails_v1.yaml
+  frozen_universe_path: data/models/bundles/w12_60d_ridge_swbuf_v1/frozen_universe_503.json
+  # 当前 walk-forward 报告
+  walkforward_report: data/reports/walkforward_v9full9y_60d_ridge_13w.json
+  truth_table_report: data/reports/w10_truth_table_60d.json
+  truth_table_periods: data/reports/w10_truth_table_60d_periods.parquet
+  stress_test_report: data/reports/w10_stress_tests.json
+  capacity_report: data/reports/w10_capacity_sweep.json
+  # 当前部署状态 — W12 prep, 未启灰度
+  deploy_status: w12_prep
+  greyscale_status: not_started
+  last_greyscale_report: null
+  next_action: explicit_user_GO_required_before_calendar_greyscale

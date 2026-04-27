@@ -318,12 +318,13 @@ def _sync_universe_membership_impl(*, repo_root: Path, context: dict[str, Any]) 
         latest_trade_date = conn.execute(text("select max(trade_date) from stock_prices")).scalar() or date.today()
 
     refresh = ensure_monthly_universe_membership(latest_trade_date)
-    return _result(
-        "sync_universe_membership",
-        "ok",
-        trade_date=latest_trade_date.isoformat(),
-        **refresh,
-    )
+    # ensure_monthly_universe_membership already populates trade_date AND status in
+    # refresh, both collide with _result(step, status, **payload) positional args.
+    # Pop them out to "membership_*" prefixed keys so we keep the info without conflict.
+    membership_status = refresh.pop("status", None)
+    if membership_status is not None:
+        refresh["membership_status"] = membership_status
+    return _result("sync_universe_membership", "ok", **refresh)
 
 
 def sync_universe_membership(**context: Any) -> dict[str, Any]:
@@ -412,8 +413,7 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
             request_start,
             market_data_end,
             tickers=tracked_tickers,
-            knowledge_time_mode="observed_at",
-            observed_at=as_of,
+            knowledge_time_mode="historical",
         )
         if frame.empty:
             skipped_tickers = sorted(tracked_ticker_set)
@@ -433,8 +433,7 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
                             [ticker],
                             request_start,
                             market_data_end,
-                            knowledge_time_mode="observed_at",
-                            observed_at=as_of,
+                            knowledge_time_mode="historical",
                         )
                     except Exception:
                         LOGGER.exception(
@@ -468,8 +467,7 @@ def _fetch_prices_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str,
                     [ticker],
                     request_start,
                     market_data_end,
-                    knowledge_time_mode="observed_at",
-                    observed_at=as_of,
+                    knowledge_time_mode="historical",
                 )
             except Exception:
                 LOGGER.exception("daily_data_pipeline failed to fetch incremental Polygon bars for %s", ticker)

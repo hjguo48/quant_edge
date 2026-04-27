@@ -12,8 +12,23 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import sessionmaker
 
 import src.data.finra_short_sale as finra_module
-from src.data.finra_short_sale import FINRAShortSaleSource, ShortSaleVolume
+from src.data.finra_short_sale import FINRAShortSaleSource, ShortSaleVolume, _knowledge_time
 from src.data.sources.base import DataSourceTransientError, RetryConfig
+
+
+def test_knowledge_time_uses_lag_one_next_day_close() -> None:
+    """FINRA daily short-sale rows must publish on the next business day at the
+    16:00 NYT close, matching the ``stock_prices`` historical convention.
+    Same-day kt would let today's short volume leak into today's signal because
+    ``_as_of_end_utc(trade_date)`` already advances past 18:00 NYT
+    (data audit 2026-04-25 P1 follow-up A1).
+    """
+    kt = _knowledge_time(date(2026, 4, 17))
+    # 2026-04-17 + 1d = 2026-04-18 16:00 EDT = 2026-04-18 20:00 UTC
+    assert kt == datetime(2026, 4, 18, 20, 0, tzinfo=timezone.utc)
+    # Friday → Saturday is intentional (wall-clock convention, not business day).
+    kt_friday = _knowledge_time(date(2026, 4, 24))
+    assert kt_friday == datetime(2026, 4, 25, 20, 0, tzinfo=timezone.utc)
 
 
 class _FakeResponse:
@@ -149,7 +164,9 @@ def test_fetch_day_parses_pipe_delimited_file_and_legacy_short_exempt_fallback()
     assert len(frame) == 50
     assert etag == "etag-1"
     assert frame["ticker"].iloc[0] == "T00"
-    assert frame["knowledge_time"].iloc[0] == datetime(2015, 6, 15, 22, 0, tzinfo=timezone.utc)
+    # _knowledge_time pins kt to (trade_date+1) 16:00 NYT to keep the lag-1
+    # convention consistent with stock_prices (data audit 2026-04-25 A1).
+    assert frame["knowledge_time"].iloc[0] == datetime(2015, 6, 16, 20, 0, tzinfo=timezone.utc)
     assert frame["short_exempt_volume"].iloc[0] == 10
     assert legacy_etag == "etag-legacy"
     assert len(legacy_frame) == 1

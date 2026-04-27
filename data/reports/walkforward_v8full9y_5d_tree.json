@@ -1,0 +1,2047 @@
+{
+  "as_of": "2026-03-31",
+  "embargo_validation": {
+    "all_windows_passed": true,
+    "per_boundary": {
+      "refit_train_plus_validation_to_test": {
+        "all_passed": true,
+        "minimum_gap_trading_days": 8,
+        "windows_checked": 11
+      },
+      "train_to_validation": {
+        "all_passed": true,
+        "minimum_gap_trading_days": 8,
+        "windows_checked": 11
+      },
+      "validation_to_test": {
+        "all_passed": true,
+        "minimum_gap_trading_days": 8,
+        "windows_checked": 11
+      }
+    },
+    "window_count": 11
+  },
+  "generated_at": "2026-04-26T10:08:29.243789+00:00",
+  "ic_comparison": {
+    "available": false,
+    "baseline_report_path": null,
+    "embargo_trading_days": 5,
+    "reason": "legacy_baseline_report_not_available"
+  },
+  "retained_feature_count": 44,
+  "retained_features": [
+    "above_20dma",
+    "amihud",
+    "atr_14",
+    "bb_position",
+    "breadth_pct_above_20dma",
+    "cci_20",
+    "gk_vol",
+    "idio_vol",
+    "liquidity_momentum",
+    "macd_histogram",
+    "macd_signal",
+    "mom_vol_adj_20d",
+    "momentum_rank_20d",
+    "ret_20d",
+    "ret_vol_interaction_20d",
+    "return_dispersion_20d",
+    "rsi_14",
+    "rsi_28",
+    "trend_confirmation",
+    "vol_20d",
+    "vol_60d",
+    "vol_rank",
+    "is_missing_above_20dma",
+    "is_missing_amihud",
+    "is_missing_atr_14",
+    "is_missing_bb_position",
+    "is_missing_breadth_pct_above_20dma",
+    "is_missing_cci_20",
+    "is_missing_gk_vol",
+    "is_missing_idio_vol",
+    "is_missing_liquidity_momentum",
+    "is_missing_macd_histogram",
+    "is_missing_macd_signal",
+    "is_missing_mom_vol_adj_20d",
+    "is_missing_momentum_rank_20d",
+    "is_missing_ret_20d",
+    "is_missing_ret_vol_interaction_20d",
+    "is_missing_return_dispersion_20d",
+    "is_missing_rsi_14",
+    "is_missing_rsi_28",
+    "is_missing_trend_confirmation",
+    "is_missing_vol_20d",
+    "is_missing_vol_60d",
+    "is_missing_vol_rank"
+  ],
+  "split_config": {
+    "calendar_end": "2024-02-29",
+    "calendar_observations": 1981,
+    "calendar_start": "2016-04-18",
+    "calendar_ticker": "SPY",
+    "embargo_trading_days": 5,
+    "rebalance_weekday": 4,
+    "strategy": "purged_embargo"
+  },
+  "summary": {
+    "lightgbm": {
+      "mean_hit_rate": 0.5019582972284102,
+      "mean_test_ic": 0.006788391344663484,
+      "mean_test_icir": 0.03889543164561578,
+      "mean_test_rank_ic": 0.011471949782109643,
+      "mean_top_decile_return": 0.016299200436341112,
+      "std_test_ic": 0.02477603468585242,
+      "win_count": 3,
+      "windows_completed": 11
+    },
+    "ridge": {
+      "mean_hit_rate": 0.5005118904314256,
+      "mean_test_ic": 0.014926114635837468,
+      "mean_test_icir": 0.10973732687424159,
+      "mean_test_rank_ic": 0.01190963113669659,
+      "mean_top_decile_return": 0.0022147354139488828,
+      "std_test_ic": 0.013971643919589901,
+      "win_count": 4,
+      "windows_completed": 11
+    },
+    "xgboost": {
+      "mean_hit_rate": 0.500610595352463,
+      "mean_test_ic": 0.009149285291265808,
+      "mean_test_icir": 0.09230318928911582,
+      "mean_test_rank_ic": 0.013975525435257947,
+      "mean_top_decile_return": 0.019053967124028216,
+      "std_test_ic": 0.011077718634043181,
+      "win_count": 4,
+      "windows_completed": 11
+    }
+  },
+  "target_horizon": "5D",
+  "windows": [
+    {
+      "dates": {
+        "test": "2018-09 -> 2019-02",
+        "test_end": "2019-02-22",
+        "test_start": "2018-09-07",
+        "train": "2016-04 -> 2018-02",
+        "train_end": "2018-02-16",
+        "train_start": "2016-04-22",
+        "validation": "2018-03 -> 2018-08",
+        "validation_end": "2018-08-24",
+        "validation_start": "2018-03-02"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.8,
+            "learning_rate": 0.03,
+            "max_depth": 3,
+            "min_child_samples": 100,
+            "n_estimators": 100,
+            "reg_alpha": 0.0,
+            "reg_lambda": 1.0,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.04258617988063996,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.5135907202216067,
+            "ic": 0.035653447935450416,
+            "icir": 0.2055815769151813,
+            "long_short_return": 0.1128667927145223,
+            "rank_ic": 0.03613661086529389,
+            "top_decile_return": 0.11317643259856465,
+            "turnover": 0.35160345359235273
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5102697998259356,
+            "ic": 0.04258617988063996,
+            "icir": 0.2549148882597561,
+            "long_short_return": 0.004951589494258779,
+            "rank_ic": 0.03420229530100975,
+            "top_decile_return": 0.004268705965584399,
+            "turnover": 0.3387488436632748
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.03588503318389519,
+            "scores_by_alpha": {
+              "0.001": 0.025056826110660273,
+              "0.01": 0.02506261260132539,
+              "0.1": 0.02517107313665827,
+              "1.0": 0.026786181342564153,
+              "10.0": 0.030140929606405496,
+              "100.0": 0.03588503318389519
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5031163434903048,
+            "ic": 0.02370761391648867,
+            "icir": 0.12637416606169144,
+            "long_short_return": 0.0030857699747410794,
+            "rank_ic": 0.027407390191718572,
+            "top_decile_return": 0.003865112924184263,
+            "turnover": 0.3545713845205057
+          },
+          "validation_metrics": {
+            "hit_rate": 0.507745865970409,
+            "ic": 0.03588503318389519,
+            "icir": 0.20834397026654197,
+            "long_short_return": 0.004432517383061162,
+            "rank_ic": 0.022664999743815795,
+            "top_decile_return": 0.003764844341759132,
+            "turnover": 0.3614130434782608
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.8,
+            "learning_rate": 0.05,
+            "max_depth": 7,
+            "min_child_weight": 20,
+            "n_estimators": 200,
+            "reg_alpha": 0.1,
+            "reg_lambda": 1.0,
+            "subsample": 0.8
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.041853424516336196,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.5090027700831025,
+            "ic": 0.010190230800208568,
+            "icir": 0.08677998869170843,
+            "long_short_return": 0.1118741536531081,
+            "rank_ic": 0.014566908219047485,
+            "top_decile_return": 0.11417314639920552,
+            "turnover": 0.637372802960222
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5100957354221062,
+            "ic": 0.041853424516336196,
+            "icir": 0.364908874596032,
+            "long_short_return": 0.004166594237889793,
+            "rank_ic": 0.015050835286117609,
+            "top_decile_return": 0.0032802313594532512,
+            "turnover": 0.6172718162195497
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 25,
+          "rows": 11552,
+          "tickers": 464
+        },
+        "train": {
+          "dates": 95,
+          "rows": 42819,
+          "tickers": 457
+        },
+        "validation": {
+          "dates": 25,
+          "rows": 11490,
+          "tickers": 461
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2019-02-28",
+          "test_start": "2018-09-01",
+          "train_end": "2018-02-28",
+          "train_start": "2016-03-01",
+          "validation_end": "2018-08-31",
+          "validation_start": "2018-03-01"
+        },
+        "requested_window_id": "W-1",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2018-08-24",
+            "gap_trading_days": 8,
+            "later_date": "2018-09-07",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2018-02-16",
+            "gap_trading_days": 8,
+            "later_date": "2018-03-02",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2018-08-24",
+            "gap_trading_days": 8,
+            "later_date": "2018-09-07",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W-1"
+    },
+    {
+      "dates": {
+        "test": "2019-03 -> 2019-08",
+        "test_end": "2019-08-30",
+        "test_start": "2019-03-01",
+        "train": "2016-04 -> 2018-08",
+        "train_end": "2018-08-24",
+        "train_start": "2016-04-22",
+        "validation": "2018-09 -> 2019-02",
+        "validation_end": "2019-02-15",
+        "validation_start": "2018-09-07"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.01,
+            "max_depth": 5,
+            "min_child_samples": 50,
+            "n_estimators": 100,
+            "reg_alpha": 0.01,
+            "reg_lambda": 0.1,
+            "subsample": 0.8
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.04491170523639848,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.5003287310979618,
+            "ic": -0.030518478122402402,
+            "icir": -0.492716745595961,
+            "long_short_return": 0.01111915643040209,
+            "rank_ic": -0.017820344061227074,
+            "top_decile_return": 0.01026867533736107,
+            "turnover": 0.4619148936170213
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5179908016953738,
+            "ic": 0.04491170523639848,
+            "icir": 0.2418175940612717,
+            "long_short_return": 0.11845847794728993,
+            "rank_ic": 0.03955137463404195,
+            "top_decile_return": 0.11937661946615297,
+            "turnover": 0.3297470136347183
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.02811061708554845,
+            "scores_by_alpha": {
+              "0.001": 0.02732092013889348,
+              "0.01": 0.027323139923497056,
+              "0.1": 0.02734423410539857,
+              "1.0": 0.02748214712871631,
+              "10.0": 0.02756784541793669,
+              "100.0": 0.02811061708554845
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.4921104536489152,
+            "ic": 0.01219387877091859,
+            "icir": 0.12189024200814598,
+            "long_short_return": 0.0023346487914959347,
+            "rank_ic": 0.0027209076293892884,
+            "top_decile_return": 0.0025263967337914766,
+            "turnover": 0.6897340425531915
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5047344214987826,
+            "ic": 0.02811061708554845,
+            "icir": 0.14853753986711835,
+            "long_short_return": 0.004826676287917905,
+            "rank_ic": 0.03182099997078946,
+            "top_decile_return": 0.005224803119085723,
+            "turnover": 0.3384949523388167
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.03,
+            "max_depth": 7,
+            "min_child_weight": 10,
+            "n_estimators": 200,
+            "reg_alpha": 0.01,
+            "reg_lambda": 0.1,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.0338491579674851,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.49457593688362916,
+            "ic": 0.01903750147005653,
+            "icir": 0.15449638052012313,
+            "long_short_return": 0.01003485681972128,
+            "rank_ic": -0.002858859934865685,
+            "top_decile_return": 0.009390094515746064,
+            "turnover": 0.5489007092198581
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5067183695554153,
+            "ic": 0.0338491579674851,
+            "icir": 0.21405825625738717,
+            "long_short_return": 0.11697623922741518,
+            "rank_ic": 0.011806890460129652,
+            "top_decile_return": 0.1182979567232939,
+            "turnover": 0.5823713952459478
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 12168,
+          "tickers": 473
+        },
+        "train": {
+          "dates": 121,
+          "rows": 54765,
+          "tickers": 462
+        },
+        "validation": {
+          "dates": 24,
+          "rows": 11089,
+          "tickers": 464
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2019-08-31",
+          "test_start": "2019-03-01",
+          "train_end": "2018-08-31",
+          "train_start": "2016-03-01",
+          "validation_end": "2019-02-28",
+          "validation_start": "2018-09-01"
+        },
+        "requested_window_id": "W0",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2019-02-15",
+            "gap_trading_days": 8,
+            "later_date": "2019-03-01",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2018-08-24",
+            "gap_trading_days": 8,
+            "later_date": "2018-09-07",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2019-02-15",
+            "gap_trading_days": 8,
+            "later_date": "2019-03-01",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W0"
+    },
+    {
+      "dates": {
+        "test": "2019-09 -> 2020-02",
+        "test_end": "2020-02-28",
+        "test_start": "2019-09-06",
+        "train": "2016-04 -> 2019-02",
+        "train_end": "2019-02-15",
+        "train_start": "2016-04-22",
+        "validation": "2019-03 -> 2019-08",
+        "validation_end": "2019-08-23",
+        "validation_start": "2019-03-01"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.8,
+            "learning_rate": 0.1,
+            "max_depth": 4,
+            "min_child_samples": 100,
+            "n_estimators": 1000,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.1,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.035225020304875086,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.4912764748843626,
+            "ic": 0.048765701678799594,
+            "icir": 0.31101593732303506,
+            "long_short_return": 0.0002158492958214572,
+            "rank_ic": -0.027894616831852577,
+            "top_decile_return": 0.0013529820646407537,
+            "turnover": 0.7483333333333333
+          },
+          "validation_metrics": {
+            "hit_rate": 0.49204856361149113,
+            "ic": 0.035225020304875086,
+            "icir": 0.17906768894698838,
+            "long_short_return": 0.013578019533228266,
+            "rank_ic": -0.009143419951806085,
+            "top_decile_return": 0.012198182680662653,
+            "turnover": 0.7145944148936171
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 1.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.009293521732016334,
+            "scores_by_alpha": {
+              "0.001": 0.009214844069381606,
+              "0.01": 0.009215927752834235,
+              "0.1": 0.009226305666807856,
+              "1.0": 0.009293521732016334,
+              "10.0": 0.009051123976408646,
+              "100.0": 0.005518268233414405
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.49728150612675487,
+            "ic": 0.006271523182809649,
+            "icir": 0.0595492725623743,
+            "long_short_return": 0.001947159258197877,
+            "rank_ic": 0.009954824197016713,
+            "top_decile_return": 0.0005656527233552876,
+            "turnover": 0.7183333333333333
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4887140902872777,
+            "ic": 0.009293521732016334,
+            "icir": 0.11016340755019441,
+            "long_short_return": 0.0013655896770169867,
+            "rank_ic": -0.0016793688375037325,
+            "top_decile_return": 0.00209912974430922,
+            "turnover": 0.7101248522458629
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.1,
+            "max_depth": 7,
+            "min_child_weight": 10,
+            "n_estimators": 100,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.0,
+            "subsample": 0.8
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.05741169922613132,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.49249371094700967,
+            "ic": 0.013889677330355003,
+            "icir": 0.07853938312915576,
+            "long_short_return": -0.001201614409758555,
+            "rank_ic": -0.021396907632878305,
+            "top_decile_return": 0.00037540150764367653,
+            "turnover": 0.5783333333333334
+          },
+          "validation_metrics": {
+            "hit_rate": 0.48700410396716826,
+            "ic": 0.05741169922613132,
+            "icir": 0.3175151856017101,
+            "long_short_return": 0.012885892918804322,
+            "rank_ic": -0.019317835462711652,
+            "top_decile_return": 0.011633094202375165,
+            "turnover": 0.5701278073286052
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 12323,
+          "tickers": 476
+        },
+        "train": {
+          "dates": 146,
+          "rows": 66314,
+          "tickers": 466
+        },
+        "validation": {
+          "dates": 25,
+          "rows": 11696,
+          "tickers": 473
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2020-02-29",
+          "test_start": "2019-09-01",
+          "train_end": "2019-02-28",
+          "train_start": "2016-03-01",
+          "validation_end": "2019-08-31",
+          "validation_start": "2019-03-01"
+        },
+        "requested_window_id": "W1",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2019-08-23",
+            "gap_trading_days": 8,
+            "later_date": "2019-09-06",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2019-02-15",
+            "gap_trading_days": 8,
+            "later_date": "2019-03-01",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2019-08-23",
+            "gap_trading_days": 8,
+            "later_date": "2019-09-06",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W1"
+    },
+    {
+      "dates": {
+        "test": "2020-03 -> 2020-08",
+        "test_end": "2020-08-28",
+        "test_start": "2020-03-06",
+        "train": "2016-09 -> 2019-08",
+        "train_end": "2019-08-23",
+        "train_start": "2016-09-02",
+        "validation": "2019-09 -> 2020-02",
+        "validation_end": "2020-02-21",
+        "validation_start": "2019-09-06"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.8,
+            "learning_rate": 0.1,
+            "max_depth": 4,
+            "min_child_samples": 100,
+            "n_estimators": 1000,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.1,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.04381904057176344,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.5121443442054129,
+            "ic": -0.04073690788045317,
+            "icir": -0.4195894509213115,
+            "long_short_return": -0.005004915505893645,
+            "rank_ic": 0.006358847817034431,
+            "top_decile_return": 0.0015075940574222795,
+            "turnover": 0.7551020408163266
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4994513378914493,
+            "ic": 0.04381904057176344,
+            "icir": 0.268368882611724,
+            "long_short_return": 0.0011160019567535793,
+            "rank_ic": -0.01011962038805775,
+            "top_decile_return": 0.002495408518102956,
+            "turnover": 0.6944444444444443
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.008724133546016526,
+            "scores_by_alpha": {
+              "0.001": 0.007599026359737464,
+              "0.01": 0.0075991720899525736,
+              "0.1": 0.007600577340561143,
+              "1.0": 0.007612582383526575,
+              "10.0": 0.007721195267105697,
+              "100.0": 0.008724133546016526
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.505117973629424,
+            "ic": 0.01662883039402954,
+            "icir": 0.10945287302648524,
+            "long_short_return": 0.00869957935846454,
+            "rank_ic": 0.008285562592344248,
+            "top_decile_return": 0.005902154887990715,
+            "turnover": 0.6775916888494526
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5001266143327424,
+            "ic": 0.008724133546016526,
+            "icir": 0.07932034699777217,
+            "long_short_return": 0.0026508660286937,
+            "rank_ic": 0.013412442540103995,
+            "top_decile_return": 0.0014942554743027276,
+            "turnover": 0.6953125
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.03,
+            "max_depth": 7,
+            "min_child_weight": 10,
+            "n_estimators": 200,
+            "reg_alpha": 0.01,
+            "reg_lambda": 0.1,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.02886585890995612,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.5131852879944483,
+            "ic": 0.010792065318017926,
+            "icir": 0.08431844908281799,
+            "long_short_return": 0.013638581810724892,
+            "rank_ic": 0.04140522004163911,
+            "top_decile_return": 0.01646377275237895,
+            "turnover": 0.5361579414374446
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5079767029627754,
+            "ic": 0.02886585890995612,
+            "icir": 0.15256201614012774,
+            "long_short_return": 6.380343324561663e-05,
+            "rank_ic": 0.00847304852530162,
+            "top_decile_return": 0.0020312426839642415,
+            "turnover": 0.5824652777777778
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 24,
+          "rows": 11528,
+          "tickers": 481
+        },
+        "train": {
+          "dates": 153,
+          "rows": 69973,
+          "tickers": 475
+        },
+        "validation": {
+          "dates": 25,
+          "rows": 11847,
+          "tickers": 476
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2020-08-31",
+          "test_start": "2020-03-01",
+          "train_end": "2019-08-31",
+          "train_start": "2016-09-01",
+          "validation_end": "2020-02-29",
+          "validation_start": "2019-09-01"
+        },
+        "requested_window_id": "W2",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2020-02-21",
+            "gap_trading_days": 9,
+            "later_date": "2020-03-06",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2019-08-23",
+            "gap_trading_days": 8,
+            "later_date": "2019-09-06",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2020-02-21",
+            "gap_trading_days": 9,
+            "later_date": "2020-03-06",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W2"
+    },
+    {
+      "dates": {
+        "test": "2020-09 -> 2021-02",
+        "test_end": "2021-02-26",
+        "test_start": "2020-09-04",
+        "train": "2017-03 -> 2020-02",
+        "train_end": "2020-02-21",
+        "train_start": "2017-03-03",
+        "validation": "2020-03 -> 2020-08",
+        "validation_end": "2020-08-21",
+        "validation_start": "2020-03-06"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.8,
+            "learning_rate": 0.03,
+            "max_depth": 3,
+            "min_child_samples": 100,
+            "n_estimators": 100,
+            "reg_alpha": 0.0,
+            "reg_lambda": 1.0,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.03455632790079433,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.5171312678001209,
+            "ic": 0.021143679404350014,
+            "icir": 0.29448673691072125,
+            "long_short_return": 0.00649943032815532,
+            "rank_ic": 0.058800688367214644,
+            "top_decile_return": 0.01278151495580832,
+            "turnover": 0.5421472937000887
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5017651851181316,
+            "ic": 0.03455632790079433,
+            "icir": 0.19304521861313723,
+            "long_short_return": 0.006308312822368964,
+            "rank_ic": 0.016157083392354082,
+            "top_decile_return": 0.010405937295921843,
+            "turnover": 0.46617965367965364
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.013457532989382657,
+            "scores_by_alpha": {
+              "0.001": 0.01071128903160936,
+              "0.01": 0.010711285332504723,
+              "0.1": 0.010711275711074624,
+              "1.0": 0.010711432561016131,
+              "10.0": 0.010787257423100346,
+              "100.0": 0.013457532989382657
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5173901786484854,
+            "ic": 0.036562194672454786,
+            "icir": 0.3633979037380167,
+            "long_short_return": 0.00546408186964827,
+            "rank_ic": 0.03576804581964055,
+            "top_decile_return": 0.007687634778064695,
+            "turnover": 0.693877551020408
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5036661537068887,
+            "ic": 0.013457532989382657,
+            "icir": 0.0877930972103087,
+            "long_short_return": 0.008081252712379607,
+            "rank_ic": 0.0043757791910475855,
+            "top_decile_return": 0.0048972842937041955,
+            "turnover": 0.6852195423623995
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 5,
+            "n_estimators": 100,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.037946466023639325,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.5164408388711487,
+            "ic": 0.028320896126225726,
+            "icir": 0.3863162662398,
+            "long_short_return": 0.013841697724115767,
+            "rank_ic": 0.06323612862838278,
+            "top_decile_return": 0.01478019094858383,
+            "turnover": 0.476486246672582
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5148003982981805,
+            "ic": 0.037946466023639325,
+            "icir": 0.479537790447757,
+            "long_short_return": 0.010738610190266019,
+            "rank_ic": 0.04776001310079296,
+            "top_decile_return": 0.01306582819867797,
+            "turnover": 0.45489332096474955
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 24,
+          "rows": 11587,
+          "tickers": 485
+        },
+        "train": {
+          "dates": 153,
+          "rows": 70624,
+          "tickers": 478
+        },
+        "validation": {
+          "dates": 23,
+          "rows": 11047,
+          "tickers": 481
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2021-02-28",
+          "test_start": "2020-09-01",
+          "train_end": "2020-02-29",
+          "train_start": "2017-03-01",
+          "validation_end": "2020-08-31",
+          "validation_start": "2020-03-01"
+        },
+        "requested_window_id": "W3",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2020-08-21",
+            "gap_trading_days": 9,
+            "later_date": "2020-09-04",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2020-02-21",
+            "gap_trading_days": 9,
+            "later_date": "2020-03-06",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2020-08-21",
+            "gap_trading_days": 9,
+            "later_date": "2020-09-04",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W3"
+    },
+    {
+      "dates": {
+        "test": "2021-03 -> 2021-08",
+        "test_end": "2021-08-27",
+        "test_start": "2021-03-05",
+        "train": "2017-09 -> 2020-08",
+        "train_end": "2020-08-21",
+        "train_start": "2017-09-01",
+        "validation": "2020-09 -> 2021-02",
+        "validation_end": "2021-02-19",
+        "validation_start": "2020-09-04"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.01,
+            "max_depth": 5,
+            "min_child_samples": 50,
+            "n_estimators": 100,
+            "reg_alpha": 0.01,
+            "reg_lambda": 0.1,
+            "subsample": 0.8
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.034627597487168774,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.4875486059402664,
+            "ic": 0.01766937024515852,
+            "icir": 0.20166299696793671,
+            "long_short_return": 0.03166915816976053,
+            "rank_ic": -0.02287359726295075,
+            "top_decile_return": 0.031473482714007746,
+            "turnover": 0.3920068027210884
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5068900297216968,
+            "ic": 0.034627597487168774,
+            "icir": 0.5587350268496935,
+            "long_short_return": 0.012683541608763105,
+            "rank_ic": 0.05778907055351028,
+            "top_decile_return": 0.015386174209719303,
+            "turnover": 0.5417439703153989
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.04157080770267039,
+            "scores_by_alpha": {
+              "0.001": 0.03041770156831061,
+              "0.01": 0.030420217837773295,
+              "0.1": 0.030444914594594225,
+              "1.0": 0.03066466626068325,
+              "10.0": 0.03224192969097896,
+              "100.0": 0.04157080770267039
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.48845867460908415,
+            "ic": -0.005049780524348961,
+            "icir": -0.04156731863767813,
+            "long_short_return": -0.008114860831845724,
+            "rank_ic": -0.0074594159007602455,
+            "top_decile_return": -0.0008244420245876419,
+            "turnover": 0.6904761904761906
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5188687742051697,
+            "ic": 0.04157080770267039,
+            "icir": 0.4588979451698322,
+            "long_short_return": 0.006164415490527111,
+            "rank_ic": 0.04020862452682128,
+            "top_decile_return": 0.00851347451539416,
+            "turnover": 0.6975881261595547
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.1,
+            "max_depth": 7,
+            "min_child_weight": 20,
+            "n_estimators": 100,
+            "reg_alpha": 0.1,
+            "reg_lambda": 1.0,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.03661384018996428,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.48738313890957224,
+            "ic": -0.014756435118363822,
+            "icir": -0.274751137991631,
+            "long_short_return": 0.028277762284220236,
+            "rank_ic": -0.023026258338068695,
+            "top_decile_return": 0.029779164934500803,
+            "turnover": 0.5297619047619048
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5099522651535621,
+            "ic": 0.03661384018996428,
+            "icir": 0.4074581720594983,
+            "long_short_return": 0.006797371514397139,
+            "rank_ic": 0.03767556212309525,
+            "top_decile_return": 0.01392968723862536,
+            "turnover": 0.6141001855287568
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 25,
+          "rows": 12087,
+          "tickers": 485
+        },
+        "train": {
+          "dates": 152,
+          "rows": 70840,
+          "tickers": 483
+        },
+        "validation": {
+          "dates": 23,
+          "rows": 11103,
+          "tickers": 485
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2021-08-31",
+          "test_start": "2021-03-01",
+          "train_end": "2020-08-31",
+          "train_start": "2017-09-01",
+          "validation_end": "2021-02-28",
+          "validation_start": "2020-09-01"
+        },
+        "requested_window_id": "W4",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2021-02-19",
+            "gap_trading_days": 9,
+            "later_date": "2021-03-05",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2020-08-21",
+            "gap_trading_days": 9,
+            "later_date": "2020-09-04",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2021-02-19",
+            "gap_trading_days": 9,
+            "later_date": "2021-03-05",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W4"
+    },
+    {
+      "dates": {
+        "test": "2021-09 -> 2022-02",
+        "test_end": "2022-02-25",
+        "test_start": "2021-09-03",
+        "train": "2018-03 -> 2021-02",
+        "train_end": "2021-02-19",
+        "train_start": "2018-03-02",
+        "validation": "2021-03 -> 2021-08",
+        "validation_end": "2021-08-20",
+        "validation_start": "2021-03-05"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.8,
+            "learning_rate": 0.03,
+            "max_depth": 3,
+            "min_child_samples": 100,
+            "n_estimators": 100,
+            "reg_alpha": 0.0,
+            "reg_lambda": 1.0,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.03532541526449583,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.48382571381416073,
+            "ic": -0.004725436786119527,
+            "icir": -0.04842868513466766,
+            "long_short_return": -0.018060726980987877,
+            "rank_ic": -0.0027471895545100565,
+            "top_decile_return": -0.0003718670216625565,
+            "turnover": 0.46598639455782315
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5015944152374386,
+            "ic": 0.03532541526449583,
+            "icir": 0.46167350890212194,
+            "long_short_return": -0.032267208091266264,
+            "rank_ic": -0.005923621285743678,
+            "top_decile_return": 0.0004260859398764418,
+            "turnover": 0.45785270629991126
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.003831834479833736,
+            "scores_by_alpha": {
+              "0.001": 0.0036438991293916297,
+              "0.01": 0.003643820923776501,
+              "0.1": 0.0036431175403516835,
+              "1.0": 0.0036393386265143046,
+              "10.0": 0.0036283006806246457,
+              "100.0": 0.003831834479833736
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.49777190955603234,
+            "ic": -0.0011038231472232263,
+            "icir": -0.00945561149417613,
+            "long_short_return": -0.0005917531251509872,
+            "rank_ic": -0.002723309029466754,
+            "top_decile_return": 0.00016138027240326314,
+            "turnover": 0.701530612244898
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4901318624493665,
+            "ic": 0.003831834479833736,
+            "icir": 0.03358406051340696,
+            "long_short_return": -0.007114610600415447,
+            "rank_ic": 0.0019234709221607725,
+            "top_decile_return": 0.0003666549544418395,
+            "turnover": 0.6947648624667259
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.1,
+            "max_depth": 7,
+            "min_child_weight": 5,
+            "n_estimators": 100,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.026900262761072703,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.48828189470209604,
+            "ic": 0.007919250854232228,
+            "icir": 0.11087609233254893,
+            "long_short_return": 0.015481649282019963,
+            "rank_ic": -0.001151275777253269,
+            "top_decile_return": 0.016160887743863917,
+            "turnover": 0.5501700680272109
+          },
+          "validation_metrics": {
+            "hit_rate": 0.49435490821339306,
+            "ic": 0.026900262761072703,
+            "icir": 0.36482788346051365,
+            "long_short_return": 0.03217423251884308,
+            "rank_ic": -0.0032448571827628572,
+            "top_decile_return": 0.03394989181793396,
+            "turnover": 0.5385980479148182
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 25,
+          "rows": 12118,
+          "tickers": 487
+        },
+        "train": {
+          "dates": 150,
+          "rows": 70624,
+          "tickers": 486
+        },
+        "validation": {
+          "dates": 24,
+          "rows": 11603,
+          "tickers": 485
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2022-02-28",
+          "test_start": "2021-09-01",
+          "train_end": "2021-02-28",
+          "train_start": "2018-03-01",
+          "validation_end": "2021-08-31",
+          "validation_start": "2021-03-01"
+        },
+        "requested_window_id": "W5",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2021-08-20",
+            "gap_trading_days": 9,
+            "later_date": "2021-09-03",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2021-02-19",
+            "gap_trading_days": 9,
+            "later_date": "2021-03-05",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2021-08-20",
+            "gap_trading_days": 9,
+            "later_date": "2021-09-03",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W5"
+    },
+    {
+      "dates": {
+        "test": "2022-03 -> 2022-08",
+        "test_end": "2022-08-26",
+        "test_start": "2022-03-04",
+        "train": "2018-09 -> 2021-08",
+        "train_end": "2021-08-20",
+        "train_start": "2018-09-07",
+        "validation": "2021-09 -> 2022-02",
+        "validation_end": "2022-02-18",
+        "validation_start": "2021-09-03"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.03,
+            "max_depth": 6,
+            "min_child_samples": 100,
+            "n_estimators": 200,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.0,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.009760204329218604,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.49527953370002464,
+            "ic": 0.010428474255783794,
+            "icir": 0.1755002649725594,
+            "long_short_return": 0.0034206139704932724,
+            "rank_ic": 0.03834537494900392,
+            "top_decile_return": 0.0025223677177011344,
+            "turnover": 0.5051020408163266
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5013324164016161,
+            "ic": 0.009760204329218604,
+            "icir": 0.1026446196201396,
+            "long_short_return": 0.017145901206366,
+            "rank_ic": 0.01257645096629978,
+            "top_decile_return": 0.01714957510441893,
+            "turnover": 0.4933451641526177
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.009102398230765585,
+            "scores_by_alpha": {
+              "0.001": 0.002048192042580249,
+              "0.01": 0.002048911117939071,
+              "0.1": 0.0020561028722102617,
+              "1.0": 0.002128074936246433,
+              "10.0": 0.002856951269403651,
+              "100.0": 0.009102398230765585
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.49585419916263035,
+            "ic": 0.006905426440097304,
+            "icir": 0.053345936371277006,
+            "long_short_return": 0.0015993600301200724,
+            "rank_ic": -0.006048649308220117,
+            "top_decile_return": 0.0018900661922377669,
+            "turnover": 0.7100340136054423
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5007306799621766,
+            "ic": 0.009102398230765585,
+            "icir": 0.0849570779629873,
+            "long_short_return": 0.0018952621423346564,
+            "rank_ic": 0.009298700613012393,
+            "top_decile_return": 0.0013327507643671832,
+            "turnover": 0.7027506654835847
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.1,
+            "max_depth": 7,
+            "min_child_weight": 5,
+            "n_estimators": 100,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.014360969664203124,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.49248830145308264,
+            "ic": 0.01181970500483306,
+            "icir": 0.2596662190679376,
+            "long_short_return": 0.0033369885041449137,
+            "rank_ic": 0.018633544001851715,
+            "top_decile_return": 0.002949483888892117,
+            "turnover": 0.5790816326530611
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5023639645835124,
+            "ic": 0.014360969664203124,
+            "icir": 0.1696446751389055,
+            "long_short_return": -0.005351786760834636,
+            "rank_ic": 0.024185491653856094,
+            "top_decile_return": 0.0056580093618997865,
+            "turnover": 0.5217391304347825
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 25,
+          "rows": 12181,
+          "tickers": 489
+        },
+        "train": {
+          "dates": 149,
+          "rows": 70761,
+          "tickers": 487
+        },
+        "validation": {
+          "dates": 24,
+          "rows": 11633,
+          "tickers": 487
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2022-08-31",
+          "test_start": "2022-03-01",
+          "train_end": "2021-08-31",
+          "train_start": "2018-09-01",
+          "validation_end": "2022-02-28",
+          "validation_start": "2021-09-01"
+        },
+        "requested_window_id": "W6",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2022-02-18",
+            "gap_trading_days": 8,
+            "later_date": "2022-03-04",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2021-08-20",
+            "gap_trading_days": 9,
+            "later_date": "2021-09-03",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2022-02-18",
+            "gap_trading_days": 8,
+            "later_date": "2022-03-04",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W6"
+    },
+    {
+      "dates": {
+        "test": "2022-09 -> 2023-02",
+        "test_end": "2023-02-24",
+        "test_start": "2022-09-02",
+        "train": "2019-03 -> 2022-02",
+        "train_end": "2022-02-18",
+        "train_start": "2019-03-01",
+        "validation": "2022-03 -> 2022-08",
+        "validation_end": "2022-08-19",
+        "validation_start": "2022-03-04"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.03,
+            "max_depth": 6,
+            "min_child_samples": 50,
+            "n_estimators": 200,
+            "reg_alpha": 0.1,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.034770710801490544,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.4953681896687078,
+            "ic": 0.001675596318081775,
+            "icir": 0.017313624065082633,
+            "long_short_return": 0.004488778627851119,
+            "rank_ic": 0.03231284393901468,
+            "top_decile_return": 0.005027703265415078,
+            "turnover": 0.5861877551020408
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4875983578515224,
+            "ic": 0.034770710801490544,
+            "icir": 0.306104744466224,
+            "long_short_return": 0.0037802524970159835,
+            "rank_ic": 0.02330889768073954,
+            "top_decile_return": 0.003397792756795052,
+            "turnover": 0.5536823425022183
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.03220148620221985,
+            "scores_by_alpha": {
+              "0.001": 0.03176221074789779,
+              "0.01": 0.03176101568462382,
+              "0.1": 0.031749319981638276,
+              "1.0": 0.03165383886702239,
+              "10.0": 0.031448019062784355,
+              "100.0": 0.03220148620221985
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5120898100172712,
+            "ic": 0.03831449374477851,
+            "icir": 0.20311422281410185,
+            "long_short_return": 0.005333616259008896,
+            "rank_ic": 0.04265718526760129,
+            "top_decile_return": 0.005016773546994365,
+            "turnover": 0.3239510204081633
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5084673280875812,
+            "ic": 0.03220148620221985,
+            "icir": 0.14597152401847716,
+            "long_short_return": 0.002439080153325633,
+            "rank_ic": 0.025631867136593267,
+            "top_decile_return": 0.0010572091559407678,
+            "turnover": 0.32564330079858034
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.1,
+            "max_depth": 6,
+            "min_child_weight": 10,
+            "n_estimators": 200,
+            "reg_alpha": 0.01,
+            "reg_lambda": 1.0,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.021887344583521234,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.49583922122782226,
+            "ic": 0.0002832970158335875,
+            "icir": 0.004029616488095197,
+            "long_short_return": 0.0038254918270329776,
+            "rank_ic": 0.042341741740226646,
+            "top_decile_return": 0.004671176185558483,
+            "turnover": 0.6118367346938776
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4862299007868628,
+            "ic": 0.021887344583521234,
+            "icir": 0.3120826051903593,
+            "long_short_return": 0.001308894271002444,
+            "rank_ic": 0.005096729176533796,
+            "top_decile_return": 0.0023924568861059853,
+            "turnover": 0.6024844720496894
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 12738,
+          "tickers": 491
+        },
+        "train": {
+          "dates": 149,
+          "rows": 71326,
+          "tickers": 488
+        },
+        "validation": {
+          "dates": 24,
+          "rows": 11692,
+          "tickers": 489
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2023-02-28",
+          "test_start": "2022-09-01",
+          "train_end": "2022-02-28",
+          "train_start": "2019-03-01",
+          "validation_end": "2022-08-31",
+          "validation_start": "2022-03-01"
+        },
+        "requested_window_id": "W7",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2022-08-19",
+            "gap_trading_days": 9,
+            "later_date": "2022-09-02",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2022-02-18",
+            "gap_trading_days": 8,
+            "later_date": "2022-03-04",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2022-08-19",
+            "gap_trading_days": 9,
+            "later_date": "2022-09-02",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W7"
+    },
+    {
+      "dates": {
+        "test": "2023-03 -> 2023-08",
+        "test_end": "2023-08-25",
+        "test_start": "2023-03-03",
+        "train": "2019-09 -> 2022-08",
+        "train_end": "2022-08-19",
+        "train_start": "2019-09-06",
+        "validation": "2022-09 -> 2023-02",
+        "validation_end": "2023-02-17",
+        "validation_start": "2022-09-02"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.1,
+            "max_depth": 3,
+            "min_child_samples": 20,
+            "n_estimators": 1000,
+            "reg_alpha": 0.01,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.012070910740415598,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.5295934959349593,
+            "ic": 0.00557454439289974,
+            "icir": 0.07371640116775517,
+            "long_short_return": 0.0027191405188453986,
+            "rank_ic": 0.029275869789082035,
+            "top_decile_return": 0.0001584312053956014,
+            "turnover": 0.6558333333333334
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5041234588062382,
+            "ic": 0.012070910740415601,
+            "icir": 0.1785480542062064,
+            "long_short_return": 0.0035582248153463304,
+            "rank_ic": 0.029906723709526694,
+            "top_decile_return": 0.005654762183862913,
+            "turnover": 0.6344897959183674
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 10.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.03422192364137542,
+            "scores_by_alpha": {
+              "0.001": 0.03204802131189739,
+              "0.01": 0.032054373038042455,
+              "0.1": 0.0321163599416662,
+              "1.0": 0.032617286466428655,
+              "10.0": 0.03422192364137542,
+              "100.0": 0.03384162643957898
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.5047154471544716,
+            "ic": 0.026045963206166357,
+            "icir": 0.19818413806745205,
+            "long_short_return": 0.0011845486892037627,
+            "rank_ic": 0.023526536326971013,
+            "top_decile_return": -0.0018720540187710584,
+            "turnover": 0.31583333333333335
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5117988078713154,
+            "ic": 0.03422192364137542,
+            "icir": 0.18440094906060353,
+            "long_short_return": 0.005176888127562296,
+            "rank_ic": 0.03677759653614168,
+            "top_decile_return": 0.004959299493016687,
+            "turnover": 0.31812925170068024
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.1,
+            "max_depth": 3,
+            "min_child_weight": 10,
+            "n_estimators": 1000,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.011849559857115666,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.5239024390243903,
+            "ic": -0.0030780657801518785,
+            "icir": -0.045174848348098345,
+            "long_short_return": -0.0005213080447910053,
+            "rank_ic": 0.017773694073004942,
+            "top_decile_return": -0.00042326596211491956,
+            "turnover": 0.6941666666666667
+          },
+          "validation_metrics": {
+            "hit_rate": 0.4931820037560219,
+            "ic": 0.011849559857115666,
+            "icir": 0.14857084699208967,
+            "long_short_return": 0.005618448652392227,
+            "rank_ic": 0.017892795161752878,
+            "top_decile_return": 0.0061142329683057306,
+            "turnover": 0.6716326530612244
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 25,
+          "rows": 12300,
+          "tickers": 494
+        },
+        "train": {
+          "dates": 148,
+          "rows": 71335,
+          "tickers": 491
+        },
+        "validation": {
+          "dates": 25,
+          "rows": 12247,
+          "tickers": 491
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2023-08-31",
+          "test_start": "2023-03-01",
+          "train_end": "2022-08-31",
+          "train_start": "2019-09-01",
+          "validation_end": "2023-02-28",
+          "validation_start": "2022-09-01"
+        },
+        "requested_window_id": "W8",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2023-02-17",
+            "gap_trading_days": 8,
+            "later_date": "2023-03-03",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2022-08-19",
+            "gap_trading_days": 9,
+            "later_date": "2022-09-02",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2023-02-17",
+            "gap_trading_days": 8,
+            "later_date": "2023-03-03",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W8"
+    },
+    {
+      "dates": {
+        "test": "2023-09 -> 2024-02",
+        "test_end": "2024-02-23",
+        "test_start": "2023-09-01",
+        "train": "2020-03 -> 2023-02",
+        "train_end": "2023-02-17",
+        "train_start": "2020-03-06",
+        "validation": "2023-03 -> 2023-08",
+        "validation_end": "2023-08-18",
+        "validation_start": "2023-03-03"
+      },
+      "results": {
+        "lightgbm": {
+          "best_hyperparams": {
+            "colsample_bytree": 0.6,
+            "learning_rate": 0.03,
+            "max_depth": 6,
+            "min_child_samples": 50,
+            "n_estimators": 200,
+            "reg_alpha": 0.1,
+            "reg_lambda": 0.0,
+            "subsample": 1.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.02444124981997603,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.4954541922449297,
+            "ic": 0.009742313349749584,
+            "icir": 0.10930709143144224,
+            "long_short_return": 0.0016585158385171393,
+            "rank_ic": -0.0037030404128970654,
+            "top_decile_return": 0.0013938879050981574,
+            "turnover": 0.5544
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5245193529262302,
+            "ic": 0.02444124981997603,
+            "icir": 0.31776344712885485,
+            "long_short_return": 0.004932070857825956,
+            "rank_ic": 0.04579503400138982,
+            "top_decile_return": 0.0007573038976379319,
+            "turnover": 0.5965217391304347
+          }
+        },
+        "ridge": {
+          "best_hyperparams": {
+            "alpha": 100.0
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.021424114897117198,
+            "scores_by_alpha": {
+              "0.001": 0.018221388004068428,
+              "0.01": 0.0182213212993914,
+              "0.1": 0.018220842896600174,
+              "1.0": 0.018231386684627662,
+              "10.0": 0.01869216480650511,
+              "100.0": 0.021424114897117198
+            }
+          },
+          "test_metrics": {
+            "hit_rate": 0.4917242987023079,
+            "ic": 0.0037109403380409353,
+            "icir": 0.022824771098967255,
+            "long_short_return": 0.000649286281082486,
+            "rank_ic": -0.0030831352825720646,
+            "top_decile_return": -0.000556586462225422,
+            "turnover": 0.26879999999999993
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5023291267891928,
+            "ic": 0.021424114897117198,
+            "icir": 0.16628473864434812,
+            "long_short_return": 0.0013985632462626242,
+            "rank_ic": 0.016383509094312184,
+            "top_decile_return": -0.0016519353114594715,
+            "turnover": 0.30521739130434783
+          }
+        },
+        "xgboost": {
+          "best_hyperparams": {
+            "colsample_bytree": 1.0,
+            "learning_rate": 0.03,
+            "max_depth": 6,
+            "min_child_weight": 20,
+            "n_estimators": 200,
+            "reg_alpha": 0.0,
+            "reg_lambda": 0.0,
+            "subsample": 0.6
+          },
+          "logged_run": null,
+          "selection": {
+            "best_ic": 0.02763493053946541,
+            "search_n_iter": 30,
+            "trial_count": 30
+          },
+          "test_metrics": {
+            "hit_rate": 0.4931230087807911,
+            "ic": 0.01622401518267698,
+            "icir": 0.17023867296781658,
+            "long_short_return": 0.002914766448012039,
+            "rank_ic": 0.004206844766750687,
+            "top_decile_return": 0.0012735854500519647,
+            "turnover": 0.4464
+          },
+          "validation_metrics": {
+            "hit_rate": 0.5088506817989329,
+            "ic": 0.02763493053946541,
+            "icir": 0.28665452047671186,
+            "long_short_return": 0.0018766123065196254,
+            "rank_ic": 0.032751599258334214,
+            "top_decile_return": 0.0008948642650630817,
+            "turnover": 0.5095652173913043
+          }
+        }
+      },
+      "row_counts": {
+        "test": {
+          "dates": 26,
+          "rows": 12869,
+          "tickers": 496
+        },
+        "train": {
+          "dates": 148,
+          "rows": 71748,
+          "tickers": 492
+        },
+        "validation": {
+          "dates": 24,
+          "rows": 11807,
+          "tickers": 494
+        }
+      },
+      "split_diagnostics": {
+        "embargo_trading_days": 5,
+        "requested_dates": {
+          "test_end": "2024-02-29",
+          "test_start": "2023-09-01",
+          "train_end": "2023-02-28",
+          "train_start": "2020-03-01",
+          "validation_end": "2023-08-31",
+          "validation_start": "2023-03-01"
+        },
+        "requested_window_id": "W9",
+        "verification": {
+          "refit_train_plus_validation_to_test": {
+            "earlier_date": "2023-08-18",
+            "gap_trading_days": 9,
+            "later_date": "2023-09-01",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "train_to_validation": {
+            "earlier_date": "2023-02-17",
+            "gap_trading_days": 8,
+            "later_date": "2023-03-03",
+            "minimum_required": 5,
+            "passed": true
+          },
+          "validation_to_test": {
+            "earlier_date": "2023-08-18",
+            "gap_trading_days": 9,
+            "later_date": "2023-09-01",
+            "minimum_required": 5,
+            "passed": true
+          }
+        }
+      },
+      "window_id": "W9"
+    }
+  ]
+}

@@ -22,7 +22,7 @@ from src.api.schemas.predictions import (
 )
 from src.api.services.greyscale_reader import GreyscaleReader
 from src.api.services.shap_service import get_shap_for_ticker
-from src.data.db.models import Stock
+from src.data.db.models import Stock, StockPrice
 
 router = APIRouter(prefix="/api/predictions", tags=["Predictions"])
 GREYSCALE_REPORT_DIR = Path("data/reports/greyscale")
@@ -65,6 +65,116 @@ def _percentile_to_quintile(percentile: float | None) -> int | None:
     return 5
 
 
+RECENT_PRICE_DAYS = 20
+RECENT_BENCHMARK_TICKER = "SPY"
+
+
+async def _get_recent_price_series(
+    db: AsyncSession, tickers: list[str], n_days: int = RECENT_PRICE_DAYS,
+) -> dict[str, dict[str, list[float]]]:
+    """Return {TICKER: {"prices": [...], "excess_cum": [...]}} for the given tickers.
+
+    `prices` is the last `n_days` of adj_close (oldest → newest).
+    `excess_cum` is cumulative excess vs SPY over the same window (in pct, oldest → newest).
+    """
+    if not tickers:
+        return {}
+
+    normalized = [t.upper() for t in tickers] + [RECENT_BENCHMARK_TICKER]
+
+    latest_ts_row = await db.execute(
+        sa.select(sa.func.max(StockPrice.trade_date)).where(
+            StockPrice.ticker.in_(normalized)
+        )
+    )
+    latest_trade_date = latest_ts_row.scalar()
+    if latest_trade_date is None:
+        return {}
+
+    fetch_n = n_days + 5
+    rows = await db.execute(
+        sa.text(
+            """
+            WITH ranked AS (
+                SELECT ticker, trade_date,
+                       COALESCE(adj_close, close) AS px,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM stock_prices
+                WHERE ticker = ANY(:tickers)
+                  AND trade_date <= :latest
+            )
+            SELECT ticker, trade_date, px FROM ranked WHERE rn <= :fetch_n
+            ORDER BY ticker, trade_date
+            """
+        ),
+        {"tickers": normalized, "latest": latest_trade_date, "fetch_n": fetch_n},
+    )
+
+    by_ticker: dict[str, list[tuple]] = {}
+    for ticker, td, px in rows.all():
+        if px is None:
+            continue
+        by_ticker.setdefault(ticker, []).append((td, float(px)))
+
+    bench_series = by_ticker.get(RECENT_BENCHMARK_TICKER, [])
+    # Codex P2 fix: align by trade_date, not by array length. Build a
+    # date-keyed return map for the benchmark so missing ticker sessions
+    # don't silently misalign with SPY returns from different dates.
+    bench_returns_by_date = dict(_trade_date_returns(bench_series[-n_days:]))
+
+    out: dict[str, dict[str, list[float]]] = {}
+    for tk in tickers:
+        upper = tk.upper()
+        series = by_ticker.get(upper, [])
+        recent = series[-n_days:]
+        prices = [p for _, p in recent]
+        if len(recent) < 2:
+            out[upper] = {"prices": prices, "excess_cum": []}
+            continue
+        ticker_returns_dated = _trade_date_returns(recent)
+        cum_excess: list[float] = []
+        running = 0.0
+        for td, r_t in ticker_returns_dated:
+            r_b = bench_returns_by_date.get(td)
+            if r_b is None:
+                # SPY missing this date (rare — e.g. early trading halt).
+                # Skip without polluting cumulative; preserve series alignment
+                # by NOT appending — frontend will see a slightly shorter array
+                # but every entry is mathematically meaningful.
+                continue
+            running += (r_t - r_b)
+            cum_excess.append(running)
+        out[upper] = {"prices": prices, "excess_cum": cum_excess}
+
+    return out
+
+
+def _to_returns(prices: list[float]) -> list[float]:
+    out: list[float] = []
+    for i in range(1, len(prices)):
+        prev = prices[i - 1]
+        if prev == 0:
+            out.append(0.0)
+        else:
+            out.append((prices[i] - prev) / prev)
+    return out
+
+
+def _trade_date_returns(series: list[tuple]) -> list[tuple]:
+    """Return [(trade_date, daily_return)] preserving date keys."""
+    out: list[tuple] = []
+    for i in range(1, len(series)):
+        prev_td, prev_px = series[i - 1]
+        curr_td, curr_px = series[i]
+        if prev_px == 0:
+            out.append((curr_td, 0.0))
+        else:
+            out.append((curr_td, (curr_px - prev_px) / prev_px))
+    return out
+
+
+
+
 async def _get_stock_info(
     db: AsyncSession, tickers: list[str],
 ) -> dict[str, dict[str, str | None]]:
@@ -96,10 +206,9 @@ async def get_latest_predictions(
     if top_n is not None:
         predictions = predictions[:top_n]
 
-    stock_info = await _get_stock_info(
-        db,
-        [item["ticker"] for item in predictions],
-    )
+    pred_tickers = [item["ticker"] for item in predictions]
+    stock_info = await _get_stock_info(db, pred_tickers)
+    price_series = await _get_recent_price_series(db, pred_tickers)
 
     return PredictionResponse(
         signal_date=report.get("live_outputs", {}).get("signal_date") if report else None,
@@ -110,6 +219,8 @@ async def get_latest_predictions(
                 **item,
                 sector=(stock_info.get(item["ticker"].upper()) or {}).get("sector"),
                 company_name=(stock_info.get(item["ticker"].upper()) or {}).get("company_name"),
+                recent_prices=(price_series.get(item["ticker"].upper()) or {}).get("prices") or [],
+                recent_excess_cum=(price_series.get(item["ticker"].upper()) or {}).get("excess_cum") or [],
             )
             for item in predictions
         ],
@@ -134,10 +245,9 @@ async def get_batch_predictions(
     report = reader.get_latest_report()
     normalized_tickers = _normalize_tickers(tickers)
     predictions = reader.get_fusion_scores_for_tickers(normalized_tickers)
-    stock_info = await _get_stock_info(
-        db,
-        [item["ticker"] for item in predictions],
-    )
+    pred_tickers = [item["ticker"] for item in predictions]
+    stock_info = await _get_stock_info(db, pred_tickers)
+    price_series = await _get_recent_price_series(db, pred_tickers)
 
     return PredictionResponse(
         signal_date=report.get("live_outputs", {}).get("signal_date") if report else None,
@@ -148,6 +258,8 @@ async def get_batch_predictions(
                 **item,
                 sector=(stock_info.get(item["ticker"].upper()) or {}).get("sector"),
                 company_name=(stock_info.get(item["ticker"].upper()) or {}).get("company_name"),
+                recent_prices=(price_series.get(item["ticker"].upper()) or {}).get("prices") or [],
+                recent_excess_cum=(price_series.get(item["ticker"].upper()) or {}).get("excess_cum") or [],
             )
             for item in predictions
         ],
