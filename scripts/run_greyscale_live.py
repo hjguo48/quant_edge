@@ -66,7 +66,19 @@ from src.backtest.execution import select_candidate_tickers
 from src.stats.psi import compute_feature_psi_report
 from src.risk.data_risk import DataRiskMonitor
 from src.risk.operational_risk import OperationalRiskMonitor
-from src.risk.portfolio_risk import PortfolioRiskEngine, compute_turnover
+from src.risk.portfolio_risk import (
+    ConstrainedPortfolio,
+    PortfolioRiskEngine,
+    compute_sector_weights,
+    compute_turnover,
+)
+
+# W13.x — Layer 3 shadow mode (Codex 2026-04-27).
+# When False, Layer 3 (sector_cap / cvar_haircut / correlation_dedup / beta) is
+# computed every run for shadow diagnostics but does NOT replace the actual
+# target portfolio. Re-enable after 8-week greyscale produces calibrated
+# thresholds (see IMPLEMENTATION_PLAN.md Week 13 + memory project_w13_8week_eval).
+LAYER3_ENFORCEMENT_MODE = False
 from src.risk.signal_risk import SignalRiskMonitor
 from src.universe.active import get_active_universe
 
@@ -372,7 +384,8 @@ def main(argv: list[str] | None = None) -> int:
         model_names=list(MODEL_NAMES),
     )
 
-    constrained = portfolio_engine.apply_all_constraints(
+    # Always compute Layer 3 — used for both enforcement mode and shadow diagnostics.
+    constrained_layer3 = portfolio_engine.apply_all_constraints(
         weights=raw_weights,
         benchmark_weights=benchmark_weights,
         sector_map=sector_map,
@@ -388,11 +401,81 @@ def main(argv: list[str] | None = None) -> int:
         min_holdings=PORTFOLIO_MIN_HOLDINGS,
         stress_warning_threshold=PORTFOLIO_STRESS_WARNING,
     )
+
+    if LAYER3_ENFORCEMENT_MODE:
+        constrained = constrained_layer3
+    else:
+        # W13 shadow mode: actual portfolio = raw_weights (Layer 3 is recorded
+        # but does not gate trading). Build a ConstrainedPortfolio-shaped wrapper
+        # so the rest of the pipeline reports the actual book.
+        raw_gross = float(sum(raw_weights.values()))
+        constrained = ConstrainedPortfolio(
+            weights=dict(raw_weights),
+            cash_weight=max(0.0, 1.0 - raw_gross),
+            gross_exposure=raw_gross,
+            holding_count=len(raw_weights),
+            turnover=float(compute_turnover(raw_weights, previous_target_weights)),
+            portfolio_beta=None,
+            cvar_99=None,
+            sector_weights=dict(compute_sector_weights(raw_weights, sector_map)),
+            warnings=["W13.x shadow mode: Layer 3 enforcement disabled — see IMPLEMENTATION_PLAN.md Week 13."],
+            audit_trail=[],
+            beta_contributions={},
+            top_beta_contributors=[],
+        )
+
+    # Codex P2 fix: feed `constrained_layer3` (which has full audit_trail,
+    # cvar_99, beta, sector deviations) into the layer3 risk-check summary so
+    # `risk_checks.layer3_portfolio` reflects the actual Layer 3 evaluation
+    # regardless of enforcement mode. The synthetic shadow-mode `constrained`
+    # has audit_trail=[] / cvar_99=None / beta=None, which would make
+    # summarize_portfolio_checks structurally fail.
+    # `pass` here is informational under shadow mode (the wrapper's
+    # critical-alert path already gates on LAYER3_ENFORCEMENT_MODE).
     portfolio_checks = summarize_portfolio_checks(
-        constrained=constrained,
+        constrained=constrained_layer3,
         benchmark_weights=benchmark_weights,
         sector_map=sector_map,
     )
+    portfolio_checks["enforcement_mode"] = LAYER3_ENFORCEMENT_MODE
+
+    # Layer 3 shadow diagnostics — recorded every run, regardless of enforcement.
+    layer3_would_remove = sorted(set(raw_weights) - set(constrained_layer3.weights))
+    layer3_would_reduce = [
+        {
+            "ticker": ticker,
+            "raw_weight": float(raw_weights.get(ticker, 0.0)),
+            "shadow_weight": float(constrained_layer3.weights.get(ticker, 0.0)),
+        }
+        for ticker in sorted(set(raw_weights) & set(constrained_layer3.weights))
+        if abs(raw_weights.get(ticker, 0.0) - constrained_layer3.weights.get(ticker, 0.0)) > 1e-6
+    ]
+    cvar_audit_entry = next(
+        (e for e in constrained_layer3.audit_trail if e.rule_name == "cvar_haircut"),
+        None,
+    )
+    layer3_shadow_diagnostics = {
+        "enforcement_mode": LAYER3_ENFORCEMENT_MODE,
+        "shadow_holding_count": int(constrained_layer3.holding_count),
+        "shadow_gross_exposure": float(constrained_layer3.gross_exposure),
+        "shadow_cash_weight": float(constrained_layer3.cash_weight),
+        "shadow_cvar_99": (
+            None if constrained_layer3.cvar_99 is None else float(constrained_layer3.cvar_99)
+        ),
+        "shadow_turnover_vs_previous": float(
+            compute_turnover(constrained_layer3.weights, previous_target_weights)
+        ),
+        "cvar_triggered": bool(cvar_audit_entry.triggered) if cvar_audit_entry else False,
+        "cvar_haircut_rounds": (
+            int(cvar_audit_entry.after.get("iterations", 0))
+            if cvar_audit_entry and isinstance(cvar_audit_entry.after, dict)
+            else 0
+        ),
+        "tickers_layer3_would_remove": layer3_would_remove,
+        "tickers_layer3_would_reduce": layer3_would_reduce,
+        "audit_trail": [entry.to_dict() for entry in constrained_layer3.audit_trail],
+        "warnings": list(constrained_layer3.warnings),
+    }
 
     top_tickers_for_shap = list(fused_scores_by_ticker.head(100).index.astype(str))
     try:
@@ -410,7 +493,10 @@ def main(argv: list[str] | None = None) -> int:
         critical_alerts.append("layer1_data_halt")
     if signal_state["recommend_switch"]:
         critical_alerts.append("layer2_signal_switch")
-    if not portfolio_checks["overall_pass"]:
+    # Layer 3 portfolio fail only gates execution when enforcement is on.
+    # In W13 shadow mode, Layer 3 is informational; surface it as a soft
+    # warning instead of a critical alert.
+    if LAYER3_ENFORCEMENT_MODE and not portfolio_checks["overall_pass"]:
         critical_alerts.append("layer3_portfolio_fail")
 
     runtime_seconds = time.perf_counter() - started
@@ -527,11 +613,17 @@ def main(argv: list[str] | None = None) -> int:
             },
             "layer2_signal": signal_state,
             "layer3_portfolio": {
+                # Codex P2 fix: in shadow mode the synthetic `constrained` has
+                # empty audit_trail / null cvar / null beta. Expose the actual
+                # Layer 3 evaluation here (informational) so downstream
+                # consumers see real risk-engine output.
                 "pass": bool(portfolio_checks["overall_pass"]),
+                "enforcement_mode": LAYER3_ENFORCEMENT_MODE,
                 "checks": portfolio_checks,
-                "beta_contributions": constrained.beta_contributions,
-                "top_beta_contributors": constrained.top_beta_contributors,
-                "report": constrained.to_dict(),
+                "beta_contributions": constrained_layer3.beta_contributions,
+                "top_beta_contributors": constrained_layer3.top_beta_contributors,
+                "report": constrained_layer3.to_dict(),
+                "actual_book_report": constrained.to_dict(),
             },
             "layer4_operational": {
                 "pass": bool(not operational_report.halt_pipeline),
@@ -548,6 +640,7 @@ def main(argv: list[str] | None = None) -> int:
             "cash_weight_after_risk": float(constrained.cash_weight),
         },
         "live_universe_diagnostics": live_universe_diagnostics,
+        "layer3_shadow_diagnostics": json_safe(layer3_shadow_diagnostics),
         "feature_drift_psi": json_safe(psi_report_data) if psi_report_data else None,
         "notes": [
             "Fusion ranking uses cross-sectional z-scored model outputs with rolling-IC weights.",
