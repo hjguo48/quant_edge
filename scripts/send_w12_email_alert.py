@@ -17,6 +17,8 @@ from __future__ import annotations
 import argparse
 import os
 import smtplib
+import socket
+import ssl
 import sys
 from email.message import EmailMessage
 from pathlib import Path
@@ -77,12 +79,62 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Body: {args.body}")
         return 0
 
+    # WSL2 sometimes has broken IPv6 routing → resolve IPv4 explicitly to avoid timeout.
+    # Keep SNI hostname for cert verification.
+    host = env["W12_ALERT_SMTP_HOST"]
+    port = int(env["W12_ALERT_SMTP_PORT"])
     try:
-        with smtplib.SMTP_SSL(env["W12_ALERT_SMTP_HOST"], int(env["W12_ALERT_SMTP_PORT"])) as smtp:
-            smtp.login(env["W12_ALERT_FROM"], env["W12_ALERT_APP_PASSWORD"])
-            smtp.send_message(msg)
-        print(f"alert sent: [{args.severity}] {args.subject}")
-        return 0
+        try:
+            ipv4_addrs = [info[4][0] for info in socket.getaddrinfo(host, port, socket.AF_INET)]
+        except socket.gaierror as exc:
+            print(f"ERROR: DNS lookup failed for {host}: {exc}", file=sys.stderr)
+            return 3
+        if not ipv4_addrs:
+            print(f"ERROR: no IPv4 address for {host}", file=sys.stderr)
+            return 3
+
+        context = ssl.create_default_context()
+        last_exc: Exception | None = None
+        for ipv4 in ipv4_addrs:
+            try:
+                # Connect to IPv4 IP but verify cert against hostname via SNI.
+                with smtplib.SMTP_SSL(ipv4, port, timeout=45, context=context, local_hostname="localhost") as smtp:
+                    # Manually trigger SNI by re-wrapping if needed; SMTP_SSL.__init__ already wraps with server_hostname=host_param,
+                    # so cert hostname mismatch may occur. Switch to explicit SSL context with check_hostname=True
+                    # via a manual connect path.
+                    smtp.ehlo()
+                    smtp.login(env["W12_ALERT_FROM"], env["W12_ALERT_APP_PASSWORD"])
+                    smtp.send_message(msg)
+                print(f"alert sent: [{args.severity}] {args.subject}")
+                return 0
+            except ssl.SSLCertVerificationError:
+                # Cert is for smtp.gmail.com, not the IP. Fall back to manual connect with SNI.
+                last_exc = None
+                try:
+                    raw_sock = socket.create_connection((ipv4, port), timeout=45)
+                    ssl_sock = context.wrap_socket(raw_sock, server_hostname=host)
+                    smtp = smtplib.SMTP_SSL(local_hostname="localhost")
+                    smtp.sock = ssl_sock
+                    smtp.file = smtp.sock.makefile('rb')
+                    code, msg_resp = smtp.getreply()
+                    if code != 220:
+                        raise smtplib.SMTPConnectError(code, msg_resp)
+                    smtp.ehlo()
+                    smtp.login(env["W12_ALERT_FROM"], env["W12_ALERT_APP_PASSWORD"])
+                    smtp.send_message(msg)
+                    smtp.quit()
+                    print(f"alert sent (SNI fallback): [{args.severity}] {args.subject}")
+                    return 0
+                except Exception as inner:
+                    last_exc = inner
+                    continue
+            except Exception as exc:
+                last_exc = exc
+                continue
+
+        if last_exc is not None:
+            raise last_exc
+        return 3
     except Exception as exc:
         print(f"ERROR: SMTP send failed: {exc}", file=sys.stderr)
         return 3
