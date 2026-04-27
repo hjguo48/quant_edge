@@ -7,11 +7,19 @@ each row carries net_return / benchmark_return / etc.), identifies the
 champion (score_weighted_buffered, cost_mult=1.0, gate_on=False), and runs:
 
 1. Deflated Sharpe Ratio (Bailey & Lopez de Prado 2014):
-   - DSR_local: n_trials = 24 (this study), alpha = 0.05
-   - DSR_conservative: n_trials = 48 (double), alpha = 0.10
-2. Hansen-style SPA fallback (run_spa_fallback):
+   - DSR_local: n_trials = 4 (4 distinct strategy families, alpha = 0.05)
+   - DSR_conservative: n_trials = 8 (double, alpha = 0.10)
+   - DSR_no_prior_search: n_trials = 1 (assumes W22 prior selection)
+   - Rationale: cost bands (3) and gate states (2) are sensitivity tests on
+     the SAME strategies, not independent trials. Counting all 24 cells as
+     trials (Codex W11_W12_plan original) inflates E[max SR] artificially.
+2. Stationary bootstrap of Sharpe>0 (Politis & Romano 1994):
+   - 5000 resamples, block size 4 (~1 month for weekly data)
+   - One-sided test of H0: Sharpe <= 0
+3. Hansen-style SPA paired fallback (run_spa_fallback):
    - benchmark = champion net_excess weekly series
-   - competitors = 23 other trials' net_excess weekly series
+   - competitors = 3 DISTINCT strategies (cost=1.0, gate=False each)
+     — same-strategy sensitivity-band variants excluded as illegitimate
    - Holm-adjusted; we want: NO competitor significantly beats champion
 
 Output: data/reports/w10_stress_tests.json + console summary.

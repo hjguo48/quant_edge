@@ -655,6 +655,10 @@ def simulate_score_weighted_controlled(
             continue
 
         # --- W11 1D throttle: scale Δw against adverse short-horizon signal
+        # NOTE: this scales target_weights without renormalizing — adverse trades
+        # leave cash on the table (implicit cash position). It is NOT pure
+        # execution timing; it reduces total invested exposure on adverse 1D days.
+        # Confirmed semantically intentional per W11 design (Codex review).
         if directional_throttle_signal is not None:
             try:
                 throttle_today = directional_throttle_signal.xs(signal_date, level="trade_date")
