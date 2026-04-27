@@ -22,7 +22,7 @@ interface LatestPredictionsResponse {
   predictions: Prediction[];
 }
 
-const DIRECTIONS = ["All", "Active", "Buffer"];
+const DIRECTIONS = ["All", "Strong", "Watch", "Buffer"];
 const PAGE_SIZE = 10;
 const SORT_OPTIONS = [
   { key: "none", label: "Default" },
@@ -151,21 +151,34 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
     [minConf],
   );
 
+  type Tier = "strong" | "long" | "watch" | "buffer";
+  const computeTier = (score: number, percentile: number): Tier => {
+    if (score <= 0) return "buffer";
+    if (percentile >= 75) return "strong";
+    if (percentile < 25) return "watch";
+    return "long";
+  };
+
   const signalRows = useMemo(() => {
-    return predictions.map((prediction) => ({
-      ticker: prediction.ticker,
-      name: prediction.company_name || prediction.ticker,
-      direction: prediction.score > 0 ? ("long" as const) : ("neutral" as const),
-      confidence: Math.round(prediction.percentile),
-      score: prediction.score,
-      rank: prediction.rank,
-      sector: prediction.sector || "—",
-      shuffleKey: hashTickerSeed(prediction.ticker + ":" + prediction.rank),
-      sparkData: generateDirectionalSparkData(
-        prediction.score,
-        `${prediction.ticker}:${prediction.rank}:${prediction.score.toFixed(6)}`,
-      ),
-    }));
+    return predictions.map((prediction) => {
+      const confidence = Math.round(prediction.percentile);
+      const tier = computeTier(prediction.score, prediction.percentile);
+      return {
+        ticker: prediction.ticker,
+        name: prediction.company_name || prediction.ticker,
+        direction: prediction.score > 0 ? ("long" as const) : ("neutral" as const),
+        tier,
+        confidence,
+        score: prediction.score,
+        rank: prediction.rank,
+        sector: prediction.sector || "—",
+        shuffleKey: hashTickerSeed(prediction.ticker + ":" + prediction.rank),
+        sparkData: generateDirectionalSparkData(
+          prediction.score,
+          `${prediction.ticker}:${prediction.rank}:${prediction.score.toFixed(6)}`,
+        ),
+      };
+    });
   }, [predictions]);
 
   const filtered = useMemo(() => {
@@ -174,8 +187,9 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase()) || s.name.toLowerCase().includes(search.toLowerCase());
         const matchDir =
           direction === "All" ||
-          (direction === "Active" && s.direction === "long") ||
-          (direction === "Buffer" && s.direction === "neutral");
+          (direction === "Strong" && s.tier === "strong") ||
+          (direction === "Watch" && s.tier === "watch") ||
+          (direction === "Buffer" && s.tier === "buffer");
         const matchConf = s.confidence >= minConf;
         const matchSector = sectorFilter === "All Sectors" || s.sector === sectorFilter;
         return matchSearch && matchDir && matchConf && matchSector;
@@ -198,8 +212,14 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const activeCount = predictions.filter((p) => p.score > 0).length;
-  const bufferCount = predictions.filter((p) => p.score <= 0).length;
+  const tierCounts = useMemo(() => {
+    const counts = { strong: 0, long: 0, watch: 0, buffer: 0 };
+    for (const p of predictions) {
+      const t = computeTier(p.score, p.percentile);
+      counts[t]++;
+    }
+    return counts;
+  }, [predictions]);
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5">
@@ -208,7 +228,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         <div>
           <h2 className="text-xl font-bold text-foreground font-black uppercase tracking-widest">Signal Feed</h2>
           <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-[0.2em] font-medium">
-            Week {data?.week_number || "—"} · {formatDateShort(data?.signal_date)} · <span className="text-bull font-bold">{activeCount} active</span> · <span className="text-muted-foreground font-bold">{bufferCount} buffer-held</span> · Not investment advice
+            Week {data?.week_number || "—"} · {formatDateShort(data?.signal_date)} · <span className="text-bull-strong font-bold">{tierCounts.strong} strong</span> · <span className="text-bull font-bold">{tierCounts.long} long</span> · <span className="text-bull-watch font-bold">{tierCounts.watch} watch</span> · <span className="text-muted-foreground font-bold">{tierCounts.buffer} buffer</span> · Not investment advice
           </p>
         </div>
         <div className="flex items-center gap-2">

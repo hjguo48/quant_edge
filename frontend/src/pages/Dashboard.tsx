@@ -214,12 +214,20 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     return [...predictionsData.predictions]
       .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
       .slice(0, 5)
-      .map(p => ({
-        ticker: p.ticker,
-        direction: p.score > 0 ? "long" : "neutral",
-        confidence: Math.round(p.percentile),
-        score: p.score
-      }));
+      .map(p => {
+        let tier: "strong" | "long" | "watch" | "buffer";
+        if (p.score <= 0) tier = "buffer";
+        else if (p.percentile >= 75) tier = "strong";
+        else if (p.percentile < 25) tier = "watch";
+        else tier = "long";
+        return {
+          ticker: p.ticker,
+          direction: p.score > 0 ? "long" : "neutral",
+          tier,
+          confidence: Math.round(p.percentile),
+          score: p.score
+        };
+      });
   }, [predictionsData]);
 
   // Default chart to top signal's ticker once loaded
@@ -511,13 +519,13 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
                     >
                       <div>
                         <div className="text-sm font-bold text-foreground">{s.ticker}</div>
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${s.direction === "long" ? "tag-bull" : "tag-neutral"}`}>
-                          {s.direction === "long" ? "LONG" : "BUFFER"}
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${s.tier === "strong" ? "tag-bull-strong" : s.tier === "watch" ? "tag-bull-watch" : s.tier === "buffer" ? "tag-neutral" : "tag-bull"}`}>
+                          {s.tier === "strong" ? "STRONG" : s.tier === "watch" ? "WATCH" : s.tier === "buffer" ? "BUFFER" : "LONG"}
                         </span>
                       </div>
                       <div className="text-right">
                         <div className="text-[10px] text-muted-foreground font-medium">{s.confidence}% conf</div>
-                        <div className={`text-sm font-bold font-mono ${s.direction === "long" ? "text-bull" : "text-muted-foreground"}`}>
+                        <div className={`text-sm font-bold font-mono ${s.tier === "strong" ? "text-bull-strong" : s.tier === "watch" ? "text-bull-watch" : s.tier === "buffer" ? "text-muted-foreground" : "text-bull"}`}>
                           {s.score > 0 ? "+" : ""}{s.score.toFixed(4)}
                         </div>
                       </div>

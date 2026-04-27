@@ -3,6 +3,8 @@ import { ChevronRight } from "lucide-react";
 import MiniSparkline from "./MiniSparkline";
 import { getSectorColor } from "../constants/sectorColors";
 
+type Conviction = "strong" | "long" | "watch" | "buffer" | "short";
+
 interface SignalRowProps {
   ticker?: string;
   name?: string;
@@ -13,6 +15,22 @@ interface SignalRowProps {
   sector?: string;
   onClick?: () => void;
 }
+
+function deriveConviction(direction: SignalRowProps["direction"], confidence: number): Conviction {
+  if (direction === "neutral") return "buffer";
+  if (direction === "short") return "short";
+  if (confidence >= 75) return "strong";
+  if (confidence < 25) return "watch";
+  return "long";
+}
+
+const TIER_STYLE: Record<Conviction, { tagClass: string; tagLabel: string; scoreClass: string; barFrom: string; barTo: string; sparkPositive: boolean }> = {
+  strong: { tagClass: "tag-bull-strong", tagLabel: "STRONG LONG", scoreClass: "text-bull-strong", barFrom: "#00E806", barTo: "#00C805", sparkPositive: true },
+  long:   { tagClass: "tag-bull",        tagLabel: "LONG",        scoreClass: "text-bull",        barFrom: "#00C805", barTo: "#00A804", sparkPositive: true },
+  watch:  { tagClass: "tag-bull-watch",  tagLabel: "WATCH LONG",  scoreClass: "text-bull-watch",  barFrom: "#C9A445", barTo: "#9A7E32", sparkPositive: true },
+  buffer: { tagClass: "tag-neutral",     tagLabel: "BUFFER",      scoreClass: "text-muted-foreground", barFrom: "#607B96", barTo: "#475569", sparkPositive: false },
+  short:  { tagClass: "tag-bear",        tagLabel: "SHORT SIGNAL", scoreClass: "text-bear",       barFrom: "#FF5252", barTo: "#E04040", sparkPositive: false },
+};
 
 const SignalRow = ({
   ticker = "AAPL",
@@ -26,11 +44,11 @@ const SignalRow = ({
 }: SignalRowProps) => {
   const [hovered, setHovered] = useState(false);
 
-  const directionClass =
-    direction === "long" ? "tag-bull" : direction === "short" ? "tag-bear" : "tag-neutral";
-  const directionLabel =
-    direction === "long" ? "LONG SIGNAL" : direction === "short" ? "SHORT SIGNAL" : "NEUTRAL";
-  const isPositive = direction === "long";
+  const conviction = deriveConviction(direction, confidence);
+  const style = TIER_STYLE[conviction];
+  const directionClass = style.tagClass;
+  const directionLabel = style.tagLabel;
+  const isPositive = style.sparkPositive;
 
   const sColor = getSectorColor(sector);
 
@@ -49,7 +67,7 @@ const SignalRow = ({
       </div>
 
       {/* Direction */}
-      <div className="w-28 flex-shrink-0">
+      <div className="w-32 flex-shrink-0">
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${directionClass}`}>
           {directionLabel}
         </span>
@@ -66,9 +84,7 @@ const SignalRow = ({
             className="h-full rounded-full transition-all duration-700"
             style={{
               width: `${confidence}%`,
-              background: isPositive
-                ? `linear-gradient(90deg, #00C805 0%, #00A804 100%)`
-                : `linear-gradient(90deg, #FF5252 0%, #E04040 100%)`,
+              background: `linear-gradient(90deg, ${style.barFrom} 0%, ${style.barTo} 100%)`,
             }}
           />
         </div>
@@ -76,7 +92,7 @@ const SignalRow = ({
 
       {/* Score */}
       <div className="w-20 text-right flex-shrink-0">
-        <div className={`text-sm font-bold ${isPositive ? "text-bull" : "text-bear"}`}>
+        <div className={`text-sm font-bold ${style.scoreClass}`}>
           {score > 0 ? "+" : ""}{score.toFixed(4)}
         </div>
         <div className="text-xs text-muted-foreground">Score</div>
