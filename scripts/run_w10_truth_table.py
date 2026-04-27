@@ -64,6 +64,7 @@ DEFAULT_FEATURE_MATRIX_60D = "data/features/walkforward_v9full9y_fm_60d.parquet"
 DEFAULT_LABEL_60D = "data/labels/forward_returns_60d_v9full9y.parquet"
 DEFAULT_REGIME_TABLE = "data/features/regime_table_2016-2025.parquet"
 DEFAULT_OUTPUT = "data/reports/w10_truth_table_60d.json"
+DEFAULT_PERIODS_OUTPUT = "data/reports/w10_truth_table_60d_periods.parquet"
 
 DEFAULT_ETA = 0.426
 DEFAULT_GAMMA = 0.942
@@ -144,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info("Stage 1: rebuilding Ridge predictions across {} windows", len(windows))
     artifacts = prepare_horizon_artifacts(
-        label="60D",
+        label=f"{horizon_days}D",
         horizon_days=horizon_days,
         report_path=report_path,
         report_payload=payload,
@@ -189,6 +190,7 @@ def main(argv: list[str] | None = None) -> int:
         len(COST_MULTIPLIERS),
     )
     rows: list[dict[str, Any]] = []
+    period_frames: list[pd.DataFrame] = []
     for strategy_name in STRATEGY_CONFIGS:
         for cost_mult in COST_MULTIPLIERS:
             cost_model = AlmgrenChrissCostModel(
@@ -207,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
                 universe_by_date=universe_by_date,
             )
             for gate_on in (False, True):
-                row = build_truth_row(
+                row, periods_df = build_truth_row(
                     strategy=strategy_name,
                     cost_mult=cost_mult,
                     gate_on=gate_on,
@@ -215,9 +217,29 @@ def main(argv: list[str] | None = None) -> int:
                     regime_gate=regime_gate,
                 )
                 rows.append(row)
+                if not periods_df.empty:
+                    period_frames.append(periods_df)
 
     truth_table = pd.DataFrame(rows)
     verdict = build_w10_verdict(truth_table)
+
+    periods_path = REPO_ROOT / args.periods_output
+    if period_frames:
+        periods_combined = pd.concat(period_frames, ignore_index=True)
+        # Drop selected_tickers (list, parquet-incompatible without nested type fuss)
+        if "selected_tickers" in periods_combined.columns:
+            periods_combined = periods_combined.drop(columns=["selected_tickers"])
+        # Drop cost_breakdown dict (also parquet-incompatible)
+        if "cost_breakdown" in periods_combined.columns:
+            periods_combined = periods_combined.drop(columns=["cost_breakdown"])
+        periods_path.parent.mkdir(parents=True, exist_ok=True)
+        periods_combined.to_parquet(periods_path, index=False)
+        logger.info(
+            "saved period-level parquet to {} (rows={}, combos={})",
+            periods_path,
+            len(periods_combined),
+            periods_combined.groupby(["strategy", "cost_mult", "gate_on"]).ngroups,
+        )
 
     output = {
         "generated_at_utc": pd.Timestamp.utcnow().isoformat(),
@@ -258,6 +280,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--all-features-path", default=DEFAULT_ALL_FEATURES_PATH)
     parser.add_argument("--regime-table", default=DEFAULT_REGIME_TABLE)
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
+    parser.add_argument("--periods-output", default=DEFAULT_PERIODS_OUTPUT,
+                        help="Parquet path for per-period rows (24 combos × N periods each)")
     parser.add_argument("--as-of")
     parser.add_argument("--benchmark-ticker")
     parser.add_argument("--rebalance-weekday", type=int)
@@ -369,9 +393,9 @@ def build_truth_row(
     gate_on: bool,
     portfolio: PortfolioBacktestResult,
     regime_gate: pd.Series,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], pd.DataFrame]:
     if not portfolio.periods:
-        return {
+        empty_row = {
             "strategy": strategy,
             "cost_mult": float(cost_mult),
             "gate_on": bool(gate_on),
@@ -384,6 +408,7 @@ def build_truth_row(
             "ir": float("nan"),
             "max_drawdown": float("nan"),
         }
+        return empty_row, pd.DataFrame()
 
     periods = pd.DataFrame([p.to_dict() for p in portfolio.periods])
     periods["signal_date"] = pd.to_datetime(periods["signal_date"])
@@ -391,13 +416,14 @@ def build_truth_row(
     periods["exit_date"] = pd.to_datetime(periods["exit_date"])
     periods = periods.sort_values("execution_date").reset_index(drop=True)
 
+    gate_mask_full = np.zeros(len(periods), dtype=bool)
     if gate_on:
         gate_lookup = regime_gate.reindex(periods["signal_date"], method="ffill").fillna(False)
-        gate_mask = gate_lookup.to_numpy(dtype=bool)
-        if gate_mask.any():
-            scaled_gross = np.where(gate_mask, periods["gross_return"] * REGIME_GATE_EXPOSURE, periods["gross_return"])
-            scaled_cost = np.where(gate_mask, periods["cost_rate"] * REGIME_GATE_EXPOSURE, periods["cost_rate"])
-            scaled_turnover = np.where(gate_mask, periods["turnover"] * REGIME_GATE_EXPOSURE, periods["turnover"])
+        gate_mask_full = gate_lookup.to_numpy(dtype=bool)
+        if gate_mask_full.any():
+            scaled_gross = np.where(gate_mask_full, periods["gross_return"] * REGIME_GATE_EXPOSURE, periods["gross_return"])
+            scaled_cost = np.where(gate_mask_full, periods["cost_rate"] * REGIME_GATE_EXPOSURE, periods["cost_rate"])
+            scaled_turnover = np.where(gate_mask_full, periods["turnover"] * REGIME_GATE_EXPOSURE, periods["turnover"])
             scaled_net = (1.0 - scaled_cost) * (1.0 + scaled_gross) - 1.0
             periods["gross_return"] = scaled_gross
             periods["cost_rate"] = scaled_cost
@@ -406,12 +432,18 @@ def build_truth_row(
             periods["gross_excess_return"] = periods["gross_return"] - periods["benchmark_return"]
             periods["net_excess_return"] = periods["net_return"] - periods["benchmark_return"]
 
-    return aggregate_truth_row(
+    row = aggregate_truth_row(
         strategy=strategy,
         cost_mult=cost_mult,
         gate_on=gate_on,
         periods=periods,
     )
+    periods_with_id = periods.copy()
+    periods_with_id["strategy"] = strategy
+    periods_with_id["cost_mult"] = float(cost_mult)
+    periods_with_id["gate_on"] = bool(gate_on)
+    periods_with_id["gate_active"] = gate_mask_full
+    return row, periods_with_id
 
 
 def aggregate_truth_row(
