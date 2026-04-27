@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import argparse
 from datetime import date, datetime, timedelta, timezone
+import json
 from pathlib import Path
+import pickle
 import sys
 import time
 from typing import Any
@@ -88,17 +90,55 @@ def main(argv: list[str] | None = None) -> int:
     if not live_universe:
         raise RuntimeError("No live tickers were available in stocks after excluding SPY.")
 
-    registry = ModelRegistry()
-    champion = registry.get_champion(args.model_name)
-    if champion is None:
-        raise RuntimeError(f"No champion model is registered for {args.model_name!r}.")
-    if champion.metadata is None:
-        raise RuntimeError(f"Champion model {args.model_name!r} is missing metadata.")
+    if args.bundle_path is not None:
+        bundle_path_obj = args.bundle_path if args.bundle_path.is_absolute() else (REPO_ROOT / args.bundle_path)
+        if not bundle_path_obj.exists():
+            raise RuntimeError(f"--bundle-path provided but file does not exist: {bundle_path_obj}")
+        with bundle_path_obj.open("r", encoding="utf-8") as f:
+            bundle_json = json.load(f)
+        ridge_section = bundle_json.get("models", {}).get("ridge")
+        if not ridge_section:
+            raise RuntimeError(f"Bundle {bundle_path_obj} has no models.ridge section")
+        artifact_rel = ridge_section.get("artifact_path")
+        if not artifact_rel:
+            raise RuntimeError(f"Bundle {bundle_path_obj} has no models.ridge.artifact_path")
+        artifact_full = REPO_ROOT / artifact_rel
+        if not artifact_full.exists():
+            raise RuntimeError(f"Bundle artifact missing: {artifact_full}")
+        with artifact_full.open("rb") as f:
+            model = pickle.load(f)
+        model_features = list(ridge_section.get("feature_names", []))
+        if not model_features:
+            raise RuntimeError("Bundle ridge.feature_names is empty")
+        horizon_days = int(bundle_json.get("horizon_days", 60))
+        model_load_audit = {
+            "source": "bundle",
+            "bundle_path": str(bundle_path_obj.relative_to(REPO_ROOT)),
+            "artifact_path": str(artifact_full.relative_to(REPO_ROOT)),
+            "alpha": ridge_section.get("alpha"),
+            "window_id": ridge_section.get("window_id"),
+            "feature_count": len(model_features),
+        }
+        logger.info(
+            "Loaded model from bundle {} (version={}, alpha={}, features={})",
+            bundle_path_obj.name,
+            bundle_json.get("version"),
+            ridge_section.get("alpha"),
+            len(model_features),
+        )
+    else:
+        registry = ModelRegistry()
+        champion = registry.get_champion(args.model_name)
+        if champion is None:
+            raise RuntimeError(f"No champion model is registered for {args.model_name!r}.")
+        if champion.metadata is None:
+            raise RuntimeError(f"Champion model {args.model_name!r} is missing metadata.")
 
-    model, model_load_audit = load_champion_model(registry=registry, champion=champion)
-    model_features = list(champion.metadata.features)
-    if not model_features:
-        raise RuntimeError("Champion metadata.features is empty.")
+        model, model_load_audit = load_champion_model(registry=registry, champion=champion)
+        model_features = list(champion.metadata.features)
+        if not model_features:
+            raise RuntimeError("Champion metadata.features is empty.")
+        horizon_days = parse_horizon_days(champion.metadata.horizon)
     logger.info(
         "Validated live bundle {} (version={}, required_features={}, fingerprint={})",
         DEFAULT_BUNDLE_PATH,
@@ -106,8 +146,6 @@ def main(argv: list[str] | None = None) -> int:
         bundle_validation.metadata.get("required_feature_count"),
         bundle_validation.metadata.get("computed_fingerprint"),
     )
-
-    horizon_days = parse_horizon_days(champion.metadata.horizon)
     feature_start = live_trade_date - timedelta(days=args.history_lookback_days)
     price_tickers = [*live_universe, BENCHMARK_TICKER]
     prices = get_prices_pit(
@@ -378,6 +416,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--model-name", default=DEFAULT_MODEL_NAME)
+    parser.add_argument("--bundle-path", type=Path, default=None,
+                        help="Load model directly from a frozen bundle (W12 path), "
+                             "bypassing MLflow ModelRegistry. Required when registry "
+                             "champion is stale relative to the bundle.")
     parser.add_argument("--selection-pct", type=float, default=DEFAULT_SELECTION_PCT)
     parser.add_argument("--history-lookback-days", type=int, default=DEFAULT_HISTORY_LOOKBACK_DAYS)
     parser.add_argument("--feature-drift-lookback-days", type=int, default=DEFAULT_FEATURE_DRIFT_LOOKBACK_DAYS)
