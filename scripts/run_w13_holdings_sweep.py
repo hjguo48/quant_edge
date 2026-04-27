@@ -113,6 +113,34 @@ SWEEP_CONFIGS = [
     {"name": "cap20_plus_layer3",     "max_holdings": 20,   "layer3": True},
 ]
 
+# Loose Layer 3 thresholds — for sensitivity test
+LAYER3_LOOSE = {
+    "max_single_stock_weight": 0.05,
+    "max_sector_deviation": 0.25,
+    "cvar_floor": -0.10,
+    "cvar_confidence": 0.99,
+    "correlation_threshold": 0.92,
+    "turnover_cap": 0.40,
+    "min_holdings": 20,
+}
+# Medium loose Layer 3 thresholds
+LAYER3_MEDIUM = {
+    "max_single_stock_weight": 0.05,
+    "max_sector_deviation": 0.20,
+    "cvar_floor": -0.08,
+    "cvar_confidence": 0.99,
+    "correlation_threshold": 0.90,
+    "turnover_cap": 0.40,
+    "min_holdings": 20,
+}
+
+LAYER3_TUNING_CONFIGS = [
+    {"name": "layer3_medium",          "max_holdings": None, "layer3": True, "layer3_kwargs": LAYER3_MEDIUM},
+    {"name": "layer3_loose",           "max_holdings": None, "layer3": True, "layer3_kwargs": LAYER3_LOOSE},
+    {"name": "cap30_plus_layer3_med",  "max_holdings": 30,   "layer3": True, "layer3_kwargs": LAYER3_MEDIUM},
+    {"name": "cap30_plus_layer3_loose","max_holdings": 30,   "layer3": True, "layer3_kwargs": LAYER3_LOOSE},
+]
+
 
 @dataclass
 class ConfigSummary:
@@ -217,6 +245,7 @@ def simulate_with_cap_and_layer3(
     benchmark_ticker: str,
     max_holdings: int | None,
     layer3: bool,
+    layer3_kwargs: dict[str, Any] | None = None,
     initial_capital: float = 1_000_000.0,
 ) -> tuple[PortfolioBacktestResult, list[PeriodAudit]]:
     benchmark = benchmark_ticker.upper()
@@ -337,6 +366,7 @@ def simulate_with_cap_and_layer3(
                 eq_universe = filtered_scores.index.astype(str).tolist()
                 benchmark_weights = {t: 1.0 / len(eq_universe) for t in eq_universe} if eq_universe else {}
 
+                kw = layer3_kwargs if layer3_kwargs is not None else LAYER3_DEFAULTS
                 constrained = risk_engine.apply_all_constraints(
                     weights=target_weights,
                     benchmark_weights=benchmark_weights,
@@ -345,13 +375,13 @@ def simulate_with_cap_and_layer3(
                     spy_returns=spy_returns,
                     current_weights=current_weights,
                     candidate_ranking=ranking,
-                    max_single_stock_weight=LAYER3_DEFAULTS["max_single_stock_weight"],
-                    max_sector_deviation=LAYER3_DEFAULTS["max_sector_deviation"],
-                    cvar_floor=LAYER3_DEFAULTS["cvar_floor"],
-                    cvar_confidence=LAYER3_DEFAULTS["cvar_confidence"],
-                    correlation_threshold=LAYER3_DEFAULTS["correlation_threshold"],
-                    turnover_cap=LAYER3_DEFAULTS["turnover_cap"],
-                    min_holdings=LAYER3_DEFAULTS["min_holdings"],
+                    max_single_stock_weight=kw["max_single_stock_weight"],
+                    max_sector_deviation=kw["max_sector_deviation"],
+                    cvar_floor=kw["cvar_floor"],
+                    cvar_confidence=kw["cvar_confidence"],
+                    correlation_threshold=kw["correlation_threshold"],
+                    turnover_cap=kw["turnover_cap"],
+                    min_holdings=kw["min_holdings"],
                 )
                 target_weights = dict(constrained.weights)
                 audit.gross_exposure_final = float(constrained.gross_exposure)
@@ -684,9 +714,10 @@ def main(argv: list[str] | None = None) -> int:
         cost_model = AlmgrenChrissCostModel(eta=cost_model.eta * args.cost_mult,
                                             gamma=cost_model.gamma * args.cost_mult)
 
-    logger.info("Stage 4: running {} configs", len(SWEEP_CONFIGS))
+    all_configs = SWEEP_CONFIGS + LAYER3_TUNING_CONFIGS
+    logger.info("Stage 4: running {} configs", len(all_configs))
     summaries: list[ConfigSummary] = []
-    for cfg in SWEEP_CONFIGS:
+    for cfg in all_configs:
         logger.info("=== config: {} (max_holdings={}, layer3={}) ===",
                     cfg["name"], cfg["max_holdings"], cfg["layer3"])
         result, audits = simulate_with_cap_and_layer3(
@@ -698,6 +729,7 @@ def main(argv: list[str] | None = None) -> int:
             benchmark_ticker=benchmark_ticker,
             max_holdings=cfg["max_holdings"],
             layer3=cfg["layer3"],
+            layer3_kwargs=cfg.get("layer3_kwargs"),
         )
         summary = aggregate_config(cfg["name"], result, audits)
         logger.info(

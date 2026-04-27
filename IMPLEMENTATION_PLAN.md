@@ -593,6 +593,42 @@ minute_incremental:
 
 ---
 
+### Week 13: Holdings × Layer 3 sensitivity + Live deploy 重定 [🟡 IN PROGRESS 2026-04-27]
+
+**触发**：W12 灰度 week 1 出现 30 票而非 W10 baseline 138 票 → 持仓数与 Layer 3 风控的相互作用未被 W10 验证。
+
+**已完成（branch `feature/w13-holdings-sweep`，未合并）**：
+- `scripts/run_w13_holdings_sweep.py`：12 config sweep on W11 walk-forward (13 OOS windows × 328 周)
+- 数据见 `data/reports/W13_holdings_sweep_verdict_2026-04-27T161751Z.md`
+- Sanity ✅：baseline 复现 W10 truth-table EXACT (7.34% / IR 0.72 / DD 14.04%)
+- 关键发现：
+  - 持仓集中本身就削 alpha：cap30 = +3.50%（vs baseline +7.34%）
+  - Layer 3 default (CVaR -5%, sector 15%) 灾难性：layer3_only = -3.11%（CVaR 触发 65.9%/周）
+  - Layer 3 loose (CVaR -10%, sector 25%) 也仍亏：+3.96%（vs baseline 7.34%，损失 3.4%）
+- Codex review (Correctness 6.7, Decision 8.8): 方向对、量过大；sweep 比 live 严是因为：
+  - sweep 用 expanding history since 2018；live 用 400-day window
+  - sweep 用自写 build_return_panel（含 META 2022-06-09 +1300% ghost bar）；live 用 build_return_history (清洗过)
+
+**结论 + 5/2 灰度部署决策（Codex 推荐 + 我同意）**：
+> **走 Option (d) shadow-mode**：5/2 灰度 关 Layer 3 enforcement，跑 baseline 138 票 score_weighted_buffered；Layer 3 仍每周计算并写入 `layer3_shadow_diagnostics`，但**不影响 portfolio**。
+
+**5/2 之前要做的事（Step 1-4，约 4-5 小时）**：
+- [ ] **Step 1**：修 sweep — `build_return_panel` → `build_return_history`；trailing history 改为 400-day
+- [ ] **Step 2**：重跑修正后的 sweep，得到与 live 同 spec 的 magnitude（预期更温和）
+- [ ] **Step 3**：改 wrapper：Layer 3 计算保留，但**不替换** target_weights；输出写入 `week_*.json` 的 `layer3_shadow_diagnostics`
+- [ ] **Step 4**：commit + 部署到 main，5/2 自动跑 baseline + shadow
+
+**8 周灰度结束后（约 2026-06-24 ~ 07-15）必须检查的 2 件事**：
+- [ ] **真实 alpha 是否复现 W10 7.34%**（baseline 138 票预期，看 paper P&L tracker 累计净超额）
+- [ ] **Shadow Layer 3 真实触发频率**（修正版 sweep 预期值 vs 实际）→ 决定是否启用 Layer 3 enforcement，用什么阈值
+
+**Gate**:
+- baseline net excess ≥ +5% (≈ 70% W10 数字) → 视为 alpha 复现成功
+- Shadow Layer 3 触发率 < 30%/周 → Layer 3 默认阈值方向上合理；> 50% → 需要松到 CVaR -8% 或 -10%
+- 两条都过 → 进入 W14 真单准备阶段
+
+---
+
 ## 8. 付费采购决策 (12 周后评估)
 
 **只有同时满足 2 条才考虑扩数据预算：**
