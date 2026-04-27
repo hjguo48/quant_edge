@@ -1,6 +1,6 @@
 {
-  "as_of_utc": "2026-04-27T17:46:33+00:00",
-  "generated_at_utc": "2026-04-27T17:49:13.473000+00:00",
+  "as_of_utc": "2026-04-25T20:00:00+00:00",
+  "generated_at_utc": "2026-04-27T17:56:37.580978+00:00",
   "horizon_days": 60,
   "latest_pit_trade_date": "2026-04-24",
   "per_week": [
@@ -21,7 +21,7 @@
       },
       "signal_date": "2026-04-24",
       "turnover_vs_previous": 0.0,
-      "week_number": 2,
+      "week_number": 1,
       "weight_source": "seed_w11_avg_weights"
     }
   ],

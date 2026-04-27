@@ -1,5 +1,5 @@
 {
-  "as_of_utc": "2026-04-27T17:49:14.553314+00:00",
+  "as_of_utc": "2026-04-27T17:56:38.606127+00:00",
   "benchmark": "SPY",
   "cumulative": {
     "1d": {
@@ -87,48 +87,6 @@
       },
       "signal_date": "2026-04-24",
       "week_number": 1
-    },
-    {
-      "horizons": {
-        "1d": {
-          "excess": null,
-          "horizon_end_date": null,
-          "portfolio_return": null,
-          "spy_return": null,
-          "status": "pending",
-          "tickers_missing": 34,
-          "tickers_used": 0
-        },
-        "20d": {
-          "excess": null,
-          "horizon_end_date": null,
-          "portfolio_return": null,
-          "spy_return": null,
-          "status": "pending",
-          "tickers_missing": 34,
-          "tickers_used": 0
-        },
-        "5d": {
-          "excess": null,
-          "horizon_end_date": null,
-          "portfolio_return": null,
-          "spy_return": null,
-          "status": "pending",
-          "tickers_missing": 34,
-          "tickers_used": 0
-        },
-        "60d": {
-          "excess": null,
-          "horizon_end_date": null,
-          "portfolio_return": null,
-          "spy_return": null,
-          "status": "pending",
-          "tickers_missing": 34,
-          "tickers_used": 0
-        }
-      },
-      "signal_date": "2026-04-24",
-      "week_number": 2
     }
   ],
   "today": "2026-04-27"
