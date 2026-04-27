@@ -1,12 +1,12 @@
 {
-  "as_of_utc": "2026-04-27T13:35:23+00:00",
-  "generated_at_utc": "2026-04-27T13:37:57.035548+00:00",
+  "as_of_utc": "2026-04-25T20:00:00+00:00",
+  "generated_at_utc": "2026-04-27T17:04:42.218558+00:00",
   "horizon_days": 60,
   "latest_pit_trade_date": "2026-04-24",
   "per_week": [
     {
-      "generated_at_utc": "2026-04-27T13:37:46.699563+00:00",
-      "holding_count_after_risk": 30,
+      "generated_at_utc": "2026-04-27T17:03:28.942019+00:00",
+      "holding_count_after_risk": 34,
       "pairwise_rank_correlation": {
         "ridge__lightgbm": NaN,
         "ridge__xgboost": NaN,
@@ -16,7 +16,7 @@
       "risk_status": {
         "layer1_pass": true,
         "layer2_pass": true,
-        "layer3_pass": true,
+        "layer3_pass": false,
         "layer4_pass": true
       },
       "signal_date": "2026-04-24",

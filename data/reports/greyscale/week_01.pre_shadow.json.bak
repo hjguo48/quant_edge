@@ -1,6 +1,6 @@
 {
   "db_state": {
-    "as_of_utc": "2026-04-25T20:00:00+00:00",
+    "as_of_utc": "2026-04-27T13:35:23+00:00",
     "latest_pit_trade_date": "2026-04-24",
     "latest_stored_trade_date": "2026-04-24",
     "stock_universe_size": 498,
@@ -9,7 +9,7 @@
   "dry_run": true,
   "feature_drift_psi": null,
   "feature_pipeline": {
-    "batch_id": "7ee01ce9-e4f2-4537-80ec-1cd022909483",
+    "batch_id": "671ce644-1217-425c-b028-ad2d53381c45",
     "end_date": "2026-04-24",
     "feature_matrix_shape": {
       "n_features": 62,
@@ -43,354 +43,41 @@
     "temperature": 0.0,
     "weight_source": "seed_w11_avg_weights"
   },
-  "generated_at_utc": "2026-04-27T17:03:28.942019+00:00",
-  "layer3_shadow_diagnostics": {
-    "audit_trail": [
-      {
-        "action": "cap_weights",
-        "after": {
-          "max_weight": 0.03600088936930516
-        },
-        "before": {
-          "limit": 0.1,
-          "max_weight": 0.03600088936930516
-        },
-        "message": "Cap each name at the maximum single-stock weight.",
-        "priority": "P0",
-        "rule_name": "single_stock_cap",
-        "triggered": false
-      },
-      {
-        "action": "trim_overweight_sectors",
-        "after": {
-          "max_abs_deviation": 0.14999999999999994,
-          "sector_weights": {
-            "Basic Materials": 0.05522547443953359,
-            "Communication Services": 0.03063143066080226,
-            "Consumer Cyclical": 0.1157677335495012,
-            "Consumer Defensive": 0.05837848277280053,
-            "Energy": 0.05727573694101114,
-            "Financial Services": 0.2885542168674698,
-            "Healthcare": 0.13105716044207133,
-            "Industrials": 0.07218545443592862,
-            "Real Estate": 0.06040315724557828,
-            "Technology": 0.09563989702622538,
-            "Utilities": 0.03488125561907792
-          }
-        },
-        "before": {
-          "max_abs_deviation": 0.4708575549053329,
-          "sector_weights": {
-            "Basic Materials": 0.028986099823065912,
-            "Consumer Cyclical": 0.0888059882062611,
-            "Consumer Defensive": 0.026895036859673822,
-            "Energy": 0.03026361406779139,
-            "Financial Services": 0.6094117717728027,
-            "Healthcare": 0.10472570264737405,
-            "Industrials": 0.027377213209163916,
-            "Real Estate": 0.030875348433372904,
-            "Technology": 0.05265922498049433
-          }
-        },
-        "message": "Keep sector deviation versus benchmark within the configured band.",
-        "priority": "P0",
-        "rule_name": "sector_deviation_cap",
-        "triggered": true
-      },
-      {
-        "action": "scale_down_gross",
-        "after": {
-          "cvar_99": -0.04911709973271176,
-          "gross_exposure": 0.8,
-          "iterations": 1
-        },
-        "before": {
-          "cvar_99": -0.06139637466588969,
-          "floor": -0.05,
-          "gross_exposure": 1.0000000000000002
-        },
-        "message": "Reduce gross exposure by 20% per round for up to three rounds if 99% CVaR breaches the floor.",
-        "priority": "P0",
-        "rule_name": "cvar_haircut",
-        "triggered": true
-      },
-      {
-        "action": "tilt_toward_target_beta",
-        "after": {
-          "portfolio_beta": 0.8766504212082116,
-          "target_bounds": [
-            0.8,
-            1.2
-          ]
-        },
-        "before": {
-          "hard_bounds": [
-            0.7,
-            1.3
-          ],
-          "portfolio_beta": 0.8766504212082116
-        },
-        "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
-        "priority": "P1",
-        "rule_name": "beta_alignment",
-        "triggered": false
-      },
-      {
-        "action": "remove_redundant_names",
-        "after": {
-          "high_corr_pairs": 0
-        },
-        "before": {
-          "high_corr_pairs": 24
-        },
-        "message": "Trim highly correlated duplicate positions.",
-        "priority": "P1",
-        "rule_name": "correlation_dedup",
-        "triggered": true
-      },
-      {
-        "action": "blend_with_current_weights",
-        "after": {
-          "turnover": 0.39999999999999997
-        },
-        "before": {
-          "limit": 0.4,
-          "turnover": 0.4000000000000001
-        },
-        "message": "Cap one-period turnover at the configured limit.",
-        "priority": "P1",
-        "rule_name": "turnover_cap",
-        "triggered": false
-      },
-      {
-        "action": "add_small_satellite_positions",
-        "after": {
-          "holding_count": 30
-        },
-        "before": {
-          "holding_count": 30,
-          "minimum": 20
-        },
-        "message": "Maintain a diversified minimum number of holdings.",
-        "priority": "P2",
-        "rule_name": "minimum_holdings",
-        "triggered": false
-      },
-      {
-        "action": "warning_only",
-        "after": {
-          "stressed_return": -0.07050400220500404
-        },
-        "before": {
-          "shock": -0.1,
-          "warning_threshold": -0.12
-        },
-        "message": "Run a simple market shock stress test without modifying weights.",
-        "priority": "P2",
-        "rule_name": "stress_test",
-        "triggered": false
-      }
-    ],
-    "cvar_haircut_rounds": 1,
-    "cvar_triggered": true,
-    "enforcement_mode": false,
-    "shadow_cash_weight": 0.19999999999999996,
-    "shadow_cvar_99": -0.048539114265265394,
-    "shadow_gross_exposure": 0.8,
-    "shadow_holding_count": 30,
-    "shadow_turnover_vs_previous": 0.39999999999999997,
-    "tickers_layer3_would_reduce": [
-      {
-        "raw_weight": 0.031371994923374766,
-        "shadow_weight": 0.012923249519719238,
-        "ticker": "AMP"
-      },
-      {
-        "raw_weight": 0.028538082327214102,
-        "shadow_weight": 0.011755859314323911,
-        "ticker": "BK"
-      },
-      {
-        "raw_weight": 0.03512797632996867,
-        "shadow_weight": 0.014470472927965841,
-        "ticker": "BX"
-      },
-      {
-        "raw_weight": 0.03126167317972212,
-        "shadow_weight": 0.012877804038035467,
-        "ticker": "C"
-      },
-      {
-        "raw_weight": 0.027377213209163916,
-        "shadow_weight": 0.06280044226102437,
-        "ticker": "CARR"
-      },
-      {
-        "raw_weight": 0.02603470012532889,
-        "shadow_weight": 0.010724626429159764,
-        "ticker": "CB"
-      },
-      {
-        "raw_weight": 0.03600088936930516,
-        "shadow_weight": 0.014830057106272486,
-        "ticker": "CFG"
-      },
-      {
-        "raw_weight": 0.03511604582736871,
-        "shadow_weight": 0.014465558326188954,
-        "ticker": "COF"
-      },
-      {
-        "raw_weight": 0.02568351653008296,
-        "shadow_weight": 0.027962433519484495,
-        "ticker": "COO"
-      },
-      {
-        "raw_weight": 0.030875348433372904,
-        "shadow_weight": 0.052549991111456744,
-        "ticker": "DLR"
-      },
-      {
-        "raw_weight": 0.026240475503461383,
-        "shadow_weight": 0.028568811865219694,
-        "ticker": "DXCM"
-      },
-      {
-        "raw_weight": 0.026895036859673822,
-        "shadow_weight": 0.05078854965045012,
-        "ticker": "EL"
-      },
-      {
-        "raw_weight": 0.026240222957024304,
-        "shadow_weight": 0.04146151479231517,
-        "ticker": "GEN"
-      },
-      {
-        "raw_weight": 0.030701020191795603,
-        "shadow_weight": 0.012646850970669256,
-        "ticker": "HBAN"
-      },
-      {
-        "raw_weight": 0.03539116558246893,
-        "shadow_weight": 0.014578890017452077,
-        "ticker": "IBKR"
-      },
-      {
-        "raw_weight": 0.02709159423445701,
-        "shadow_weight": 0.03072506775355222,
-        "ticker": "IP"
-      },
-      {
-        "raw_weight": 0.025551217094785306,
-        "shadow_weight": 0.010525462434089456,
-        "ticker": "JPM"
-      },
-      {
-        "raw_weight": 0.028986099823065912,
-        "shadow_weight": 0.048045471847184204,
-        "ticker": "MOS"
-      },
-      {
-        "raw_weight": 0.02653730539402022,
-        "shadow_weight": 0.028891979686558548,
-        "ticker": "MRNA"
-      },
-      {
-        "raw_weight": 0.03354340981487824,
-        "shadow_weight": 0.01381773316738887,
-        "ticker": "NTRS"
-      },
-      {
-        "raw_weight": 0.034865148869882276,
-        "shadow_weight": 0.03954119687435545,
-        "ticker": "NVR"
-      },
-      {
-        "raw_weight": 0.028395784951512022,
-        "shadow_weight": 0.011697241923345406,
-        "ticker": "PGR"
-      },
-      {
-        "raw_weight": 0.03026361406779139,
-        "shadow_weight": 0.04982917457303278,
-        "ticker": "SLB"
-      },
-      {
-        "raw_weight": 0.03089410923026553,
-        "shadow_weight": 0.012726391268624942,
-        "ticker": "STT"
-      },
-      {
-        "raw_weight": 0.0268492451019218,
-        "shadow_weight": 0.03045021521247554,
-        "ticker": "SW"
-      },
-      {
-        "raw_weight": 0.026264405219809477,
-        "shadow_weight": 0.028594864882599148,
-        "ticker": "TECH"
-      },
-      {
-        "raw_weight": 0.02641900202347002,
-        "shadow_weight": 0.04174399908828076,
-        "ticker": "TTD"
-      },
-      {
-        "raw_weight": 0.03158470394405895,
-        "shadow_weight": 0.013010871991803367,
-        "ticker": "WFC"
-      }
-    ],
-    "tickers_layer3_would_remove": [
-      "BAC",
-      "FITB",
-      "KEY",
-      "PNC",
-      "RF",
-      "USB"
-    ],
-    "warnings": [
-      "CVaR -0.0614 breached the floor -0.0500; applied 1 20% gross haircut round(s)."
-    ]
-  },
+  "generated_at_utc": "2026-04-27T13:37:46.699563+00:00",
   "live_outputs": {
     "pairwise_rank_correlation": {},
     "signal_date": "2026-04-24",
     "target_weights_after_risk": {
-      "AMP": 0.031371994923374766,
-      "BAC": 0.03026833241865217,
-      "BK": 0.028538082327214102,
-      "BX": 0.03512797632996867,
-      "C": 0.03126167317972212,
-      "CARR": 0.027377213209163916,
-      "CB": 0.02603470012532889,
-      "CFG": 0.03600088936930516,
-      "COF": 0.03511604582736871,
-      "COO": 0.02568351653008296,
-      "DLR": 0.030875348433372904,
-      "DXCM": 0.026240475503461383,
-      "EL": 0.026895036859673822,
-      "FITB": 0.02592533335129495,
-      "GEN": 0.026240222957024304,
-      "HBAN": 0.030701020191795603,
-      "IBKR": 0.03539116558246893,
-      "IP": 0.02709159423445701,
-      "JPM": 0.025551217094785306,
-      "KEY": 0.031182393781718398,
-      "MOS": 0.028986099823065912,
-      "MRNA": 0.02653730539402022,
-      "NTRS": 0.03354340981487824,
-      "NVR": 0.034865148869882276,
-      "PGR": 0.028395784951512022,
-      "PNC": 0.026874126860941063,
-      "RF": 0.02917938873369186,
-      "SLB": 0.03026361406779139,
-      "STT": 0.03089410923026553,
-      "SW": 0.0268492451019218,
-      "TECH": 0.026264405219809477,
-      "TTD": 0.02641900202347002,
-      "USB": 0.026469423734457216,
-      "WFC": 0.03158470394405895
+      "AMP": 0.012923249519719238,
+      "BK": 0.011755859314323911,
+      "BX": 0.014470472927965841,
+      "C": 0.012877804038035467,
+      "CARR": 0.06280044226102437,
+      "CB": 0.010724626429159764,
+      "CFG": 0.014830057106272486,
+      "COF": 0.014465558326188954,
+      "COO": 0.027962433519484495,
+      "DLR": 0.052549991111456744,
+      "DXCM": 0.028568811865219694,
+      "EL": 0.05078854965045012,
+      "FOXA": 0.02664896145100423,
+      "GEN": 0.04146151479231517,
+      "HBAN": 0.012646850970669256,
+      "IBKR": 0.014578890017452077,
+      "IP": 0.03072506775355222,
+      "JPM": 0.010525462434089456,
+      "MOS": 0.048045471847184204,
+      "MRNA": 0.028891979686558548,
+      "NRG": 0.030346255995967464,
+      "NTRS": 0.01381773316738887,
+      "NVR": 0.03954119687435545,
+      "PGR": 0.011697241923345406,
+      "SLB": 0.04982917457303278,
+      "STT": 0.012726391268624942,
+      "SW": 0.03045021521247554,
+      "TECH": 0.028594864882599148,
+      "TTD": 0.04174399908828076,
+      "WFC": 0.013010871991803367
     },
     "target_weights_raw": {
       "AMP": 0.031371994923374766,
@@ -472,44 +159,44 @@
     ],
     "top_10_holdings_after_risk": [
       {
-        "ticker": "CFG",
-        "weight": 0.03600088936930516
+        "ticker": "CARR",
+        "weight": 0.06280044226102437
       },
       {
-        "ticker": "IBKR",
-        "weight": 0.03539116558246893
+        "ticker": "DLR",
+        "weight": 0.052549991111456744
       },
       {
-        "ticker": "BX",
-        "weight": 0.03512797632996867
+        "ticker": "EL",
+        "weight": 0.05078854965045012
       },
       {
-        "ticker": "COF",
-        "weight": 0.03511604582736871
+        "ticker": "SLB",
+        "weight": 0.04982917457303278
+      },
+      {
+        "ticker": "MOS",
+        "weight": 0.048045471847184204
+      },
+      {
+        "ticker": "TTD",
+        "weight": 0.04174399908828076
+      },
+      {
+        "ticker": "GEN",
+        "weight": 0.04146151479231517
       },
       {
         "ticker": "NVR",
-        "weight": 0.034865148869882276
+        "weight": 0.03954119687435545
       },
       {
-        "ticker": "NTRS",
-        "weight": 0.03354340981487824
+        "ticker": "IP",
+        "weight": 0.03072506775355222
       },
       {
-        "ticker": "WFC",
-        "weight": 0.03158470394405895
-      },
-      {
-        "ticker": "AMP",
-        "weight": 0.031371994923374766
-      },
-      {
-        "ticker": "C",
-        "weight": 0.03126167317972212
-      },
-      {
-        "ticker": "KEY",
-        "weight": 0.031182393781718398
+        "ticker": "SW",
+        "weight": 0.03045021521247554
       }
     ],
     "top_10_model_scores": {
@@ -560,7 +247,7 @@
   "live_universe_diagnostics": {
     "active_universe_source": "universe_membership+admission",
     "admitted_count": 498,
-    "as_of": "2026-04-25T20:00:00+00:00",
+    "as_of": "2026-04-27T13:35:23+00:00",
     "candidate_count": 502,
     "rejected_count": 4,
     "rejection_buckets": {
@@ -589,9 +276,9 @@
     "Dry-run mode writes a report but does not place trades or persist audit rows."
   ],
   "portfolio_metrics": {
-    "cash_weight_after_risk": 0.0,
-    "gross_exposure_after_risk": 1.0000000000000002,
-    "holding_count_after_risk": 34,
+    "cash_weight_after_risk": 0.19999999999999996,
+    "gross_exposure_after_risk": 0.8,
+    "holding_count_after_risk": 30,
     "portfolio_scheme": "score_weighted",
     "turnover_controls": {
       "enabled": true,
@@ -605,7 +292,7 @@
       "weight_shrinkage": 0.0,
       "weighting_scheme": "score_weighted"
     },
-    "turnover_vs_previous": 0.5
+    "turnover_vs_previous": 0.39999999999999997
   },
   "risk_checks": {
     "layer1_data": {
@@ -933,13 +620,44 @@
       "severity": "green"
     },
     "layer3_portfolio": {
-      "beta_contributions": {},
+      "beta_contributions": {
+        "AMP": 0.01429189129171652,
+        "BK": 0.00952118943174412,
+        "BX": 0.02266750279568574,
+        "C": 0.019743785567063247,
+        "CARR": 0.0766931225634906,
+        "CB": -0.000255831446373319,
+        "CFG": 0.01935586307500121,
+        "COF": 0.022984141046913143,
+        "COO": 0.025687606923273827,
+        "DLR": 0.04084851538232855,
+        "DXCM": 0.030044989969095,
+        "EL": 0.08213860648828797,
+        "FOXA": 0.013179120343887048,
+        "GEN": 0.04302844445469417,
+        "HBAN": 0.013832975754142732,
+        "IBKR": 0.028901858309883028,
+        "IP": 0.036431313486068324,
+        "JPM": 0.010731584894229184,
+        "MOS": 0.025587487423736486,
+        "MRNA": 0.05291346752806453,
+        "NRG": 0.04508528232630185,
+        "NTRS": 0.015905902169777556,
+        "NVR": 0.026146852244230804,
+        "PGR": -0.0007815325950067733,
+        "SLB": 0.04201717241903661,
+        "STT": 0.015206082202440954,
+        "SW": 0.04165877901395529,
+        "TECH": 0.038660379063994464,
+        "TTD": 0.05523544078012689,
+        "WFC": 0.013838034654760767
+      },
       "checks": {
         "checks": {
           "audit_trail_complete": {
             "limit": 8,
-            "pass": false,
-            "value": 0
+            "pass": true,
+            "value": 8
           },
           "beta_bounds": {
             "bounds": [
@@ -947,132 +665,432 @@
               1.3
             ],
             "pass": true,
-            "value": null
+            "value": 0.8813000275625504
           },
           "cash_non_negative": {
             "limit": 0.0,
             "pass": true,
-            "value": 0.0
+            "value": 0.19999999999999996
           },
           "cvar_floor": {
             "limit": -0.05,
             "pass": true,
-            "value": null
+            "value": -0.048539114265265394
           },
           "gross_exposure_non_negative": {
             "limit": 0.0,
             "pass": true,
-            "value": 1.0000000000000002
+            "value": 0.8
           },
           "max_single_stock_weight": {
             "limit": 0.1,
             "pass": true,
-            "value": 0.03600088936930516
+            "value": 0.06280044226102437
           },
           "min_holdings": {
             "limit": 20,
             "pass": true,
-            "value": 34
+            "value": 30
           },
           "sector_deviation_cap": {
             "limit": 0.15,
-            "pass": false,
-            "value": 0.4708575549053329
+            "pass": true,
+            "value": 0.08980999950604389
           },
           "stress_test": {
             "limit": -0.12,
             "pass": true,
-            "value": null
+            "value": -0.07050400220500404
           },
           "turnover_cap": {
             "limit": 0.4,
-            "pass": false,
-            "value": 0.5
+            "pass": true,
+            "value": 0.39999999999999997
           }
         },
-        "max_abs_sector_deviation_vs_equal_weight_universe": 0.4708575549053329,
-        "overall_pass": false,
+        "max_abs_sector_deviation_vs_equal_weight_universe": 0.08980999950604389,
+        "overall_pass": true,
         "sector_deviation_vs_equal_weight_universe": {
-          "Basic Materials": -0.011174542747215212,
-          "Communication Services": -0.038152610441767064,
-          "Consumer Cyclical": -0.015611682476469824,
-          "Consumer Defensive": -0.043386087638318145,
-          "Energy": -0.015921124888031903,
-          "Financial Services": 0.4708575549053329,
-          "Healthcare": -0.011740160806441205,
-          "Industrials": -0.12523322855790434,
-          "Real Estate": -0.031373647550562836,
-          "Technology": -0.11400744168617233,
-          "Utilities": -0.0642570281124498
+          "Basic Materials": 0.00788482927690308,
+          "Communication Services": -0.011503648990762835,
+          "Consumer Cyclical": -0.0037011908423477125,
+          "Consumer Defensive": -0.019492574847541848,
+          "Energy": 0.0036444356172094863,
+          "Financial Services": 0.04249685256756919,
+          "Healthcare": -0.0024477734999533707,
+          "Industrials": -0.08980999950604389,
+          "Real Estate": -0.009699004872478996,
+          "Technology": -0.08346115278607072,
+          "Utilities": -0.03391077211648233
         },
-        "triggered_rules": [],
+        "triggered_rules": [
+          "sector_deviation_cap",
+          "cvar_haircut",
+          "correlation_dedup"
+        ],
         "warnings": [
-          "W13.x shadow mode: Layer 3 enforcement disabled \u2014 see IMPLEMENTATION_PLAN.md Week 13."
+          "CVaR -0.0614 breached the floor -0.0500; applied 1 20% gross haircut round(s)."
         ]
       },
-      "pass": false,
+      "pass": true,
       "report": {
-        "audit_trail": [],
-        "beta_contributions": {},
-        "cash_weight": 0.0,
-        "cvar_99": null,
-        "gross_exposure": 1.0000000000000002,
-        "holding_count": 34,
-        "portfolio_beta": null,
-        "sector_weights": {
-          "Basic Materials": 0.028986099823065912,
-          "Consumer Cyclical": 0.0888059882062611,
-          "Consumer Defensive": 0.026895036859673822,
-          "Energy": 0.03026361406779139,
-          "Financial Services": 0.6094117717728027,
-          "Healthcare": 0.10472570264737405,
-          "Industrials": 0.027377213209163916,
-          "Real Estate": 0.030875348433372904,
-          "Technology": 0.05265922498049433
+        "audit_trail": [
+          {
+            "action": "cap_weights",
+            "after": {
+              "max_weight": 0.03600088936930516
+            },
+            "before": {
+              "limit": 0.1,
+              "max_weight": 0.03600088936930516
+            },
+            "message": "Cap each name at the maximum single-stock weight.",
+            "priority": "P0",
+            "rule_name": "single_stock_cap",
+            "triggered": false
+          },
+          {
+            "action": "trim_overweight_sectors",
+            "after": {
+              "max_abs_deviation": 0.14999999999999994,
+              "sector_weights": {
+                "Basic Materials": 0.05522547443953359,
+                "Communication Services": 0.03063143066080226,
+                "Consumer Cyclical": 0.1157677335495012,
+                "Consumer Defensive": 0.05837848277280053,
+                "Energy": 0.05727573694101114,
+                "Financial Services": 0.2885542168674698,
+                "Healthcare": 0.13105716044207133,
+                "Industrials": 0.07218545443592862,
+                "Real Estate": 0.06040315724557828,
+                "Technology": 0.09563989702622538,
+                "Utilities": 0.03488125561907792
+              }
+            },
+            "before": {
+              "max_abs_deviation": 0.4708575549053329,
+              "sector_weights": {
+                "Basic Materials": 0.028986099823065912,
+                "Consumer Cyclical": 0.0888059882062611,
+                "Consumer Defensive": 0.026895036859673822,
+                "Energy": 0.03026361406779139,
+                "Financial Services": 0.6094117717728027,
+                "Healthcare": 0.10472570264737405,
+                "Industrials": 0.027377213209163916,
+                "Real Estate": 0.030875348433372904,
+                "Technology": 0.05265922498049433
+              }
+            },
+            "message": "Keep sector deviation versus benchmark within the configured band.",
+            "priority": "P0",
+            "rule_name": "sector_deviation_cap",
+            "triggered": true
+          },
+          {
+            "action": "scale_down_gross",
+            "after": {
+              "cvar_99": -0.04911709973271176,
+              "gross_exposure": 0.8,
+              "iterations": 1
+            },
+            "before": {
+              "cvar_99": -0.06139637466588969,
+              "floor": -0.05,
+              "gross_exposure": 1.0000000000000002
+            },
+            "message": "Reduce gross exposure by 20% per round for up to three rounds if 99% CVaR breaches the floor.",
+            "priority": "P0",
+            "rule_name": "cvar_haircut",
+            "triggered": true
+          },
+          {
+            "action": "tilt_toward_target_beta",
+            "after": {
+              "portfolio_beta": 0.8766504212082116,
+              "target_bounds": [
+                0.8,
+                1.2
+              ]
+            },
+            "before": {
+              "hard_bounds": [
+                0.7,
+                1.3
+              ],
+              "portfolio_beta": 0.8766504212082116
+            },
+            "message": "Nudge the book into the target beta band when it breaches the hard bounds.",
+            "priority": "P1",
+            "rule_name": "beta_alignment",
+            "triggered": false
+          },
+          {
+            "action": "remove_redundant_names",
+            "after": {
+              "high_corr_pairs": 0
+            },
+            "before": {
+              "high_corr_pairs": 24
+            },
+            "message": "Trim highly correlated duplicate positions.",
+            "priority": "P1",
+            "rule_name": "correlation_dedup",
+            "triggered": true
+          },
+          {
+            "action": "blend_with_current_weights",
+            "after": {
+              "turnover": 0.39999999999999997
+            },
+            "before": {
+              "limit": 0.4,
+              "turnover": 0.4000000000000001
+            },
+            "message": "Cap one-period turnover at the configured limit.",
+            "priority": "P1",
+            "rule_name": "turnover_cap",
+            "triggered": false
+          },
+          {
+            "action": "add_small_satellite_positions",
+            "after": {
+              "holding_count": 30
+            },
+            "before": {
+              "holding_count": 30,
+              "minimum": 20
+            },
+            "message": "Maintain a diversified minimum number of holdings.",
+            "priority": "P2",
+            "rule_name": "minimum_holdings",
+            "triggered": false
+          },
+          {
+            "action": "warning_only",
+            "after": {
+              "stressed_return": -0.07050400220500404
+            },
+            "before": {
+              "shock": -0.1,
+              "warning_threshold": -0.12
+            },
+            "message": "Run a simple market shock stress test without modifying weights.",
+            "priority": "P2",
+            "rule_name": "stress_test",
+            "triggered": false
+          }
+        ],
+        "beta_contributions": {
+          "AMP": 0.01429189129171652,
+          "BK": 0.00952118943174412,
+          "BX": 0.02266750279568574,
+          "C": 0.019743785567063247,
+          "CARR": 0.0766931225634906,
+          "CB": -0.000255831446373319,
+          "CFG": 0.01935586307500121,
+          "COF": 0.022984141046913143,
+          "COO": 0.025687606923273827,
+          "DLR": 0.04084851538232855,
+          "DXCM": 0.030044989969095,
+          "EL": 0.08213860648828797,
+          "FOXA": 0.013179120343887048,
+          "GEN": 0.04302844445469417,
+          "HBAN": 0.013832975754142732,
+          "IBKR": 0.028901858309883028,
+          "IP": 0.036431313486068324,
+          "JPM": 0.010731584894229184,
+          "MOS": 0.025587487423736486,
+          "MRNA": 0.05291346752806453,
+          "NRG": 0.04508528232630185,
+          "NTRS": 0.015905902169777556,
+          "NVR": 0.026146852244230804,
+          "PGR": -0.0007815325950067733,
+          "SLB": 0.04201717241903661,
+          "STT": 0.015206082202440954,
+          "SW": 0.04165877901395529,
+          "TECH": 0.038660379063994464,
+          "TTD": 0.05523544078012689,
+          "WFC": 0.013838034654760767
         },
-        "top_beta_contributors": [],
-        "turnover": 0.5,
+        "cash_weight": 0.19999999999999996,
+        "cvar_99": -0.048539114265265394,
+        "gross_exposure": 0.8,
+        "holding_count": 30,
+        "portfolio_beta": 0.8813000275625504,
+        "sector_weights": {
+          "Basic Materials": 0.048045471847184204,
+          "Communication Services": 0.02664896145100423,
+          "Consumer Cyclical": 0.1007164798403832,
+          "Consumer Defensive": 0.05078854965045012,
+          "Energy": 0.04982917457303278,
+          "Financial Services": 0.18105106943503904,
+          "Healthcare": 0.11401808995386188,
+          "Industrials": 0.06280044226102437,
+          "Real Estate": 0.052549991111456744,
+          "Technology": 0.08320551388059594,
+          "Utilities": 0.030346255995967464
+        },
+        "top_beta_contributors": [
+          {
+            "beta": 1.6172662352755334,
+            "contribution": 0.08213860648828797,
+            "ticker": "EL",
+            "weight": 0.05078854965045012
+          },
+          {
+            "beta": 1.2212194660146272,
+            "contribution": 0.0766931225634906,
+            "ticker": "CARR",
+            "weight": 0.06280044226102437
+          },
+          {
+            "beta": 1.3231947582049877,
+            "contribution": 0.05523544078012689,
+            "ticker": "TTD",
+            "weight": 0.04174399908828076
+          },
+          {
+            "beta": 1.8314240873110377,
+            "contribution": 0.05291346752806453,
+            "ticker": "MRNA",
+            "weight": 0.028891979686558548
+          },
+          {
+            "beta": 1.4856950502326538,
+            "contribution": 0.04508528232630185,
+            "ticker": "NRG",
+            "weight": 0.030346255995967464
+          },
+          {
+            "beta": 1.0377923881997053,
+            "contribution": 0.04302844445469417,
+            "ticker": "GEN",
+            "weight": 0.04146151479231517
+          },
+          {
+            "beta": 0.8432243315099188,
+            "contribution": 0.04201717241903661,
+            "ticker": "SLB",
+            "weight": 0.04982917457303278
+          },
+          {
+            "beta": 1.3680947317865775,
+            "contribution": 0.04165877901395529,
+            "ticker": "SW",
+            "weight": 0.03045021521247554
+          },
+          {
+            "beta": 0.7773267800500716,
+            "contribution": 0.04084851538232855,
+            "ticker": "DLR",
+            "weight": 0.052549991111456744
+          },
+          {
+            "beta": 1.3520042575029088,
+            "contribution": 0.038660379063994464,
+            "ticker": "TECH",
+            "weight": 0.028594864882599148
+          }
+        ],
+        "turnover": 0.39999999999999997,
         "warnings": [
-          "W13.x shadow mode: Layer 3 enforcement disabled \u2014 see IMPLEMENTATION_PLAN.md Week 13."
+          "CVaR -0.0614 breached the floor -0.0500; applied 1 20% gross haircut round(s)."
         ],
         "weights": {
-          "AMP": 0.031371994923374766,
-          "BAC": 0.03026833241865217,
-          "BK": 0.028538082327214102,
-          "BX": 0.03512797632996867,
-          "C": 0.03126167317972212,
-          "CARR": 0.027377213209163916,
-          "CB": 0.02603470012532889,
-          "CFG": 0.03600088936930516,
-          "COF": 0.03511604582736871,
-          "COO": 0.02568351653008296,
-          "DLR": 0.030875348433372904,
-          "DXCM": 0.026240475503461383,
-          "EL": 0.026895036859673822,
-          "FITB": 0.02592533335129495,
-          "GEN": 0.026240222957024304,
-          "HBAN": 0.030701020191795603,
-          "IBKR": 0.03539116558246893,
-          "IP": 0.02709159423445701,
-          "JPM": 0.025551217094785306,
-          "KEY": 0.031182393781718398,
-          "MOS": 0.028986099823065912,
-          "MRNA": 0.02653730539402022,
-          "NTRS": 0.03354340981487824,
-          "NVR": 0.034865148869882276,
-          "PGR": 0.028395784951512022,
-          "PNC": 0.026874126860941063,
-          "RF": 0.02917938873369186,
-          "SLB": 0.03026361406779139,
-          "STT": 0.03089410923026553,
-          "SW": 0.0268492451019218,
-          "TECH": 0.026264405219809477,
-          "TTD": 0.02641900202347002,
-          "USB": 0.026469423734457216,
-          "WFC": 0.03158470394405895
+          "AMP": 0.012923249519719238,
+          "BK": 0.011755859314323911,
+          "BX": 0.014470472927965841,
+          "C": 0.012877804038035467,
+          "CARR": 0.06280044226102437,
+          "CB": 0.010724626429159764,
+          "CFG": 0.014830057106272486,
+          "COF": 0.014465558326188954,
+          "COO": 0.027962433519484495,
+          "DLR": 0.052549991111456744,
+          "DXCM": 0.028568811865219694,
+          "EL": 0.05078854965045012,
+          "FOXA": 0.02664896145100423,
+          "GEN": 0.04146151479231517,
+          "HBAN": 0.012646850970669256,
+          "IBKR": 0.014578890017452077,
+          "IP": 0.03072506775355222,
+          "JPM": 0.010525462434089456,
+          "MOS": 0.048045471847184204,
+          "MRNA": 0.028891979686558548,
+          "NRG": 0.030346255995967464,
+          "NTRS": 0.01381773316738887,
+          "NVR": 0.03954119687435545,
+          "PGR": 0.011697241923345406,
+          "SLB": 0.04982917457303278,
+          "STT": 0.012726391268624942,
+          "SW": 0.03045021521247554,
+          "TECH": 0.028594864882599148,
+          "TTD": 0.04174399908828076,
+          "WFC": 0.013010871991803367
         }
       },
-      "top_beta_contributors": []
+      "top_beta_contributors": [
+        {
+          "beta": 1.6172662352755334,
+          "contribution": 0.08213860648828797,
+          "ticker": "EL",
+          "weight": 0.05078854965045012
+        },
+        {
+          "beta": 1.2212194660146272,
+          "contribution": 0.0766931225634906,
+          "ticker": "CARR",
+          "weight": 0.06280044226102437
+        },
+        {
+          "beta": 1.3231947582049877,
+          "contribution": 0.05523544078012689,
+          "ticker": "TTD",
+          "weight": 0.04174399908828076
+        },
+        {
+          "beta": 1.8314240873110377,
+          "contribution": 0.05291346752806453,
+          "ticker": "MRNA",
+          "weight": 0.028891979686558548
+        },
+        {
+          "beta": 1.4856950502326538,
+          "contribution": 0.04508528232630185,
+          "ticker": "NRG",
+          "weight": 0.030346255995967464
+        },
+        {
+          "beta": 1.0377923881997053,
+          "contribution": 0.04302844445469417,
+          "ticker": "GEN",
+          "weight": 0.04146151479231517
+        },
+        {
+          "beta": 0.8432243315099188,
+          "contribution": 0.04201717241903661,
+          "ticker": "SLB",
+          "weight": 0.04982917457303278
+        },
+        {
+          "beta": 1.3680947317865775,
+          "contribution": 0.04165877901395529,
+          "ticker": "SW",
+          "weight": 0.03045021521247554
+        },
+        {
+          "beta": 0.7773267800500716,
+          "contribution": 0.04084851538232855,
+          "ticker": "DLR",
+          "weight": 0.052549991111456744
+        },
+        {
+          "beta": 1.3520042575029088,
+          "contribution": 0.038660379063994464,
+          "ticker": "TECH",
+          "weight": 0.028594864882599148
+        }
+      ]
     },
     "layer4_operational": {
       "pass": true,
@@ -1082,12 +1100,12 @@
             "action": "greyscale_features_generated",
             "actor": "run_greyscale_live",
             "details": {
-              "feature_batch_id": "7ee01ce9-e4f2-4537-80ec-1cd022909483",
+              "feature_batch_id": "671ce644-1217-425c-b028-ad2d53381c45",
               "feature_rows_live_date": 139546,
               "trade_date": "2026-04-24"
             },
             "level": "INFO",
-            "timestamp_utc": "2026-04-27T17:03:28.941942+00:00"
+            "timestamp_utc": "2026-04-27T13:37:46.699491+00:00"
           },
           {
             "action": "greyscale_fusion_scored",
@@ -1102,28 +1120,32 @@
               "weight_source": "seed_w11_avg_weights"
             },
             "level": "INFO",
-            "timestamp_utc": "2026-04-27T17:03:28.941966+00:00"
+            "timestamp_utc": "2026-04-27T13:37:46.699512+00:00"
           },
           {
             "action": "greyscale_portfolio_risk_evaluated",
             "actor": "run_greyscale_live",
             "details": {
-              "overall_pass": false,
-              "triggered_rules": []
+              "overall_pass": true,
+              "triggered_rules": [
+                "sector_deviation_cap",
+                "cvar_haircut",
+                "correlation_dedup"
+              ]
             },
             "level": "INFO",
-            "timestamp_utc": "2026-04-27T17:03:28.941970+00:00"
+            "timestamp_utc": "2026-04-27T13:37:46.699517+00:00"
           },
           {
             "action": "operational_risk_evaluated",
             "actor": "risk_engine",
             "details": {
               "fail_safe": false,
-              "runtime_seconds": 147.25064668501727,
+              "runtime_seconds": 136.59774482389912,
               "timeout_severity": "green"
             },
             "level": "INFO",
-            "timestamp_utc": "2026-04-27T17:03:28.941994+00:00"
+            "timestamp_utc": "2026-04-27T13:37:46.699539+00:00"
           }
         ],
         "fail_safe_alert": {
@@ -1140,7 +1162,7 @@
           "check_name": "timeout",
           "fail_safe_mode": false,
           "halt_pipeline": false,
-          "message": "Pipeline runtime 147.3s is within the allowed limit.",
+          "message": "Pipeline runtime 136.6s is within the allowed limit.",
           "severity": "green"
         }
       },

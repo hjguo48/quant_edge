@@ -79,7 +79,10 @@ from src.portfolio.constraints import (  # noqa: E402
     apply_weight_constraints,
 )
 from src.risk.portfolio_risk import PortfolioRiskEngine  # noqa: E402
-from scripts.run_live_pipeline import load_sector_map  # noqa: E402
+from scripts.run_live_pipeline import build_return_history, load_sector_map  # noqa: E402
+
+# Live W12 history window — match scripts/run_greyscale_live.py DEFAULT_HISTORY_LOOKBACK_DAYS
+LIVE_HISTORY_LOOKBACK_DAYS = 400
 
 # Champion settings (matching W10 truth-table score_weighted_buffered + bundle v3)
 CHAMPION_PARAMS = {
@@ -202,23 +205,16 @@ def build_score_weights(candidate_scores: pd.Series, max_weight: float) -> dict[
 # ---------------------------------------------------------------------------
 
 def build_return_panel(prices: pd.DataFrame) -> pd.DataFrame:
-    """Build (trade_date × ticker) daily return panel from PIT prices.
+    """Build (trade_date × ticker) daily return panel via live's cleaned helper.
 
-    Returns DataFrame indexed by pd.DatetimeIndex with one column per ticker.
-    Coerces prices from Decimal to float so pandas arithmetic works downstream.
+    Codex finding (2026-04-27): the previous custom helper used raw pct_change()
+    on wide close prices, which kept extreme outliers (e.g. META 2022-06-09 at
+    +1300%) that live's `build_return_history` already strips out. Switching to
+    the live helper makes the sweep return panel feed-identical to live W12.
     """
-    pricing = prices.copy()
-    pricing["trade_date"] = pd.to_datetime(pricing["trade_date"])
-    # Coerce numeric columns from Decimal/object to float
-    pricing["close"] = pd.to_numeric(pricing["close"], errors="coerce")
-    if "adj_close" in pricing.columns:
-        pricing["adj_close"] = pd.to_numeric(pricing["adj_close"], errors="coerce")
-    pricing["close_for_returns"] = pricing.get("adj_close").fillna(pricing["close"]).astype(float)
-    wide = pricing.pivot_table(index="trade_date", columns="ticker", values="close_for_returns", aggfunc="last")
-    wide = wide.astype(float).sort_index()
-    wide.index = pd.DatetimeIndex(wide.index)
-    returns = wide.pct_change()
-    return returns
+    return_history, _spy_returns = build_return_history(prices)
+    return_history.index = pd.DatetimeIndex(return_history.index)
+    return return_history
 
 
 # ---------------------------------------------------------------------------
@@ -352,9 +348,13 @@ def simulate_with_cap_and_layer3(
         cvar_iterations = 0
         if layer3 and risk_engine is not None:
             # PIT trailing returns up to (but excluding) execution_date.
-            # Coerce execution_date to Timestamp to align with the panel index.
+            # Codex finding: cap trailing history at LIVE_HISTORY_LOOKBACK_DAYS
+            # (400 days), matching scripts/run_greyscale_live.py. Without this
+            # cap the sweep used expanding-since-2018 history and CVaR was
+            # permanently anchored to COVID tails, inflating trigger rate.
             exec_ts = pd.Timestamp(execution_date)
-            trailing = return_panel.loc[:exec_ts].iloc[:-1]
+            history_start = exec_ts - pd.Timedelta(days=LIVE_HISTORY_LOOKBACK_DAYS)
+            trailing = return_panel.loc[history_start:exec_ts].iloc[:-1]
             if benchmark not in trailing.columns:
                 # Fallback — Layer 3 cannot run without SPY
                 pass

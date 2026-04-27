@@ -91,17 +91,34 @@ gate = json.loads(gate_path.read_text()) if gate_path.exists() else {}
 risk = latest.get("risk_checks", {}) or {}
 score_vectors = latest.get("score_vectors", {}) or {}
 fusion_scores = score_vectors.get("fusion") or score_vectors.get("FUSION") or {}
+shadow = latest.get("layer3_shadow_diagnostics", {}) or {}
+enforcement_mode = shadow.get("enforcement_mode")
+
+# W13.x — when Layer 3 enforcement is OFF (shadow mode), Layer 3's
+# overall_pass is informational and must not gate the wrapper. Surface
+# layer3_pass as None so the red-layer check skips it; keep the raw
+# pass value under shadow_layer3_pass for audit.
+shadow_layer3_pass = risk.get("layer3_portfolio", {}).get("pass")
+if enforcement_mode is False:
+    layer3_pass_for_alert = None
+else:
+    layer3_pass_for_alert = shadow_layer3_pass
 
 payload = {
     "status": "success",
     "bundle_version": "w12_60d_ridge_swbuf_v3",
+    "layer3_enforcement_mode": enforcement_mode,
     "generated_at_utc": datetime.now(timezone.utc).isoformat(),
     "latest_report_path": str(weeks[-1]) if weeks else None,
     "signal_date": latest.get("live_outputs", {}).get("signal_date"),
     "ticker_count": int(len(fusion_scores) if isinstance(fusion_scores, dict) else 0),
+    "actual_holding_count": int(latest.get("portfolio_metrics", {}).get("holding_count_after_risk", 0) or 0),
+    "shadow_holding_count": shadow.get("shadow_holding_count"),
+    "shadow_cvar_triggered": shadow.get("cvar_triggered"),
     "layer1_pass": risk.get("layer1_data", {}).get("pass"),
     "layer2_pass": risk.get("layer2_signal", {}).get("pass"),
-    "layer3_pass": risk.get("layer3_portfolio", {}).get("pass"),
+    "layer3_pass": layer3_pass_for_alert,
+    "shadow_layer3_pass": shadow_layer3_pass,
     "layer4_pass": risk.get("layer4_operational", {}).get("pass"),
     "gate_status": gate.get("summary", {}).get("gate_status"),
     "matured_weeks": gate.get("summary", {}).get("matured_weeks"),
