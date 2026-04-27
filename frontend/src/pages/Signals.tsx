@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback, type CSSProperties } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Filter, Search, SortDesc, SortAsc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -26,10 +26,8 @@ const DIRECTIONS = ["All", "Strong", "Watch", "Buffer"];
 const PAGE_SIZE = 10;
 const SORT_OPTIONS = [
   { key: "none", label: "Default" },
-  { key: "conf_desc", label: "Conf \u2193" },
-  { key: "conf_asc", label: "Conf \u2191" },
-  { key: "score", label: "Score" },
-  { key: "strength", label: "Strength" },
+  { key: "score_desc", label: "High \u2193 Low" },
+  { key: "score_asc", label: "Low \u2191 High" },
 ] as const;
 type SortMode = (typeof SORT_OPTIONS)[number]["key"];
 
@@ -38,33 +36,6 @@ const formatDateShort = (dateStr?: string) => {
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return dateStr;
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-};
-
-const interpolateColor = (progress: number) => {
-  const colors = [
-    { p: 0, r: 255, g: 82, b: 82, a: 0.85 },
-    { p: 25, r: 255, g: 82, b: 82, a: 0.4 },
-    { p: 50, r: 96, g: 123, b: 150, a: 0.3 },
-    { p: 75, r: 0, g: 200, b: 5, a: 0.4 },
-    { p: 100, r: 0, g: 200, b: 5, a: 0.85 },
-  ];
-
-  let i = 0;
-  while (i < colors.length - 2 && progress > colors[i + 1].p) {
-    i++;
-  }
-
-  const c1 = colors[i];
-  const c2 = colors[i + 1];
-  const range = c2.p - c1.p;
-  const t = (progress - c1.p) / (range || 1);
-
-  const r = Math.round(c1.r + (c2.r - c1.r) * t);
-  const g = Math.round(c1.g + (c2.g - c1.g) * t);
-  const b = Math.round(c1.b + (c2.b - c1.b) * t);
-  const a = (c1.a + (c2.a - c1.a) * t).toFixed(2);
-
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
 };
 
 function hashTickerSeed(value: string): number {
@@ -96,7 +67,6 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   const [showWatchlist, setShowWatchlist] = useState(false);
   const sectorBtnRef = useRef<HTMLButtonElement>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-  const [minConf, setMinConf] = useState(0);
   const [sort, setSort] = useState<SortMode>("none");
   const [page, setPage] = useState(1);
 
@@ -142,14 +112,6 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
   });
 
   const predictions = data?.predictions || [];
-  const sliderStyle = useMemo(
-    () =>
-      ({
-        "--slider-progress": `${(minConf / 90) * 100}%`,
-        "--slider-fill-color": interpolateColor((minConf / 90) * 100),
-      }) as CSSProperties,
-    [minConf],
-  );
 
   type Tier = "strong" | "long" | "watch" | "buffer";
   const computeTier = (score: number, percentile: number): Tier => {
@@ -190,24 +152,21 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
           (direction === "Strong" && s.tier === "strong") ||
           (direction === "Watch" && s.tier === "watch") ||
           (direction === "Buffer" && s.tier === "buffer");
-        const matchConf = s.confidence >= minConf;
         const matchSector = sectorFilter === "All Sectors" || s.sector === sectorFilter;
-        return matchSearch && matchDir && matchConf && matchSector;
+        return matchSearch && matchDir && matchSector;
       })
       .sort((a, b) => {
-        if (sort === "conf_desc") return b.confidence - a.confidence;
-        if (sort === "conf_asc") return a.confidence - b.confidence;
-        if (sort === "score") return b.score - a.score;
-        if (sort === "strength") return Math.abs(b.score) - Math.abs(a.score);
+        if (sort === "score_desc") return b.score - a.score;
+        if (sort === "score_asc") return a.score - b.score;
         if (sort === "none") return a.shuffleKey - b.shuffleKey;
         return 0;
       });
-  }, [signalRows, search, direction, minConf, sort, sectorFilter]);
+  }, [signalRows, search, direction, sort, sectorFilter]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [search, direction, minConf, sort, sectorFilter, showWatchlist]);
+  }, [search, direction, sort, sectorFilter, showWatchlist]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -348,51 +307,19 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             ))}
           </div>
 
-          <div className="w-px h-6 bg-white/5 mx-1 flex-shrink-0" />
-
-          {/* Confidence Slider Group */}
-          <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-muted/50 border border-transparent hover:border-white/5 transition-all flex-1 max-w-sm">
-            <span className="text-xs font-medium text-muted-foreground/70 whitespace-nowrap">Min Conf</span>
-            <div className="flex items-center gap-3 flex-1">
-              <input
-                type="range"
-                min={0}
-                max={90}
-                step={5}
-                value={minConf}
-                onChange={(e) => setMinConf(Number(e.target.value))}
-                className="signal-confidence-slider !w-full"
-                style={sliderStyle}
-                aria-label="Minimum confidence"
-              />
-              <span 
-                className="w-10 text-right text-xs font-mono font-bold transition-colors duration-300"
-                style={{ color: "var(--slider-fill-color)" }}
-              >
-                {minConf}%
-              </span>
-            </div>
-          </div>
-
           {/* Sort Controls */}
           <div className="ml-auto flex items-center gap-2 flex-shrink-0 pr-1">
-            <button
-              onClick={() => setSort(sort === "conf_desc" ? "conf_asc" : "conf_desc")}
-              className={`p-2 rounded-xl transition-all ${sort.startsWith("conf") ? "bg-primary/10 text-primary border border-primary/20" : "text-muted-foreground hover:text-foreground bg-muted/50 border border-transparent"}`}
-              title="Toggle Confidence Sort"
-            >
-              {sort === "conf_asc" ? <SortAsc size={14} /> : <SortDesc size={14} />}
-            </button>
-            
             <div className="flex gap-1 bg-muted p-1 rounded-xl">
-              {SORT_OPTIONS.filter(o => !o.key.startsWith("conf")).map((option) => (
+              {SORT_OPTIONS.map((option) => (
                 <button
                   key={option.key}
                   onClick={() => setSort(option.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1 ${
                     sort === option.key ? "bg-card text-foreground shadow-custom" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
+                  {option.key === "score_desc" && <SortDesc size={12} />}
+                  {option.key === "score_asc" && <SortAsc size={12} />}
                   {option.label}
                 </button>
               ))}
