@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date as date_type
 from pathlib import Path
 
 import sqlalchemy as sa
@@ -70,24 +71,38 @@ RECENT_BENCHMARK_TICKER = "SPY"
 
 
 async def _get_recent_price_series(
-    db: AsyncSession, tickers: list[str], n_days: int = RECENT_PRICE_DAYS,
+    db: AsyncSession,
+    tickers: list[str],
+    n_days: int = RECENT_PRICE_DAYS,
+    anchor_date: date_type | None = None,
 ) -> dict[str, dict[str, list[float]]]:
     """Return {TICKER: {"prices": [...], "excess_cum": [...]}} for the given tickers.
 
     `prices` is the last `n_days` of adj_close (oldest → newest).
     `excess_cum` is cumulative excess vs SPY over the same window (in pct, oldest → newest).
+
+    Codex P3/Finding 3 fix: anchor the price window at the greyscale report's
+    signal_date (passed as `anchor_date`) rather than max(stock_prices.trade_date).
+    Without this, the sparkline drifts past the signal date as new prices
+    accumulate during the week — the user would see post-signal price action
+    that the model didn't see when it scored the ticker. When `anchor_date`
+    is None we fall back to the legacy max-trade-date behaviour for any
+    out-of-band callers.
     """
     if not tickers:
         return {}
 
     normalized = [t.upper() for t in tickers] + [RECENT_BENCHMARK_TICKER]
 
-    latest_ts_row = await db.execute(
-        sa.select(sa.func.max(StockPrice.trade_date)).where(
-            StockPrice.ticker.in_(normalized)
+    if anchor_date is not None:
+        latest_trade_date = anchor_date
+    else:
+        latest_ts_row = await db.execute(
+            sa.select(sa.func.max(StockPrice.trade_date)).where(
+                StockPrice.ticker.in_(normalized)
+            )
         )
-    )
-    latest_trade_date = latest_ts_row.scalar()
+        latest_trade_date = latest_ts_row.scalar()
     if latest_trade_date is None:
         return {}
 
@@ -247,10 +262,12 @@ async def get_batch_predictions(
     predictions = reader.get_fusion_scores_for_tickers(normalized_tickers)
     pred_tickers = [item["ticker"] for item in predictions]
     stock_info = await _get_stock_info(db, pred_tickers)
-    price_series = await _get_recent_price_series(db, pred_tickers)
+    signal_date_str = (report or {}).get("live_outputs", {}).get("signal_date")
+    anchor = date_type.fromisoformat(signal_date_str) if signal_date_str else None
+    price_series = await _get_recent_price_series(db, pred_tickers, anchor_date=anchor)
 
     return PredictionResponse(
-        signal_date=report.get("live_outputs", {}).get("signal_date") if report else None,
+        signal_date=signal_date_str,
         week_number=report.get("week_number") if report else None,
         universe_size=report.get("db_state", {}).get("stock_universe_size") if report else None,
         predictions=[

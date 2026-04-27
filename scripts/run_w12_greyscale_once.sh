@@ -222,6 +222,61 @@ PY
 
 trap 'write_failure "shell_error" "unexpected shell error in wrapper"; send_alert "RED" "[QuantEdge W12] wrapper shell error" "Unexpected shell error. Log: '"$LOG_FILE"'"; exit 1' ERR
 
+# W13.x — Targeted self-heal for shorting features only.
+# The daily DAG's update_features_cache task has been failing intermittently
+# (KeyError: slice_summaries on 4/27); meanwhile feature_store.short_sale_ratio_5d
+# can drift past the BundleValidator's 7-day staleness threshold.
+# Codex 2026-04-28 review: keep the self-heal NARROW to the shorting family;
+# any other stale feature should still fail-loud and trigger a RED email so
+# we don't silently mask broader pipeline regressions.
+shorting_self_heal() {
+    .venv/bin/python - <<'PY'
+import sys
+sys.path.insert(0, ".")
+from datetime import date, timedelta
+from sqlalchemy import text
+from src.data.db.session import get_engine
+
+SHORTING_FAMILY = {
+    "short_sale_ratio_1d", "short_sale_ratio_5d", "short_sale_accel",
+    "abnormal_off_exchange_shorting",
+    "is_missing_short_sale_ratio_1d", "is_missing_short_sale_ratio_5d",
+    "is_missing_short_sale_accel", "is_missing_abnormal_off_exchange_shorting",
+}
+THRESHOLD_DAYS = 7
+
+with get_engine().connect() as conn:
+    rows = conn.execute(
+        text("""
+            SELECT feature_name, MAX(calc_date) AS latest
+            FROM feature_store
+            WHERE feature_name = ANY(:names)
+            GROUP BY feature_name
+        """),
+        {"names": list(SHORTING_FAMILY)},
+    ).all()
+today = date.today()
+stale = [(name, latest) for name, latest in rows if latest is not None and (today - latest).days > THRESHOLD_DAYS]
+if not stale:
+    print("OK: shorting features fresh, no self-heal needed")
+    sys.exit(0)
+print(f"WARN: {len(stale)} shorting features stale (> {THRESHOLD_DAYS}d):")
+for n, d in stale:
+    print(f"  {n}: latest={d} ({(today-d).days}d stale)")
+sys.exit(1)
+PY
+}
+
+if ! shorting_self_heal; then
+    echo "----- shorting features stale → triggering targeted backfill -----"
+    if .venv/bin/python scripts/backfill_shorting_features.py \
+        --use-frozen-universe --recent-fridays 2 2>&1; then
+        echo "shorting backfill OK"
+    else
+        echo "WARN: shorting backfill exited non-zero — preflight will catch it next"
+    fi
+fi
+
 echo "----- preflight loop (max 12 × 10min) -----"
 MAX_RETRIES=12
 SLEEP_SECS=600

@@ -18,7 +18,9 @@ class PredictionItem(BaseModel):
 class PredictionResponse(BaseModel):
     signal_date: str | None = None
     week_number: int | None = None
-    model_name: str = "ic_weighted_fusion_60d"
+    # W12 champion is single-model Ridge, not the deprecated 3-model fusion.
+    # Naming aligned with bundle.json `version` field for clarity.
+    model_name: str = "60d_ridge_swbuf_v3"
     universe_size: int | None = None
     predictions: list[PredictionItem] = Field(default_factory=list)
 
