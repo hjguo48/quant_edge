@@ -117,28 +117,31 @@ async def _get_recent_price_series(
         by_ticker.setdefault(ticker, []).append((td, float(px)))
 
     bench_series = by_ticker.get(RECENT_BENCHMARK_TICKER, [])
-    bench_prices = [p for _, p in bench_series][-n_days:]
-    bench_returns = _to_returns(bench_prices) if len(bench_prices) >= 2 else []
+    # Codex P2 fix: align by trade_date, not by array length. Build a
+    # date-keyed return map for the benchmark so missing ticker sessions
+    # don't silently misalign with SPY returns from different dates.
+    bench_returns_by_date = dict(_trade_date_returns(bench_series[-n_days:]))
 
     out: dict[str, dict[str, list[float]]] = {}
     for tk in tickers:
         upper = tk.upper()
         series = by_ticker.get(upper, [])
-        prices = [p for _, p in series][-n_days:]
-        if len(prices) < 2:
+        recent = series[-n_days:]
+        prices = [p for _, p in recent]
+        if len(recent) < 2:
             out[upper] = {"prices": prices, "excess_cum": []}
             continue
-        ticker_returns = _to_returns(prices)
-        # Align lengths in case ticker has fewer observations than benchmark
-        usable = min(len(ticker_returns), len(bench_returns))
-        if usable == 0:
-            out[upper] = {"prices": prices, "excess_cum": []}
-            continue
-        ticker_returns = ticker_returns[-usable:]
-        bench_returns_aligned = bench_returns[-usable:]
-        cum_excess = []
+        ticker_returns_dated = _trade_date_returns(recent)
+        cum_excess: list[float] = []
         running = 0.0
-        for r_t, r_b in zip(ticker_returns, bench_returns_aligned):
+        for td, r_t in ticker_returns_dated:
+            r_b = bench_returns_by_date.get(td)
+            if r_b is None:
+                # SPY missing this date (rare — e.g. early trading halt).
+                # Skip without polluting cumulative; preserve series alignment
+                # by NOT appending — frontend will see a slightly shorter array
+                # but every entry is mathematically meaningful.
+                continue
             running += (r_t - r_b)
             cum_excess.append(running)
         out[upper] = {"prices": prices, "excess_cum": cum_excess}
@@ -155,6 +158,21 @@ def _to_returns(prices: list[float]) -> list[float]:
         else:
             out.append((prices[i] - prev) / prev)
     return out
+
+
+def _trade_date_returns(series: list[tuple]) -> list[tuple]:
+    """Return [(trade_date, daily_return)] preserving date keys."""
+    out: list[tuple] = []
+    for i in range(1, len(series)):
+        prev_td, prev_px = series[i - 1]
+        curr_td, curr_px = series[i]
+        if prev_px == 0:
+            out.append((curr_td, 0.0))
+        else:
+            out.append((curr_td, (curr_px - prev_px) / prev_px))
+    return out
+
+
 
 
 async def _get_stock_info(
