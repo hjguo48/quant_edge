@@ -9,6 +9,7 @@ interface SignalRowProps {
   ticker?: string;
   name?: string;
   direction?: "long" | "short" | "neutral";
+  tier?: Conviction;
   confidence?: number;
   score?: number;
   sparkData?: number[];
@@ -36,6 +37,7 @@ const SignalRow = ({
   ticker = "AAPL",
   name = "Apple Inc.",
   direction = "long",
+  tier,
   confidence = 78,
   score = 0.0,
   sparkData = [],
@@ -44,7 +46,7 @@ const SignalRow = ({
 }: SignalRowProps) => {
   const [hovered, setHovered] = useState(false);
 
-  const conviction = deriveConviction(direction, confidence);
+  const conviction: Conviction = tier ?? deriveConviction(direction, confidence);
   const style = TIER_STYLE[conviction];
   const directionClass = style.tagClass;
   const directionLabel = style.tagLabel;

@@ -22,7 +22,7 @@ interface LatestPredictionsResponse {
   predictions: Prediction[];
 }
 
-const DIRECTIONS = ["All", "Strong", "Watch", "Buffer"];
+const DIRECTIONS = ["All", "Strong", "Long", "Watch", "Buffer"];
 const PAGE_SIZE = 10;
 const SORT_OPTIONS = [
   { key: "none", label: "Default" },
@@ -150,6 +150,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
         const matchDir =
           direction === "All" ||
           (direction === "Strong" && s.tier === "strong") ||
+          (direction === "Long" && s.tier === "long") ||
           (direction === "Watch" && s.tier === "watch") ||
           (direction === "Buffer" && s.tier === "buffer");
         const matchSector = sectorFilter === "All Sectors" || s.sector === sectorFilter;
@@ -377,6 +378,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                   ticker={s.ticker}
                   name={s.name}
                   direction={s.direction}
+                  tier={s.tier}
                   confidence={s.confidence}
                   score={s.score}
                   sparkData={s.sparkData}
