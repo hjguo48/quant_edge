@@ -189,11 +189,17 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("copied frozen universe: {} ({} tickers)", universe_dst, eligible_count)
 
     feature_names = list(artifacts.retained_features)
-    feature_fingerprint = compute_feature_fingerprint(feature_names)
+    cutoff_date = final_dates["test_end"].isoformat()
+    feature_fingerprint = compute_bundle_validator_fingerprint(
+        version=args.bundle_version,
+        cutoff_date=cutoff_date,
+        feature_names=feature_names,
+    )
 
     git_hash = _git_hash()
     bundle_manifest: dict[str, Any] = {
         "version": args.bundle_version,
+        "cutoff_date": cutoff_date,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "generator_git_hash": git_hash,
         "model_type": "ridge_single_horizon",
@@ -345,9 +351,21 @@ def sha256_of(path: Path) -> str:
     return h.hexdigest()
 
 
-def compute_feature_fingerprint(feature_names: list[str]) -> str:
-    payload = "|".join(sorted(feature_names))
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+def compute_bundle_validator_fingerprint(
+    *,
+    version: str,
+    cutoff_date: str,
+    feature_names: list[str],
+) -> str:
+    """Match src/models/bundle_validator.py:33 BundleValidator.compute_fingerprint."""
+    payload = {
+        "cutoff_date": cutoff_date,
+        "required_features": sorted(str(f) for f in feature_names),
+        "version": version,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+    ).hexdigest()
 
 
 def _git_hash() -> str:

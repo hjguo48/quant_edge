@@ -1,0 +1,36 @@
+{
+  "bundle_path": "/home/jiahao/quant_edge/data/models/bundles/w12_60d_ridge_swbuf_v1/bundle.json",
+  "bundle_version": "w12_60d_ridge_swbuf_v1",
+  "checks": {
+    "bundle_validator": {
+      "computed_fingerprint": "4e2869ce65f43f1b22ae7cad4b2a9f6601900f190454dc0362d93ae2832b8fcc",
+      "expected_fingerprint": "4e2869ce65f43f1b22ae7cad4b2a9f6601900f190454dc0362d93ae2832b8fcc",
+      "extra_features_count": 205,
+      "fingerprint_matches": true,
+      "missing_features": [
+        "is_missing_short_sale_ratio_5d",
+        "short_sale_ratio_5d"
+      ],
+      "passed": false,
+      "required_feature_count": 62
+    },
+    "registry_state": {
+      "bundle_version": "w12_60d_ridge_swbuf_v1",
+      "passed": true,
+      "registry_60d_version": "w12_60d_ridge_swbuf_v1",
+      "stale_paths": [],
+      "state_version": "w12_60d_ridge_swbuf_v1",
+      "version_match": true
+    },
+    "self_prediction_smoke": {
+      "max_score": 0.21387301391284255,
+      "mean_score": -0.003093837021455486,
+      "min_score": -0.059186670882838355,
+      "n_predictions": 501,
+      "passed": true,
+      "smoke_date": "2025-02-28",
+      "std_score": 0.02766394573406726
+    }
+  },
+  "overall_pass": false
+}
