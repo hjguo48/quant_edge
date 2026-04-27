@@ -785,32 +785,53 @@ const SignalDetail = ({
             {predictionQuery.isLoading && !prediction ? (
               <div className="h-6 w-64 bg-muted animate-pulse rounded-lg" />
             ) : prediction ? (
-              <>
-                <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border shadow-sm ${prediction.fusion_score > 0 ? "bg-bull/10 border-bull/20 text-bull" : "bg-bear/10 border-bear/20 text-bear"}`}>
-                  <Target size={12} />
-                  {prediction.fusion_score > 0 ? "Long Signal" : "Short Signal"}
-                </div>
-                
-                <span className="text-[11px] font-bold text-foreground font-mono">
-                  Score: {prediction.fusion_score.toFixed(4)}
-                </span>
+              (() => {
+                const tier: "strong" | "long" | "watch" | "buffer" =
+                  prediction.fusion_score <= 0 ? "buffer"
+                  : prediction.percentile >= 75 ? "strong"
+                  : prediction.percentile < 25 ? "watch"
+                  : "long";
+                const TIER_META = {
+                  strong: { label: "STRONG LONG", className: "tag-bull-strong" },
+                  long:   { label: "LONG",        className: "tag-bull" },
+                  watch:  { label: "WATCH LONG",  className: "tag-bull-watch" },
+                  buffer: { label: "BUFFER",      className: "tag-neutral" },
+                } as const;
+                const meta = TIER_META[tier];
+                const hasMultiModel = Object.keys(prediction.model_scores || {}).length > 1;
+                return (
+                  <>
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${meta.className}`}>
+                      <Target size={12} />
+                      {meta.label}
+                    </div>
 
-                <span className="text-[11px] font-bold text-muted-foreground/80">
-                  Rank #{prediction.rank} · Top {prediction.percentile.toFixed(1)}%
-                </span>
+                    <span className="text-[11px] font-bold text-foreground font-mono">
+                      Score: {prediction.fusion_score.toFixed(4)}
+                    </span>
 
-                <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border ${
-                  prediction.confidence === "high" ? "bg-bull/10 border-bull/20 text-bull" :
-                  prediction.confidence === "medium" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
-                  "bg-bear/10 border-bear/20 text-bear"
-                }`}>
-                  {prediction.confidence} confidence
-                </div>
+                    <span className="text-[11px] font-bold text-muted-foreground/80">
+                      Rank #{prediction.rank} · Top {prediction.percentile.toFixed(1)}%
+                    </span>
 
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                  {Math.round(prediction.model_agreement * 100)}% Consensus
-                </span>
-              </>
+                    {hasMultiModel && prediction.confidence != null && (
+                      <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border ${
+                        prediction.confidence === "high" ? "bg-bull/10 border-bull/20 text-bull" :
+                        prediction.confidence === "medium" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                        "bg-bear/10 border-bear/20 text-bear"
+                      }`}>
+                        {prediction.confidence} confidence
+                      </div>
+                    )}
+
+                    {hasMultiModel && prediction.model_agreement != null && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                        {Math.round(prediction.model_agreement * 100)}% Consensus
+                      </span>
+                    )}
+                  </>
+                );
+              })()
             ) : isPrediction404 ? (
               <div className="flex items-center gap-2 px-2 py-0.5 rounded-lg border bg-muted/30 border-white/5 text-muted-foreground/50">
                 <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
@@ -898,83 +919,98 @@ const SignalDetail = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in-up stagger-3">
-                <div className="md:col-span-2 bg-card rounded-2xl border border-border overflow-hidden shadow-xl flex flex-col">
-                  <div className="p-6 border-b border-white/5 bg-muted/10">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-primary/10">
-                        <ShieldCheck size={18} className="text-primary" />
+              {(() => {
+                const isMultiModel = prediction && Object.keys(prediction.model_scores || {}).length > 1;
+                return (
+                  <div className={`grid grid-cols-1 ${isMultiModel ? "md:grid-cols-3" : "md:grid-cols-1"} gap-6 fade-in-up stagger-3`}>
+                    {isMultiModel && (
+                      <div className="md:col-span-2 bg-card rounded-2xl border border-border overflow-hidden shadow-xl flex flex-col">
+                        <div className="p-6 border-b border-white/5 bg-muted/10">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-primary/10">
+                              <ShieldCheck size={18} className="text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Architecture Consensus</h3>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Agreement across specialized model learners</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-1 overflow-x-auto no-scrollbar">
+                          <table className="w-full text-left">
+                            <thead>
+                              <tr className="border-b border-white/5 bg-muted/5">
+                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Learner</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Raw Score</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Influence</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Contribution</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/[0.03]">
+                              {prediction && Object.entries(prediction.model_scores).map(([model, score]) => (
+                                <tr key={model} className="group hover:bg-white/[0.01] transition-colors">
+                                  <td className="px-6 py-4 text-xs font-black text-foreground/80 uppercase tracking-widest">{model}</td>
+                                  <td className={`px-6 py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                                    {score.toFixed(4)}
+                                  </td>
+                                  <td className="px-6 py-4 text-[10px] font-bold text-muted-foreground text-right uppercase tracking-tighter">
+                                    {(100 / Object.keys(prediction.model_scores).length).toFixed(1)}%
+                                  </td>
+                                  <td className={`px-6 py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
+                                    {(score / Object.keys(prediction.model_scores).length).toFixed(4)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="border-t border-white/10">
+                                <td className="px-6 py-5 text-xs font-black text-primary uppercase tracking-[0.2em]">Integrated Fusion</td>
+                                <td className="px-6 py-5 text-right" />
+                                <td className="px-6 py-5 text-right" />
+                                <td className={`px-6 py-5 text-sm font-black font-mono text-right ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
+                                  {prediction?.fusion_score.toFixed(4)}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Architecture Consensus</h3>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Agreement across specialized model learners</p>
+                    )}
+
+                    <div className="bg-card rounded-2xl border border-border p-6 shadow-xl space-y-6">
+                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Predictive Logic</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                        The current signal for <span className="text-foreground font-black tracking-tight">{normalizedTicker}</span> is primarily driven by
+                        the <span className="text-primary font-black uppercase tracking-tighter">{(shap?.features[0]?.feature || "core model").replace(/_/g, " ")}</span> factor.
+                        {isMultiModel
+                          ? <> Architecture consensus is <span className="text-foreground font-black">{prediction && prediction.fusion_score > 0 ? "positively biased" : "defensively biased"}</span>.</>
+                          : <> Model output is <span className="text-foreground font-black">{prediction && prediction.fusion_score > 0 ? "positively biased" : "buffer-held (signal weakening)"}</span>.</>}
+                      </p>
+                      <div className="p-4 rounded-2xl bg-muted/30 border border-white/5 shadow-inner space-y-4">
+                        <div>
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-[0.2em] font-black mb-3">Model Conviction</p>
+                          <div className="h-3 bg-muted rounded-full overflow-hidden border border-white/5 p-0.5">
+                            <div
+                              className={`h-full rounded-full transition-all duration-1000 ${prediction && prediction.fusion_score > 0 ? "bg-bull shadow-[0_0_10px_#00C805]" : "bg-bear shadow-[0_0_10px_#FF5252]"}`}
+                              style={{ width: `${prediction ? Math.min(Math.abs(prediction.fusion_score) * 20, 100) : 0}%` }}
+                            />
+                          </div>
+                        </div>
+                        {isMultiModel && prediction?.model_spread != null && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Stability</span>
+                            <span className="text-[10px] font-black font-mono text-foreground">{(1 - (prediction?.model_spread || 0)).toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Percentile</span>
+                          <span className="text-[10px] font-black font-mono text-foreground">{prediction?.percentile?.toFixed(1)}%</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex-1 overflow-x-auto no-scrollbar">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="border-b border-white/5 bg-muted/5">
-                          <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Learner</th>
-                          <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Raw Score</th>
-                          <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Influence</th>
-                          <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Contribution</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.03]">
-                        {prediction && Object.entries(prediction.model_scores).map(([model, score]) => (
-                          <tr key={model} className="group hover:bg-white/[0.01] transition-colors">
-                            <td className="px-6 py-4 text-xs font-black text-foreground/80 uppercase tracking-widest">{model}</td>
-                            <td className={`px-6 py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
-                              {score.toFixed(4)}
-                            </td>
-                            <td className="px-6 py-4 text-[10px] font-bold text-muted-foreground text-right uppercase tracking-tighter">
-                              {(100 / Object.keys(prediction.model_scores).length).toFixed(1)}%
-                            </td>
-                            <td className={`px-6 py-4 text-xs font-black font-mono text-right ${score > 0 ? "text-bull" : "text-bear"}`}>
-                              {(score / Object.keys(prediction.model_scores).length).toFixed(4)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t border-white/10">
-                          <td className="px-6 py-5 text-xs font-black text-primary uppercase tracking-[0.2em]">Integrated Fusion</td>
-                          <td className="px-6 py-5 text-right" />
-                          <td className="px-6 py-5 text-right" />
-                          <td className={`px-6 py-5 text-sm font-black font-mono text-right ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
-                            {prediction?.fusion_score.toFixed(4)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-                
-                <div className="bg-card rounded-2xl border border-border p-6 shadow-xl space-y-6">
-                  <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Predictive Logic</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                    The current signal for <span className="text-foreground font-black tracking-tight">{normalizedTicker}</span> is primarily driven by 
-                    the <span className="text-primary font-black uppercase tracking-tighter">{(shap?.features[0]?.feature || "core model").replace(/_/g, " ")}</span> factor.
-                    Architecture consensus is <span className="text-foreground font-black">{prediction && prediction.fusion_score > 0 ? "positively biased" : "defensively biased"}</span>.
-                  </p>
-                  <div className="p-4 rounded-2xl bg-muted/30 border border-white/5 shadow-inner space-y-4">
-                    <div>
-                      <p className="text-[9px] text-muted-foreground uppercase tracking-[0.2em] font-black mb-3">Model Conviction</p>
-                      <div className="h-3 bg-muted rounded-full overflow-hidden border border-white/5 p-0.5">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-1000 ${prediction && prediction.fusion_score > 0 ? "bg-bull shadow-[0_0_10px_#00C805]" : "bg-bear shadow-[0_0_10px_#FF5252]"}`} 
-                          style={{ width: `${prediction ? Math.min(Math.abs(prediction.fusion_score) * 20, 100) : 0}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Stability</span>
-                      <span className="text-[10px] font-black font-mono text-foreground">{(1 - (prediction?.model_spread || 0)).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </>
           )}
         </div>
