@@ -5,13 +5,10 @@
     "bundle_validator": {
       "computed_fingerprint": "4e2869ce65f43f1b22ae7cad4b2a9f6601900f190454dc0362d93ae2832b8fcc",
       "expected_fingerprint": "4e2869ce65f43f1b22ae7cad4b2a9f6601900f190454dc0362d93ae2832b8fcc",
-      "extra_features_count": 205,
+      "extra_features_count": 211,
       "fingerprint_matches": true,
-      "missing_features": [
-        "is_missing_short_sale_ratio_5d",
-        "short_sale_ratio_5d"
-      ],
-      "passed": false,
+      "missing_features": [],
+      "passed": true,
       "required_feature_count": 62
     },
     "registry_state": {
@@ -32,5 +29,5 @@
       "std_score": 0.02766394573406726
     }
   },
-  "overall_pass": false
+  "overall_pass": true
 }

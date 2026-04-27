@@ -29,6 +29,7 @@ from src.features.macro import MACRO_FEATURE_NAMES, compute_macro_features
 from src.features.preprocessing import preprocess_features
 from src.features.sector import SECTOR_RELATIVE_RETAINED, compute_sector_relative_from_raw_features, load_sector_map_pit
 from src.features.sector_rotation import SECTOR_ROTATION_ETF_TICKERS, compute_sector_rotation_features
+from src.features.shorting import SHORTING_FEATURE_NAMES, compute_shorting_features_batch
 from src.features.technical import TECHNICAL_FEATURE_NAMES, _attach_pit_shares_outstanding, compute_technical_features
 
 COMPOSITE_FEATURE_NAMES = (
@@ -229,7 +230,25 @@ class FeaturePipeline:
                 & (pd.to_datetime(intraday["trade_date"]).dt.date <= end)
             ].copy()
         macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
-        base_features = pd.concat([technical, fundamentals, alternative, intraday, macro], ignore_index=True)
+
+        # FINRA short-sale features (W12 fix: previously absent from live pipeline,
+        # blocking deployment of 60D Ridge champion which retains short_sale_ratio_5d).
+        output_dates = sorted({
+            d.date() if hasattr(d, "date") else d
+            for d in pd.to_datetime(output_prices["trade_date"]).unique()
+        })
+        if output_dates:
+            shorting = compute_shorting_features_batch(
+                tickers=normalized_tickers,
+                output_dates=output_dates,
+            )
+        else:
+            shorting = _empty_feature_frame()
+
+        base_features = pd.concat(
+            [technical, fundamentals, alternative, intraday, macro, shorting],
+            ignore_index=True,
+        )
         sector_rotation = compute_sector_rotation_features(
             base_features_df=base_features,
             prices_df=prices,

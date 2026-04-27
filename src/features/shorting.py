@@ -15,6 +15,45 @@ from src.data.finra_short_sale import ShortSaleVolume
 EASTERN = ZoneInfo("America/New_York")
 XNYS = xcals.get_calendar("XNYS")
 
+SHORTING_FEATURE_NAMES = (
+    "short_sale_ratio_1d",
+    "short_sale_ratio_5d",
+    "short_sale_accel",
+    "abnormal_off_exchange_shorting",
+)
+
+
+def compute_shorting_features_batch(
+    *,
+    tickers,
+    output_dates,
+    session_factory=None,
+):
+    """Compute FINRA short-sale features per (ticker, output_date) for FeaturePipeline.
+
+    Returns a long-format DataFrame with columns ticker, trade_date, feature_name,
+    feature_value (matching the standard pipeline export contract).
+    """
+    factory = session_factory or get_session_factory()
+    rows: list[dict[str, Any]] = []
+    feature_fns = {
+        "short_sale_ratio_1d": compute_short_sale_ratio_1d,
+        "short_sale_ratio_5d": compute_short_sale_ratio_5d,
+        "short_sale_accel": compute_short_sale_accel,
+        "abnormal_off_exchange_shorting": compute_abnormal_off_exchange_shorting,
+    }
+    for trade_dt in output_dates:
+        for ticker in tickers:
+            for feature_name, compute_fn in feature_fns.items():
+                value = compute_fn(ticker, trade_dt, session_factory=factory)
+                rows.append({
+                    "ticker": str(ticker).upper(),
+                    "trade_date": trade_dt,
+                    "feature_name": feature_name,
+                    "feature_value": value,
+                })
+    return pd.DataFrame(rows)
+
 
 def compute_short_sale_ratio_1d(
     ticker: str,
@@ -175,6 +214,9 @@ def _load_market_short_ratios(
 
     frame = pd.DataFrame(rows, columns=["trade_date", "market", "short_volume", "total_volume"])
     if frame.empty:
+        # Ensure schema includes 'ratio' so downstream callers
+        # (e.g. compute_abnormal_off_exchange_shorting) can safely .loc[..., ["trade_date","ratio"]]
+        frame["ratio"] = pd.Series(dtype=float)
         return frame
     frame["trade_date"] = pd.to_datetime(frame["trade_date"]).dt.date
     frame["short_volume"] = pd.to_numeric(frame["short_volume"], errors="coerce")
