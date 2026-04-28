@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
+import exchange_calendars as xcals
 import numpy as np
 import pandas as pd
 import pytest
@@ -16,6 +17,8 @@ from src.features.intraday import (
     compute_volume_curve_surprise,
 )
 from src.features.pipeline import FeaturePipeline, feature_store_records_from_frame, prepare_feature_export_frame
+
+XNYS = xcals.get_calendar("XNYS")
 
 
 def test_open_30m_ret_happy_path() -> None:
@@ -325,8 +328,12 @@ def test_transactions_count_zscore_flags_is_filled_on_nan_txn_today() -> None:
 
 def test_all_9_intraday_features_integration(monkeypatch: pytest.MonkeyPatch) -> None:
     tickers = [f"T{idx:02d}" for idx in range(10)]
-    output_dates = pd.bdate_range("2026-02-02", periods=20)
-    prior_dates = pd.bdate_range(end=output_dates[0] - pd.Timedelta(days=1), periods=25)
+    output_dates = pd.DatetimeIndex(
+        XNYS.sessions_in_range(pd.Timestamp("2026-02-02"), pd.Timestamp("2026-02-27")),
+    )
+    prior_dates = pd.DatetimeIndex(
+        XNYS.sessions_in_range(pd.Timestamp("2025-12-15"), pd.Timestamp("2026-01-30")),
+    )[-25:]
     all_dates = prior_dates.append(output_dates)
 
     minute_history = _build_minute_history(tickers=tickers, trade_dates=all_dates)
@@ -346,6 +353,11 @@ def test_all_9_intraday_features_integration(monkeypatch: pytest.MonkeyPatch) ->
         lambda self, *args, **kwargs: empty_frame.copy(),
     )
     monkeypatch.setattr(pipeline_module, "load_intraday_minute_history", lambda *args, **kwargs: minute_history.copy())
+    monkeypatch.setattr(
+        pipeline_module,
+        "compute_shorting_features_batch",
+        lambda *, tickers, output_dates: empty_frame.copy(),
+    )
     monkeypatch.setattr(pipeline_module, "preprocess_features", lambda frame: frame)
 
     pipeline = FeaturePipeline()

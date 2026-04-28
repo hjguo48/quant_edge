@@ -86,6 +86,20 @@ def test_feature_pipeline_runs_end_to_end_with_mocked_pit_sources(
     monkeypatch.setattr(macro_module, "_sp500_breadth", lambda as_of: 0.55)
     monkeypatch.setattr(macro_module, "_market_return", lambda as_of, benchmark_ticker, horizon: 0.03)
     monkeypatch.setattr(pipeline_module, "compute_alternative_features_batch", _fake_alternative_features_batch)
+    monkeypatch.setattr(
+        pipeline_module,
+        "load_intraday_minute_history",
+        lambda *args, **kwargs: pd.DataFrame(
+            columns=["ticker", "trade_date", "minute_ts", "open", "high", "low", "close", "volume", "vwap", "transactions"],
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "compute_shorting_features_batch",
+        lambda *, tickers, output_dates: pd.DataFrame(
+            columns=["ticker", "trade_date", "feature_name", "feature_value"],
+        ),
+    )
 
     pipeline = FeaturePipeline()
     result = pipeline.run(
