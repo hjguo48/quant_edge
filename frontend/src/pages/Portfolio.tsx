@@ -104,19 +104,22 @@ const Portfolio = () => {
   const currentQuery = useQuery<PortfolioCurrentResponse>({
     queryKey: ["portfolioCurrent"],
     queryFn: () => fetchApi<PortfolioCurrentResponse>("/api/portfolio/current"),
-    retry: false,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const summaryQuery = useQuery<PortfolioSummaryResponse>({
     queryKey: ["portfolioSummary"],
     queryFn: () => fetchApi<PortfolioSummaryResponse>("/api/portfolio/summary"),
-    retry: false,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const budgetQuery = useQuery<BudgetResponse>({
     queryKey: ["portfolioBudget", debouncedTotalBudget],
     queryFn: () => fetchApi<BudgetResponse>(`/api/portfolio/budget?total_budget=${debouncedTotalBudget}`),
-    retry: false,
+    retry: 1,
+    refetchOnWindowFocus: false,
     enabled: debouncedTotalBudget >= 1000,
     staleTime: 10000, // Cache for 10 seconds
   });
@@ -124,13 +127,15 @@ const Portfolio = () => {
   const rebalanceQuery = useQuery<RebalanceResponse>({
     queryKey: ["portfolioRebalance"],
     queryFn: () => fetchApi<RebalanceResponse>("/api/portfolio/rebalance"),
-    retry: false,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const performanceQuery = useQuery<GreyscalePerformanceResponse>({
     queryKey: ["greyscalePerformance"],
     queryFn: () => fetchApi<GreyscalePerformanceResponse>("/api/greyscale/performance"),
-    retry: false,
+    retry: 1,
+    refetchOnWindowFocus: false,
     staleTime: 60_000,
   });
 
