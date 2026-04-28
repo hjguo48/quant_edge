@@ -160,7 +160,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
   }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
+  const safePage = Math.min(Math.max(page, 1), totalPages);
   const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const tierCounts = useMemo(() => {
@@ -403,12 +403,12 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-6 fade-in-up">
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-            Showing <span className="text-foreground">{(page - 1) * PAGE_SIZE + 1}</span> to <span className="text-foreground">{Math.min(page * PAGE_SIZE, filtered.length)}</span> of <span className="text-foreground">{filtered.length}</span>
+            Showing <span className="text-foreground">{(safePage - 1) * PAGE_SIZE + 1}</span> to <span className="text-foreground">{Math.min(safePage * PAGE_SIZE, filtered.length)}</span> of <span className="text-foreground">{filtered.length}</span>
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage(1)}
-              disabled={page === 1}
+              disabled={safePage === 1}
               className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
               title="First Page"
             >
@@ -416,7 +416,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
             </button>
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
+              disabled={safePage === 1}
               className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
               title="Previous Page"
             >
@@ -424,17 +424,17 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
             </button>
             <div className="flex items-center gap-1.5">
               {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                let pageNum = page;
+                let pageNum = safePage;
                 if (totalPages <= 5) pageNum = i + 1;
-                else if (page <= 3) pageNum = i + 1;
-                else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
-                else pageNum = page - 2 + i;
+                else if (safePage <= 3) pageNum = i + 1;
+                else if (safePage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                else pageNum = safePage - 2 + i;
                 return (
                   <button
                     key={pageNum}
                     onClick={() => setPage(pageNum)}
                     className={`w-9 h-9 rounded-xl text-[10px] font-medium uppercase transition-all border ${
-                      page === pageNum ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-muted/30 text-muted-foreground border-white/5 hover:text-foreground"
+                      safePage === pageNum ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-muted/30 text-muted-foreground border-white/5 hover:text-foreground"
                     }`}
                   >
                     {pageNum}
@@ -444,7 +444,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
             </div>
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
+              disabled={safePage === totalPages}
               className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
               title="Next Page"
             >
@@ -452,7 +452,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
             </button>
             <button
               onClick={() => setPage(totalPages)}
-              disabled={page === totalPages}
+              disabled={safePage === totalPages}
               className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
               title="Last Page"
             >
