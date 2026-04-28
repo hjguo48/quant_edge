@@ -271,7 +271,7 @@ PY
 if ! shorting_self_heal; then
     echo "----- shorting features stale → triggering targeted backfill -----"
     if .venv/bin/python scripts/backfill_shorting_features.py \
-        --use-frozen-universe --recent-fridays 2 2>&1; then
+        --use-dynamic-universe --recent-fridays 2 2>&1; then
         echo "shorting backfill OK"
     else
         echo "WARN: shorting backfill exited non-zero — preflight will catch it next"
