@@ -60,7 +60,7 @@ write_failure() {
     python - <<PY
 import json
 from datetime import datetime, timezone
-from pathlib import Path
+from src.utils.io import write_json_atomic
 
 payload = {
     "status": "failure",
@@ -71,7 +71,7 @@ payload = {
     "log_file": "$LOG_FILE",
     "run_id": "$RUN_ID",
 }
-Path("$LAST_FAILURE").write_text(json.dumps(payload, indent=2))
+write_json_atomic("$LAST_FAILURE", payload)
 PY
 }
 
@@ -80,6 +80,7 @@ write_success() {
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from src.utils.io import write_json_atomic
 
 report_dir = Path("data/reports/greyscale")
 weeks = sorted(report_dir.glob("week_*.json"))
@@ -123,7 +124,7 @@ payload = {
     "gate_status": gate.get("summary", {}).get("gate_status"),
     "matured_weeks": gate.get("summary", {}).get("matured_weeks"),
 }
-Path("data/reports/greyscale/last_success.json").write_text(json.dumps(payload, indent=2))
+write_json_atomic("data/reports/greyscale/last_success.json", payload)
 print(f"heartbeat written: signal_date={payload['signal_date']}, "
       f"tickers={payload['ticker_count']}, "
       f"layers=[{payload['layer1_pass']},{payload['layer2_pass']},{payload['layer3_pass']},{payload['layer4_pass']}]")

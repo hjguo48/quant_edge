@@ -41,6 +41,7 @@ from src.features.sector_rotation import SECTOR_ROTATION_FEATURE_NAMES
 from src.features.technical import TECHNICAL_FEATURE_NAMES
 from src.labels.forward_returns import compute_forward_returns
 from src.models.evaluation import icir, information_coefficient, rank_information_coefficient
+from src.utils.io import write_json_atomic as _write_json_atomic_helper
 
 try:
     import pyarrow.parquet as pq
@@ -1851,12 +1852,7 @@ def write_csv_atomic(frame: pd.DataFrame, output_path: Path) -> None:
 
 
 def write_json_atomic(output_path: Path, payload: dict[str, Any]) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = temp_path_for(output_path)
-    if temp_path.exists():
-        temp_path.unlink()
-    temp_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
-    temp_path.replace(output_path)
+    _write_json_atomic_helper(output_path, payload, indent=2, sort_keys=True)
 
 
 def temp_path_for(path: Path) -> Path:
