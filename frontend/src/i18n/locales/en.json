@@ -271,6 +271,7 @@
       "loadingPnl": "Loading paper P&L...",
       "weeksRealized": "{{count}} weeks realized · last close {{date}}",
       "coverage": "coverage {{used}}/{{total}}",
+      "weekOf": "Week of {{date}}",
       "signalDate": "Signal Date",
       "portfolio": "Portfolio",
       "spy": "SPY",
@@ -291,9 +292,32 @@
       "grossExposure": "Gross Exposure",
       "netInvested": "Net invested",
       "portfolioBeta": "Portfolio Beta",
-      "vsSpy": "vs SPY",
-      "cvar95": "CVaR 95%",
-      "tailRisk": "Tail risk"
+      "vsSpy": "vs. Benchmark",
+      "betaNotComputed": "Not computed (W13 shadow mode)",
+      "cvar95": "CVaR (95%)",
+      "tailRisk": "Tail risk",
+      "riskPass": "Risk check passed",
+      "riskBreach": "Risk limit breach",
+      "cvarShadow": "Layer 3 shadow mode — see week_*.json"
+    },
+    "errorState": {
+      "title": "Portfolio Data Unavailable",
+      "detail": "We encountered an error while fetching the current portfolio state. This may be due to a server connection issue or missing signal data for the current period.",
+      "retry": "Retry Connection"
+    },
+    "trades": {
+      "calculating": "Calculating rebalance orders...",
+      "inSync": "Portfolio In Sync",
+      "inSyncDetail": "No rebalance required for the current period.",
+      "action": {
+        "buy": "BUY",
+        "sell": "SELL",
+        "hold": "HOLD"
+      }
+    },
+    "budget": {
+      "title": "Capital Allocation",
+      "subtitle": "Enter your total trading budget to calculate dollar amounts"
     },
     "tabs": {
       "holdings": "Holdings",
@@ -314,7 +338,10 @@
       "action": "Action",
       "prevPct": "Prev %",
       "targetPct": "Target %",
-      "allocationShift": "Allocation Shift"
+      "allocationShift": "Allocation Shift",
+      "equityComponent": "Equity Component",
+      "bullish": "BULLISH",
+      "bearish": "BEARISH"
     }
   },
   "greyscale": {

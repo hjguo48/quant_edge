@@ -271,6 +271,7 @@
       "loadingPnl": "加载纸面 P&L 中…",
       "weeksRealized": "已结算 {{count}} 周 · 最近收盘 {{date}}",
       "coverage": "覆盖 {{used}}/{{total}}",
+      "weekOf": "{{date}} 周",
       "signalDate": "信号日期",
       "portfolio": "组合",
       "spy": "SPY",
@@ -291,9 +292,32 @@
       "grossExposure": "总敞口",
       "netInvested": "净投资",
       "portfolioBeta": "组合 Beta",
-      "vsSpy": "对比 SPY",
-      "cvar95": "CVaR 95%",
-      "tailRisk": "尾部风险"
+      "vsSpy": "对比基准",
+      "betaNotComputed": "未计算（W13 影子模式）",
+      "cvar95": "CVaR (95%)",
+      "tailRisk": "尾部风险",
+      "riskPass": "风控检查通过",
+      "riskBreach": "风控限额突破",
+      "cvarShadow": "Layer 3 影子模式 — 见 week_*.json"
+    },
+    "errorState": {
+      "title": "组合数据不可用",
+      "detail": "拉取当前组合状态时出错。可能是服务连接问题或当前周期信号数据缺失。",
+      "retry": "重试连接"
+    },
+    "trades": {
+      "calculating": "计算调仓指令中…",
+      "inSync": "组合已同步",
+      "inSyncDetail": "本期无需调仓。",
+      "action": {
+        "buy": "买入",
+        "sell": "卖出",
+        "hold": "持有"
+      }
+    },
+    "budget": {
+      "title": "资金分配",
+      "subtitle": "输入总交易资金计算每只标的的金额"
     },
     "tabs": {
       "holdings": "持仓",
@@ -314,7 +338,10 @@
       "action": "动作",
       "prevPct": "原 %",
       "targetPct": "目标 %",
-      "allocationShift": "权重变动"
+      "allocationShift": "权重变动",
+      "equityComponent": "权益组件",
+      "bullish": "看多",
+      "bearish": "看空"
     }
   },
   "greyscale": {
