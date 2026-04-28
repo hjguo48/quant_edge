@@ -45,6 +45,61 @@
     "backtest": { "title": "回测引擎", "subtitle": "假设性模拟 · 不代表未来表现" },
     "greyscale": { "title": "灰度监控", "subtitle": "周度信号跑批跟踪 · 模型输出" }
   },
+  "dashboard": {
+    "secBanner": {
+      "modelOutputOnly": "仅模型输出",
+      "disclaimer": " — 所有信号均由量化模型生成，不构成投资建议。模型历史表现不代表未来结果。仅供机构使用。"
+    },
+    "errorBanner": "部分市场组件加载失败。仍尽可能展示已成功获取的实时数据。",
+    "stats": {
+      "spyPrice": "SPY 价格",
+      "spyChange": "日变动",
+      "marketBreadth": "市场宽度",
+      "advancingShare": "上涨占比",
+      "vix": "VIX 指数",
+      "volatility": "波动率",
+      "topSector": "强势板块",
+      "avgReturn": "平均收益",
+      "sectorCount": "板块数",
+      "activeSectors": "活跃板块"
+    },
+    "pnlChart": {
+      "title": "累计 P&L (对比 SPY)",
+      "subtitle": "模型输出 · {{range}} 窗口",
+      "throughDate": " · 截至 {{date}}",
+      "noData": "暂无指数历史数据。"
+    },
+    "paperPerf": {
+      "title": "灰度纸面表现",
+      "subtitle": "纸面 P&L ({{horizon}} 周期) · 对比 SPY · 仅 dry-run",
+      "awaiting": "等待首次结算",
+      "awaitingDetail": "结算 P&L 在 signal_date 之后第一个交易日的价格数据落库后才会生成",
+      "thisWeek": "本周",
+      "vsSpy": "对比 SPY",
+      "cumulative": "累计",
+      "maxDd": "最大回撤",
+      "weeksRealized": "已结算 {{count}} 周",
+      "winSuffix": "胜率 {{value}}%"
+    },
+    "topSignals": {
+      "title": "Top 信号",
+      "noSignals": "暂无活跃信号",
+      "viewChart": "查看 {{ticker}} 走势图",
+      "confSuffix": "置信度 {{value}}%"
+    },
+    "heatmap": {
+      "title": "板块表现热力图",
+      "subtitleWithDate": "最新收盘 · {{date}}",
+      "subtitle": "最新收盘",
+      "rowLabel": "日变动 %"
+    }
+  },
+  "tiers": {
+    "strong": "强势",
+    "long": "做多",
+    "watch": "观察",
+    "buffer": "缓冲"
+  },
   "portfolio": {
     "performanceTracking": {
       "title": "绩效跟踪",
