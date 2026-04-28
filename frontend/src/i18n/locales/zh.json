@@ -344,6 +344,70 @@
       "bearish": "看空"
     }
   },
+  "kline": {
+    "refreshing": "刷新中",
+    "candlestick": "K 线图",
+    "candlestickAria": "K 线图",
+    "line": "折线图",
+    "lineAria": "折线图",
+    "loading": "加载价格历史…",
+    "failed": "价格历史加载失败。",
+    "internalError": "内部服务错误",
+    "open": "开",
+    "high": "高",
+    "low": "低",
+    "close": "收",
+    "price": "价格",
+    "volume": "成交量"
+  },
+  "backtest": {
+    "title": "策略回测",
+    "subtitle": "模型输出模拟 · 假设性表现 · 不代表未来结果",
+    "disclaimer": "假设性 & 模拟结果",
+    "configuration": "参数配置",
+    "fields": {
+      "universe": "股票池",
+      "strategy": "策略",
+      "startYear": "起始年",
+      "endYear": "结束年",
+      "rebalance": "调仓频率",
+      "maxPositionSize": "单仓上限",
+      "stopLoss": "止损"
+    },
+    "running": "运行中…",
+    "runButton": "运行回测",
+    "results": {
+      "totalReturn": "总收益",
+      "vsBenchmark": "对比基准 +{{value}}%",
+      "sharpe": "Sharpe 比率",
+      "annualized": "年化",
+      "maxDrawdown": "最大回撤",
+      "fromPeak": "自峰值",
+      "calmar": "Calmar 比率",
+      "returnPerDrawdown": "收益/回撤"
+    },
+    "equityCurve": {
+      "title": "净值曲线",
+      "subtitle": "假设性 · {{start}}–{{end}} · 标准化为 1.0",
+      "strategy": "策略",
+      "benchmark": "基准"
+    },
+    "monthlyReturns": {
+      "title": "月度收益",
+      "subtitle": "假设模拟月度 P&L 分布"
+    },
+    "riskMetrics": {
+      "title": "风险指标",
+      "annualizedVol": "年化波动率",
+      "var95": "VaR (95%)",
+      "cvar95": "CVaR (95%)",
+      "winRate": "胜率",
+      "profitFactor": "盈亏比",
+      "avgWinLoss": "平均盈/平均亏",
+      "betaSpx": "对 SPX 的 Beta",
+      "turnoverMonthly": "月度换手"
+    }
+  },
   "greyscale": {
     "title": "灰度监控",
     "subtitle": "周度自动跑批 · Layer 1-4 风控 · 8 周评估闸门",

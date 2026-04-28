@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Play, Settings2, BarChart2, AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import StatCard from "../components/StatCard";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, ReferenceLine, Cell } from "recharts";
 
@@ -35,6 +36,7 @@ const UNIVERSE = ["S&P 500", "NASDAQ 100", "Russell 2000", "Custom List"];
 const FACTORS = ["Momentum", "Value + Momentum", "Quality", "Multi-Factor", "Custom"];
 
 const Backtest = () => {
+  const { t } = useTranslation();
   const [running, setRunning] = useState(false);
   const [, setRan] = useState(true);
   const [universe, setUniverse] = useState("S&P 500");
@@ -57,14 +59,14 @@ const Backtest = () => {
       {/* Header */}
       <div className="flex items-center justify-between fade-in-up">
         <div>
-          <h2 className="text-xl font-bold text-foreground">Strategy Backtest</h2>
+          <h2 className="text-xl font-bold text-foreground">{t("backtest.title")}</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Model output simulation · Hypothetical performance · Not indicative of future results
+            {t("backtest.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-xs text-muted-foreground">
           <AlertTriangle size={13} className="text-yellow-500" />
-          Hypothetical & simulated results only
+          {t("backtest.disclaimer")}
         </div>
       </div>
 
@@ -74,17 +76,17 @@ const Backtest = () => {
           <div className="bg-card rounded-xl border border-border p-5 space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-border">
               <Settings2 size={14} className="text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">Configuration</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("backtest.configuration")}</h3>
             </div>
 
             {[
-              { label: "Universe", value: universe, setValue: setUniverse, options: UNIVERSE },
-              { label: "Strategy", value: factor, setValue: setFactor, options: FACTORS },
-              { label: "Start Year", value: startYear, setValue: setStartYear, options: ["2015","2016","2017","2018","2019","2020","2021"] },
-              { label: "End Year", value: endYear, setValue: setEndYear, options: ["2022","2023","2024","2025"] },
-              { label: "Rebalance", value: rebalance, setValue: setRebalance, options: ["Daily","Weekly","Monthly","Quarterly"] },
-            ].map(({ label, value, setValue, options }) => (
-              <div key={label}>
+              { key: "universe", label: t("backtest.fields.universe"), value: universe, setValue: setUniverse, options: UNIVERSE },
+              { key: "strategy", label: t("backtest.fields.strategy"), value: factor, setValue: setFactor, options: FACTORS },
+              { key: "startYear", label: t("backtest.fields.startYear"), value: startYear, setValue: setStartYear, options: ["2015","2016","2017","2018","2019","2020","2021"] },
+              { key: "endYear", label: t("backtest.fields.endYear"), value: endYear, setValue: setEndYear, options: ["2022","2023","2024","2025"] },
+              { key: "rebalance", label: t("backtest.fields.rebalance"), value: rebalance, setValue: setRebalance, options: ["Daily","Weekly","Monthly","Quarterly"] },
+            ].map(({ key, label, value, setValue, options }) => (
+              <div key={key}>
                 <label className="text-xs text-muted-foreground mb-1.5 block">{label}</label>
                 <select
                   value={value}
@@ -97,7 +99,7 @@ const Backtest = () => {
             ))}
 
             <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">Max Position Size</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">{t("backtest.fields.maxPositionSize")}</label>
               <div className="flex items-center gap-2">
                 <input type="range" min={1} max={20} defaultValue={5} className="flex-1 accent-primary" />
                 <span className="text-xs font-mono text-foreground w-6">5%</span>
@@ -105,7 +107,7 @@ const Backtest = () => {
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">Stop Loss</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">{t("backtest.fields.stopLoss")}</label>
               <div className="flex items-center gap-2">
                 <input type="range" min={1} max={15} defaultValue={8} className="flex-1 accent-primary" />
                 <span className="text-xs font-mono text-bear w-7">-8%</span>
@@ -124,12 +126,12 @@ const Backtest = () => {
               {running ? (
                 <>
                   <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  Running…
+                  {t("backtest.running")}
                 </>
               ) : (
                 <>
                   <Play size={14} fill="currentColor" />
-                  Run Backtest
+                  {t("backtest.runButton")}
                 </>
               )}
             </button>
@@ -141,10 +143,10 @@ const Backtest = () => {
           {/* Stats */}
           <div className="flex gap-4 fade-in-up stagger-1">
             {[
-              { label: "Total Return", value: `${isPositive ? "+" : ""}${totalReturn}%`, change: parseFloat(totalReturn), changeLabel: `vs. benchmark +${(parseFloat(totalReturn) * 0.6).toFixed(1)}%`, trend: isPositive ? "up" as const : "down" as const },
-              { label: "Sharpe Ratio", value: "1.87", change: 0.12, changeLabel: "annualized", trend: "up" as const },
-              { label: "Max Drawdown", value: "-12.4%", change: -1.2, changeLabel: "from peak", trend: "down" as const },
-              { label: "Calmar Ratio", value: "1.42", change: 0.08, changeLabel: "return/drawdown", trend: "up" as const },
+              { label: t("backtest.results.totalReturn"), value: `${isPositive ? "+" : ""}${totalReturn}%`, change: parseFloat(totalReturn), changeLabel: t("backtest.results.vsBenchmark", { value: (parseFloat(totalReturn) * 0.6).toFixed(1) }), trend: isPositive ? "up" as const : "down" as const },
+              { label: t("backtest.results.sharpe"), value: "1.87", change: 0.12, changeLabel: t("backtest.results.annualized"), trend: "up" as const },
+              { label: t("backtest.results.maxDrawdown"), value: "-12.4%", change: -1.2, changeLabel: t("backtest.results.fromPeak"), trend: "down" as const },
+              { label: t("backtest.results.calmar"), value: "1.42", change: 0.08, changeLabel: t("backtest.results.returnPerDrawdown"), trend: "up" as const },
             ].map((s, i) => (
               <div key={s.label} className="flex-1">
                 <StatCard {...s} delay={i * 60} />
@@ -156,12 +158,12 @@ const Backtest = () => {
           <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Equity Curve</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Hypothetical · {startYear}–{endYear} · Normalized to 1.0</p>
+                <h3 className="text-sm font-semibold text-foreground">{t("backtest.equityCurve.title")}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("backtest.equityCurve.subtitle", { start: startYear, end: endYear })}</p>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5"><div className="w-2.5 h-0.5 bg-primary" /><span className="text-xs text-muted-foreground">Strategy</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2.5 h-0.5" style={{ backgroundColor: "#607B96" }} /><span className="text-xs text-muted-foreground">Benchmark</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-0.5 bg-primary" /><span className="text-xs text-muted-foreground">{t("backtest.equityCurve.strategy")}</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-0.5" style={{ backgroundColor: "#607B96" }} /><span className="text-xs text-muted-foreground">{t("backtest.equityCurve.benchmark")}</span></div>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={200}>
@@ -205,8 +207,8 @@ const Backtest = () => {
           {/* Monthly Returns */}
           <div className="flex gap-5">
             <div className="flex-1 bg-card rounded-xl border border-border p-5 fade-in-up stagger-3">
-              <h3 className="text-sm font-semibold text-foreground mb-1">Monthly Returns</h3>
-              <p className="text-xs text-muted-foreground mb-4">Hypothetical simulated monthly P&L distribution</p>
+              <h3 className="text-sm font-semibold text-foreground mb-1">{t("backtest.monthlyReturns.title")}</h3>
+              <p className="text-xs text-muted-foreground mb-4">{t("backtest.monthlyReturns.subtitle")}</p>
               <ResponsiveContainer width="100%" height={150}>
                 <BarChart data={monthlyData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
                   <XAxis dataKey="month" tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -236,20 +238,20 @@ const Backtest = () => {
             <div className="w-64 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-4">
               <div className="flex items-center gap-2 mb-4">
                 <BarChart2 size={14} className="text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Risk Metrics</h3>
+                <h3 className="text-sm font-semibold text-foreground">{t("backtest.riskMetrics.title")}</h3>
               </div>
               <div className="space-y-3">
                 {[
-                  { label: "Annualized Volatility", value: "14.2%", color: "text-foreground" },
-                  { label: "VaR (95%)", value: "-1.8%", color: "text-bear" },
-                  { label: "CVaR (95%)", value: "-2.4%", color: "text-bear" },
-                  { label: "Win Rate", value: "58.3%", color: "text-bull" },
-                  { label: "Profit Factor", value: "1.74", color: "text-bull" },
-                  { label: "Avg Win / Avg Loss", value: "1.82", color: "text-bull" },
-                  { label: "Beta vs SPX", value: "0.72", color: "text-foreground" },
-                  { label: "Turnover (Monthly)", value: "18.4%", color: "text-muted-foreground" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="flex items-center justify-between">
+                  { key: "annualizedVol", label: t("backtest.riskMetrics.annualizedVol"), value: "14.2%", color: "text-foreground" },
+                  { key: "var95", label: t("backtest.riskMetrics.var95"), value: "-1.8%", color: "text-bear" },
+                  { key: "cvar95", label: t("backtest.riskMetrics.cvar95"), value: "-2.4%", color: "text-bear" },
+                  { key: "winRate", label: t("backtest.riskMetrics.winRate"), value: "58.3%", color: "text-bull" },
+                  { key: "profitFactor", label: t("backtest.riskMetrics.profitFactor"), value: "1.74", color: "text-bull" },
+                  { key: "avgWinLoss", label: t("backtest.riskMetrics.avgWinLoss"), value: "1.82", color: "text-bull" },
+                  { key: "betaSpx", label: t("backtest.riskMetrics.betaSpx"), value: "0.72", color: "text-foreground" },
+                  { key: "turnoverMonthly", label: t("backtest.riskMetrics.turnoverMonthly"), value: "18.4%", color: "text-muted-foreground" },
+                ].map(({ key, label, value, color }) => (
+                  <div key={key} className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{label}</span>
                     <span className={`text-xs font-bold font-mono ${color}`}>{value}</span>
                   </div>
