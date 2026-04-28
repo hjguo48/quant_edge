@@ -1,0 +1,150 @@
+{
+  "common": {
+    "loading": "加载中…",
+    "error": "错误",
+    "retry": "重试",
+    "noData": "无数据",
+    "pending": "待结算",
+    "realized": "已结算",
+    "partial": "部分结算",
+    "comingSoon": "即将上线",
+    "underMigration": "迁移中",
+    "showing": "显示",
+    "of": "/ 共",
+    "to": "至",
+    "page": "页",
+    "first": "首页",
+    "previous": "上一页",
+    "next": "下一页",
+    "last": "末页",
+    "all": "全部",
+    "search": "搜索",
+    "refresh": "刷新",
+    "language": "语言"
+  },
+  "topbar": {
+    "title": "驾驶舱",
+    "subtitle": "模型输出 · 非投资建议"
+  },
+  "sidebar": {
+    "dashboard": "驾驶舱",
+    "signals": "信号流",
+    "portfolio": "组合",
+    "backtest": "回测",
+    "greyscale": "灰度监控",
+    "alerts": "通知",
+    "settings": "设置",
+    "userName": "量化用户",
+    "userRole": "仅模型输出"
+  },
+  "pageTitles": {
+    "dashboard": { "title": "驾驶舱", "subtitle": "模型输出 · 非投资建议" },
+    "signals": { "title": "信号流", "subtitle": "量化模型信号 · 符合 SEC 合规" },
+    "signalDetail": { "title": "信号详情", "subtitle": "因子分解 · 仅模型输出" },
+    "portfolio": { "title": "组合分析", "subtitle": "模型组合分析 · 假设性持仓" },
+    "backtest": { "title": "回测引擎", "subtitle": "假设性模拟 · 不代表未来表现" },
+    "greyscale": { "title": "灰度监控", "subtitle": "周度信号跑批跟踪 · 模型输出" }
+  },
+  "portfolio": {
+    "performanceTracking": {
+      "title": "绩效跟踪",
+      "subtitle": "纸面 P&L · 对比 {{benchmark}} · 仅 dry-run",
+      "cumulative": "累计收益",
+      "excessVsSpy": "超额 (vs SPY)",
+      "maxDrawdown": "最大回撤",
+      "winRate": "胜率",
+      "awaitingFirstClose": "等待首次结算",
+      "awaitingFirstCloseDetail": "{{horizon}} horizon 暂无已结算周次。结算 P&L 在 signal_date 之后第一个交易日的价格数据落库后才会生成。",
+      "pendingFirstClose": "等待首次结算",
+      "pendingFirstCloseDetail": "等待首次周度结算。灰度纸面 P&L 在首次自动跑后开始填充。",
+      "loadingPnl": "加载纸面 P&L 中…",
+      "weeksRealized": "已结算 {{count}} 周 · 最近收盘 {{date}}",
+      "coverage": "覆盖 {{used}}/{{total}}",
+      "signalDate": "信号日期",
+      "portfolio": "组合",
+      "spy": "SPY",
+      "excess": "超额",
+      "status": "状态"
+    },
+    "sectorWeights": {
+      "title": "板块权重",
+      "subtitle": "当前组合板块分布",
+      "noHoldings": "暂无持仓",
+      "weight": "权重",
+      "tickers": "{{count}} 只",
+      "underMigrationDetail": "当前 universe 板块归类正在处理。"
+    },
+    "stats": {
+      "holdings": "持仓数",
+      "estTurnover": "预估换手",
+      "grossExposure": "总敞口",
+      "netInvested": "净投资",
+      "portfolioBeta": "组合 Beta",
+      "vsSpy": "对比 SPY",
+      "cvar95": "CVaR 95%",
+      "tailRisk": "尾部风险"
+    },
+    "tabs": {
+      "holdings": "持仓",
+      "trades": "交易",
+      "budget": "资金"
+    },
+    "tabHeaders": {
+      "holdings": { "title": "最优配置", "subtitle": "由均值-方差优化器计算" },
+      "trades": { "title": "调仓指令", "subtitle": "目标权重的执行订单" },
+      "budget": { "title": "资金配置", "subtitle": "调整你的交易本金" }
+    },
+    "table": {
+      "security": "标的",
+      "targetWeight": "目标权重",
+      "alphaScore": "Alpha 分",
+      "direction": "方向",
+      "ticker": "代码",
+      "action": "动作",
+      "prevPct": "原 %",
+      "targetPct": "目标 %",
+      "allocationShift": "权重变动"
+    }
+  },
+  "greyscale": {
+    "title": "灰度监控",
+    "subtitle": "周度自动跑批 · Layer 1-4 风控 · 8 周评估闸门",
+    "weeks": {
+      "header": "周度跑批",
+      "weekNumber": "第 {{n}} 周",
+      "signalDate": "信号日期",
+      "tickers": "持仓数",
+      "layerStatus": "Layer 状态"
+    },
+    "layers": {
+      "layer1": "Layer 1 · 数据",
+      "layer2": "Layer 2 · 信号",
+      "layer3": "Layer 3 · 组合",
+      "layer4": "Layer 4 · 运维",
+      "pass": "通过",
+      "fail": "失败",
+      "shadow": "影子",
+      "warning": "告警"
+    },
+    "gate": {
+      "title": "8 周评估闸门",
+      "weeksMatured": "成熟周次",
+      "alphaTarget": "Alpha 目标",
+      "layer3TriggerRate": "Layer 3 触发率",
+      "status": "状态",
+      "pending": "待评估",
+      "provisional": "暂定",
+      "mature": "已成熟",
+      "passed": "通过",
+      "failed": "未通过"
+    },
+    "shadowDiagnostics": {
+      "title": "Layer 3 影子诊断",
+      "subtitle": "计算但不强制执行 — 仅供观察",
+      "shadowHoldings": "影子持仓",
+      "wouldRemove": "本会移除",
+      "wouldReduce": "本会减仓",
+      "cvarTriggered": "CVaR 触发"
+    }
+  }
+}

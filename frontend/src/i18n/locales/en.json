@@ -1,0 +1,150 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "noData": "No data",
+    "pending": "Pending",
+    "realized": "Realized",
+    "partial": "Partial",
+    "comingSoon": "Coming Soon",
+    "underMigration": "Under Migration",
+    "showing": "Showing",
+    "of": "of",
+    "to": "to",
+    "page": "Page",
+    "first": "First",
+    "previous": "Previous",
+    "next": "Next",
+    "last": "Last",
+    "all": "All",
+    "search": "Search",
+    "refresh": "Refresh",
+    "language": "Language"
+  },
+  "topbar": {
+    "title": "Dashboard",
+    "subtitle": "Model Output · Not Investment Advice"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "signals": "Signals",
+    "portfolio": "Portfolio",
+    "backtest": "Backtest",
+    "greyscale": "Greyscale Monitor",
+    "alerts": "Alerts",
+    "settings": "Settings",
+    "userName": "Quant User",
+    "userRole": "Model Output Only"
+  },
+  "pageTitles": {
+    "dashboard": { "title": "Dashboard", "subtitle": "Model Output · Not Investment Advice" },
+    "signals": { "title": "Signal Feed", "subtitle": "Quantitative Model Signals · SEC Compliant" },
+    "signalDetail": { "title": "Signal Detail", "subtitle": "Factor Decomposition · Model Output Only" },
+    "portfolio": { "title": "Portfolio", "subtitle": "Model Portfolio Analytics · Hypothetical" },
+    "backtest": { "title": "Backtest Engine", "subtitle": "Hypothetical Simulation · Not Predictive of Future Results" },
+    "greyscale": { "title": "Greyscale Monitor", "subtitle": "Trust Premium/Discount Tracker · Model Output" }
+  },
+  "portfolio": {
+    "performanceTracking": {
+      "title": "Performance Tracking",
+      "subtitle": "Paper P&L · vs {{benchmark}} · dry-run only",
+      "cumulative": "Cumulative",
+      "excessVsSpy": "Excess vs SPY",
+      "maxDrawdown": "Max Drawdown",
+      "winRate": "Win Rate",
+      "awaitingFirstClose": "Awaiting first close",
+      "awaitingFirstCloseDetail": "{{horizon}} horizon has no realized weeks yet. Realized P&L materializes after price data lands for the next trading day after signal_date.",
+      "pendingFirstClose": "Pending First Close",
+      "pendingFirstCloseDetail": "Awaiting first realized weekly close. Greyscale paper P&L will populate after the first auto run.",
+      "loadingPnl": "Loading paper P&L...",
+      "weeksRealized": "{{count}} weeks realized · last close {{date}}",
+      "coverage": "coverage {{used}}/{{total}}",
+      "signalDate": "Signal Date",
+      "portfolio": "Portfolio",
+      "spy": "SPY",
+      "excess": "Excess",
+      "status": "Status"
+    },
+    "sectorWeights": {
+      "title": "Sector Weights",
+      "subtitle": "Active portfolio sector allocation",
+      "noHoldings": "No holdings to display",
+      "weight": "Weight",
+      "tickers": "{{count}} tickers",
+      "underMigrationDetail": "Sector classification for the current universe is processing."
+    },
+    "stats": {
+      "holdings": "Holdings",
+      "estTurnover": "Est. turnover",
+      "grossExposure": "Gross Exposure",
+      "netInvested": "Net invested",
+      "portfolioBeta": "Portfolio Beta",
+      "vsSpy": "vs SPY",
+      "cvar95": "CVaR 95%",
+      "tailRisk": "Tail risk"
+    },
+    "tabs": {
+      "holdings": "Holdings",
+      "trades": "Trades",
+      "budget": "Budget"
+    },
+    "tabHeaders": {
+      "holdings": { "title": "Optimal Allocation", "subtitle": "Calculated by mean-variance optimizer" },
+      "trades": { "title": "Rebalance Instructions", "subtitle": "Execution orders for target weights" },
+      "budget": { "title": "Capital Configurator", "subtitle": "Adjust your trading capital" }
+    },
+    "table": {
+      "security": "Security",
+      "targetWeight": "Target Weight",
+      "alphaScore": "Alpha Score",
+      "direction": "Direction",
+      "ticker": "Ticker",
+      "action": "Action",
+      "prevPct": "Prev %",
+      "targetPct": "Target %",
+      "allocationShift": "Allocation Shift"
+    }
+  },
+  "greyscale": {
+    "title": "Greyscale Monitor",
+    "subtitle": "Weekly auto run · Layer 1-4 risk · 8-week eval gate",
+    "weeks": {
+      "header": "Weekly Runs",
+      "weekNumber": "Week {{n}}",
+      "signalDate": "Signal Date",
+      "tickers": "Tickers",
+      "layerStatus": "Layer Status"
+    },
+    "layers": {
+      "layer1": "Layer 1 · Data",
+      "layer2": "Layer 2 · Signal",
+      "layer3": "Layer 3 · Portfolio",
+      "layer4": "Layer 4 · Operational",
+      "pass": "Pass",
+      "fail": "Fail",
+      "shadow": "Shadow",
+      "warning": "Warning"
+    },
+    "gate": {
+      "title": "8-Week Eval Gate",
+      "weeksMatured": "Weeks Matured",
+      "alphaTarget": "Alpha Target",
+      "layer3TriggerRate": "Layer 3 Trigger Rate",
+      "status": "Status",
+      "pending": "Pending",
+      "provisional": "Provisional",
+      "mature": "Mature",
+      "passed": "Passed",
+      "failed": "Failed"
+    },
+    "shadowDiagnostics": {
+      "title": "Layer 3 Shadow Diagnostics",
+      "subtitle": "Computed but not enforced — informational only",
+      "shadowHoldings": "Shadow Holdings",
+      "wouldRemove": "Would Remove",
+      "wouldReduce": "Would Reduce",
+      "cvarTriggered": "CVaR Triggered"
+    }
+  }
+}

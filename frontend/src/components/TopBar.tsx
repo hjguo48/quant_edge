@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Bell, RefreshCw, Calendar } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import LanguageToggle from "./LanguageToggle";
 
 interface TopBarProps {
   title?: string;
@@ -7,13 +9,19 @@ interface TopBarProps {
 }
 
 const TopBar = ({
-  title = "Dashboard",
-  subtitle = "Model Output · Not Investment Advice",
+  title,
+  subtitle,
 }: TopBarProps) => {
+  const { t, i18n } = useTranslation();
+  const lang = (i18n.resolvedLanguage ?? i18n.language ?? "en").split("-")[0];
+  const localeTag = lang === "zh" ? "zh-CN" : "en-US";
   const [time, setTime] = useState(new Date());
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  const displayTitle = title ?? t("topbar.title");
+  const displaySubtitle = subtitle ?? t("topbar.subtitle");
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -26,17 +34,17 @@ const TopBar = ({
   };
 
   const formatTime = (d: Date) =>
-    d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    d.toLocaleTimeString(localeTag, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 
   const formatDate = (d: Date) =>
-    d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+    d.toLocaleDateString(localeTag, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 
   return (
     <div data-cmp="TopBar" className="flex items-center justify-between px-6 py-3.5 border-b border-border bg-surface/80 backdrop-blur-sm flex-shrink-0">
       {/* Left: Title */}
       <div>
-        <h1 className="text-lg font-bold text-foreground leading-tight">{title}</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        <h1 className="text-lg font-bold text-foreground leading-tight">{displayTitle}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">{displaySubtitle}</p>
       </div>
 
       {/* Center: Search */}
@@ -45,7 +53,7 @@ const TopBar = ({
           <Search size={14} className="text-muted-foreground flex-shrink-0" />
           <input
             type="text"
-            placeholder="Search tickers, signals…"
+            placeholder={t("common.search")}
             value={query}
             onFocus={() => setSearching(true)}
             onBlur={() => setSearching(false)}
@@ -65,9 +73,12 @@ const TopBar = ({
 
         <div className="w-px h-4 bg-border" />
 
+        <LanguageToggle />
+
         <button
           onClick={handleRefresh}
           className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-all duration-200"
+          title={t("common.refresh")}
         >
           <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
         </button>
