@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from "react";
-import { TrendingUp, TrendingDown, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { TrendingUp, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import StatCard from "../components/StatCard";
 import { fetchApi } from "../hooks/useApi";
@@ -64,23 +64,25 @@ const HOLDINGS_PAGE_SIZE = 5;
 const Portfolio = () => {
   const [tab, setTab] = useState("holdings");
   const [budgetStr, setBudgetStr] = useState("100000");
-  const [prevBudgetStr, setBudgetStrPrev] = useState("100000");
+  const [, setBudgetStrPrev] = useState("100000");
   const totalBudget = parseInt(budgetStr) || 0;
   const [debouncedTotalBudget, setDebouncedTotalBudget] = useState(100000);
   const [holdingsPage, setHoldingsPage] = useState(1);
 
   // Reset Optimal Allocation page when switching tabs
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination on tab switch
     setHoldingsPage(1);
   }, [tab]);
 
   // Debounce budget calculation to avoid excessive API calls and layout flickering
   useEffect(() => {
     if (totalBudget < 1000) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- floor budget below threshold
       setDebouncedTotalBudget(0);
       return;
     }
-    
+
     const timer = setTimeout(() => {
       setDebouncedTotalBudget(totalBudget);
     }, 800);
@@ -174,7 +176,7 @@ const Portfolio = () => {
     const chars = budgetStr.split('');
     const isInvalid = totalBudget < 1000 && budgetStr !== '0';
     
-    let formatted: (string | number)[] = [];
+    const formatted: (string | number)[] = [];
     let count = 0;
     for (let i = chars.length - 1; i >= 0; i--) {
       formatted.unshift(chars[i]);
@@ -483,7 +485,7 @@ const Portfolio = () => {
             </div>
             {rebalanceQuery.isLoading ? (
               <div className="p-12 text-center text-xs text-muted-foreground animate-pulse">Calculating rebalance orders...</div>
-            ) : rebalanceQuery.data?.orders.map((order, i) => (
+            ) : rebalanceQuery.data?.orders.map((order) => (
               <div key={order.ticker} className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
                 <div className="w-32 text-sm font-black text-foreground">{order.ticker}</div>
                 <div className="w-32 flex justify-center">

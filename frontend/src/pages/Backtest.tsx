@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Play, Settings2, TrendingUp, TrendingDown, BarChart2, AlertTriangle } from "lucide-react";
+import { Play, Settings2, BarChart2, AlertTriangle } from "lucide-react";
 import StatCard from "../components/StatCard";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, ReferenceLine, Cell } from "recharts";
 
@@ -36,7 +36,7 @@ const FACTORS = ["Momentum", "Value + Momentum", "Quality", "Multi-Factor", "Cus
 
 const Backtest = () => {
   const [running, setRunning] = useState(false);
-  const [ran, setRan] = useState(true);
+  const [, setRan] = useState(true);
   const [universe, setUniverse] = useState("S&P 500");
   const [factor, setFactor] = useState("Multi-Factor");
   const [startYear, setStartYear] = useState("2020");

@@ -189,54 +189,6 @@ function formatTradeDate(value: string, range: RangeKey): string {
   });
 }
 
-function formatAxisLabel(value: string, range: RangeKey): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-
-  if (range === "1D") {
-    // 分钟级: 只显示 HH:MM
-    return parsed.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
-
-  if (range === "1W") {
-    // 小时级: 显示 M/D H:00
-    const m = parsed.getMonth() + 1;
-    const d = parsed.getDate();
-    const h = parsed.getHours().toString().padStart(2, "0");
-    return `${m}/${d} ${h}:00`;
-  }
-
-  if (range === "1M") {
-    // 小时级: 显示 M/D H:00
-    const m = parsed.getMonth() + 1;
-    const d = parsed.getDate();
-    const h = parsed.getHours().toString().padStart(2, "0");
-    return `${m}/${d} ${h}:00`;
-  }
-
-  // 3M+ 日线: 显示 Mon D
-  return parsed.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function selectAxisLabelIndices(count: number, maxLabels: number): number[] {
-  if (count <= 0) return [];
-  if (count <= maxLabels) return Array.from({ length: count }, (_, index) => index);
-
-  const step = (count - 1) / Math.max(maxLabels - 1, 1);
-  const indices = new Set<number>();
-  for (let labelIndex = 0; labelIndex < maxLabels; labelIndex += 1) {
-    indices.add(Math.round(labelIndex * step));
-  }
-  return Array.from(indices).sort((left, right) => left - right);
-}
-
 function easeOutCubic(progress: number): number {
   return 1 - Math.pow(1 - progress, 3);
 }
@@ -314,7 +266,6 @@ const KLineChart = ({
 }: KLineChartProps) => {
   const chartAreaRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fallbackCandlesRef = useRef<Candle[] | null>(null);
   const rangeSelectorRef = useRef<HTMLDivElement>(null);
   const rangeButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [selectedRange, setSelectedRange] = useState<RangeKey>(defaultRange);
@@ -332,6 +283,7 @@ const KLineChart = ({
   const intradaySignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on prop change
     setSelectedRange(defaultRange);
     setHoverState(null);
   }, [defaultRange, ticker]);
@@ -356,6 +308,7 @@ const KLineChart = ({
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear hover on range change
     setHoverState(null);
   }, [selectedRange]);
 
@@ -396,14 +349,15 @@ const KLineChart = ({
     };
   }, [selectedRange]);
 
-  if (!fallbackCandlesRef.current) {
-    fallbackCandlesRef.current = generateCandles(60);
-  }
+  const fallbackCandlesData = useMemo(() => generateCandles(60), []);
 
   const selectedDays = getDaysForRange(selectedRange);
   const intradayRequest = ticker ? buildIntradayRequestConfig(ticker, selectedRange) : null;
   const isIntradayMode = intradayRequest?.isIntraday ?? false;
-  const fallbackCandles = !ticker && !candles?.length ? fallbackCandlesRef.current ?? [] : [];
+  const fallbackCandles = useMemo(
+    () => (!ticker && !candles?.length ? fallbackCandlesData : []),
+    [ticker, candles, fallbackCandlesData],
+  );
 
   const pricesQuery = useQuery<StockPricesResponse, Error>({
     queryKey: ["klineChartPrices", ticker, selectedDays],
@@ -432,11 +386,15 @@ const KLineChart = ({
     [intradayQuery.data, isIntradayMode, pricesQuery.data],
   );
   const activeQuery = isIntradayMode ? intradayQuery : pricesQuery;
-  const data = liveCandles.length > 0 ? liveCandles : (candles?.length ? candles : (ticker ? [] : fallbackCandles));
+  const data = useMemo(
+    () => (liveCandles.length > 0 ? liveCandles : (candles?.length ? candles : (ticker ? [] : fallbackCandles))),
+    [liveCandles, candles, ticker, fallbackCandles],
+  );
 
   useEffect(() => {
     if (liveCandles.length === 0) {
       intradaySignatureRef.current = null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset flash when stream empty
       setIntradayFlash(false);
       return;
     }
@@ -459,6 +417,7 @@ const KLineChart = ({
 
   useEffect(() => {
     if (data.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- finalize reveal when no data
       setIntradayRevealProgress(1);
       return;
     }
@@ -478,7 +437,7 @@ const KLineChart = ({
 
     animationFrame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(animationFrame);
-  }, [chartMode, liveCandles.length, selectedRange, ticker]);
+  }, [chartMode, data.length, liveCandles.length, selectedRange, ticker]);
 
   const metrics = useMemo(() => {
     if (!chartWidth || data.length === 0) return null;

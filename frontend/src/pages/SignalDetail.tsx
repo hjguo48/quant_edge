@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Brain, BarChart3, Info, TrendingUp, Layers, ShieldCheck, Target, AlertCircle, TrendingDown } from "lucide-react";
 import {
@@ -193,17 +193,6 @@ function formatPercent(value?: number | null, digits = 2): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
   const prefix = value > 0 ? "+" : "";
   return `${prefix}${value.toFixed(digits)}%`;
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) return "—";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 function formatMetricLabel(metric: string): string {
@@ -412,8 +401,6 @@ const SignalDetail = ({
     .sort((left, right) => Math.abs(right.value) - Math.abs(left.value))
     .slice(0, 10)
     .reverse();
-
-  const hasSectionError = fundamentalsQuery.isError || technicalsQuery.isError;
 
   if (detailQuery.isError) {
     return (

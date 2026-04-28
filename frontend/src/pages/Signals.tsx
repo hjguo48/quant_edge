@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Filter, Search, SortDesc, SortAsc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Star } from "lucide-react";
+import { Search, SortDesc, SortAsc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import SignalRow from "../components/SignalRow";
 import { fetchApi } from "../hooks/useApi";
-import { getSectorColor, PRIMARY_SECTORS } from "../constants/sectorColors";
+import { PRIMARY_SECTORS } from "../constants/sectorColors";
 
 interface Prediction {
   ticker: string;
@@ -48,7 +48,16 @@ function hashTickerSeed(value: string): number {
   return hash;
 }
 
-const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?: (ticker: string) => void }) => {
+type Tier = "strong" | "long" | "watch" | "buffer";
+
+function computeTier(score: number, percentile: number): Tier {
+  if (score <= 0) return "buffer";
+  if (percentile >= 75) return "strong";
+  if (percentile < 25) return "watch";
+  return "long";
+}
+
+const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void }) => {
   const [search, setSearch] = useState("");
   const [direction, setDirection] = useState("All");
   const [sectorFilter, setSectorFilter] = useState("All Sectors");
@@ -100,15 +109,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
     enabled: !!apiPath || !showWatchlist,
   });
 
-  const predictions = data?.predictions || [];
-
-  type Tier = "strong" | "long" | "watch" | "buffer";
-  const computeTier = (score: number, percentile: number): Tier => {
-    if (score <= 0) return "buffer";
-    if (percentile >= 75) return "strong";
-    if (percentile < 25) return "watch";
-    return "long";
-  };
+  const predictions = useMemo(() => data?.predictions ?? [], [data?.predictions]);
 
   const signalRows = useMemo(() => {
     return predictions.map((prediction) => {
@@ -151,13 +152,16 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
       });
   }, [signalRows, search, direction, sort, sectorFilter]);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
+  const filterKey = `${search}|${direction}|${sort}|${sectorFilter}|${showWatchlist}`;
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (filterKey !== lastFilterKey) {
+    setLastFilterKey(filterKey);
     setPage(1);
-  }, [search, direction, sort, sectorFilter, showWatchlist]);
+  }
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const tierCounts = useMemo(() => {
     const counts = { strong: 0, long: 0, watch: 0, buffer: 0 };
@@ -352,7 +356,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
             <button onClick={() => refetch()} className="mt-6 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-widest shadow-lg">Retry Connection</button>
           </div>
         ) : paginated.length > 0 ? (
-          paginated.map((s, i) => (
+          paginated.map((s) => (
             <div key={s.ticker} className="flex items-center group/row border-b border-white/[0.03] last:border-0 hover:bg-accent/50 transition-colors">
               <button
                 onClick={(e) => { e.stopPropagation(); toggleWatchlist(s.ticker); }}
@@ -371,7 +375,7 @@ const Signals = ({ onSelectSignal = (_ticker: string) => {} }: { onSelectSignal?
                   recentPrices={s.recentPrices}
                   recentExcessCum={s.recentExcessCum}
                   sector={s.sector}
-                  onClick={() => onSelectSignal(s.ticker)}
+                  onClick={() => onSelectSignal?.(s.ticker)}
                 />
               </div>
             </div>

@@ -1,12 +1,20 @@
+import { lazy, Suspense } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
-import Dashboard from "./Dashboard";
-import Signals from "./Signals";
-import SignalDetail from "./SignalDetail";
-import Portfolio from "./Portfolio";
-import Backtest from "./Backtest";
-import GreyscaleMonitor from "./GreyscaleMonitor";
+
+const Dashboard = lazy(() => import("./Dashboard"));
+const Signals = lazy(() => import("./Signals"));
+const SignalDetail = lazy(() => import("./SignalDetail"));
+const Portfolio = lazy(() => import("./Portfolio"));
+const Backtest = lazy(() => import("./Backtest"));
+const GreyscaleMonitor = lazy(() => import("./GreyscaleMonitor"));
+
+const PageFallback = () => (
+  <div className="flex-1 flex items-center justify-center text-xs font-medium uppercase tracking-widest text-muted-foreground">
+    Loading...
+  </div>
+);
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   dashboard: { title: "Dashboard", subtitle: "Model Output · Not Investment Advice" },
@@ -87,7 +95,7 @@ const Index = () => {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar title={meta.title} subtitle={meta.subtitle} />
         <div className="flex-1 overflow-hidden flex flex-col">
-          {renderPage()}
+          <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
         </div>
       </div>
     </div>

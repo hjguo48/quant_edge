@@ -134,7 +134,7 @@ interface FlyingTickerState {
   endY: number;
 }
 
-const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ value?: number; payload?: { date?: string | number; price?: number; volume?: number } }> }) => {
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload;
   const rawDate = point?.date ? new Date(point.date) : null;
@@ -150,7 +150,7 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] 
     <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-custom">
       <p className="text-xs text-muted-foreground font-medium">{formattedDate}</p>
       <p className="text-sm font-bold text-bull font-mono">
-        ${payload[0].value.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+        ${(payload[0].value ?? 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}
       </p>
     </div>
   );
@@ -277,6 +277,7 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
   // Default chart to top signal's ticker once loaded
   useEffect(() => {
     if (topSignals.length > 0 && chartTicker === "SPY" && !activeTicker) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time bootstrap from async data
       setChartTicker(topSignals[0].ticker);
       setActiveTicker(topSignals[0].ticker);
     }

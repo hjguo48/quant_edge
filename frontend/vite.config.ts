@@ -90,5 +90,19 @@ export default defineConfig({
       }
     },
     host: '0.0.0.0'
-  }
+  },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'recharts': ['recharts'],
+          'react-query': ['@tanstack/react-query'],
+          'forms': ['react-hook-form', 'zod', '@hookform/resolvers'],
+          'date': ['date-fns', 'react-day-picker'],
+        },
+      },
+    },
+  },
 });
