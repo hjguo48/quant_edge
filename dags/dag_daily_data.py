@@ -1176,7 +1176,8 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
         sync_feature_store=True,
         clear_store_range_flag=True,
     )
-    latest_feature_date_after = export_summary["end_date"]
+    latest_feature_date_after = export_summary.get("end_date")
+    slice_summaries = export_summary.get("slice_summaries") or []
     return _result(
         "update_features_cache",
         "ok",
@@ -1187,12 +1188,12 @@ def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> 
         latest_feature_date_after=latest_feature_date_after,
         feature_path=str(target_path),
         pipeline_class=pipeline.__class__.__name__,
-        batch_id=export_summary["slice_summaries"][-1]["batch_id"] if export_summary["slice_summaries"] else None,
+        batch_id=slice_summaries[-1].get("batch_id") if slice_summaries else None,
         stale_cache_gap_days=stale_cache_gap_days,
         reseeded_recent_window=False,
-        feature_rows_generated=int(export_summary["feature_rows_total"]),
-        feature_store_rows_saved=int(export_summary["feature_store_rows_saved"]),
-        cache_rows_after=int(export_summary["parquet_rows_total"]),
+        feature_rows_generated=int(export_summary.get("feature_rows_total", 0) or 0),
+        feature_store_rows_saved=int(export_summary.get("feature_store_rows_saved", 0) or 0),
+        cache_rows_after=int(export_summary.get("parquet_rows_total", 0) or 0),
     )
 
 
