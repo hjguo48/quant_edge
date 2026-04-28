@@ -118,11 +118,20 @@ def sector_map() -> dict[str, str | None]:
 
 
 class FakeResult:
-    def __init__(self, rows: list[tuple[str, str | None, str | None]]) -> None:
-        self._rows = rows
+    def __init__(
+        self,
+        rows: list[tuple] | None = None,
+        *,
+        scalar_value: object | None = None,
+    ) -> None:
+        self._rows = rows or []
+        self._scalar_value = scalar_value
 
-    def all(self) -> list[tuple[str, str | None, str | None]]:
+    def all(self) -> list[tuple]:
         return self._rows
+
+    def scalar(self) -> object | None:
+        return self._scalar_value
 
 
 class FakeAsyncSession:
@@ -130,8 +139,20 @@ class FakeAsyncSession:
         self._sector_map = sector_map
         self.statements: list[object] = []
 
-    async def execute(self, statement: object) -> FakeResult:
+    async def execute(self, statement: object, params: object | None = None) -> FakeResult:
         self.statements.append(statement)
+        sql = str(statement)
+        if "max(stock_prices.trade_date)" in sql.lower():
+            return FakeResult(scalar_value="2026-04-10")
+        if "WITH ranked AS" in sql:
+            return FakeResult(
+                [
+                    ("BKNG", "2026-04-09", 95.0),
+                    ("BKNG", "2026-04-10", 100.0),
+                    ("SPY", "2026-04-09", 395.0),
+                    ("SPY", "2026-04-10", 400.0),
+                ],
+            )
         return FakeResult(
             [
                 (ticker, sector, f"{ticker} Inc." if sector is not None else None)
@@ -190,8 +211,9 @@ def test_get_latest_predictions(client: TestClient, db_session: FakeAsyncSession
     assert payload["predictions"][0]["sector"] == "Consumer Discretionary"
     assert payload["predictions"][0]["company_name"] == "BKNG Inc."
     assert payload["predictions"][-1]["sector"] is None
-    assert len(db_session.statements) == 1
-    assert " IN " in str(db_session.statements[0]).upper()
+    assert len(db_session.statements) == 2
+    assert "stocks.ticker" in str(db_session.statements[0]).lower()
+    assert "WITH ranked AS" in str(db_session.statements[1])
 
 
 def test_get_latest_predictions_with_top_n(client: TestClient) -> None:
@@ -203,6 +225,26 @@ def test_get_latest_predictions_with_top_n(client: TestClient) -> None:
         "Consumer Discretionary",
         "Health Care",
     ]
+
+
+def test_get_latest_predictions_anchors_recent_prices_to_signal_date(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_recent_price_series(db, tickers, n_days=20, anchor_date=None):  # type: ignore[no-untyped-def]
+        captured["tickers"] = list(tickers)
+        captured["n_days"] = n_days
+        captured["anchor_date"] = anchor_date
+        return {ticker: {"prices": [], "excess_cum": []} for ticker in tickers}
+
+    monkeypatch.setattr(predictions_router, "_get_recent_price_series", fake_recent_price_series)
+
+    response = client.get("/api/predictions/latest")
+
+    assert response.status_code == 200
+    assert captured["anchor_date"] == predictions_router.date_type.fromisoformat("2026-04-10")
 
 
 def test_get_ticker_prediction(client: TestClient) -> None:

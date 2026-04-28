@@ -92,6 +92,7 @@ DEFAULT_MIN_SIGNAL_CROSS_SECTION = 50
 DEFAULT_SIGNAL_LOOKBACK_POINTS = 12
 DEFAULT_LOW_VIX_THRESHOLD = 20.0
 DEFAULT_HIGH_VIX_THRESHOLD = 30.0
+DEFAULT_LAYER1_PER_FEATURE_NULL_RATE_WARNING = 0.20
 MODEL_NAMES = ("ridge", "xgboost", "lightgbm")
 FUSION_NAME = "fusion"
 WEEK_REPORT_PATTERN = re.compile(r"week_(\d+)\.json$")
@@ -255,10 +256,15 @@ def main(argv: list[str] | None = None) -> int:
     if current_features_long.empty:
         raise RuntimeError(f"No live features were produced for {live_trade_date.isoformat()}.")
 
-    current_feature_matrix = build_feature_matrix(
+    current_feature_matrix_raw = build_raw_feature_matrix(
         features_long=current_features_long,
         retained_features=retained_features,
     )
+    layer1_diagnostics = compute_layer1_diagnostics(
+        raw_feature_matrix=current_feature_matrix_raw,
+        warn_threshold=DEFAULT_LAYER1_PER_FEATURE_NULL_RATE_WARNING,
+    )
+    current_feature_matrix = fill_feature_matrix(current_feature_matrix_raw)
     if current_feature_matrix.empty:
         raise RuntimeError("Current greyscale feature matrix is empty after alignment.")
     historical_feature_matrix = load_reference_feature_matrix(
@@ -375,6 +381,9 @@ def main(argv: list[str] | None = None) -> int:
         error_count=0,
         consecutive_failures=0,
         feature_lookback_days=args.feature_drift_lookback_days,
+    )
+    layer1_warning_codes = (
+        ["layer1_per_feature_dropout"] if layer1_diagnostics["warning_triggered"] else []
     )
 
     signal_state = build_signal_risk_state(
@@ -609,7 +618,11 @@ def main(argv: list[str] | None = None) -> int:
             "layer1_data": {
                 "pass": bool(not data_report.halt_pipeline),
                 "severity": data_report.overall_severity.value,
-                "report": data_report.to_dict(),
+                "warning_codes": layer1_warning_codes,
+                "report": {
+                    **data_report.to_dict(),
+                    "per_feature_dropout": layer1_diagnostics,
+                },
             },
             "layer2_signal": signal_state,
             "layer3_portfolio": {
@@ -640,6 +653,7 @@ def main(argv: list[str] | None = None) -> int:
             "cash_weight_after_risk": float(constrained.cash_weight),
         },
         "live_universe_diagnostics": live_universe_diagnostics,
+        "layer1_diagnostics": json_safe(layer1_diagnostics),
         "layer3_shadow_diagnostics": json_safe(layer3_shadow_diagnostics),
         "feature_drift_psi": json_safe(psi_report_data) if psi_report_data else None,
         "notes": [
@@ -783,13 +797,65 @@ def apply_universe_filters(
     return selected
 
 
-def build_feature_matrix(*, features_long: pd.DataFrame, retained_features: list[str]) -> pd.DataFrame:
+def build_raw_feature_matrix(*, features_long: pd.DataFrame, retained_features: list[str]) -> pd.DataFrame:
     filtered = features_long.loc[
         features_long["feature_name"].astype(str).isin(retained_features),
         ["ticker", "trade_date", "feature_name", "feature_value"],
     ].copy()
-    matrix = long_to_feature_matrix(filtered, retained_features).reindex(columns=retained_features)
-    return fill_feature_matrix(matrix)
+    return long_to_feature_matrix(filtered, retained_features).reindex(columns=retained_features)
+
+
+def build_feature_matrix(*, features_long: pd.DataFrame, retained_features: list[str]) -> pd.DataFrame:
+    return fill_feature_matrix(
+        build_raw_feature_matrix(features_long=features_long, retained_features=retained_features)
+    )
+
+
+def compute_layer1_diagnostics(
+    *,
+    raw_feature_matrix: pd.DataFrame,
+    warn_threshold: float = DEFAULT_LAYER1_PER_FEATURE_NULL_RATE_WARNING,
+) -> dict[str, Any]:
+    if raw_feature_matrix.empty:
+        return {
+            "warning_triggered": False,
+            "warning_name": None,
+            "warn_threshold": float(warn_threshold),
+            "latest_trade_date": None,
+            "max_null_rate": 0.0,
+            "features_over_threshold": {},
+            "per_feature_null_rates": {},
+        }
+
+    latest_trade_date: str | None = None
+    current = raw_feature_matrix.copy()
+    if isinstance(current.index, pd.MultiIndex) and "trade_date" in current.index.names:
+        trade_dates = pd.DatetimeIndex(pd.to_datetime(current.index.get_level_values("trade_date")))
+        latest = trade_dates.max()
+        latest_trade_date = latest.date().isoformat()
+        current = current.loc[trade_dates == latest]
+        current = current.droplevel("trade_date")
+
+    null_rates = current.isna().mean(axis=0).astype(float).sort_values(ascending=False)
+    per_feature_null_rates = {
+        str(name): float(rate)
+        for name, rate in null_rates.items()
+    }
+    features_over_threshold = {
+        str(name): float(rate)
+        for name, rate in null_rates.items()
+        if float(rate) > float(warn_threshold)
+    }
+
+    return {
+        "warning_triggered": bool(features_over_threshold),
+        "warning_name": "layer1_per_feature_dropout" if features_over_threshold else None,
+        "warn_threshold": float(warn_threshold),
+        "latest_trade_date": latest_trade_date,
+        "max_null_rate": float(null_rates.iloc[0]) if not null_rates.empty else 0.0,
+        "features_over_threshold": features_over_threshold,
+        "per_feature_null_rates": per_feature_null_rates,
+    }
 
 
 def load_reference_feature_matrix(

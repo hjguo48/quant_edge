@@ -30,6 +30,8 @@ import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+from src.utils.io import write_json_atomic
+
 REPO_ROOT = Path("/home/jiahao/quant_edge")
 REPORT_DIR = REPO_ROOT / "data" / "reports" / "greyscale"
 LAST_SUCCESS = REPORT_DIR / "last_success.json"
@@ -133,7 +135,7 @@ def load_state() -> dict:
 
 
 def save_state(state: dict) -> None:
-    WATCHDOG_STATE.write_text(json.dumps(state, indent=2))
+    write_json_atomic(WATCHDOG_STATE, state)
 
 
 def send_alert(severity: str, subject: str, body: str) -> bool:

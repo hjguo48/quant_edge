@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,47 @@ class _FakeSession:
 
     def execute(self, _statement) -> _FakeExecuteResult:
         return _FakeExecuteResult(self._values)
+
+
+class _FakeMappingResult:
+    def __init__(self, rows: list[dict[str, object]]) -> None:
+        self._rows = rows
+
+    def mappings(self) -> "_FakeMappingResult":
+        return self
+
+    def all(self) -> list[dict[str, object]]:
+        return list(self._rows)
+
+    def first(self) -> dict[str, object] | None:
+        return self._rows[0] if self._rows else None
+
+
+class _FakeRecencySession:
+    def __init__(
+        self,
+        *,
+        latest_by_feature: dict[str, object],
+        coverage_by_feature: dict[str, int],
+    ) -> None:
+        self._latest_by_feature = latest_by_feature
+        self._coverage_by_feature = coverage_by_feature
+
+    def execute(self, statement, params=None):  # type: ignore[no-untyped-def]
+        sql = str(statement)
+        if "MAX(calc_date)" in sql:
+            return _FakeMappingResult(
+                [
+                    {"feature_name": feature_name, "max_calc": calc_date}
+                    for feature_name, calc_date in self._latest_by_feature.items()
+                ]
+            )
+        if "COUNT(DISTINCT ticker)" in sql:
+            feature_name = (params or {}).get("f")
+            return _FakeMappingResult(
+                [{"cov": int(self._coverage_by_feature.get(str(feature_name), 0))}]
+            )
+        raise AssertionError(f"Unexpected SQL in test fake: {sql}")
 
 
 def _write_bundle(
@@ -116,3 +158,30 @@ def test_metadata_roundtrip(tmp_path: Path) -> None:
     assert bundle["feature_fingerprint"] == result.metadata["computed_fingerprint"]
     assert result.metadata["generator_git_hash"] == "deadbeef"
     assert result.metadata["version"] == "v5_no_analyst"
+
+
+def test_validate_recency_treats_latest_all_null_feature_as_sparse(tmp_path: Path) -> None:
+    bundle_path = _write_bundle(
+        tmp_path,
+        required_features=["curve_inverted_x_growth", "vol_60d"],
+    )
+    validator = BundleValidator(bundle_path)
+
+    result = validator.validate_recency(
+        _FakeRecencySession(
+            latest_by_feature={
+                "curve_inverted_x_growth": date(2026, 4, 28),
+                "vol_60d": date(2026, 4, 28),
+            },
+            coverage_by_feature={
+                "curve_inverted_x_growth": 0,   # latest date rows all NULL
+                "vol_60d": 150,
+            },
+        ),
+        max_stale_days=7,
+        min_coverage_count=100,
+    )
+
+    assert result.passed is False
+    assert result.stale_features == []
+    assert result.sparse_features == ["curve_inverted_x_growth"]

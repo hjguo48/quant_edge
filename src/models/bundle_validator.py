@@ -160,7 +160,8 @@ class BundleValidator:
             cov_row = feature_store_session.execute(
                 text(
                     "SELECT COUNT(DISTINCT ticker) AS cov "
-                    "FROM feature_store WHERE feature_name = :f AND calc_date = :d"
+                    "FROM feature_store "
+                    "WHERE feature_name = :f AND calc_date = :d AND feature_value IS NOT NULL"
                 ),
                 {"f": feat, "d": max_calc},
             ).mappings().first()

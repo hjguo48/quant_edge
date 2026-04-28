@@ -223,10 +223,12 @@ async def get_latest_predictions(
 
     pred_tickers = [item["ticker"] for item in predictions]
     stock_info = await _get_stock_info(db, pred_tickers)
-    price_series = await _get_recent_price_series(db, pred_tickers)
+    signal_date_str = (report or {}).get("live_outputs", {}).get("signal_date")
+    anchor = date_type.fromisoformat(signal_date_str) if signal_date_str else None
+    price_series = await _get_recent_price_series(db, pred_tickers, anchor_date=anchor)
 
     return PredictionResponse(
-        signal_date=report.get("live_outputs", {}).get("signal_date") if report else None,
+        signal_date=signal_date_str,
         week_number=report.get("week_number") if report else None,
         universe_size=report.get("db_state", {}).get("stock_universe_size") if report else None,
         predictions=[
