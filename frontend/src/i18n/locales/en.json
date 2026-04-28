@@ -158,23 +158,103 @@
   },
   "signalDetail": {
     "back": "Back to Signals",
-    "modelOutput": "Model Output",
-    "rank": "Rank",
-    "totalUniverse": "Total Universe",
+    "loadError": "Load Error",
+    "scoreLabel": "Score",
+    "rankShort": "Rank #{{rank}} · Top {{pct}}%",
+    "noActiveSignal": "No Active Signal",
+    "complianceNote": "Model Verified Outcome · Institutional use only",
     "percentile": "Percentile",
-    "fusionScore": "Fusion Score",
-    "factorContribution": {
-      "title": "Factor Contribution (SHAP)",
-      "subtitle": "Top features by absolute contribution to prediction"
+    "confidenceLevel": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
     },
-    "expectedReturn": {
-      "title": "Expected Return Analysis",
-      "subtitle": "Bootstrap confidence interval ({{ci}}%)"
+    "consensusPct": "{{value}}% Consensus",
+    "tabs": {
+      "overview": "Overview",
+      "factors": "Factors",
+      "fundamentals": "Fundamentals",
+      "technicals": "Technicals",
+      "history": "History"
     },
-    "fundamentals": "Fundamentals",
-    "technicals": "Technicals",
-    "history": "Signal History",
-    "noData": "Data unavailable for this section"
+    "stats": {
+      "marketCap": "Market Cap",
+      "sessionMove": "Session move",
+      "rsi14": "RSI (14)",
+      "rsiNeutral": "vs. neutral 50",
+      "sma200": "SMA 200",
+      "smaVsClose": "vs. last close",
+      "bbPosition": "BB Position",
+      "bbBand": "inside 20D band"
+    },
+    "expectedPerformance": {
+      "title": "Expected Performance",
+      "quintile": "Quintile {{n}}",
+      "annualizedExcess": "Annualized Excess Return",
+      "sharpeRatio": "Sharpe Ratio",
+      "disclaimer": "Based on historical model backtest performance. Past results do not guarantee future returns. Not investment advice.",
+      "statisticalSource": "Statistical Source",
+      "bootstrapCount": "10K block bootstrap · {{n}} obs"
+    },
+    "signalHistory": {
+      "title": "Model Signal History",
+      "subtitle": "Historical fusion scores across previous signal cycles"
+    },
+    "technical": {
+      "title": "Technical Snapshot",
+      "subtitle": "Momentum and trend indicators",
+      "momentum": "Momentum",
+      "volatility": "Volatility",
+      "histogram": "Histogram",
+      "sma20": "SMA 20"
+    },
+    "fundamental": {
+      "title": "Fundamental Composition",
+      "subtitle": "Top financial metrics ranked by absolute magnitude",
+      "empty": "No fundamental metrics are available."
+    },
+    "financialMatrix": {
+      "title": "Financial Matrix",
+      "subtitle": "Complete metric inventory"
+    },
+    "factors": {
+      "empty": "No Factor Attribution",
+      "emptyDetail": "Factor-level decomposition is currently only available for tickers within the high-conviction signal universe.",
+      "shapTitle": "Feature Contribution (SHAP)",
+      "shapSubtitle": "Top 15 attributes impacting the current model cycle",
+      "reference": "REFERENCE: {{date}}",
+      "running": "Running attribution engine...",
+      "shapPending": "SHAP attribution pending",
+      "shapPendingDetail": "Detailed factor weights are updated periodically",
+      "feedError": "Attribution Feed Error"
+    },
+    "consensus": {
+      "title": "Architecture Consensus",
+      "subtitle": "Agreement across specialized model learners",
+      "learner": "Learner",
+      "influence": "Influence",
+      "contribution": "Contribution",
+      "integratedFusion": "Integrated Fusion"
+    },
+    "predictiveLogic": {
+      "title": "Predictive Logic",
+      "drivenByPrefix": "The current signal for ",
+      "drivenByMid": " is primarily driven by the ",
+      "drivenBySuffix": " factor.",
+      "coreModel": "core model",
+      "consensusLabel": "Architecture consensus is",
+      "outputLabel": "Model output is",
+      "positivelyBiased": "positively biased",
+      "defensivelyBiased": "defensively biased",
+      "bufferHeld": "buffer-held (signal weakening)",
+      "conviction": "Model Conviction",
+      "stability": "Stability"
+    },
+    "integration": {
+      "title": "{{tab}} Integration",
+      "detail": "The {{tab}} engine is undergoing final stress testing and will be operational in the Phase 4 production release.",
+      "status": "Status: Phase 4 Milestone"
+    }
   },
   "portfolio": {
     "performanceTracking": {

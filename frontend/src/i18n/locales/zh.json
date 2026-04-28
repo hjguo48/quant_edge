@@ -158,23 +158,103 @@
   },
   "signalDetail": {
     "back": "返回信号流",
-    "modelOutput": "模型输出",
-    "rank": "排名",
-    "totalUniverse": "总股票池",
+    "loadError": "加载失败",
+    "scoreLabel": "分数",
+    "rankShort": "排名 #{{rank}} · Top {{pct}}%",
+    "noActiveSignal": "无活跃信号",
+    "complianceNote": "模型验证结果 · 仅供机构使用",
     "percentile": "百分位",
-    "fusionScore": "融合分",
-    "factorContribution": {
-      "title": "因子贡献 (SHAP)",
-      "subtitle": "按对预测的绝对贡献排序的 top 特征"
+    "confidenceLevel": {
+      "high": "高置信",
+      "medium": "中置信",
+      "low": "低置信"
     },
-    "expectedReturn": {
-      "title": "预期收益分析",
-      "subtitle": "Bootstrap 置信区间 ({{ci}}%)"
+    "consensusPct": "{{value}}% 一致度",
+    "tabs": {
+      "overview": "概览",
+      "factors": "因子",
+      "fundamentals": "基本面",
+      "technicals": "技术面",
+      "history": "历史"
     },
-    "fundamentals": "基本面",
-    "technicals": "技术面",
-    "history": "信号历史",
-    "noData": "本节数据暂无"
+    "stats": {
+      "marketCap": "市值",
+      "sessionMove": "当日变动",
+      "rsi14": "RSI (14)",
+      "rsiNeutral": "对比 中性 50",
+      "sma200": "SMA 200",
+      "smaVsClose": "对比 上次收盘",
+      "bbPosition": "布林带位置",
+      "bbBand": "在 20 日通道内"
+    },
+    "expectedPerformance": {
+      "title": "预期表现",
+      "quintile": "第 {{n}} 分位",
+      "annualizedExcess": "年化超额收益",
+      "sharpeRatio": "夏普比率",
+      "disclaimer": "基于历史模型回测表现。过往业绩不代表未来收益。非投资建议。",
+      "statisticalSource": "统计来源",
+      "bootstrapCount": "1 万次 block bootstrap · {{n}} 个观测"
+    },
+    "signalHistory": {
+      "title": "模型信号历史",
+      "subtitle": "过往周期的融合分历史"
+    },
+    "technical": {
+      "title": "技术快照",
+      "subtitle": "动量与趋势指标",
+      "momentum": "动量",
+      "volatility": "波动率",
+      "histogram": "柱状图",
+      "sma20": "SMA 20"
+    },
+    "fundamental": {
+      "title": "基本面构成",
+      "subtitle": "按绝对值排序的财务指标",
+      "empty": "暂无基本面指标。"
+    },
+    "financialMatrix": {
+      "title": "财务矩阵",
+      "subtitle": "全部指标列表"
+    },
+    "factors": {
+      "empty": "无因子归因",
+      "emptyDetail": "因子级别分解目前仅对高信心信号池中的标的可用。",
+      "shapTitle": "特征贡献 (SHAP)",
+      "shapSubtitle": "影响本期模型的 top 15 特征",
+      "reference": "参考: {{date}}",
+      "running": "归因引擎运行中…",
+      "shapPending": "SHAP 归因待算",
+      "shapPendingDetail": "详细因子权重周期性更新",
+      "feedError": "归因数据流错误"
+    },
+    "consensus": {
+      "title": "架构共识",
+      "subtitle": "多个专业模型学习器之间的一致度",
+      "learner": "学习器",
+      "influence": "权重",
+      "contribution": "贡献",
+      "integratedFusion": "融合输出"
+    },
+    "predictiveLogic": {
+      "title": "预测逻辑",
+      "drivenByPrefix": "当前 ",
+      "drivenByMid": " 信号主要由 ",
+      "drivenBySuffix": " 因子驱动。",
+      "coreModel": "核心模型",
+      "consensusLabel": "架构共识为",
+      "outputLabel": "模型输出为",
+      "positivelyBiased": "积极偏向",
+      "defensivelyBiased": "防御偏向",
+      "bufferHeld": "缓冲持有（信号减弱）",
+      "conviction": "模型确信度",
+      "stability": "稳定性"
+    },
+    "integration": {
+      "title": "{{tab}} 集成",
+      "detail": "{{tab}} 引擎正在最终压测，Phase 4 生产版本上线。",
+      "status": "状态: Phase 4 里程碑"
+    }
   },
   "portfolio": {
     "performanceTracking": {

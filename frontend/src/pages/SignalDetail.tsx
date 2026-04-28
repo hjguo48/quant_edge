@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Brain, BarChart3, Info, TrendingUp, Layers, ShieldCheck, Target, AlertCircle, TrendingDown } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -241,6 +242,7 @@ function LoadingCard({ className = "", lines = 4 }: { className?: string; lines?
 }
 
 const ExpectedReturnCard = ({ data }: { data: ExpectedReturnResponse }) => {
+  const { t } = useTranslation();
   const renderRange = (label: string, estimate: number, lower: number, upper: number, isPercent: boolean = true) => {
     const min = Math.min(lower, estimate, upper);
     const max = Math.max(lower, estimate, upper);
@@ -289,28 +291,28 @@ const ExpectedReturnCard = ({ data }: { data: ExpectedReturnResponse }) => {
           <div className="p-2 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
             <Target size={18} className="text-primary" />
           </div>
-          <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Expected Performance</h3>
+          <h3 className="text-sm font-black text-foreground uppercase tracking-widest">{t("signalDetail.expectedPerformance.title")}</h3>
         </div>
         <div className="bg-muted px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] text-primary border border-primary/10 shadow-inner flex items-center gap-1 whitespace-nowrap">
-          Quintile {data.quintile}
+          {t("signalDetail.expectedPerformance.quintile", { n: data.quintile })}
         </div>
       </div>
 
       <div className="space-y-10 pt-2 pb-4 px-1">
-        {renderRange("Annualized Excess Return", data.annualized_excess.estimate, data.annualized_excess.ci_lower, data.annualized_excess.ci_upper)}
-        {renderRange("Sharpe Ratio", data.sharpe.estimate, data.sharpe.ci_lower, data.sharpe.ci_upper, false)}
+        {renderRange(t("signalDetail.expectedPerformance.annualizedExcess"), data.annualized_excess.estimate, data.annualized_excess.ci_lower, data.annualized_excess.ci_upper)}
+        {renderRange(t("signalDetail.expectedPerformance.sharpeRatio"), data.sharpe.estimate, data.sharpe.ci_lower, data.sharpe.ci_upper, false)}
       </div>
 
       <div className="pt-5 space-y-4 border-t border-white/5">
         <div className="flex items-start gap-3">
           <ShieldCheck size={14} className="text-primary mt-0.5 opacity-40" />
           <p className="text-[9px] text-muted-foreground leading-relaxed font-medium uppercase tracking-wider opacity-70">
-            Based on historical model backtest performance. Past results do not guarantee future returns. Not investment advice.
+            {t("signalDetail.expectedPerformance.disclaimer")}
           </p>
         </div>
         <div className="flex items-center justify-between px-1">
-          <span className="text-[8px] text-muted-foreground/40 font-black uppercase tracking-widest">Statistical Source</span>
-          <span className="text-[9px] text-muted-foreground/60 font-mono">10K block bootstrap · {data.n_observations} obs</span>
+          <span className="text-[8px] text-muted-foreground/40 font-black uppercase tracking-widest">{t("signalDetail.expectedPerformance.statisticalSource")}</span>
+          <span className="text-[9px] text-muted-foreground/60 font-mono">{t("signalDetail.expectedPerformance.bootstrapCount", { n: data.n_observations })}</span>
         </div>
       </div>
     </div>
@@ -321,6 +323,7 @@ const SignalDetail = ({
   ticker = "AAPL",
   onBack = () => {},
 }: SignalDetailProps) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const normalizedTicker = (ticker || "AAPL").toUpperCase();
 
@@ -411,14 +414,14 @@ const SignalDetail = ({
             className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all group mt-0.5"
           >
             <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
-            Return to Signals
+            {t("signalDetail.back")}
           </button>
         </div>
 
         <div className="bg-card rounded-2xl border border-border p-8 fade-in-up stagger-1 shadow-2xl">
           <div className="flex items-center gap-3 mb-4">
             <AlertCircle size={24} className="text-bear" />
-            <h2 className="text-xl font-black text-foreground uppercase tracking-widest">Load Error</h2>
+            <h2 className="text-xl font-black text-foreground uppercase tracking-widest">{t("signalDetail.loadError")}</h2>
           </div>
           <p className="text-sm text-muted-foreground font-medium">{getErrorMessage(detailQuery.error)}</p>
         </div>
@@ -428,21 +431,21 @@ const SignalDetail = ({
 
   const stats = [
     {
-      label: "Market Cap",
+      label: t("signalDetail.stats.marketCap"),
       value: formatCompactCurrency(detail?.market_cap),
       change: latestPrice?.change_pct ?? 0,
-      changeLabel: "Session move",
+      changeLabel: t("signalDetail.stats.sessionMove"),
       trend: getTrend(latestPrice?.change_pct),
     },
     {
-      label: "RSI (14)",
+      label: t("signalDetail.stats.rsi14"),
       value: formatNumber(technicals?.rsi_14, 1),
       change: typeof technicals?.rsi_14 === "number" ? technicals.rsi_14 - 50 : 0,
-      changeLabel: "vs. neutral 50",
+      changeLabel: t("signalDetail.stats.rsiNeutral"),
       trend: getTrend(typeof technicals?.rsi_14 === "number" ? technicals.rsi_14 - 50 : 0),
     },
     {
-      label: "SMA 200",
+      label: t("signalDetail.stats.sma200"),
       value: formatCurrency(technicals?.sma_200),
       change:
         typeof latestPrice?.close === "number" &&
@@ -450,7 +453,7 @@ const SignalDetail = ({
         technicals.sma_200 !== 0
           ? ((latestPrice.close / technicals.sma_200) - 1) * 100
           : 0,
-      changeLabel: "vs. last close",
+      changeLabel: t("signalDetail.stats.smaVsClose"),
       trend:
         typeof latestPrice?.close === "number" &&
         typeof technicals?.sma_200 === "number" &&
@@ -459,13 +462,13 @@ const SignalDetail = ({
           : "neutral",
     },
     {
-      label: "BB Position",
+      label: t("signalDetail.stats.bbPosition"),
       value: formatNumber(technicals?.bb_position, 2),
       change:
         typeof technicals?.bb_position === "number"
           ? (technicals.bb_position - 0.5) * 100
           : 0,
-      changeLabel: "inside 20D band",
+      changeLabel: t("signalDetail.stats.bbBand"),
       trend:
         typeof technicals?.bb_position === "number"
           ? getTrend(technicals.bb_position - 0.5)
@@ -508,8 +511,8 @@ const SignalDetail = ({
                   <TrendingUp size={18} className="text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Model Signal History</h3>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Historical fusion scores across previous signal cycles</p>
+                  <h3 className="text-sm font-black text-foreground uppercase tracking-widest">{t("signalDetail.signalHistory.title")}</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">{t("signalDetail.signalHistory.subtitle")}</p>
                 </div>
               </div>
               <SignalHistory history={history} height={220} />
@@ -526,8 +529,8 @@ const SignalDetail = ({
                 <Brain size={18} className="text-primary" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Technical Snapshot</h3>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Momentum and trend indicators</p>
+                <h3 className="text-sm font-black text-foreground uppercase tracking-widest">{t("signalDetail.technical.title")}</h3>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">{t("signalDetail.technical.subtitle")}</p>
               </div>
             </div>
 
@@ -542,9 +545,9 @@ const SignalDetail = ({
             ) : (
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 border-b border-white/5 pb-1.5">Momentum</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 border-b border-white/5 pb-1.5">{t("signalDetail.technical.momentum")}</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground font-medium">RSI (14)</span>
+                    <span className="text-xs text-muted-foreground font-medium">{t("signalDetail.stats.rsi14")}</span>
                     <span className={`text-xs font-black font-mono px-2 py-0.5 rounded ${getRsiColor(technicals?.rsi_14)} bg-white/5`}>
                       {formatNumber(technicals?.rsi_14, 2)}
                     </span>
@@ -554,7 +557,7 @@ const SignalDetail = ({
                     <span className="text-xs font-black font-mono text-foreground">{formatNumber(technicals?.macd, 4)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground font-medium">Histogram</span>
+                    <span className="text-xs text-muted-foreground font-medium">{t("signalDetail.technical.histogram")}</span>
                     <span className={`text-xs font-black font-mono ${getTrend(technicals?.macd_histogram) === "down" ? "text-bear" : "text-bull"}`}>
                       {formatNumber(technicals?.macd_histogram, 4)}
                     </span>
@@ -562,17 +565,17 @@ const SignalDetail = ({
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 border-b border-white/5 pb-1.5">Volatility</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 border-b border-white/5 pb-1.5">{t("signalDetail.technical.volatility")}</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground font-medium">BB Position</span>
+                    <span className="text-xs text-muted-foreground font-medium">{t("signalDetail.stats.bbPosition")}</span>
                     <span className="text-xs font-black font-mono text-foreground bg-white/5 px-2 py-0.5 rounded">{formatNumber(technicals?.bb_position, 4)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground font-medium">SMA 20</span>
+                    <span className="text-xs text-muted-foreground font-medium">{t("signalDetail.technical.sma20")}</span>
                     <span className="text-xs font-black font-mono text-foreground">{formatCurrency(technicals?.sma_20)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground font-medium">SMA 200</span>
+                    <span className="text-xs text-muted-foreground font-medium">{t("signalDetail.stats.sma200")}</span>
                     <span className="text-xs font-black font-mono text-foreground">{formatCurrency(technicals?.sma_200)}</span>
                   </div>
                 </div>
@@ -589,8 +592,8 @@ const SignalDetail = ({
               <BarChart3 size={18} className="text-primary" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Fundamental Composition</h3>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Top financial metrics ranked by absolute magnitude</p>
+              <h3 className="text-sm font-black text-foreground uppercase tracking-widest">{t("signalDetail.fundamental.title")}</h3>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">{t("signalDetail.fundamental.subtitle")}</p>
             </div>
           </div>
 
@@ -655,7 +658,7 @@ const SignalDetail = ({
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center border border-dashed border-border rounded-2xl bg-muted/5">
-              <p className="text-xs text-muted-foreground">No fundamental metrics are available.</p>
+              <p className="text-xs text-muted-foreground">{t("signalDetail.fundamental.empty")}</p>
             </div>
           )}
         </div>
@@ -667,8 +670,8 @@ const SignalDetail = ({
                 <Layers size={18} className="text-primary" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Financial Matrix</h3>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Complete metric inventory</p>
+                <h3 className="text-sm font-black text-foreground uppercase tracking-widest">{t("signalDetail.financialMatrix.title")}</h3>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">{t("signalDetail.financialMatrix.subtitle")}</p>
               </div>
             </div>
           </div>
@@ -694,7 +697,7 @@ const SignalDetail = ({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">No fundamental metrics are available.</p>
+              <p className="text-xs text-muted-foreground">{t("signalDetail.fundamental.empty")}</p>
             )}
           </div>
         </div>
@@ -710,7 +713,7 @@ const SignalDetail = ({
           className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all group mt-0.5"
         >
           <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
-          Return to Signals
+          {t("signalDetail.back")}
         </button>
       </div>
 
@@ -778,27 +781,26 @@ const SignalDetail = ({
                   : prediction.percentile >= 75 ? "strong"
                   : prediction.percentile < 25 ? "watch"
                   : "long";
-                const TIER_META = {
-                  strong: { label: "STRONG LONG", className: "tag-bull-strong" },
-                  long:   { label: "LONG",        className: "tag-bull" },
-                  watch:  { label: "WATCH LONG",  className: "tag-bull-watch" },
-                  buffer: { label: "BUFFER",      className: "tag-neutral" },
-                } as const;
-                const meta = TIER_META[tier];
+                const TIER_CLASS: Record<typeof tier, string> = {
+                  strong: "tag-bull-strong",
+                  long: "tag-bull",
+                  watch: "tag-bull-watch",
+                  buffer: "tag-neutral",
+                };
                 const hasMultiModel = Object.keys(prediction.model_scores || {}).length > 1;
                 return (
                   <>
-                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${meta.className}`}>
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${TIER_CLASS[tier]}`}>
                       <Target size={12} />
-                      {meta.label}
+                      {t(`tiers.${tier}`)}
                     </div>
 
                     <span className="text-[11px] font-bold text-foreground font-mono">
-                      Score: {prediction.fusion_score.toFixed(4)}
+                      {t("signalDetail.scoreLabel")}: {prediction.fusion_score.toFixed(4)}
                     </span>
 
                     <span className="text-[11px] font-bold text-muted-foreground/80">
-                      Rank #{prediction.rank} · Top {prediction.percentile.toFixed(1)}%
+                      {t("signalDetail.rankShort", { rank: prediction.rank, pct: prediction.percentile.toFixed(1) })}
                     </span>
 
                     {hasMultiModel && prediction.confidence != null && (
@@ -807,13 +809,13 @@ const SignalDetail = ({
                         prediction.confidence === "medium" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
                         "bg-bear/10 border-bear/20 text-bear"
                       }`}>
-                        {prediction.confidence} confidence
+                        {t(`signalDetail.confidenceLevel.${prediction.confidence}`)}
                       </div>
                     )}
 
                     {hasMultiModel && prediction.model_agreement != null && (
                       <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                        {Math.round(prediction.model_agreement * 100)}% Consensus
+                        {t("signalDetail.consensusPct", { value: Math.round(prediction.model_agreement * 100) })}
                       </span>
                     )}
                   </>
@@ -822,7 +824,7 @@ const SignalDetail = ({
             ) : isPrediction404 ? (
               <div className="flex items-center gap-2 px-2 py-0.5 rounded-lg border bg-muted/30 border-white/5 text-muted-foreground/50">
                 <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">No Active Signal</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{t("signalDetail.noActiveSignal")}</span>
               </div>
             ) : null}
           </div>
@@ -830,7 +832,7 @@ const SignalDetail = ({
           <div className="flex items-center gap-1.5 opacity-40">
             <ShieldCheck size={12} className="text-muted-foreground" />
             <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-              Model Verified Outcome · Institutional use only
+              {t("signalDetail.complianceNote")}
             </span>
           </div>
         </div>
@@ -847,7 +849,7 @@ const SignalDetail = ({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab}
+            {t(`signalDetail.tabs.${tab}`)}
           </button>
         ))}
       </div>
@@ -861,9 +863,9 @@ const SignalDetail = ({
               <div className="p-4 rounded-3xl bg-muted/50 mb-6">
                 <Brain size={64} className="text-muted-foreground opacity-20" />
               </div>
-              <h3 className="text-xl font-black text-foreground mb-3 uppercase tracking-widest">No Factor Attribution</h3>
+              <h3 className="text-xl font-black text-foreground mb-3 uppercase tracking-widest">{t("signalDetail.factors.empty")}</h3>
               <p className="text-sm text-muted-foreground max-w-md leading-relaxed font-medium">
-                Factor-level decomposition is currently only available for tickers within the high-conviction signal universe.
+                {t("signalDetail.factors.emptyDetail")}
               </p>
             </div>
           ) : (
@@ -875,31 +877,31 @@ const SignalDetail = ({
                       <Layers size={18} className="text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Feature Contribution (SHAP)</h3>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Top 15 attributes impacting the current model cycle</p>
+                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">{t("signalDetail.factors.shapTitle")}</h3>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">{t("signalDetail.factors.shapSubtitle")}</p>
                     </div>
                   </div>
                   {prediction?.signal_date && (
                     <div className="text-[10px] font-mono font-black text-muted-foreground/50 px-3 py-1.5 rounded-full bg-muted/50 border border-white/5 shadow-inner">
-                      REFERENCE: {prediction.signal_date}
+                      {t("signalDetail.factors.reference", { date: prediction.signal_date })}
                     </div>
                   )}
                 </div>
                 
                 {shapQuery.isLoading ? (
                   <div className="h-[450px] flex items-center justify-center animate-pulse bg-muted/20 rounded-2xl">
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Running attribution engine...</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground animate-pulse">{t("signalDetail.factors.running")}</p>
                   </div>
                 ) : (isShap404 || (shap && shap.features.length === 0)) ? (
                   <div className="h-[350px] flex flex-col items-center justify-center border border-dashed border-border rounded-2xl bg-muted/5">
                     <Info size={32} className="text-muted-foreground mb-4 opacity-20" />
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">SHAP attribution pending</p>
-                    <p className="text-[10px] text-muted-foreground/50 mt-2 uppercase tracking-tighter">Detailed factor weights are updated periodically</p>
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{t("signalDetail.factors.shapPending")}</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-2 uppercase tracking-tighter">{t("signalDetail.factors.shapPendingDetail")}</p>
                   </div>
                 ) : shapQuery.isError ? (
                   <div className="h-[350px] flex flex-col items-center justify-center border border-dashed border-border rounded-2xl bg-bear/5">
                     <AlertCircle size={32} className="text-bear mb-4 opacity-50" />
-                    <p className="text-sm font-black text-bear uppercase tracking-widest">Attribution Feed Error</p>
+                    <p className="text-sm font-black text-bear uppercase tracking-widest">{t("signalDetail.factors.feedError")}</p>
                   </div>
                 ) : (
                   <ShapWaterfall features={shap!.features} height={480} />
@@ -918,8 +920,8 @@ const SignalDetail = ({
                               <ShieldCheck size={18} className="text-primary" />
                             </div>
                             <div>
-                              <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Architecture Consensus</h3>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">Agreement across specialized model learners</p>
+                              <h3 className="text-sm font-black text-foreground uppercase tracking-widest">{t("signalDetail.consensus.title")}</h3>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">{t("signalDetail.consensus.subtitle")}</p>
                             </div>
                           </div>
                         </div>
@@ -927,10 +929,10 @@ const SignalDetail = ({
                           <table className="w-full text-left">
                             <thead>
                               <tr className="border-b border-white/5 bg-muted/5">
-                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Learner</th>
-                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Raw Score</th>
-                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Influence</th>
-                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">Contribution</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{t("signalDetail.consensus.learner")}</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">{t("signals.table.rawScore")}</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">{t("signalDetail.consensus.influence")}</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-right">{t("signalDetail.consensus.contribution")}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-white/[0.03]">
@@ -951,7 +953,7 @@ const SignalDetail = ({
                             </tbody>
                             <tfoot>
                               <tr className="border-t border-white/10">
-                                <td className="px-6 py-5 text-xs font-black text-primary uppercase tracking-[0.2em]">Integrated Fusion</td>
+                                <td className="px-6 py-5 text-xs font-black text-primary uppercase tracking-[0.2em]">{t("signalDetail.consensus.integratedFusion")}</td>
                                 <td className="px-6 py-5 text-right" />
                                 <td className="px-6 py-5 text-right" />
                                 <td className={`px-6 py-5 text-sm font-black font-mono text-right ${prediction && prediction.fusion_score > 0 ? "text-bull" : "text-bear"}`}>
@@ -965,17 +967,16 @@ const SignalDetail = ({
                     )}
 
                     <div className="bg-card rounded-2xl border border-border p-6 shadow-xl space-y-6">
-                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Predictive Logic</h3>
+                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">{t("signalDetail.predictiveLogic.title")}</h3>
                       <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                        The current signal for <span className="text-foreground font-black tracking-tight">{normalizedTicker}</span> is primarily driven by
-                        the <span className="text-primary font-black uppercase tracking-tighter">{(shap?.features[0]?.feature || "core model").replace(/_/g, " ")}</span> factor.
+                        {t("signalDetail.predictiveLogic.drivenByPrefix")}<span className="text-foreground font-black tracking-tight">{normalizedTicker}</span>{t("signalDetail.predictiveLogic.drivenByMid")}<span className="text-primary font-black uppercase tracking-tighter">{(shap?.features[0]?.feature || t("signalDetail.predictiveLogic.coreModel")).replace(/_/g, " ")}</span>{t("signalDetail.predictiveLogic.drivenBySuffix")}
                         {isMultiModel
-                          ? <> Architecture consensus is <span className="text-foreground font-black">{prediction && prediction.fusion_score > 0 ? "positively biased" : "defensively biased"}</span>.</>
-                          : <> Model output is <span className="text-foreground font-black">{prediction && prediction.fusion_score > 0 ? "positively biased" : "buffer-held (signal weakening)"}</span>.</>}
+                          ? <> {t("signalDetail.predictiveLogic.consensusLabel")} <span className="text-foreground font-black">{prediction && prediction.fusion_score > 0 ? t("signalDetail.predictiveLogic.positivelyBiased") : t("signalDetail.predictiveLogic.defensivelyBiased")}</span>.</>
+                          : <> {t("signalDetail.predictiveLogic.outputLabel")} <span className="text-foreground font-black">{prediction && prediction.fusion_score > 0 ? t("signalDetail.predictiveLogic.positivelyBiased") : t("signalDetail.predictiveLogic.bufferHeld")}</span>.</>}
                       </p>
                       <div className="p-4 rounded-2xl bg-muted/30 border border-white/5 shadow-inner space-y-4">
                         <div>
-                          <p className="text-[9px] text-muted-foreground uppercase tracking-[0.2em] font-black mb-3">Model Conviction</p>
+                          <p className="text-[9px] text-muted-foreground uppercase tracking-[0.2em] font-black mb-3">{t("signalDetail.predictiveLogic.conviction")}</p>
                           <div className="h-3 bg-muted rounded-full overflow-hidden border border-white/5 p-0.5">
                             <div
                               className={`h-full rounded-full transition-all duration-1000 ${prediction && prediction.fusion_score > 0 ? "bg-bull shadow-[0_0_10px_#00C805]" : "bg-bear shadow-[0_0_10px_#FF5252]"}`}
@@ -985,12 +986,12 @@ const SignalDetail = ({
                         </div>
                         {isMultiModel && prediction?.model_spread != null && (
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Stability</span>
+                            <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">{t("signalDetail.predictiveLogic.stability")}</span>
                             <span className="text-[10px] font-black font-mono text-foreground">{(1 - (prediction?.model_spread || 0)).toFixed(2)}</span>
                           </div>
                         )}
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Percentile</span>
+                          <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">{t("signalDetail.percentile")}</span>
                           <span className="text-[10px] font-black font-mono text-foreground">{prediction?.percentile?.toFixed(1)}%</span>
                         </div>
                       </div>
@@ -1006,12 +1007,12 @@ const SignalDetail = ({
           <div className="p-4 rounded-3xl bg-muted/50 mb-6">
             <Info size={64} className="text-muted-foreground opacity-20" />
           </div>
-          <h3 className="text-xl font-black text-foreground mb-3 uppercase tracking-widest">{activeTab} Integration</h3>
+          <h3 className="text-xl font-black text-foreground mb-3 uppercase tracking-widest">{t("signalDetail.integration.title", { tab: t(`signalDetail.tabs.${activeTab}`) })}</h3>
           <p className="text-sm text-muted-foreground max-w-md leading-relaxed font-medium">
-            The {activeTab} engine is undergoing final stress testing and will be operational in the Phase 4 production release.
+            {t("signalDetail.integration.detail", { tab: t(`signalDetail.tabs.${activeTab}`) })}
           </p>
           <div className="mt-8 px-6 py-2 rounded-xl bg-primary/10 text-[10px] font-black uppercase tracking-[0.2em] text-primary border border-primary/20 shadow-lg">
-            Status: Phase 4 Milestone
+            {t("signalDetail.integration.status")}
           </div>
         </div>
       )}
