@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import MiniSparkline from "./MiniSparkline";
 import { getSectorColor } from "../constants/sectorColors";
 
@@ -27,12 +28,12 @@ function deriveConviction(direction: SignalRowProps["direction"], confidence: nu
   return "long";
 }
 
-const TIER_STYLE: Record<Conviction, { tagClass: string; tagLabel: string; scoreClass: string; barFrom: string; barTo: string; sparkPositive: boolean }> = {
-  strong: { tagClass: "tag-bull-strong", tagLabel: "STRONG LONG", scoreClass: "text-bull-strong", barFrom: "#00FF7F", barTo: "#00D060", sparkPositive: true },
-  long:   { tagClass: "tag-bull",        tagLabel: "LONG",        scoreClass: "text-bull",        barFrom: "#00C805", barTo: "#00A804", sparkPositive: true },
-  watch:  { tagClass: "tag-bull-watch",  tagLabel: "WATCH LONG",  scoreClass: "text-bull-watch",  barFrom: "#C9A445", barTo: "#9A7E32", sparkPositive: true },
-  buffer: { tagClass: "tag-neutral",     tagLabel: "BUFFER",      scoreClass: "text-muted-foreground", barFrom: "#607B96", barTo: "#475569", sparkPositive: false },
-  short:  { tagClass: "tag-bear",        tagLabel: "SHORT SIGNAL", scoreClass: "text-bear",       barFrom: "#FF5252", barTo: "#E04040", sparkPositive: false },
+const TIER_STYLE: Record<Conviction, { tagClass: string; scoreClass: string; barFrom: string; barTo: string; sparkPositive: boolean }> = {
+  strong: { tagClass: "tag-bull-strong", scoreClass: "text-bull-strong", barFrom: "#00FF7F", barTo: "#00D060", sparkPositive: true },
+  long:   { tagClass: "tag-bull",        scoreClass: "text-bull",        barFrom: "#00C805", barTo: "#00A804", sparkPositive: true },
+  watch:  { tagClass: "tag-bull-watch",  scoreClass: "text-bull-watch",  barFrom: "#C9A445", barTo: "#9A7E32", sparkPositive: true },
+  buffer: { tagClass: "tag-neutral",     scoreClass: "text-muted-foreground", barFrom: "#607B96", barTo: "#475569", sparkPositive: false },
+  short:  { tagClass: "tag-bear",        scoreClass: "text-bear",       barFrom: "#FF5252", barTo: "#E04040", sparkPositive: false },
 };
 
 const SignalRow = ({
@@ -48,12 +49,18 @@ const SignalRow = ({
   sector = "—",
   onClick = () => {},
 }: SignalRowProps) => {
+  const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
 
   const conviction: Conviction = tier ?? deriveConviction(direction, confidence);
   const style = TIER_STYLE[conviction];
   const directionClass = style.tagClass;
-  const directionLabel = style.tagLabel;
+  const directionLabel =
+    conviction === "short"
+      ? t("signalRow.shortSignal", { defaultValue: "SHORT SIGNAL" })
+      : conviction === "buffer"
+      ? t("tiers.buffer")
+      : t(`tiers.${conviction}`);
   const isPositive = style.sparkPositive;
 
   // Trend data: default = real 20-day close prices; on hover = cumulative excess vs SPY.
@@ -109,7 +116,7 @@ const SignalRow = ({
       {/* Confidence Bar */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-muted-foreground">Confidence</span>
+          <span className="text-xs text-muted-foreground">{t("signals.table.modelConfidence")}</span>
           <span className="text-xs font-bold text-foreground">{confidence}%</span>
         </div>
         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -128,17 +135,17 @@ const SignalRow = ({
         <div className={`text-sm font-bold ${style.scoreClass}`}>
           {score > 0 ? "+" : ""}{score.toFixed(4)}
         </div>
-        <div className="text-xs text-muted-foreground">Score</div>
+        <div className="text-xs text-muted-foreground">{t("signals.table.rawScore")}</div>
       </div>
 
       {/* Trend */}
       <div
         className="w-24 flex flex-col items-center justify-center flex-shrink-0"
-        title={trendMode === "price" ? "20D close (hover for excess vs SPY)" : trendMode === "excess" ? "20D cumulative excess vs SPY" : ""}
+        title={trendMode === "price" ? t("signalRow.trendPriceLabel") + " · " + t("signalRow.trendExcessLabel") : trendMode === "excess" ? t("signalRow.trendExcessLabel") : ""}
       >
         <MiniSparkline data={trendData} positive={sparkPositive} width={80} height={32} animated={hovered} />
         <span className="text-[8px] text-muted-foreground/50 uppercase tracking-wider mt-0.5">
-          {trendMode === "excess" ? "vs SPY" : trendMode === "price" ? "20D" : ""}
+          {trendMode === "excess" ? t("signalRow.trendExcessLabel") : trendMode === "price" ? t("signalRow.trendPriceLabel") : ""}
         </span>
       </div>
 

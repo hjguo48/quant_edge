@@ -100,6 +100,82 @@
     "watch": "WATCH",
     "buffer": "BUFFER"
   },
+  "signals": {
+    "title": "Signal Feed",
+    "metaLine": "Week {{week}} · {{date}}",
+    "tierStats": {
+      "strong": "{{count}} strong",
+      "long": "{{count}} long",
+      "watch": "{{count}} watch",
+      "buffer": "{{count}} buffer"
+    },
+    "notInvestmentAdvice": "Not investment advice",
+    "refreshing": "Refreshing...",
+    "exportCsv": "Export CSV",
+    "watchlist": "Watchlist",
+    "searchPlaceholder": "Search ticker or company...",
+    "allSectors": "All Sectors",
+    "directions": {
+      "all": "All",
+      "strong": "Strong",
+      "long": "Long",
+      "watch": "Watch",
+      "buffer": "Buffer"
+    },
+    "sortOptions": {
+      "default": "Default",
+      "scoreDesc": "High ↓ Low",
+      "scoreAsc": "Low ↑ High"
+    },
+    "table": {
+      "security": "Security",
+      "signal": "Signal",
+      "modelConfidence": "Model Confidence",
+      "rawScore": "Raw Score",
+      "trend": "Trend",
+      "sector": "Sector"
+    },
+    "errors": {
+      "failedToLoad": "Failed to load signals",
+      "retry": "Retry Connection"
+    },
+    "emptyStates": {
+      "watchlistEmpty": "Watchlist Empty",
+      "watchlistEmptyDetail": "Star securities to track them here",
+      "noMatches": "No matches found",
+      "noMatchesDetail": "Adjust filters to broaden search"
+    },
+    "pageTooltips": {
+      "first": "First Page",
+      "previous": "Previous Page",
+      "next": "Next Page",
+      "last": "Last Page"
+    }
+  },
+  "signalRow": {
+    "trendPriceLabel": "20D Price",
+    "trendExcessLabel": "vs SPY"
+  },
+  "signalDetail": {
+    "back": "Back to Signals",
+    "modelOutput": "Model Output",
+    "rank": "Rank",
+    "totalUniverse": "Total Universe",
+    "percentile": "Percentile",
+    "fusionScore": "Fusion Score",
+    "factorContribution": {
+      "title": "Factor Contribution (SHAP)",
+      "subtitle": "Top features by absolute contribution to prediction"
+    },
+    "expectedReturn": {
+      "title": "Expected Return Analysis",
+      "subtitle": "Bootstrap confidence interval ({{ci}}%)"
+    },
+    "fundamentals": "Fundamentals",
+    "technicals": "Technicals",
+    "history": "Signal History",
+    "noData": "Data unavailable for this section"
+  },
   "portfolio": {
     "performanceTracking": {
       "title": "Performance Tracking",

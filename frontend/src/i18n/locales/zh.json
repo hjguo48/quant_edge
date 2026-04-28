@@ -100,6 +100,82 @@
     "watch": "观察",
     "buffer": "缓冲"
   },
+  "signals": {
+    "title": "信号流",
+    "metaLine": "第 {{week}} 周 · {{date}}",
+    "tierStats": {
+      "strong": "{{count}} 强势",
+      "long": "{{count}} 做多",
+      "watch": "{{count}} 观察",
+      "buffer": "{{count}} 缓冲"
+    },
+    "notInvestmentAdvice": "非投资建议",
+    "refreshing": "刷新中…",
+    "exportCsv": "导出 CSV",
+    "watchlist": "收藏",
+    "searchPlaceholder": "搜索代码或公司…",
+    "allSectors": "全部板块",
+    "directions": {
+      "all": "全部",
+      "strong": "强势",
+      "long": "做多",
+      "watch": "观察",
+      "buffer": "缓冲"
+    },
+    "sortOptions": {
+      "default": "默认",
+      "scoreDesc": "高 ↓ 低",
+      "scoreAsc": "低 ↑ 高"
+    },
+    "table": {
+      "security": "标的",
+      "signal": "信号",
+      "modelConfidence": "模型置信度",
+      "rawScore": "原始分",
+      "trend": "走势",
+      "sector": "板块"
+    },
+    "errors": {
+      "failedToLoad": "信号加载失败",
+      "retry": "重试连接"
+    },
+    "emptyStates": {
+      "watchlistEmpty": "收藏夹为空",
+      "watchlistEmptyDetail": "标星标的将在这里展示",
+      "noMatches": "无匹配结果",
+      "noMatchesDetail": "调整筛选条件以扩大范围"
+    },
+    "pageTooltips": {
+      "first": "首页",
+      "previous": "上一页",
+      "next": "下一页",
+      "last": "末页"
+    }
+  },
+  "signalRow": {
+    "trendPriceLabel": "20 日价格",
+    "trendExcessLabel": "对比 SPY"
+  },
+  "signalDetail": {
+    "back": "返回信号流",
+    "modelOutput": "模型输出",
+    "rank": "排名",
+    "totalUniverse": "总股票池",
+    "percentile": "百分位",
+    "fusionScore": "融合分",
+    "factorContribution": {
+      "title": "因子贡献 (SHAP)",
+      "subtitle": "按对预测的绝对贡献排序的 top 特征"
+    },
+    "expectedReturn": {
+      "title": "预期收益分析",
+      "subtitle": "Bootstrap 置信区间 ({{ci}}%)"
+    },
+    "fundamentals": "基本面",
+    "technicals": "技术面",
+    "history": "信号历史",
+    "noData": "本节数据暂无"
+  },
   "portfolio": {
     "performanceTracking": {
       "title": "绩效跟踪",
