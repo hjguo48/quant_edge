@@ -7,49 +7,7 @@ import HeatmapChart from "../components/HeatmapChart";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { fetchApi } from "../hooks/useApi";
-
-interface GreyscaleHorizonWeek {
-  status: string;
-  portfolio_return: number | null;
-  spy_return: number | null;
-  excess: number | null;
-  tickers_used: number;
-  tickers_missing: number;
-  horizon_end_date: string | null;
-}
-
-interface GreyscaleWeeklyCurvePoint {
-  signal_date: string;
-  weekly_return: number | null;
-  weekly_spy: number | null;
-  weekly_excess: number | null;
-  cumulative_return: number | null;
-  cumulative_spy: number | null;
-  cumulative_excess: number | null;
-}
-
-interface GreyscaleHorizonCumulative {
-  return: number | null;
-  spy_return: number | null;
-  excess: number | null;
-  max_drawdown: number | null;
-  weeks_realized: number;
-  winrate_vs_spy: number | null;
-  weekly_curve: GreyscaleWeeklyCurvePoint[];
-}
-
-interface GreyscalePerformanceResponse {
-  as_of_utc: string | null;
-  today: string | null;
-  benchmark: string;
-  horizons_supported: number[];
-  per_week: Array<{
-    week_number: number;
-    signal_date: string | null;
-    horizons: Record<string, GreyscaleHorizonWeek>;
-  }>;
-  cumulative: Record<string, GreyscaleHorizonCumulative>;
-}
+import type { GreyscalePerformanceResponse } from "../types/greyscale";
 
 interface MarketSector {
   sector: string;

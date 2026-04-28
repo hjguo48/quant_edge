@@ -1,8 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { TrendingUp, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import StatCard from "../components/StatCard";
 import { fetchApi } from "../hooks/useApi";
+import {
+  GREYSCALE_HORIZONS,
+  type GreyscaleHorizonKey,
+  type GreyscalePerformanceResponse,
+} from "../types/greyscale";
 
 interface PortfolioHolding {
   ticker: string;
@@ -114,6 +120,30 @@ const Portfolio = () => {
     queryFn: () => fetchApi<RebalanceResponse>("/api/portfolio/rebalance"),
     retry: false,
   });
+
+  const performanceQuery = useQuery<GreyscalePerformanceResponse>({
+    queryKey: ["greyscalePerformance"],
+    queryFn: () => fetchApi<GreyscalePerformanceResponse>("/api/greyscale/performance"),
+    retry: false,
+    staleTime: 60_000,
+  });
+
+  const [activeHorizon, setActiveHorizon] = useState<GreyscaleHorizonKey>("1d");
+
+  // Auto-pick the shortest horizon with realized data once loaded
+  const performance = performanceQuery.data;
+  const autoPickedHorizon = useMemo<GreyscaleHorizonKey | null>(() => {
+    if (!performance) return null;
+    return (
+      GREYSCALE_HORIZONS.find((h) => (performance.cumulative?.[h]?.weeks_realized ?? 0) > 0) ?? null
+    );
+  }, [performance]);
+
+  const [horizonAutoPicked, setHorizonAutoPicked] = useState(false);
+  if (autoPickedHorizon && !horizonAutoPicked) {
+    setHorizonAutoPicked(true);
+    setActiveHorizon(autoPickedHorizon);
+  }
 
   const isLoading = currentQuery.isLoading || summaryQuery.isLoading;
   const isError = currentQuery.isError || summaryQuery.isError;
@@ -271,16 +301,189 @@ const Portfolio = () => {
       {/* Main Area */}
       <div className="flex gap-5">
         <div className="flex-1 bg-card rounded-xl border border-border p-5 fade-in-up stagger-2 min-h-[300px]">
-          <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <TrendingUp size={32} className="text-muted-foreground mb-4 opacity-20" />
-            <h3 className="text-sm font-semibold text-foreground mb-1">Performance Tracking</h3>
-            <p className="text-xs text-muted-foreground max-w-xs">
-              Historical portfolio performance and benchmark comparison is currently being migrated to the new Alpha Engine.
-            </p>
-            <span className="mt-4 px-2.5 py-1 rounded-full bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground border border-border">
-              Under Migration
-            </span>
-          </div>
+          {performanceQuery.isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-8">
+              <TrendingUp size={32} className="text-muted-foreground mb-4 opacity-20 animate-pulse" />
+              <p className="text-xs text-muted-foreground">Loading paper P&amp;L...</p>
+            </div>
+          ) : performanceQuery.isError || !performance ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-8">
+              <TrendingUp size={32} className="text-muted-foreground mb-4 opacity-20" />
+              <h3 className="text-sm font-semibold text-foreground mb-1">Performance Tracking</h3>
+              <p className="text-xs text-muted-foreground max-w-xs">
+                Awaiting first realized weekly close. Greyscale paper P&amp;L will populate after the first auto run.
+              </p>
+              <span className="mt-4 px-2.5 py-1 rounded-full bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground border border-border">
+                Pending First Close
+              </span>
+            </div>
+          ) : (() => {
+            const cumBlock = performance.cumulative?.[activeHorizon];
+            const latestWeek = performance.per_week?.[performance.per_week.length - 1];
+            const latestBlock = latestWeek?.horizons?.[activeHorizon];
+            const cumReturn = cumBlock?.return ?? null;
+            const cumExcess = cumBlock?.excess ?? null;
+            const dd = cumBlock?.max_drawdown ?? null;
+            const winrate = cumBlock?.winrate_vs_spy ?? null;
+            const weeksRealized = cumBlock?.weeks_realized ?? 0;
+            const weeklyCurve = cumBlock?.weekly_curve ?? [];
+            const recentWeeks = (performance.per_week ?? []).slice(-5).reverse();
+
+            const fmtPct = (v: number | null, digits = 2) =>
+              v == null ? "—" : `${(v * 100).toFixed(digits)}%`;
+            const colorOf = (v: number | null) =>
+              v == null ? "text-muted-foreground" : v >= 0 ? "text-bull" : "text-bear";
+
+            const isPending = weeksRealized === 0 || cumReturn == null;
+
+            return (
+              <>
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Performance Tracking</h3>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                      Paper P&amp;L · vs {performance.benchmark} · dry-run only
+                    </p>
+                  </div>
+                  <div className="flex gap-1 bg-muted/50 rounded-lg p-1 border border-border/50">
+                    {GREYSCALE_HORIZONS.map((h) => (
+                      <button
+                        key={h}
+                        onClick={() => setActiveHorizon(h)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          activeHorizon === h
+                            ? "bg-card text-foreground shadow-md border border-border"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {h}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {isPending ? (
+                  <div className="flex flex-col items-center justify-center min-h-[180px] border border-dashed border-border rounded-lg bg-surface text-xs text-muted-foreground space-y-1">
+                    <p className="font-bold uppercase tracking-widest">Awaiting first close</p>
+                    <p className="text-[10px] opacity-70 text-center px-2">
+                      {activeHorizon} horizon has no realized weeks yet. Realized P&amp;L materializes after price data lands for the next trading day after signal_date.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-4 gap-3 mb-4">
+                      <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Cumulative</p>
+                        <p className={`text-lg font-black font-mono ${colorOf(cumReturn)}`}>
+                          {fmtPct(cumReturn)}
+                        </p>
+                      </div>
+                      <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Excess vs SPY</p>
+                        <p className={`text-lg font-black font-mono ${colorOf(cumExcess)}`}>
+                          {fmtPct(cumExcess)}
+                        </p>
+                      </div>
+                      <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Max Drawdown</p>
+                        <p className={`text-lg font-black font-mono ${colorOf(dd)}`}>
+                          {fmtPct(dd)}
+                        </p>
+                      </div>
+                      <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Win Rate</p>
+                        <p className={`text-lg font-black font-mono ${winrate == null ? "text-muted-foreground" : colorOf(winrate - 0.5)}`}>
+                          {winrate == null ? "—" : `${(winrate * 100).toFixed(0)}%`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {weeklyCurve.length > 0 && (
+                      <div className="mb-3">
+                        <ResponsiveContainer width="100%" height={120}>
+                          <AreaChart data={weeklyCurve} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="portfolioCumGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0.35} />
+                                <stop offset="95%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="signal_date" hide />
+                            <YAxis hide domain={["auto", "auto"]} />
+                            <Tooltip
+                              contentStyle={{
+                                background: "var(--popover)",
+                                border: "1px solid var(--border)",
+                                borderRadius: 8,
+                                fontSize: 11,
+                              }}
+                              formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, "Cumulative"]}
+                              labelFormatter={(label: string) => `Week of ${label}`}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="cumulative_return"
+                              stroke={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"}
+                              strokeWidth={2}
+                              fill="url(#portfolioCumGrad)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+
+                    {recentWeeks.length > 0 && (
+                      <div>
+                        <div className="flex items-center px-3 py-2 border-b border-border bg-muted/10 text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em]">
+                          <div className="w-24">Signal Date</div>
+                          <div className="flex-1 text-right">Portfolio</div>
+                          <div className="flex-1 text-right">SPY</div>
+                          <div className="flex-1 text-right">Excess</div>
+                          <div className="w-20 text-right">Status</div>
+                        </div>
+                        {recentWeeks.map((w) => {
+                          const block = w.horizons?.[activeHorizon];
+                          const status = block?.status ?? "pending";
+                          return (
+                            <div key={w.week_number} className="flex items-center px-3 py-2 border-b border-border/50 last:border-0 text-xs">
+                              <div className="w-24 text-foreground font-medium">{w.signal_date ?? "—"}</div>
+                              <div className={`flex-1 text-right font-mono ${colorOf(block?.portfolio_return ?? null)}`}>
+                                {fmtPct(block?.portfolio_return ?? null)}
+                              </div>
+                              <div className={`flex-1 text-right font-mono ${colorOf(block?.spy_return ?? null)}`}>
+                                {fmtPct(block?.spy_return ?? null)}
+                              </div>
+                              <div className={`flex-1 text-right font-mono ${colorOf(block?.excess ?? null)}`}>
+                                {fmtPct(block?.excess ?? null)}
+                              </div>
+                              <div className="w-20 text-right">
+                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                  status === "realized" ? "bg-bull/10 text-bull" :
+                                  status === "partial" ? "bg-amber-500/10 text-amber-500" :
+                                  "bg-muted text-muted-foreground"
+                                }`}>
+                                  {status}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center mt-3 text-[10px] text-muted-foreground">
+                      <span>{weeksRealized} weeks realized · last close {latestBlock?.horizon_end_date ?? "—"}</span>
+                      {latestBlock && (
+                        <span>
+                          coverage {latestBlock.tickers_used}/{latestBlock.tickers_used + latestBlock.tickers_missing}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         <div className="w-72 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3">
