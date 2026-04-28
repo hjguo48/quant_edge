@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Query
+import sqlalchemy as sa
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.deps import get_db
 from src.api.schemas.portfolio import (
     BudgetAllocation,
     BudgetResponse,
@@ -14,6 +17,7 @@ from src.api.schemas.portfolio import (
     RebalanceResponse,
 )
 from src.api.services.greyscale_reader import GreyscaleReader
+from src.data.db.models import Stock
 
 router = APIRouter(prefix="/api/portfolio", tags=["Portfolio"])
 GREYSCALE_REPORT_DIR = Path("data/reports/greyscale")
@@ -30,11 +34,32 @@ def _get_reader() -> GreyscaleReader:
     return _READER
 
 
+async def _enrich_with_stock_info(
+    db: AsyncSession, tickers: list[str]
+) -> dict[str, dict[str, str | None]]:
+    """Return {TICKER: {sector, company_name}} for the given tickers."""
+    if not tickers:
+        return {}
+    normalized = [t.upper() for t in tickers]
+    result = await db.execute(
+        sa.select(Stock.ticker, Stock.sector, Stock.company_name).where(
+            Stock.ticker.in_(normalized)
+        )
+    )
+    return {
+        ticker.upper(): {"sector": sector, "company_name": company_name}
+        for ticker, sector, company_name in result.all()
+    }
+
+
 @router.get("/current", response_model=PortfolioResponse)
-async def get_current_portfolio() -> PortfolioResponse:
+async def get_current_portfolio(
+    db: AsyncSession = Depends(get_db),
+) -> PortfolioResponse:
     reader = _get_reader()
     summary = reader.get_portfolio_summary()
     holdings = reader.get_portfolio_holdings()
+    stock_info = await _enrich_with_stock_info(db, [h["ticker"] for h in holdings])
 
     return PortfolioResponse(
         signal_date=summary.get("signal_date") if summary else None,
@@ -46,7 +71,16 @@ async def get_current_portfolio() -> PortfolioResponse:
         cvar_95=summary.get("cvar_95") if summary else None,
         turnover=summary.get("turnover") if summary else None,
         risk_pass=summary.get("risk_pass") if summary else None,
-        holdings=[PortfolioHolding(**holding) for holding in holdings],
+        holdings=[
+            PortfolioHolding(
+                ticker=holding["ticker"],
+                weight=holding["weight"],
+                score=holding.get("score"),
+                sector=(stock_info.get(holding["ticker"].upper()) or {}).get("sector"),
+                company_name=(stock_info.get(holding["ticker"].upper()) or {}).get("company_name"),
+            )
+            for holding in holdings
+        ],
     )
 
 

@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect } from "react";
 import { TrendingUp, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { useTranslation } from "react-i18next";
 import StatCard from "../components/StatCard";
 import { fetchApi } from "../hooks/useApi";
+import { getSectorColor } from "../constants/sectorColors";
 import {
   GREYSCALE_HORIZONS,
   type GreyscaleHorizonKey,
@@ -14,6 +16,8 @@ interface PortfolioHolding {
   ticker: string;
   weight: number;
   score: number;
+  sector?: string | null;
+  company_name?: string | null;
 }
 
 interface PortfolioCurrentResponse {
@@ -66,8 +70,10 @@ interface RebalanceResponse {
 }
 
 const HOLDINGS_PAGE_SIZE = 5;
+const SECTOR_PANEL_TOP_N = 6;
 
 const Portfolio = () => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState("holdings");
   const [budgetStr, setBudgetStr] = useState("100000");
   const [, setBudgetStrPrev] = useState("100000");
@@ -150,6 +156,27 @@ const Portfolio = () => {
 
   const current = currentQuery.data;
   const summary = summaryQuery.data;
+
+  const sectorAggregation = useMemo(() => {
+    const holdings = current?.holdings ?? [];
+    if (!holdings.length) return [] as { sector: string; weight: number; tickerCount: number; tickers: string[] }[];
+    const grouped = new Map<string, { weight: number; tickers: string[] }>();
+    for (const h of holdings) {
+      const key = h.sector?.trim() || "Unknown";
+      const entry = grouped.get(key) ?? { weight: 0, tickers: [] };
+      entry.weight += h.weight;
+      entry.tickers.push(h.ticker);
+      grouped.set(key, entry);
+    }
+    return Array.from(grouped.entries())
+      .map(([sector, v]) => ({
+        sector,
+        weight: v.weight,
+        tickerCount: v.tickers.length,
+        tickers: v.tickers,
+      }))
+      .sort((a, b) => b.weight - a.weight);
+  }, [current]);
 
   const stats = useMemo(() => {
     if (!summary) return [];
@@ -487,24 +514,93 @@ const Portfolio = () => {
         </div>
 
         <div className="w-72 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3">
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <PieChart size={32} className="text-muted-foreground mb-4 opacity-20" />
-            <h3 className="text-sm font-semibold text-foreground mb-1">Sector Weights</h3>
-            <p className="text-xs text-muted-foreground px-4">
-              Sector classification for the current universe is processing.
-            </p>
-            <div className="mt-6 w-full space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="flex items-center justify-between opacity-30">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-muted" />
-                    <div className="w-16 h-2 bg-muted rounded" />
-                  </div>
-                  <div className="w-8 h-2 bg-muted rounded" />
-                </div>
-              ))}
+          {currentQuery.isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <PieChart size={28} className="text-muted-foreground mb-3 opacity-20 animate-pulse" />
+              <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
             </div>
-          </div>
+          ) : sectorAggregation.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <PieChart size={28} className="text-muted-foreground mb-3 opacity-20" />
+              <h3 className="text-sm font-semibold text-foreground mb-1">{t("portfolio.sectorWeights.title")}</h3>
+              <p className="text-xs text-muted-foreground px-2">
+                {t("portfolio.sectorWeights.noHoldings")}
+              </p>
+            </div>
+          ) : (() => {
+            const totalWeight = sectorAggregation.reduce((sum, s) => sum + s.weight, 0);
+            const visible = sectorAggregation.slice(0, SECTOR_PANEL_TOP_N);
+            const overflow = sectorAggregation.slice(SECTOR_PANEL_TOP_N);
+            const otherWeight = overflow.reduce((sum, s) => sum + s.weight, 0);
+            const otherTickerCount = overflow.reduce((sum, s) => sum + s.tickerCount, 0);
+            const maxWeight = Math.max(...visible.map((s) => s.weight), otherWeight);
+            return (
+              <>
+                <div className="mb-4">
+                  <h3 className="text-sm font-bold text-foreground">{t("portfolio.sectorWeights.title")}</h3>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                    {t("portfolio.sectorWeights.subtitle")}
+                  </p>
+                </div>
+                <div className="space-y-2.5">
+                  {visible.map((s) => {
+                    const color = getSectorColor(s.sector);
+                    const pct = (s.weight / totalWeight) * 100;
+                    const barWidth = maxWeight > 0 ? (s.weight / maxWeight) * 100 : 0;
+                    return (
+                      <div key={s.sector}>
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div
+                              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                              style={{ background: color.text }}
+                            />
+                            <span className="text-foreground font-semibold truncate">{s.sector}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: s.tickerCount })}</span>
+                          </div>
+                          <span className="font-mono font-bold text-foreground flex-shrink-0">
+                            {pct.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${barWidth}%`,
+                              background: color.text,
+                              opacity: 0.7,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {overflow.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] mb-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-muted-foreground/50" />
+                          <span className="text-muted-foreground font-semibold truncate">+{overflow.length} {t("common.of").replace(/\W/g, "")}</span>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: otherTickerCount })}</span>
+                        </div>
+                        <span className="font-mono font-bold text-muted-foreground flex-shrink-0">
+                          {((otherWeight / totalWeight) * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-muted-foreground/40"
+                          style={{ width: `${maxWeight > 0 ? (otherWeight / maxWeight) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 

@@ -9,6 +9,8 @@ class PortfolioHolding(BaseModel):
     ticker: str
     weight: float
     score: float | None = None
+    sector: str | None = None
+    company_name: str | None = None
 
 
 class PortfolioResponse(BaseModel):
