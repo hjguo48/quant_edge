@@ -1,0 +1,464 @@
+{
+  "common": {
+    "loading": "加载中…",
+    "error": "错误",
+    "retry": "重试",
+    "noData": "无数据",
+    "pending": "待结算",
+    "realized": "已结算",
+    "partial": "部分结算",
+    "comingSoon": "即将上线",
+    "underMigration": "迁移中",
+    "showing": "显示",
+    "of": "/ 共",
+    "to": "至",
+    "page": "页",
+    "first": "首页",
+    "previous": "上一页",
+    "next": "下一页",
+    "last": "末页",
+    "all": "全部",
+    "search": "搜索",
+    "refresh": "刷新",
+    "language": "语言"
+  },
+  "topbar": {
+    "title": "驾驶舱",
+    "subtitle": "模型输出 · 非投资建议"
+  },
+  "sidebar": {
+    "dashboard": "驾驶舱",
+    "signals": "信号流",
+    "portfolio": "组合",
+    "backtest": "回测",
+    "greyscale": "灰度监控",
+    "alerts": "通知",
+    "settings": "设置",
+    "userName": "量化用户",
+    "userRole": "仅模型输出"
+  },
+  "pageTitles": {
+    "dashboard": { "title": "驾驶舱", "subtitle": "模型输出 · 非投资建议" },
+    "signals": { "title": "信号流", "subtitle": "量化模型信号 · 符合 SEC 合规" },
+    "signalDetail": { "title": "信号详情", "subtitle": "因子分解 · 仅模型输出" },
+    "portfolio": { "title": "组合分析", "subtitle": "模型组合分析 · 假设性持仓" },
+    "backtest": { "title": "回测引擎", "subtitle": "假设性模拟 · 不代表未来表现" },
+    "greyscale": { "title": "灰度监控", "subtitle": "周度信号跑批跟踪 · 模型输出" }
+  },
+  "dashboard": {
+    "secBanner": {
+      "modelOutputOnly": "仅模型输出",
+      "disclaimer": " — 所有信号均由量化模型生成，不构成投资建议。模型历史表现不代表未来结果。仅供机构使用。"
+    },
+    "errorBanner": "部分市场组件加载失败。仍尽可能展示已成功获取的实时数据。",
+    "stats": {
+      "spyPrice": "SPY 价格",
+      "spyChange": "日变动",
+      "marketBreadth": "市场宽度",
+      "advancingShare": "上涨占比",
+      "vix": "VIX 指数",
+      "volatility": "波动率",
+      "topSector": "强势板块",
+      "avgReturn": "平均收益",
+      "sectorCount": "板块数",
+      "activeSectors": "活跃板块"
+    },
+    "pnlChart": {
+      "title": "累计 P&L (对比 SPY)",
+      "subtitle": "模型输出 · {{range}} 窗口",
+      "throughDate": " · 截至 {{date}}",
+      "noData": "暂无指数历史数据。"
+    },
+    "paperPerf": {
+      "title": "灰度纸面表现",
+      "subtitle": "纸面 P&L ({{horizon}} 周期) · 对比 SPY · 仅 dry-run",
+      "awaiting": "等待首次结算",
+      "awaitingDetail": "结算 P&L 在 signal_date 之后第一个交易日的价格数据落库后才会生成",
+      "thisWeek": "本周",
+      "vsSpy": "对比 SPY",
+      "cumulative": "累计",
+      "maxDd": "最大回撤",
+      "weeksRealized": "已结算 {{count}} 周",
+      "winSuffix": "胜率 {{value}}%"
+    },
+    "topSignals": {
+      "title": "Top 信号",
+      "noSignals": "暂无活跃信号",
+      "viewChart": "查看 {{ticker}} 走势图",
+      "confSuffix": "置信度 {{value}}%"
+    },
+    "heatmap": {
+      "title": "板块表现热力图",
+      "subtitleWithDate": "最新收盘 · {{date}}",
+      "subtitle": "最新收盘",
+      "rowLabel": "日变动 %"
+    }
+  },
+  "tiers": {
+    "strong": "强势",
+    "long": "做多",
+    "watch": "观察",
+    "buffer": "缓冲"
+  },
+  "sectors": {
+    "Technology": "信息技术",
+    "Financial Services": "金融服务",
+    "Financials": "金融",
+    "Industrials": "工业",
+    "Consumer Cyclical": "可选消费",
+    "Consumer Discretionary": "可选消费",
+    "Consumer Defensive": "必需消费",
+    "Consumer Staples": "必需消费",
+    "Healthcare": "医疗保健",
+    "Health Care": "医疗保健",
+    "Energy": "能源",
+    "Real Estate": "房地产",
+    "Communication Services": "通信服务",
+    "Utilities": "公用事业",
+    "Basic Materials": "基础材料",
+    "Materials": "原材料",
+    "Information Technology": "信息技术",
+    "Unknown": "未分类"
+  },
+  "signals": {
+    "title": "信号流",
+    "metaLine": "第 {{week}} 周 · {{date}}",
+    "tierStats": {
+      "strong": "{{count}} 强势",
+      "long": "{{count}} 做多",
+      "watch": "{{count}} 观察",
+      "buffer": "{{count}} 缓冲"
+    },
+    "notInvestmentAdvice": "非投资建议",
+    "refreshing": "刷新中…",
+    "exportCsv": "导出 CSV",
+    "watchlist": "收藏",
+    "searchPlaceholder": "搜索代码或公司…",
+    "allSectors": "全部板块",
+    "directions": {
+      "all": "全部",
+      "strong": "强势",
+      "long": "做多",
+      "watch": "观察",
+      "buffer": "缓冲"
+    },
+    "sortOptions": {
+      "default": "默认",
+      "scoreDesc": "高 ↓ 低",
+      "scoreAsc": "低 ↑ 高"
+    },
+    "table": {
+      "security": "标的",
+      "signal": "信号",
+      "modelConfidence": "模型置信度",
+      "rawScore": "原始分",
+      "trend": "走势",
+      "sector": "板块"
+    },
+    "errors": {
+      "failedToLoad": "信号加载失败",
+      "retry": "重试连接"
+    },
+    "emptyStates": {
+      "watchlistEmpty": "收藏夹为空",
+      "watchlistEmptyDetail": "标星标的将在这里展示",
+      "noMatches": "无匹配结果",
+      "noMatchesDetail": "调整筛选条件以扩大范围"
+    },
+    "pageTooltips": {
+      "first": "首页",
+      "previous": "上一页",
+      "next": "下一页",
+      "last": "末页"
+    }
+  },
+  "signalRow": {
+    "trendPriceLabel": "20 日价格",
+    "trendExcessLabel": "对比 SPY"
+  },
+  "signalDetail": {
+    "back": "返回信号流",
+    "loadError": "加载失败",
+    "scoreLabel": "分数",
+    "rankShort": "排名 #{{rank}} · Top {{pct}}%",
+    "noActiveSignal": "无活跃信号",
+    "complianceNote": "模型验证结果 · 仅供机构使用",
+    "percentile": "百分位",
+    "confidenceLevel": {
+      "high": "高置信",
+      "medium": "中置信",
+      "low": "低置信"
+    },
+    "consensusPct": "{{value}}% 一致度",
+    "tabs": {
+      "overview": "概览",
+      "factors": "因子"
+    },
+    "stats": {
+      "marketCap": "市值",
+      "sessionMove": "当日变动",
+      "rsi14": "RSI (14)",
+      "rsiNeutral": "对比 中性 50",
+      "sma200": "SMA 200",
+      "smaVsClose": "对比 上次收盘",
+      "bbPosition": "布林带位置",
+      "bbBand": "在 20 日通道内"
+    },
+    "expectedPerformance": {
+      "title": "预期表现",
+      "quintile": "第 {{n}} 分位",
+      "annualizedExcess": "年化超额收益",
+      "sharpeRatio": "夏普比率",
+      "disclaimer": "基于历史模型回测表现。过往业绩不代表未来收益。非投资建议。",
+      "statisticalSource": "统计来源",
+      "bootstrapCount": "1 万次 block bootstrap · {{n}} 个观测"
+    },
+    "signalHistory": {
+      "title": "模型信号历史",
+      "subtitle": "过往周期的融合分历史"
+    },
+    "technical": {
+      "title": "技术快照",
+      "subtitle": "动量与趋势指标",
+      "momentum": "动量",
+      "volatility": "波动率",
+      "histogram": "柱状图",
+      "sma20": "SMA 20"
+    },
+    "fundamental": {
+      "title": "基本面构成",
+      "subtitle": "按绝对值排序的财务指标",
+      "empty": "暂无基本面指标。"
+    },
+    "financialMatrix": {
+      "title": "财务矩阵",
+      "subtitle": "全部指标列表"
+    },
+    "factors": {
+      "empty": "无因子归因",
+      "emptyDetail": "因子级别分解目前仅对高信心信号池中的标的可用。",
+      "shapTitle": "特征贡献 (SHAP)",
+      "shapSubtitle": "影响本期模型的 top 15 特征",
+      "reference": "参考: {{date}}",
+      "running": "归因引擎运行中…",
+      "shapPending": "SHAP 归因待算",
+      "shapPendingDetail": "详细因子权重周期性更新",
+      "feedError": "归因数据流错误"
+    },
+    "consensus": {
+      "title": "架构共识",
+      "subtitle": "多个专业模型学习器之间的一致度",
+      "learner": "学习器",
+      "influence": "权重",
+      "contribution": "贡献",
+      "integratedFusion": "融合输出"
+    },
+    "predictiveLogic": {
+      "title": "预测逻辑",
+      "drivenByPrefix": "当前 ",
+      "drivenByMid": " 信号主要由 ",
+      "drivenBySuffix": " 因子驱动。",
+      "coreModel": "核心模型",
+      "consensusLabel": "架构共识为",
+      "outputLabel": "模型输出为",
+      "positivelyBiased": "积极偏向",
+      "defensivelyBiased": "防御偏向",
+      "bufferHeld": "缓冲持有（信号减弱）",
+      "conviction": "模型确信度",
+      "stability": "稳定性"
+    }
+  },
+  "portfolio": {
+    "performanceTracking": {
+      "title": "绩效跟踪",
+      "subtitle": "纸面 P&L · 对比 {{benchmark}} · 仅 dry-run",
+      "cumulative": "累计收益",
+      "excessVsSpy": "超额 (vs SPY)",
+      "maxDrawdown": "最大回撤",
+      "winRate": "胜率",
+      "awaitingFirstClose": "等待首次结算",
+      "awaitingFirstCloseDetail": "{{horizon}} horizon 暂无已结算周次。结算 P&L 在 signal_date 之后第一个交易日的价格数据落库后才会生成。",
+      "pendingFirstClose": "等待首次结算",
+      "pendingFirstCloseDetail": "等待首次周度结算。灰度纸面 P&L 在首次自动跑后开始填充。",
+      "loadingPnl": "加载纸面 P&L 中…",
+      "weeksRealized": "已结算 {{count}} 周 · 最近收盘 {{date}}",
+      "coverage": "覆盖 {{used}}/{{total}}",
+      "weekOf": "{{date}} 周",
+      "signalDate": "信号日期",
+      "portfolio": "组合",
+      "spy": "SPY",
+      "excess": "超额",
+      "status": "状态"
+    },
+    "sectorWeights": {
+      "title": "板块权重",
+      "subtitle": "当前组合板块分布",
+      "noHoldings": "暂无持仓",
+      "weight": "权重",
+      "tickers": "{{count}} 只",
+      "underMigrationDetail": "当前 universe 板块归类正在处理。"
+    },
+    "stats": {
+      "holdings": "持仓数",
+      "estTurnover": "预估换手",
+      "grossExposure": "总敞口",
+      "netInvested": "净投资",
+      "portfolioBeta": "组合 Beta",
+      "vsSpy": "对比基准",
+      "betaNotComputed": "未计算（W13 影子模式）",
+      "cvar95": "CVaR (95%)",
+      "tailRisk": "尾部风险",
+      "riskPass": "风控检查通过",
+      "riskBreach": "风控限额突破",
+      "cvarShadow": "Layer 3 影子模式 — 见 week_*.json"
+    },
+    "errorState": {
+      "title": "组合数据不可用",
+      "detail": "拉取当前组合状态时出错。可能是服务连接问题或当前周期信号数据缺失。",
+      "retry": "重试连接"
+    },
+    "trades": {
+      "calculating": "计算调仓指令中…",
+      "inSync": "组合已同步",
+      "inSyncDetail": "本期无需调仓。",
+      "action": {
+        "buy": "买入",
+        "sell": "卖出",
+        "hold": "持有"
+      }
+    },
+    "budget": {
+      "title": "资金分配",
+      "subtitle": "输入总交易资金计算每只标的的金额"
+    },
+    "tabs": {
+      "holdings": "持仓",
+      "trades": "交易",
+      "budget": "资金"
+    },
+    "tabHeaders": {
+      "holdings": { "title": "最优配置", "subtitle": "由均值-方差优化器计算" },
+      "trades": { "title": "调仓指令", "subtitle": "目标权重的执行订单" },
+      "budget": { "title": "资金配置", "subtitle": "调整你的交易本金" }
+    },
+    "table": {
+      "security": "标的",
+      "targetWeight": "目标权重",
+      "alphaScore": "Alpha 分",
+      "direction": "方向",
+      "ticker": "代码",
+      "action": "动作",
+      "prevPct": "原 %",
+      "targetPct": "目标 %",
+      "allocationShift": "权重变动",
+      "equityComponent": "权益组件",
+      "bullish": "看多",
+      "bearish": "看空"
+    }
+  },
+  "kline": {
+    "refreshing": "刷新中",
+    "candlestick": "K 线图",
+    "candlestickAria": "K 线图",
+    "line": "折线图",
+    "lineAria": "折线图",
+    "loading": "加载价格历史…",
+    "failed": "价格历史加载失败。",
+    "internalError": "内部服务错误",
+    "open": "开",
+    "high": "高",
+    "low": "低",
+    "close": "收",
+    "price": "价格",
+    "volume": "成交量"
+  },
+  "backtest": {
+    "title": "策略回测",
+    "subtitle": "模型输出模拟 · 假设性表现 · 不代表未来结果",
+    "disclaimer": "假设性 & 模拟结果",
+    "configuration": "参数配置",
+    "fields": {
+      "universe": "股票池",
+      "strategy": "策略",
+      "startYear": "起始年",
+      "endYear": "结束年",
+      "rebalance": "调仓频率",
+      "maxPositionSize": "单仓上限",
+      "stopLoss": "止损"
+    },
+    "running": "运行中…",
+    "runButton": "运行回测",
+    "results": {
+      "totalReturn": "总收益",
+      "vsBenchmark": "对比基准 +{{value}}%",
+      "sharpe": "Sharpe 比率",
+      "annualized": "年化",
+      "maxDrawdown": "最大回撤",
+      "fromPeak": "自峰值",
+      "calmar": "Calmar 比率",
+      "returnPerDrawdown": "收益/回撤"
+    },
+    "equityCurve": {
+      "title": "净值曲线",
+      "subtitle": "假设性 · {{start}}–{{end}} · 标准化为 1.0",
+      "strategy": "策略",
+      "benchmark": "基准"
+    },
+    "monthlyReturns": {
+      "title": "月度收益",
+      "subtitle": "假设模拟月度 P&L 分布"
+    },
+    "riskMetrics": {
+      "title": "风险指标",
+      "annualizedVol": "年化波动率",
+      "var95": "VaR (95%)",
+      "cvar95": "CVaR (95%)",
+      "winRate": "胜率",
+      "profitFactor": "盈亏比",
+      "avgWinLoss": "平均盈/平均亏",
+      "betaSpx": "对 SPX 的 Beta",
+      "turnoverMonthly": "月度换手"
+    }
+  },
+  "greyscale": {
+    "title": "灰度监控",
+    "subtitle": "周度自动跑批 · Layer 1-4 风控 · 8 周评估闸门",
+    "weeks": {
+      "header": "周度跑批",
+      "weekNumber": "第 {{n}} 周",
+      "signalDate": "信号日期",
+      "tickers": "持仓数",
+      "layerStatus": "Layer 状态"
+    },
+    "layers": {
+      "layer1": "Layer 1 · 数据",
+      "layer2": "Layer 2 · 信号",
+      "layer3": "Layer 3 · 组合",
+      "layer4": "Layer 4 · 运维",
+      "pass": "通过",
+      "fail": "失败",
+      "shadow": "影子",
+      "warning": "告警"
+    },
+    "gate": {
+      "title": "8 周评估闸门",
+      "weeksMatured": "成熟周次",
+      "alphaTarget": "Alpha 目标",
+      "layer3TriggerRate": "Layer 3 触发率",
+      "status": "状态",
+      "pending": "待评估",
+      "provisional": "暂定",
+      "mature": "已成熟",
+      "passed": "通过",
+      "failed": "未通过"
+    },
+    "shadowDiagnostics": {
+      "title": "Layer 3 影子诊断",
+      "subtitle": "计算但不强制执行 — 仅供观察",
+      "shadowHoldings": "影子持仓",
+      "wouldRemove": "本会移除",
+      "wouldReduce": "本会减仓",
+      "cvarTriggered": "CVaR 触发"
+    }
+  }
+}

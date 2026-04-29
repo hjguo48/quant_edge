@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { CandlestickChart, TrendingUp, RefreshCcw } from "lucide-react";
 import { fetchApi } from "../hooks/useApi";
 
@@ -264,6 +265,7 @@ const KLineChart = ({
   height = 280,
   defaultRange = "1M",
 }: KLineChartProps) => {
+  const { t } = useTranslation();
   const chartAreaRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rangeSelectorRef = useRef<HTMLDivElement>(null);
@@ -749,7 +751,7 @@ const KLineChart = ({
           </span>
           {activeQuery.isFetching && !isInitialLoading && (
             <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground animate-pulse">
-              Refreshing
+              {t("kline.refreshing")}
             </span>
           )}
         </div>
@@ -767,8 +769,8 @@ const KLineChart = ({
               className={`relative z-10 flex h-6 w-7 items-center justify-center rounded-md transition-colors duration-300 ${
                 chartMode === "candlestick" ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
-              title="Candlestick"
-              aria-label="Candlestick chart"
+              title={t("kline.candlestick")}
+              aria-label={t("kline.candlestickAria")}
             >
               <CandlestickChart size={12} />
             </button>
@@ -777,8 +779,8 @@ const KLineChart = ({
               className={`relative z-10 flex h-6 w-7 items-center justify-center rounded-md transition-colors duration-300 ${
                 chartMode === "line" ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
-              title="Line Chart"
-              aria-label="Line chart"
+              title={t("kline.line")}
+              aria-label={t("kline.lineAria")}
             >
               <TrendingUp size={12} />
             </button>
@@ -821,20 +823,20 @@ const KLineChart = ({
       <div ref={chartAreaRef} className={`relative transition-all duration-500 ease-out origin-center ${isTransitioning ? "opacity-20 scale-[0.985]" : "opacity-100 scale-100"}`}>
         {isInitialLoading ? (
           <div className="flex items-center justify-center rounded-lg bg-surface animate-pulse" style={{ height }}>
-            <span className="text-sm text-muted-foreground">Loading price history…</span>
+            <span className="text-sm text-muted-foreground">{t("kline.loading")}</span>
           </div>
         ) : hasError ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface px-4 text-center" style={{ height }}>
-            <span className="text-sm text-bear mb-2">Failed to load price history.</span>
+            <span className="text-sm text-bear mb-2">{t("kline.failed")}</span>
             <p className="text-[10px] text-muted-foreground mb-3 max-w-[200px]">
-              {activeQuery.error?.message || "Internal server error"}
+              {activeQuery.error?.message || t("kline.internalError")}
             </p>
-            <button 
+            <button
               onClick={() => activeQuery.refetch()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-accent transition-colors"
             >
               <RefreshCcw size={12} />
-              Retry
+              {t("common.retry")}
             </button>
           </div>
         ) : data.length === 0 ? (
@@ -900,25 +902,25 @@ const KLineChart = ({
                   {chartMode === "candlestick" && (
                     <>
                       <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">Open</span>
+                        <span className="text-muted-foreground">{t("kline.open")}</span>
                         <span className="font-mono text-foreground">${activeCandle.open.toFixed(2)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">High</span>
+                        <span className="text-muted-foreground">{t("kline.high")}</span>
                         <span className="font-mono text-foreground">${activeCandle.high.toFixed(2)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">Low</span>
+                        <span className="text-muted-foreground">{t("kline.low")}</span>
                         <span className="font-mono text-foreground">${activeCandle.low.toFixed(2)}</span>
                       </div>
                     </>
                   )}
                   <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-muted-foreground">{chartMode === "candlestick" ? "Close" : "Price"}</span>
+                    <span className="text-muted-foreground">{chartMode === "candlestick" ? t("kline.close") : t("kline.price")}</span>
                     <span className="font-mono text-foreground">${activeCandle.close.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-muted-foreground">Volume</span>
+                    <span className="text-muted-foreground">{t("kline.volume")}</span>
                     <span className="font-mono text-foreground">{formatVolume(activeCandle.volume)}</span>
                   </div>
                 </div>

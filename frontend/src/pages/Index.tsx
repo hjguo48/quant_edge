@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
 
@@ -10,19 +11,22 @@ const Portfolio = lazy(() => import("./Portfolio"));
 const Backtest = lazy(() => import("./Backtest"));
 const GreyscaleMonitor = lazy(() => import("./GreyscaleMonitor"));
 
-const PageFallback = () => (
-  <div className="flex-1 flex items-center justify-center text-xs font-medium uppercase tracking-widest text-muted-foreground">
-    Loading...
-  </div>
-);
+const PageFallback = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex-1 flex items-center justify-center text-xs font-medium uppercase tracking-widest text-muted-foreground">
+      {t("common.loading")}
+    </div>
+  );
+};
 
-const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
-  dashboard: { title: "Dashboard", subtitle: "Model Output · Not Investment Advice" },
-  signals: { title: "Signal Feed", subtitle: "Quantitative Model Signals · SEC Compliant" },
-  "signal-detail": { title: "Signal Detail", subtitle: "Factor Decomposition · Model Output Only" },
-  portfolio: { title: "Portfolio", subtitle: "Model Portfolio Analytics · Hypothetical" },
-  backtest: { title: "Backtest Engine", subtitle: "Hypothetical Simulation · Not Predictive of Future Results" },
-  greyscale: { title: "Greyscale Monitor", subtitle: "Trust Premium/Discount Tracker · Model Output" },
+const PAGE_TITLE_KEYS: Record<string, string> = {
+  dashboard: "dashboard",
+  signals: "signals",
+  "signal-detail": "signalDetail",
+  portfolio: "portfolio",
+  backtest: "backtest",
+  greyscale: "greyscale",
 };
 
 function getPageFromPath(pathname: string): string {
@@ -36,6 +40,7 @@ function getPageFromPath(pathname: string): string {
 }
 
 const Index = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { ticker } = useParams<{ ticker?: string }>();
@@ -68,7 +73,11 @@ const Index = () => {
     navigate(`/signals/${ticker.toUpperCase()}`);
   };
 
-  const meta = PAGE_TITLES[activePage] ?? PAGE_TITLES["dashboard"];
+  const titleKey = PAGE_TITLE_KEYS[activePage] ?? "dashboard";
+  const meta = {
+    title: t(`pageTitles.${titleKey}.title`),
+    subtitle: t(`pageTitles.${titleKey}.subtitle`),
+  };
 
   const renderPage = () => {
     switch (activePage) {

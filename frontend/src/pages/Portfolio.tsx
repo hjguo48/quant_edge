@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect } from "react";
 import { TrendingUp, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { useTranslation } from "react-i18next";
 import StatCard from "../components/StatCard";
 import { fetchApi } from "../hooks/useApi";
+import { getSectorColor } from "../constants/sectorColors";
 import {
   GREYSCALE_HORIZONS,
   type GreyscaleHorizonKey,
@@ -14,6 +16,8 @@ interface PortfolioHolding {
   ticker: string;
   weight: number;
   score: number;
+  sector?: string | null;
+  company_name?: string | null;
 }
 
 interface PortfolioCurrentResponse {
@@ -66,8 +70,10 @@ interface RebalanceResponse {
 }
 
 const HOLDINGS_PAGE_SIZE = 5;
+const SECTOR_PANEL_TOP_N = 6;
 
 const Portfolio = () => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState("holdings");
   const [budgetStr, setBudgetStr] = useState("100000");
   const [, setBudgetStrPrev] = useState("100000");
@@ -95,36 +101,37 @@ const Portfolio = () => {
     return () => clearTimeout(timer);
   }, [totalBudget]);
 
+  // Use global QueryClient defaults (retry: 3 + 7s exponential backoff).
+  // refetchOnMount: 'always' forces fresh fetch when navigating back to Portfolio,
+  // so a previously-cached error state (e.g. from API restart) doesn't persist.
   const currentQuery = useQuery<PortfolioCurrentResponse>({
     queryKey: ["portfolioCurrent"],
     queryFn: () => fetchApi<PortfolioCurrentResponse>("/api/portfolio/current"),
-    retry: false,
+    refetchOnMount: "always",
   });
 
   const summaryQuery = useQuery<PortfolioSummaryResponse>({
     queryKey: ["portfolioSummary"],
     queryFn: () => fetchApi<PortfolioSummaryResponse>("/api/portfolio/summary"),
-    retry: false,
+    refetchOnMount: "always",
   });
 
   const budgetQuery = useQuery<BudgetResponse>({
     queryKey: ["portfolioBudget", debouncedTotalBudget],
     queryFn: () => fetchApi<BudgetResponse>(`/api/portfolio/budget?total_budget=${debouncedTotalBudget}`),
-    retry: false,
     enabled: debouncedTotalBudget >= 1000,
-    staleTime: 10000, // Cache for 10 seconds
+    staleTime: 10000,
   });
 
   const rebalanceQuery = useQuery<RebalanceResponse>({
     queryKey: ["portfolioRebalance"],
     queryFn: () => fetchApi<RebalanceResponse>("/api/portfolio/rebalance"),
-    retry: false,
+    refetchOnMount: "always",
   });
 
   const performanceQuery = useQuery<GreyscalePerformanceResponse>({
     queryKey: ["greyscalePerformance"],
     queryFn: () => fetchApi<GreyscalePerformanceResponse>("/api/greyscale/performance"),
-    retry: false,
     staleTime: 60_000,
   });
 
@@ -146,46 +153,71 @@ const Portfolio = () => {
   }
 
   const isLoading = currentQuery.isLoading || summaryQuery.isLoading;
-  const isError = currentQuery.isError || summaryQuery.isError;
+  // Show full-page error only when the primary holdings query has truly failed (no data).
+  // Summary failure alone is non-blocking; holdings is the page's core dataset.
+  const isError = currentQuery.isError && !currentQuery.data;
 
   const current = currentQuery.data;
   const summary = summaryQuery.data;
 
+  const sectorAggregation = useMemo(() => {
+    const holdings = current?.holdings ?? [];
+    if (!holdings.length) return [] as { sector: string; weight: number; tickerCount: number; tickers: string[] }[];
+    const grouped = new Map<string, { weight: number; tickers: string[] }>();
+    for (const h of holdings) {
+      const key = h.sector?.trim() || "Unknown";
+      const entry = grouped.get(key) ?? { weight: 0, tickers: [] };
+      entry.weight += h.weight;
+      entry.tickers.push(h.ticker);
+      grouped.set(key, entry);
+    }
+    return Array.from(grouped.entries())
+      .map(([sector, v]) => ({
+        sector,
+        weight: v.weight,
+        tickerCount: v.tickers.length,
+        tickers: v.tickers,
+      }))
+      .sort((a, b) => b.weight - a.weight);
+  }, [current]);
+
   const stats = useMemo(() => {
     if (!summary) return [];
     return [
-      { 
-        label: "Holdings", 
-        value: summary.holding_count.toString(), 
-        change: summary.turnover * 100, 
-        changeLabel: "Est. turnover", 
-        trend: "neutral" as const 
-      },
-      { 
-        label: "Gross Exposure", 
-        value: `${(summary.gross_exposure * 100).toFixed(1)}%`, 
-        change: (1 - summary.cash_weight) * 100, 
-        changeLabel: "Net invested", 
-        trend: "up" as const 
-      },
       {
-        label: "Portfolio Beta",
-        value: summary.portfolio_beta != null ? summary.portfolio_beta.toFixed(2) : "—",
-        change: 0,
-        changeLabel: summary.portfolio_beta != null ? "vs. Benchmark" : "Not computed (W13 shadow mode)",
+        label: t("portfolio.stats.holdings"),
+        value: summary.holding_count != null ? summary.holding_count.toString() : "—",
+        change: summary.turnover != null ? summary.turnover * 100 : 0,
+        changeLabel: t("portfolio.stats.estTurnover"),
         trend: "neutral" as const
       },
       {
-        label: "CVaR (95%)",
+        label: t("portfolio.stats.grossExposure"),
+        value: summary.gross_exposure != null ? `${(summary.gross_exposure * 100).toFixed(1)}%` : "—",
+        change: summary.cash_weight != null ? (1 - summary.cash_weight) * 100 : 0,
+        changeLabel: t("portfolio.stats.netInvested"),
+        trend: "up" as const
+      },
+      {
+        label: t("portfolio.stats.portfolioBeta"),
+        value: summary.portfolio_beta != null ? summary.portfolio_beta.toFixed(2) : "—",
+        change: 0,
+        changeLabel: summary.portfolio_beta != null
+          ? t("portfolio.stats.vsSpy")
+          : t("portfolio.stats.betaNotComputed"),
+        trend: "neutral" as const
+      },
+      {
+        label: t("portfolio.stats.cvar95"),
         value: summary.cvar_95 != null ? `${(summary.cvar_95 * 100).toFixed(2)}%` : "—",
         change: summary.risk_pass ? 0 : 1,
         changeLabel: summary.cvar_95 != null
-          ? (summary.risk_pass ? "Risk check passed" : "Risk limit breach")
-          : "Layer 3 shadow mode — see week_*.json",
+          ? (summary.risk_pass ? t("portfolio.stats.riskPass") : t("portfolio.stats.riskBreach"))
+          : t("portfolio.stats.cvarShadow"),
         trend: summary.cvar_95 != null && !summary.risk_pass ? "down" as const : "neutral" as const,
       },
     ];
-  }, [summary]);
+  }, [summary, t]);
 
   // Handle Animated Budget Input
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -248,15 +280,15 @@ const Portfolio = () => {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-muted-foreground">
         <ShieldCheck size={48} className="mb-4 text-bear opacity-20" />
-        <h2 className="text-xl font-bold text-foreground mb-2">Portfolio Data Unavailable</h2>
+        <h2 className="text-xl font-bold text-foreground mb-2">{t("portfolio.errorState.title")}</h2>
         <p className="max-w-md text-center text-sm mb-6">
-          We encountered an error while fetching the current portfolio state. This may be due to a server connection issue or missing signal data for the current period.
+          {t("portfolio.errorState.detail")}
         </p>
-        <button 
+        <button
           onClick={() => { currentQuery.refetch(); summaryQuery.refetch(); }}
           className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
         >
-          Retry Connection
+          {t("portfolio.errorState.retry")}
         </button>
       </div>
     );
@@ -304,17 +336,17 @@ const Portfolio = () => {
           {performanceQuery.isLoading ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
               <TrendingUp size={32} className="text-muted-foreground mb-4 opacity-20 animate-pulse" />
-              <p className="text-xs text-muted-foreground">Loading paper P&amp;L...</p>
+              <p className="text-xs text-muted-foreground">{t("portfolio.performanceTracking.loadingPnl")}</p>
             </div>
           ) : performanceQuery.isError || !performance ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
               <TrendingUp size={32} className="text-muted-foreground mb-4 opacity-20" />
-              <h3 className="text-sm font-semibold text-foreground mb-1">Performance Tracking</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-1">{t("portfolio.performanceTracking.title")}</h3>
               <p className="text-xs text-muted-foreground max-w-xs">
-                Awaiting first realized weekly close. Greyscale paper P&amp;L will populate after the first auto run.
+                {t("portfolio.performanceTracking.pendingFirstCloseDetail")}
               </p>
               <span className="mt-4 px-2.5 py-1 rounded-full bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground border border-border">
-                Pending First Close
+                {t("portfolio.performanceTracking.pendingFirstClose")}
               </span>
             </div>
           ) : (() => {
@@ -340,9 +372,9 @@ const Portfolio = () => {
               <>
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-sm font-bold text-foreground">Performance Tracking</h3>
+                    <h3 className="text-sm font-bold text-foreground">{t("portfolio.performanceTracking.title")}</h3>
                     <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
-                      Paper P&amp;L · vs {performance.benchmark} · dry-run only
+                      {t("portfolio.performanceTracking.subtitle", { benchmark: performance.benchmark })}
                     </p>
                   </div>
                   <div className="flex gap-1 bg-muted/50 rounded-lg p-1 border border-border/50">
@@ -364,34 +396,34 @@ const Portfolio = () => {
 
                 {isPending ? (
                   <div className="flex flex-col items-center justify-center min-h-[180px] border border-dashed border-border rounded-lg bg-surface text-xs text-muted-foreground space-y-1">
-                    <p className="font-bold uppercase tracking-widest">Awaiting first close</p>
+                    <p className="font-bold uppercase tracking-widest">{t("portfolio.performanceTracking.awaitingFirstClose")}</p>
                     <p className="text-[10px] opacity-70 text-center px-2">
-                      {activeHorizon} horizon has no realized weeks yet. Realized P&amp;L materializes after price data lands for the next trading day after signal_date.
+                      {t("portfolio.performanceTracking.awaitingFirstCloseDetail", { horizon: activeHorizon })}
                     </p>
                   </div>
                 ) : (
                   <>
                     <div className="grid grid-cols-4 gap-3 mb-4">
                       <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Cumulative</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t("portfolio.performanceTracking.cumulative")}</p>
                         <p className={`text-lg font-black font-mono ${colorOf(cumReturn)}`}>
                           {fmtPct(cumReturn)}
                         </p>
                       </div>
                       <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Excess vs SPY</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t("portfolio.performanceTracking.excessVsSpy")}</p>
                         <p className={`text-lg font-black font-mono ${colorOf(cumExcess)}`}>
                           {fmtPct(cumExcess)}
                         </p>
                       </div>
                       <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Max Drawdown</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t("portfolio.performanceTracking.maxDrawdown")}</p>
                         <p className={`text-lg font-black font-mono ${colorOf(dd)}`}>
                           {fmtPct(dd)}
                         </p>
                       </div>
                       <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Win Rate</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t("portfolio.performanceTracking.winRate")}</p>
                         <p className={`text-lg font-black font-mono ${winrate == null ? "text-muted-foreground" : colorOf(winrate - 0.5)}`}>
                           {winrate == null ? "—" : `${(winrate * 100).toFixed(0)}%`}
                         </p>
@@ -417,8 +449,8 @@ const Portfolio = () => {
                                 borderRadius: 8,
                                 fontSize: 11,
                               }}
-                              formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, "Cumulative"]}
-                              labelFormatter={(label: string) => `Week of ${label}`}
+                              formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, t("portfolio.performanceTracking.cumulative")]}
+                              labelFormatter={(label: string) => t("portfolio.performanceTracking.weekOf", { date: label })}
                             />
                             <Area
                               type="monotone"
@@ -435,11 +467,11 @@ const Portfolio = () => {
                     {recentWeeks.length > 0 && (
                       <div>
                         <div className="flex items-center px-3 py-2 border-b border-border bg-muted/10 text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em]">
-                          <div className="w-24">Signal Date</div>
-                          <div className="flex-1 text-right">Portfolio</div>
-                          <div className="flex-1 text-right">SPY</div>
-                          <div className="flex-1 text-right">Excess</div>
-                          <div className="w-20 text-right">Status</div>
+                          <div className="w-24">{t("portfolio.performanceTracking.signalDate")}</div>
+                          <div className="flex-1 text-right">{t("portfolio.performanceTracking.portfolio")}</div>
+                          <div className="flex-1 text-right">{t("portfolio.performanceTracking.spy")}</div>
+                          <div className="flex-1 text-right">{t("portfolio.performanceTracking.excess")}</div>
+                          <div className="w-20 text-right">{t("portfolio.performanceTracking.status")}</div>
                         </div>
                         {recentWeeks.map((w) => {
                           const block = w.horizons?.[activeHorizon];
@@ -462,7 +494,7 @@ const Portfolio = () => {
                                   status === "partial" ? "bg-amber-500/10 text-amber-500" :
                                   "bg-muted text-muted-foreground"
                                 }`}>
-                                  {status}
+                                  {status === "realized" ? t("common.realized") : status === "partial" ? t("common.partial") : t("common.pending")}
                                 </span>
                               </div>
                             </div>
@@ -472,10 +504,10 @@ const Portfolio = () => {
                     )}
 
                     <div className="flex justify-between items-center mt-3 text-[10px] text-muted-foreground">
-                      <span>{weeksRealized} weeks realized · last close {latestBlock?.horizon_end_date ?? "—"}</span>
+                      <span>{t("portfolio.performanceTracking.weeksRealized", { count: weeksRealized, date: latestBlock?.horizon_end_date ?? "—" })}</span>
                       {latestBlock && (
                         <span>
-                          coverage {latestBlock.tickers_used}/{latestBlock.tickers_used + latestBlock.tickers_missing}
+                          {t("portfolio.performanceTracking.coverage", { used: latestBlock.tickers_used, total: latestBlock.tickers_used + latestBlock.tickers_missing })}
                         </span>
                       )}
                     </div>
@@ -487,24 +519,93 @@ const Portfolio = () => {
         </div>
 
         <div className="w-72 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3">
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <PieChart size={32} className="text-muted-foreground mb-4 opacity-20" />
-            <h3 className="text-sm font-semibold text-foreground mb-1">Sector Weights</h3>
-            <p className="text-xs text-muted-foreground px-4">
-              Sector classification for the current universe is processing.
-            </p>
-            <div className="mt-6 w-full space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="flex items-center justify-between opacity-30">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-muted" />
-                    <div className="w-16 h-2 bg-muted rounded" />
-                  </div>
-                  <div className="w-8 h-2 bg-muted rounded" />
-                </div>
-              ))}
+          {currentQuery.isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <PieChart size={28} className="text-muted-foreground mb-3 opacity-20 animate-pulse" />
+              <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
             </div>
-          </div>
+          ) : sectorAggregation.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <PieChart size={28} className="text-muted-foreground mb-3 opacity-20" />
+              <h3 className="text-sm font-semibold text-foreground mb-1">{t("portfolio.sectorWeights.title")}</h3>
+              <p className="text-xs text-muted-foreground px-2">
+                {t("portfolio.sectorWeights.noHoldings")}
+              </p>
+            </div>
+          ) : (() => {
+            const totalWeight = sectorAggregation.reduce((sum, s) => sum + s.weight, 0);
+            const visible = sectorAggregation.slice(0, SECTOR_PANEL_TOP_N);
+            const overflow = sectorAggregation.slice(SECTOR_PANEL_TOP_N);
+            const otherWeight = overflow.reduce((sum, s) => sum + s.weight, 0);
+            const otherTickerCount = overflow.reduce((sum, s) => sum + s.tickerCount, 0);
+            const maxWeight = Math.max(...visible.map((s) => s.weight), otherWeight);
+            return (
+              <>
+                <div className="mb-4">
+                  <h3 className="text-sm font-bold text-foreground">{t("portfolio.sectorWeights.title")}</h3>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                    {t("portfolio.sectorWeights.subtitle")}
+                  </p>
+                </div>
+                <div className="space-y-2.5">
+                  {visible.map((s) => {
+                    const color = getSectorColor(s.sector);
+                    const pct = (s.weight / totalWeight) * 100;
+                    const barWidth = maxWeight > 0 ? (s.weight / maxWeight) * 100 : 0;
+                    return (
+                      <div key={s.sector}>
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div
+                              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                              style={{ background: color.text }}
+                            />
+                            <span className="text-foreground font-semibold truncate">{t(`sectors.${s.sector}`, { defaultValue: s.sector })}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: s.tickerCount })}</span>
+                          </div>
+                          <span className="font-mono font-bold text-foreground flex-shrink-0">
+                            {pct.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${barWidth}%`,
+                              background: color.text,
+                              opacity: 0.7,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {overflow.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] mb-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-muted-foreground/50" />
+                          <span className="text-muted-foreground font-semibold truncate">+{overflow.length} {t("common.of").replace(/\W/g, "")}</span>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: otherTickerCount })}</span>
+                        </div>
+                        <span className="font-mono font-bold text-muted-foreground flex-shrink-0">
+                          {((otherWeight / totalWeight) * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-muted-foreground/40"
+                          style={{ width: `${maxWeight > 0 ? (otherWeight / maxWeight) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -517,26 +618,26 @@ const Portfolio = () => {
             </div>
             <div>
               <h3 className="text-base font-bold text-foreground">
-                {tab === "holdings" ? "Optimal Allocation" : tab === "trades" ? "Rebalance Instructions" : "Capital Configurator"}
+                {tab === "holdings" ? t("portfolio.tabHeaders.holdings.title") : tab === "trades" ? t("portfolio.tabHeaders.trades.title") : t("portfolio.tabHeaders.budget.title")}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {tab === "holdings" ? "Calculated by mean-variance optimizer" : tab === "trades" ? "Execution orders for target weights" : "Adjust your trading capital"}
+                {tab === "holdings" ? t("portfolio.tabHeaders.holdings.subtitle") : tab === "trades" ? t("portfolio.tabHeaders.trades.subtitle") : t("portfolio.tabHeaders.budget.subtitle")}
               </p>
             </div>
           </div>
           <div className="flex gap-1 bg-muted/50 rounded-xl p-1 border border-border/50">
             {[
-              { id: "holdings", label: "Holdings", icon: ShieldCheck },
-              { id: "trades", label: "Trades", icon: ShoppingCart },
-              { id: "budget", label: "Budget", icon: Calculator },
-            ].map((t) => (
-              <button 
-                key={t.id} 
-                onClick={() => setTab(t.id)} 
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all duration-300 ${tab === t.id ? "bg-card text-foreground shadow-xl border border-border scale-[1.02]" : "text-muted-foreground hover:text-foreground"}`}
+              { id: "holdings", labelKey: "portfolio.tabs.holdings", icon: ShieldCheck },
+              { id: "trades", labelKey: "portfolio.tabs.trades", icon: ShoppingCart },
+              { id: "budget", labelKey: "portfolio.tabs.budget", icon: Calculator },
+            ].map((tabDef) => (
+              <button
+                key={tabDef.id}
+                onClick={() => setTab(tabDef.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all duration-300 ${tab === tabDef.id ? "bg-card text-foreground shadow-xl border border-border scale-[1.02]" : "text-muted-foreground hover:text-foreground"}`}
               >
-                <t.icon size={14} />
-                {t.label}
+                <tabDef.icon size={14} />
+                {t(tabDef.labelKey)}
               </button>
             ))}
           </div>
@@ -553,10 +654,10 @@ const Portfolio = () => {
           return (
             <div className="animate-in fade-in duration-500">
               <div className="flex items-center px-6 py-3 border-b border-border bg-muted/20 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                <div className="w-32">Security</div>
-                <div className="flex-1">Target Weight</div>
-                <div className="w-32 text-right">Alpha Score</div>
-                <div className="w-32 text-center">Direction</div>
+                <div className="w-32">{t("portfolio.table.security")}</div>
+                <div className="flex-1">{t("portfolio.table.targetWeight")}</div>
+                <div className="w-32 text-right">{t("portfolio.table.alphaScore")}</div>
+                <div className="w-32 text-center">{t("portfolio.table.direction")}</div>
                 <div className="w-10" />
               </div>
               {isLoading ? (
@@ -578,7 +679,7 @@ const Portfolio = () => {
                   >
                     <div className="w-32">
                       <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{h.ticker}</div>
-                      <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">Equity Component</div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">{t("portfolio.table.equityComponent")}</div>
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-4">
@@ -601,7 +702,7 @@ const Portfolio = () => {
                     </div>
                     <div className="w-32 flex justify-center">
                       <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border shadow-sm ${isLong ? "bg-bull/10 border-bull/30 text-bull" : "bg-bear/10 border-bear/30 text-bear"}`}>
-                        {isLong ? "BULLISH" : "BEARISH"}
+                        {isLong ? t("portfolio.table.bullish") : t("portfolio.table.bearish")}
                       </span>
                     </div>
                     <div className="w-10 flex justify-end">
@@ -615,14 +716,14 @@ const Portfolio = () => {
               {totalHoldingsPages > 1 && !isLoading && (
                 <div className="flex items-center justify-between px-4 py-6">
                   <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-                    Showing <span className="text-foreground">{(safePage - 1) * HOLDINGS_PAGE_SIZE + 1}</span> to <span className="text-foreground">{Math.min(safePage * HOLDINGS_PAGE_SIZE, allHoldings.length)}</span> of <span className="text-foreground">{allHoldings.length}</span>
+                    {t("common.showing")} <span className="text-foreground">{(safePage - 1) * HOLDINGS_PAGE_SIZE + 1}</span> {t("common.to")} <span className="text-foreground">{Math.min(safePage * HOLDINGS_PAGE_SIZE, allHoldings.length)}</span> {t("common.of")} <span className="text-foreground">{allHoldings.length}</span>
                   </p>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setHoldingsPage(1)}
                       disabled={safePage === 1}
                       className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
-                      title="First Page"
+                      title={t("signals.pageTooltips.first")}
                     >
                       <ChevronsLeft size={16} />
                     </button>
@@ -630,7 +731,7 @@ const Portfolio = () => {
                       onClick={() => setHoldingsPage(p => Math.max(1, p - 1))}
                       disabled={safePage === 1}
                       className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
-                      title="Previous Page"
+                      title={t("signals.pageTooltips.previous")}
                     >
                       <ChevronLeft size={16} />
                     </button>
@@ -658,7 +759,7 @@ const Portfolio = () => {
                       onClick={() => setHoldingsPage(p => Math.min(totalHoldingsPages, p + 1))}
                       disabled={safePage === totalHoldingsPages}
                       className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
-                      title="Next Page"
+                      title={t("signals.pageTooltips.next")}
                     >
                       <ChevronRight size={16} />
                     </button>
@@ -666,7 +767,7 @@ const Portfolio = () => {
                       onClick={() => setHoldingsPage(totalHoldingsPages)}
                       disabled={safePage === totalHoldingsPages}
                       className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
-                      title="Last Page"
+                      title={t("signals.pageTooltips.last")}
                     >
                       <ChevronsRight size={16} />
                     </button>
@@ -680,14 +781,14 @@ const Portfolio = () => {
         {tab === "trades" && (
           <div className="animate-in slide-in-from-bottom-2 duration-500">
             <div className="flex items-center px-6 py-3 border-b border-border bg-muted/20 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-              <div className="w-32">Ticker</div>
-              <div className="w-32 text-center">Action</div>
-              <div className="w-32 text-right">Prev %</div>
-              <div className="w-32 text-right">Target %</div>
-              <div className="flex-1 text-right">Allocation Shift</div>
+              <div className="w-32">{t("portfolio.table.ticker")}</div>
+              <div className="w-32 text-center">{t("portfolio.table.action")}</div>
+              <div className="w-32 text-right">{t("portfolio.table.prevPct")}</div>
+              <div className="w-32 text-right">{t("portfolio.table.targetPct")}</div>
+              <div className="flex-1 text-right">{t("portfolio.table.allocationShift")}</div>
             </div>
             {rebalanceQuery.isLoading ? (
-              <div className="p-12 text-center text-xs text-muted-foreground animate-pulse">Calculating rebalance orders...</div>
+              <div className="p-12 text-center text-xs text-muted-foreground animate-pulse">{t("portfolio.trades.calculating")}</div>
             ) : rebalanceQuery.data?.orders.map((order) => (
               <div key={order.ticker} className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
                 <div className="w-32 text-sm font-black text-foreground">{order.ticker}</div>
@@ -695,7 +796,7 @@ const Portfolio = () => {
                   <span className={`text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${
                     order.action === "buy" ? "bg-bull text-white shadow-lg shadow-bull/20" : order.action === "sell" ? "bg-bear text-white shadow-lg shadow-bear/20" : "bg-muted text-muted-foreground"
                   }`}>
-                    {order.action}
+                    {t(`portfolio.trades.action.${order.action}`)}
                   </span>
                 </div>
                 <div className="w-32 text-right text-xs font-mono text-muted-foreground">{(order.weight_prev * 100).toFixed(2)}%</div>
@@ -710,8 +811,8 @@ const Portfolio = () => {
             {!rebalanceQuery.isLoading && (!rebalanceQuery.data || rebalanceQuery.data.orders.length === 0) && (
               <div className="py-20 text-center flex flex-col items-center">
                 <ShieldCheck size={40} className="text-primary opacity-20 mb-4" />
-                <p className="text-sm font-bold text-foreground">Portfolio In Sync</p>
-                <p className="text-xs text-muted-foreground mt-1">No rebalance required for the current period.</p>
+                <p className="text-sm font-bold text-foreground">{t("portfolio.trades.inSync")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("portfolio.trades.inSyncDetail")}</p>
               </div>
             )}
           </div>
@@ -721,8 +822,8 @@ const Portfolio = () => {
           <div className="p-10 animate-in zoom-in-95 duration-500">
             <div className="max-w-2xl mx-auto space-y-10">
               <div className="text-center space-y-2">
-                <h4 className={`text-xs font-black uppercase tracking-[0.3em] transition-colors ${totalBudget < 1000 && budgetStr !== '0' ? 'text-bear' : 'text-primary'}`}>Capital Allocation</h4>
-                <p className="text-muted-foreground text-sm">Enter your total trading budget to calculate dollar amounts</p>
+                <h4 className={`text-xs font-black uppercase tracking-[0.3em] transition-colors ${totalBudget < 1000 && budgetStr !== '0' ? 'text-bear' : 'text-primary'}`}>{t("portfolio.budget.title")}</h4>
+                <p className="text-muted-foreground text-sm">{t("portfolio.budget.subtitle")}</p>
               </div>
 
               <div className="relative group">

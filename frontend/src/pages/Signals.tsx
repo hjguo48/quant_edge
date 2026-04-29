@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Search, SortDesc, SortAsc, Download, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import SignalRow from "../components/SignalRow";
 import { fetchApi } from "../hooks/useApi";
 import { PRIMARY_SECTORS } from "../constants/sectorColors";
@@ -24,21 +25,11 @@ interface LatestPredictionsResponse {
   predictions: Prediction[];
 }
 
-const DIRECTIONS = ["All", "Strong", "Long", "Watch", "Buffer"];
+const DIRECTION_KEYS = ["all", "strong", "long", "watch", "buffer"] as const;
+type DirectionKey = (typeof DIRECTION_KEYS)[number];
 const PAGE_SIZE = 10;
-const SORT_OPTIONS = [
-  { key: "none", label: "Default" },
-  { key: "score_desc", label: "High \u2193 Low" },
-  { key: "score_asc", label: "Low \u2191 High" },
-] as const;
-type SortMode = (typeof SORT_OPTIONS)[number]["key"];
-
-const formatDateShort = (dateStr?: string) => {
-  if (!dateStr || dateStr === "Current") return "Current";
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-};
+const SORT_KEYS = ["none", "score_desc", "score_asc"] as const;
+type SortMode = (typeof SORT_KEYS)[number];
 
 function hashTickerSeed(value: string): number {
   let hash = 0;
@@ -57,10 +48,13 @@ function computeTier(score: number, percentile: number): Tier {
   return "long";
 }
 
+const ALL_SECTORS = "__all__";
+
 const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void }) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
-  const [direction, setDirection] = useState("All");
-  const [sectorFilter, setSectorFilter] = useState("All Sectors");
+  const [direction, setDirection] = useState<DirectionKey>("all");
+  const [sectorFilter, setSectorFilter] = useState<string>(ALL_SECTORS);
   const [sectorOpen, setSectorOpen] = useState(false);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const sectorBtnRef = useRef<HTMLButtonElement>(null);
@@ -135,13 +129,8 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
     return signalRows
       .filter((s) => {
         const matchSearch = s.ticker.toLowerCase().includes(search.toLowerCase()) || s.name.toLowerCase().includes(search.toLowerCase());
-        const matchDir =
-          direction === "All" ||
-          (direction === "Strong" && s.tier === "strong") ||
-          (direction === "Long" && s.tier === "long") ||
-          (direction === "Watch" && s.tier === "watch") ||
-          (direction === "Buffer" && s.tier === "buffer");
-        const matchSector = sectorFilter === "All Sectors" || s.sector === sectorFilter;
+        const matchDir = direction === "all" || s.tier === direction;
+        const matchSector = sectorFilter === ALL_SECTORS || s.sector === sectorFilter;
         return matchSearch && matchDir && matchSector;
       })
       .sort((a, b) => {
@@ -177,9 +166,9 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
       {/* Header */}
       <div className="flex items-center justify-between fade-in-up">
         <div>
-          <h2 className="text-xl font-bold text-foreground font-black uppercase tracking-widest">Signal Feed</h2>
+          <h2 className="text-xl font-bold text-foreground font-black uppercase tracking-widest">{t("signals.title")}</h2>
           <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-[0.2em] font-medium">
-            Week {data?.week_number || "—"} · {formatDateShort(data?.signal_date)} · <span className="text-bull-strong font-bold">{tierCounts.strong} strong</span> · <span className="text-bull font-bold">{tierCounts.long} long</span> · <span className="text-bull-watch font-bold">{tierCounts.watch} watch</span> · <span className="text-muted-foreground font-bold">{tierCounts.buffer} buffer</span> · Not investment advice
+            {t("signals.metaLine", { week: data?.week_number ?? "—", date: data?.signal_date ?? "—" })} · <span className="text-bull-strong font-bold">{t("signals.tierStats.strong", { count: tierCounts.strong })}</span> · <span className="text-bull font-bold">{t("signals.tierStats.long", { count: tierCounts.long })}</span> · <span className="text-bull-watch font-bold">{t("signals.tierStats.watch", { count: tierCounts.watch })}</span> · <span className="text-muted-foreground font-bold">{t("signals.tierStats.buffer", { count: tierCounts.buffer })}</span> · {t("signals.notInvestmentAdvice")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -189,11 +178,11 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent border border-border transition-all duration-200 disabled:opacity-50"
           >
             <RefreshCw size={14} className={isFetching ? "animate-spin" : ""} />
-            {isFetching ? "Refreshing..." : "Refresh"}
+            {isFetching ? t("signals.refreshing") : t("common.refresh")}
           </button>
           <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-primary text-primary-foreground btn-primary font-medium">
             <Download size={14} />
-            Export CSV
+            {t("signals.exportCsv")}
           </button>
         </div>
       </div>
@@ -209,7 +198,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
             }`}
           >
             <Star size={14} className={showWatchlist ? "fill-current" : ""} />
-            Watchlist
+            {t("signals.watchlist")}
             <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${showWatchlist ? "bg-primary text-primary-foreground font-bold" : "bg-muted-foreground/20 text-muted-foreground font-medium"}`}>
               {watchlist.length}
             </span>
@@ -223,7 +212,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search ticker or company..."
+              placeholder={t("signals.searchPlaceholder")}
               className="bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none w-full font-medium"
             />
           </div>
@@ -236,10 +225,10 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
               ref={sectorBtnRef}
               onClick={toggleSectorDropdown}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-xs font-medium border min-w-[140px] group ${
-                sectorFilter === "All Sectors" ? "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent" : "bg-primary/5 border-primary/20 text-foreground"
+                sectorFilter === ALL_SECTORS ? "bg-muted/50 border-transparent text-muted-foreground hover:bg-accent" : "bg-primary/5 border-primary/20 text-foreground"
               }`}
             >
-              <span className="truncate">{sectorFilter}</span>
+              <span className="truncate">{sectorFilter === ALL_SECTORS ? t("signals.allSectors") : sectorFilter}</span>
               <ChevronDown size={14} className={`ml-auto text-muted-foreground transition-transform duration-300 ${sectorOpen ? "rotate-180 text-primary" : "group-hover:text-foreground"}`} />
             </button>
 
@@ -251,14 +240,14 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
                   style={{ top: dropdownPos.top, left: dropdownPos.left }}
                 >
                   <button
-                    onClick={() => { setSectorFilter("All Sectors"); setSectorOpen(false); }}
+                    onClick={() => { setSectorFilter(ALL_SECTORS); setSectorOpen(false); }}
                     className={`w-full flex items-center px-5 py-3 text-xs font-medium transition-all duration-200 ${
-                      sectorFilter === "All Sectors" 
-                        ? "text-primary bg-primary/5 font-bold" 
+                      sectorFilter === ALL_SECTORS
+                        ? "text-primary bg-primary/5 font-bold"
                         : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                     }`}
                   >
-                    All Sectors
+                    {t("signals.allSectors")}
                   </button>
 
                   <div className="h-px bg-white/5 my-1 mx-3" />
@@ -286,7 +275,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
 
           {/* Direction Toggle */}
           <div className="flex gap-1 bg-muted p-1 rounded-xl flex-shrink-0">
-            {DIRECTIONS.map((d) => (
+            {DIRECTION_KEYS.map((d) => (
               <button
                 key={d}
                 onClick={() => setDirection(d)}
@@ -294,7 +283,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
                   direction === d ? "bg-card text-foreground shadow-custom" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {d}
+                {t(`signals.directions.${d}`)}
               </button>
             ))}
           </div>
@@ -302,17 +291,17 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
           {/* Sort Controls */}
           <div className="ml-auto flex items-center gap-2 flex-shrink-0 pr-1">
             <div className="flex gap-1 bg-muted p-1 rounded-xl">
-              {SORT_OPTIONS.map((option) => (
+              {SORT_KEYS.map((key) => (
                 <button
-                  key={option.key}
-                  onClick={() => setSort(option.key)}
+                  key={key}
+                  onClick={() => setSort(key)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1 ${
-                    sort === option.key ? "bg-card text-foreground shadow-custom" : "text-muted-foreground hover:text-foreground"
+                    sort === key ? "bg-card text-foreground shadow-custom" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {option.key === "score_desc" && <SortDesc size={12} />}
-                  {option.key === "score_asc" && <SortAsc size={12} />}
-                  {option.label}
+                  {key === "score_desc" && <SortDesc size={12} />}
+                  {key === "score_asc" && <SortAsc size={12} />}
+                  {key === "none" ? t("signals.sortOptions.default") : key === "score_desc" ? t("signals.sortOptions.scoreDesc") : t("signals.sortOptions.scoreAsc")}
                 </button>
               ))}
             </div>
@@ -325,12 +314,12 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
         {/* Header Row */}
         <div className="flex items-center gap-4 px-6 py-4 border-b border-border bg-muted/20">
           <div className="w-8" />
-          <div className="w-24 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Security</div>
-          <div className="w-28 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Signal</div>
-          <div className="flex-1 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Model Confidence</div>
-          <div className="w-20 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] text-right">Raw Score</div>
-          <div className="w-24 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] text-center">Trend</div>
-          <div className="w-32 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] text-right">Sector</div>
+          <div className="w-24 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">{t("signals.table.security")}</div>
+          <div className="w-28 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">{t("signals.table.signal")}</div>
+          <div className="flex-1 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">{t("signals.table.modelConfidence")}</div>
+          <div className="w-20 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] text-right">{t("signals.table.rawScore")}</div>
+          <div className="w-24 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] text-center">{t("signals.table.trend")}</div>
+          <div className="w-32 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] text-right">{t("signals.table.sector")}</div>
           <div className="w-4" />
         </div>
 
@@ -351,9 +340,9 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-24 text-muted-foreground font-medium text-center">
             <AlertCircle size={48} className="mb-4 text-bear opacity-50" />
-            <p className="text-sm">Failed to load signals</p>
+            <p className="text-sm">{t("signals.errors.failedToLoad")}</p>
             <p className="text-xs mt-1 font-medium opacity-60">{(error as Error).message}</p>
-            <button onClick={() => refetch()} className="mt-6 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-widest shadow-lg">Retry Connection</button>
+            <button onClick={() => refetch()} className="mt-6 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-[10px] uppercase tracking-widest shadow-lg">{t("signals.errors.retry")}</button>
           </div>
         ) : paginated.length > 0 ? (
           paginated.map((s) => (
@@ -385,14 +374,14 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
             {showWatchlist ? (
               <>
                 <Star size={48} className="mb-4 opacity-10" />
-                <p className="text-sm font-medium uppercase tracking-widest text-foreground">Watchlist Empty</p>
-                <p className="text-[10px] mt-2 opacity-50">Star securities to track them here</p>
+                <p className="text-sm font-medium uppercase tracking-widest text-foreground">{t("signals.emptyStates.watchlistEmpty")}</p>
+                <p className="text-[10px] mt-2 opacity-50">{t("signals.emptyStates.watchlistEmptyDetail")}</p>
               </>
             ) : (
               <>
                 <Search size={48} className="mb-4 opacity-10" />
-                <p className="text-sm font-medium uppercase tracking-widest text-foreground">No matches found</p>
-                <p className="text-[10px] mt-2 opacity-50">Adjust filters to broaden search</p>
+                <p className="text-sm font-medium uppercase tracking-widest text-foreground">{t("signals.emptyStates.noMatches")}</p>
+                <p className="text-[10px] mt-2 opacity-50">{t("signals.emptyStates.noMatchesDetail")}</p>
               </>
             )}
           </div>
@@ -403,14 +392,14 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-6 fade-in-up">
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-            Showing <span className="text-foreground">{(safePage - 1) * PAGE_SIZE + 1}</span> to <span className="text-foreground">{Math.min(safePage * PAGE_SIZE, filtered.length)}</span> of <span className="text-foreground">{filtered.length}</span>
+            {t("common.showing")} <span className="text-foreground">{(safePage - 1) * PAGE_SIZE + 1}</span> {t("common.to")} <span className="text-foreground">{Math.min(safePage * PAGE_SIZE, filtered.length)}</span> {t("common.of")} <span className="text-foreground">{filtered.length}</span>
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage(1)}
               disabled={safePage === 1}
               className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
-              title="First Page"
+              title={t("signals.pageTooltips.first")}
             >
               <ChevronsLeft size={16} />
             </button>
@@ -418,7 +407,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={safePage === 1}
               className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
-              title="Previous Page"
+              title={t("signals.pageTooltips.previous")}
             >
               <ChevronLeft size={16} />
             </button>
@@ -446,7 +435,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={safePage === totalPages}
               className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
-              title="Next Page"
+              title={t("signals.pageTooltips.next")}
             >
               <ChevronRight size={16} />
             </button>
@@ -454,7 +443,7 @@ const Signals = ({ onSelectSignal }: { onSelectSignal?: (ticker: string) => void
               onClick={() => setPage(totalPages)}
               disabled={safePage === totalPages}
               className="p-2 rounded-xl bg-muted/50 border border-white/5 hover:bg-accent disabled:opacity-20 disabled:hover:bg-transparent transition-all shadow-inner"
-              title="Last Page"
+              title={t("signals.pageTooltips.last")}
             >
               <ChevronsRight size={16} />
             </button>

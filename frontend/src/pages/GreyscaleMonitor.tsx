@@ -1,79 +1,180 @@
-import { useState, useEffect } from "react";
-import { Eye, AlertOctagon, RefreshCw, TrendingUp, TrendingDown, Clock } from "lucide-react";
-import MiniSparkline from "../components/MiniSparkline";
+import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { Eye, Clock, ShieldCheck, Activity, AlertTriangle, CheckCircle2, XCircle, Hourglass } from "lucide-react";
+import { fetchApi } from "../hooks/useApi";
+import type {
+  GreyscaleMonitorResponse,
+  GreyscaleWeekSummary,
+} from "../types/greyscaleMonitor";
 
-interface GrayAsset {
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  premium: number;
-  nav: number;
-  volume: string;
-  aum: string;
-  status: "normal" | "warning" | "critical";
-  sparkData: number[];
+const fmtPct = (v: number | null | undefined, digits = 2) =>
+  v == null ? "—" : `${(v * 100).toFixed(digits)}%`;
+
+const fmtFloat = (v: number | null | undefined, digits = 4) =>
+  v == null ? "—" : v.toFixed(digits);
+
+interface LayerPillProps {
+  label: string;
+  pass: boolean | null;
+  shadow?: boolean;
 }
 
-const ASSETS: GrayAsset[] = [
-  { symbol: "GBTC", name: "Grayscale Bitcoin Trust", price: 58.42, change: 3.21, premium: -8.4, nav: 63.77, volume: "$284M", aum: "$21.8B", status: "normal", sparkData: [48, 52, 50, 55, 53, 58, 56, 60, 58, 63] },
-  { symbol: "ETHE", name: "Grayscale Ethereum Trust", price: 28.14, change: -1.82, premium: -12.7, nav: 32.24, volume: "$42M", aum: "$7.2B", status: "warning", sparkData: [32, 28, 30, 25, 27, 22, 24, 19, 21, 16] },
-  { symbol: "GDLC", name: "Grayscale Digital Large Cap", price: 42.87, change: 1.54, premium: -6.1, nav: 45.65, volume: "$8.2M", aum: "$580M", status: "normal", sparkData: [38, 40, 39, 42, 41, 44, 43, 45, 44, 47] },
-  { symbol: "GLTC", name: "Grayscale Litecoin Trust", price: 12.34, change: -4.21, premium: -18.3, nav: 15.10, volume: "$2.1M", aum: "$210M", status: "critical", sparkData: [18, 16, 17, 14, 15, 12, 13, 10, 11, 8] },
-  { symbol: "GETH", name: "Grayscale Ethereum Classic Trust", price: 8.92, change: 0.87, premium: -9.2, nav: 9.82, volume: "$1.4M", aum: "$98M", status: "normal", sparkData: [7, 8, 8, 9, 8, 9, 9, 10, 9, 10] },
-  { symbol: "BCHG", name: "Grayscale Bitcoin Cash Trust", price: 6.71, change: -2.34, premium: -15.6, nav: 7.95, volume: "$0.8M", aum: "$42M", status: "warning", sparkData: [9, 8, 8, 7, 7, 6, 7, 6, 6, 5] },
-];
-
-function useLivePrice(initial: number) {
-  const [price, setPrice] = useState(initial);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPrice((p) => parseFloat((p + (Math.random() - 0.5) * 0.1).toFixed(2)));
-    }, 2000 + Math.random() * 1000);
-    return () => clearInterval(interval);
-  }, []);
-  return price;
-}
-
-const LivePriceCell = ({ price: initPrice, isPos }: { price: number; isPos: boolean }) => {
-  const price = useLivePrice(initPrice);
+const LayerPill = ({ label, pass, shadow }: LayerPillProps) => {
+  let color: string;
+  let icon: React.ReactNode;
+  if (pass === true) {
+    color = "bg-bull/10 text-bull border-bull/20";
+    icon = <CheckCircle2 size={11} />;
+  } else if (pass === false) {
+    color = "bg-bear/10 text-bear border-bear/20";
+    icon = <XCircle size={11} />;
+  } else {
+    color = "bg-muted/50 text-muted-foreground border-border";
+    icon = <Hourglass size={11} />;
+  }
+  if (shadow) {
+    color = "bg-amber-500/10 text-amber-500 border-amber-500/20";
+  }
   return (
-    <span className={`text-sm font-bold font-mono transition-colors duration-300 ${isPos ? "text-bull" : "text-bear"}`}>
-      ${price.toFixed(2)}
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${color}`}
+    >
+      {icon}
+      <span>{label}</span>
     </span>
   );
 };
 
-const statusConfig = {
-  normal: { label: "Normal", className: "tag-bull" },
-  warning: { label: "Warning", className: "tag-neutral" },
-  critical: { label: "Critical", className: "tag-bear" },
+const StatusDot = ({ value }: { value: boolean | null }) => {
+  if (value === true) return <span className="inline-block w-1.5 h-1.5 rounded-full bg-bull" />;
+  if (value === false) return <span className="inline-block w-1.5 h-1.5 rounded-full bg-bear" />;
+  return <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />;
+};
+
+const GateStatusBadge = ({ status }: { status: string | null }) => {
+  const { t } = useTranslation();
+  const normalized = (status ?? "PENDING").toUpperCase();
+  const labelKey =
+    normalized === "PENDING" ? "greyscale.gate.pending" :
+    normalized === "PROVISIONAL" ? "greyscale.gate.provisional" :
+    normalized === "MATURE" ? "greyscale.gate.mature" :
+    normalized === "PASS" ? "greyscale.gate.passed" :
+    normalized === "FAIL" ? "greyscale.gate.failed" :
+    "greyscale.gate.pending";
+  const color =
+    normalized === "PASS" ? "bg-bull/15 text-bull border-bull/30" :
+    normalized === "FAIL" ? "bg-bear/15 text-bear border-bear/30" :
+    "bg-muted/50 text-muted-foreground border-border";
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${color}`}>
+      {t(labelKey)}
+    </span>
+  );
+};
+
+const WeeksTable = ({ weeks }: { weeks: GreyscaleWeekSummary[] }) => {
+  const { t } = useTranslation();
+  if (weeks.length === 0) {
+    return (
+      <div className="p-8 text-center text-xs text-muted-foreground">
+        {t("common.noData")}
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="flex items-center px-4 py-2 border-b border-border bg-muted/10 text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em]">
+        <div className="w-24">#</div>
+        <div className="w-28">{t("greyscale.weeks.signalDate")}</div>
+        <div className="w-20 text-right">{t("greyscale.weeks.tickers")}</div>
+        <div className="flex-1 text-center">{t("greyscale.weeks.layerStatus")}</div>
+        <div className="w-24 text-right">IC</div>
+      </div>
+      {[...weeks].reverse().map((w) => (
+        <div
+          key={w.week_number}
+          className="flex items-center px-4 py-3 border-b border-border/50 last:border-0 hover:bg-accent/40 transition-colors text-xs"
+        >
+          <div className="w-24 text-foreground font-bold">{t("greyscale.weeks.weekNumber", { n: w.week_number })}</div>
+          <div className="w-28 text-foreground font-mono">{w.signal_date ?? "—"}</div>
+          <div className="w-20 text-right font-mono text-foreground">{w.holding_count ?? "—"}</div>
+          <div className="flex-1 flex flex-wrap gap-1 justify-center">
+            <LayerPill label="L1" pass={w.layer1_pass} />
+            <LayerPill label="L2" pass={w.layer2_pass} />
+            <LayerPill label="L3" pass={w.layer3_pass} />
+            <LayerPill label="L4" pass={w.layer4_pass} />
+          </div>
+          <div className="w-24 text-right font-mono text-muted-foreground">
+            {w.realized_ic_mean == null ? "—" : w.realized_ic_mean.toFixed(4)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 };
 
 const GreyscaleMonitor = () => {
-  const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [refreshing, setRefreshing] = useState(false);
-  const [sortBy, setSortBy] = useState<"premium" | "change" | "aum">("premium");
-  const [alertsOnly, setAlertsOnly] = useState(false);
+  const { t, i18n } = useTranslation();
+  const lang = (i18n.resolvedLanguage ?? i18n.language ?? "en").split("-")[0];
+  const localeTag = lang === "zh" ? "zh-CN" : "en-US";
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-      setLastUpdate(new Date());
-    }, 1200);
-  };
+  const monitorQuery = useQuery<GreyscaleMonitorResponse>({
+    queryKey: ["greyscaleMonitor"],
+    queryFn: () => fetchApi<GreyscaleMonitorResponse>("/api/greyscale/monitor"),
+    retry: false,
+    staleTime: 30_000,
+  });
 
-  const sorted = [...ASSETS]
-    .filter((a) => !alertsOnly || a.status !== "normal")
-    .sort((a, b) => {
-      if (sortBy === "premium") return a.premium - b.premium;
-      if (sortBy === "change") return b.change - a.change;
-      return 0;
-    });
+  if (monitorQuery.isLoading) {
+    return (
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <Eye size={18} className="text-primary animate-pulse" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">{t("greyscale.title")}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("common.loading")}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-40 bg-card rounded-xl border border-border animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  const avgPremium = (ASSETS.reduce((sum, a) => sum + a.premium, 0) / ASSETS.length).toFixed(1);
-  const warningCount = ASSETS.filter((a) => a.status !== "normal").length;
+  if (monitorQuery.isError || !monitorQuery.data) {
+    return (
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center text-xs text-muted-foreground">
+          <AlertTriangle size={36} className="text-muted-foreground/40 mb-3" />
+          <p className="font-bold uppercase tracking-widest mb-1">{t("common.error")}</p>
+          <p className="opacity-70 max-w-md">
+            {(monitorQuery.error as Error | undefined)?.message ?? t("common.noData")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const data = monitorQuery.data;
+  const heartbeat = data.heartbeat;
+  const gate = data.gate;
+  const shadow = data.shadow_diagnostics;
+  const layer1 = data.layer1_diagnostics;
+
+  const generatedAtLabel = heartbeat?.generated_at_utc
+    ? new Date(heartbeat.generated_at_utc).toLocaleString(localeTag, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5">
@@ -84,165 +185,277 @@ const GreyscaleMonitor = () => {
             <Eye size={18} className="text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">Greyscale Monitor</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Real-time trust premium/discount monitoring · Model Output</p>
+            <h2 className="text-xl font-bold text-foreground">{t("greyscale.title")}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("greyscale.subtitle")}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock size={12} />
-            <span>Updated: {lastUpdate.toLocaleTimeString()}</span>
-          </div>
-          <button
-            onClick={handleRefresh}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent border border-border transition-all duration-200"
-          >
-            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-            Refresh
-          </button>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <Clock size={12} />
+          <span>{generatedAtLabel}</span>
         </div>
       </div>
 
-      {/* Alert Banner */}
-      {warningCount > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/20 fade-in-up stagger-1">
-          <AlertOctagon size={15} className="text-destructive flex-shrink-0" />
-          <p className="text-sm text-destructive font-medium">
-            {warningCount} trust(s) showing elevated discount / volatility — monitor closely
-          </p>
-          <button
-            onClick={() => setAlertsOnly((v) => !v)}
-            className="ml-auto text-xs font-semibold text-destructive hover:opacity-70 transition-opacity"
-          >
-            {alertsOnly ? "Show All" : "Show Alerts Only"}
-          </button>
+      {/* Heartbeat — latest run summary */}
+      {heartbeat && (
+        <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-1">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Activity size={14} className="text-primary" />
+                <h3 className="text-sm font-bold text-foreground">
+                  {t("greyscale.weeks.signalDate")}: <span className="font-mono">{heartbeat.signal_date ?? "—"}</span>
+                </h3>
+              </div>
+              <p className="text-[10px] text-muted-foreground font-medium">
+                {heartbeat.bundle_version ?? "—"}
+              </p>
+            </div>
+            <GateStatusBadge status={heartbeat.gate_status} />
+          </div>
+
+          <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                {t("portfolio.stats.holdings")}
+              </p>
+              <p className="text-lg font-black font-mono text-foreground">
+                {heartbeat.actual_holding_count ?? "—"}
+              </p>
+            </div>
+            <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                {t("greyscale.shadowDiagnostics.shadowHoldings")}
+              </p>
+              <p className="text-lg font-black font-mono text-amber-500">
+                {heartbeat.shadow_holding_count ?? "—"}
+              </p>
+            </div>
+            <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                Universe
+              </p>
+              <p className="text-lg font-black font-mono text-foreground">
+                {heartbeat.ticker_count ?? "—"}
+              </p>
+            </div>
+            <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                {t("greyscale.gate.weeksMatured")}
+              </p>
+              <p className="text-lg font-black font-mono text-foreground">
+                {heartbeat.matured_weeks ?? 0} / {gate?.required_weeks ?? "—"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <LayerPill label={t("greyscale.layers.layer1")} pass={heartbeat.layer1_pass} />
+            <LayerPill label={t("greyscale.layers.layer2")} pass={heartbeat.layer2_pass} />
+            {heartbeat.layer3_enforcement_mode ? (
+              <LayerPill label={t("greyscale.layers.layer3")} pass={heartbeat.layer3_pass} />
+            ) : (
+              <LayerPill
+                label={`${t("greyscale.layers.layer3")} (${t("greyscale.layers.shadow")})`}
+                pass={heartbeat.shadow_layer3_pass}
+                shadow
+              />
+            )}
+            <LayerPill label={t("greyscale.layers.layer4")} pass={heartbeat.layer4_pass} />
+          </div>
         </div>
       )}
 
-      {/* Summary Metrics */}
-      <div className="flex gap-4 fade-in-up stagger-1">
-        {[
-          { label: "Avg Premium/Discount", value: `${avgPremium}%`, icon: "activity", positive: false },
-          { label: "Total Trusts Monitored", value: `${ASSETS.length}`, icon: "eye", positive: true },
-          { label: "Alerts Active", value: `${warningCount}`, icon: "alert", positive: false },
-          { label: "Largest Discount", value: "-18.3%", icon: "trend-down", positive: false },
-        ].map(({ label, value, positive }, i) => (
-          <div
-            key={label}
-            className={`flex-1 bg-card rounded-xl border p-4 card-hover fade-in-up ${positive ? "border-border" : "border-bear/20"}`}
-            style={{ animationDelay: `${i * 50}ms` }}
-          >
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{label}</div>
-            <div className={`text-2xl font-bold font-mono ${positive ? "text-foreground" : "text-bear"}`}>{value}</div>
-          </div>
-        ))}
-      </div>
+      {/* Two-column: Gate + Shadow */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Gate */}
+        {gate && (
+          <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <ShieldCheck size={14} className="text-primary" />
+                  {t("greyscale.gate.title")}
+                </h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                  {gate.gate_rule ?? ""}
+                </p>
+              </div>
+              <GateStatusBadge status={gate.gate_status} />
+            </div>
 
-      {/* Filter Controls */}
-      <div className="flex items-center justify-between fade-in-up stagger-2">
-        <div className="flex items-center gap-2">
-          <TrendingUp size={13} className="text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Sort by:</span>
-          {(["premium", "change", "aum"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSortBy(s)}
-              className={`text-xs px-2.5 py-1.5 rounded-lg font-medium capitalize transition-all duration-200 ${
-                sortBy === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              }`}
-            >
-              {s === "aum" ? "AUM" : s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Showing {sorted.length} of {ASSETS.length} trusts
-        </p>
-      </div>
-
-      {/* Table */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden fade-in-up stagger-3">
-        {/* Header */}
-        <div className="flex items-center px-5 py-3 border-b border-border bg-muted/20 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          <div className="w-32">Trust</div>
-          <div className="flex-1">Name</div>
-          <div className="w-24 text-right">Price</div>
-          <div className="w-24 text-right">24H Change</div>
-          <div className="w-24 text-right">NAV</div>
-          <div className="w-28 text-right">Premium/Disc</div>
-          <div className="w-24 text-right">Volume</div>
-          <div className="w-24 text-right">AUM</div>
-          <div className="w-24 text-center">Status</div>
-          <div className="w-20 text-center">Trend</div>
-        </div>
-
-        {sorted.map((asset, i) => {
-          const isPos = asset.change >= 0;
-          const isPremiumPos = asset.premium >= 0;
-          const status = statusConfig[asset.status];
-
-          return (
-            <div
-              key={asset.symbol}
-              className="flex items-center px-5 py-4 border-b border-border last:border-0 hover:bg-accent/40 transition-all duration-200 cursor-pointer fade-in-up"
-              style={{ animationDelay: `${i * 50}ms` }}
-            >
-              <div className="w-32">
-                <div className="text-sm font-bold text-foreground">{asset.symbol}</div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                  {t("greyscale.gate.weeksMatured")}
+                </p>
+                <p className="text-base font-black font-mono text-foreground">
+                  {gate.matured_weeks} / {gate.required_weeks}
+                </p>
               </div>
-              <div className="flex-1 pr-4">
-                <div className="text-sm text-foreground truncate">{asset.name}</div>
-              </div>
-              <div className="w-24 text-right">
-                <LivePriceCell price={asset.price} isPos={isPos} />
-              </div>
-              <div className="w-24 text-right">
-                <div className={`flex items-center justify-end gap-1 text-sm font-semibold ${isPos ? "text-bull" : "text-bear"}`}>
-                  {isPos ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                  {isPos ? "+" : ""}{asset.change.toFixed(2)}%
-                </div>
-              </div>
-              <div className="w-24 text-right">
-                <span className="text-sm text-muted-foreground font-mono">${asset.nav.toFixed(2)}</span>
-              </div>
-              <div className="w-28 text-right">
-                <div className={`text-sm font-bold font-mono ${isPremiumPos ? "text-bull" : "text-bear"}`}>
-                  {isPremiumPos ? "+" : ""}{asset.premium.toFixed(1)}%
-                </div>
-                {/* Premium bar */}
-                <div className="h-1 w-full bg-muted rounded-full mt-1 overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.min(100, (Math.abs(asset.premium) / 25) * 100)}%`,
-                      backgroundColor: isPremiumPos ? "#00C805" : "#FF5252",
-                      marginLeft: isPremiumPos ? "50%" : `${50 - Math.min(50, (Math.abs(asset.premium) / 25) * 50)}%`,
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="w-24 text-right">
-                <span className="text-xs text-muted-foreground">{asset.volume}</span>
-              </div>
-              <div className="w-24 text-right">
-                <span className="text-xs font-semibold text-foreground">{asset.aum}</span>
-              </div>
-              <div className="w-24 flex justify-center">
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${status.className}`}>
-                  {status.label}
-                </span>
-              </div>
-              <div className="w-20 flex justify-center">
-                <MiniSparkline data={asset.sparkData} positive={isPos} width={60} height={26} animated={false} />
+              <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                  Live IC (mean)
+                </p>
+                <p className="text-base font-black font-mono text-foreground">
+                  {fmtFloat(gate.mean_live_ic)}
+                </p>
               </div>
             </div>
-          );
-        })}
+
+            <div className="space-y-1.5">
+              {Object.entries(gate.checks).map(([name, check]) => (
+                <div key={name} className="flex items-center justify-between text-xs px-2 py-1.5 rounded bg-muted/10 border border-border/30">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <StatusDot value={check.passed} />
+                    <span className="text-foreground font-medium truncate">{name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-muted-foreground font-mono text-[10px] flex-shrink-0">
+                    <span>{check.threshold ?? "—"}</span>
+                    <span className="text-foreground font-bold">
+                      {check.value == null ? "—" : check.value.toFixed(3)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Shadow Diagnostics */}
+        {shadow && (
+          <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-3">
+            <div className="mb-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Activity size={14} className="text-amber-500" />
+                {t("greyscale.shadowDiagnostics.title")}
+              </h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                {t("greyscale.shadowDiagnostics.subtitle")}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                  {t("greyscale.shadowDiagnostics.shadowHoldings")}
+                </p>
+                <p className="text-base font-black font-mono text-amber-500">
+                  {shadow.shadow_holding_count ?? "—"}
+                </p>
+              </div>
+              <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                  Shadow CVaR 99%
+                </p>
+                <p className="text-base font-black font-mono text-foreground">
+                  {fmtPct(shadow.shadow_cvar_99)}
+                </p>
+              </div>
+              <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                  {t("greyscale.shadowDiagnostics.wouldRemove")}
+                </p>
+                <p className="text-base font-black font-mono text-foreground">
+                  {shadow.tickers_layer3_would_remove.length}
+                </p>
+              </div>
+              <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                  {t("greyscale.shadowDiagnostics.wouldReduce")}
+                </p>
+                <p className="text-base font-black font-mono text-foreground">
+                  {shadow.tickers_layer3_would_reduce.length}
+                </p>
+              </div>
+            </div>
+
+            {shadow.tickers_layer3_would_remove.length > 0 && (
+              <div className="mb-3">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-bold">
+                  {t("greyscale.shadowDiagnostics.wouldRemove")}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {shadow.tickers_layer3_would_remove.slice(0, 12).map((tk) => (
+                    <span
+                      key={tk}
+                      className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-bear/10 text-bear border border-bear/20"
+                    >
+                      {tk}
+                    </span>
+                  ))}
+                  {shadow.tickers_layer3_would_remove.length > 12 && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono text-muted-foreground">
+                      +{shadow.tickers_layer3_would_remove.length - 12}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {shadow.cvar_triggered && (
+              <div className="flex items-center gap-2 text-[10px] text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1.5">
+                <AlertTriangle size={11} />
+                <span className="font-bold uppercase tracking-wider">
+                  {t("greyscale.shadowDiagnostics.cvarTriggered")}
+                </span>
+                {shadow.cvar_haircut_rounds != null && (
+                  <span className="font-mono">({shadow.cvar_haircut_rounds} rounds)</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <p className="text-xs text-muted-foreground text-center pb-2">
-        Greyscale trust data · Model output only · Not investment advice · SEC compliant disclosure
-      </p>
+      {/* Layer 1 diagnostics */}
+      {layer1 && (
+        <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-4">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Activity size={14} className={layer1.warning_triggered ? "text-amber-500" : "text-primary"} />
+                {t("greyscale.layers.layer1")} · per-feature dropout
+              </h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
+                trade_date {layer1.latest_trade_date ?? "—"} · threshold {fmtPct(layer1.warn_threshold, 0)}
+              </p>
+            </div>
+            {layer1.warning_triggered ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                <AlertTriangle size={11} />
+                {t("greyscale.layers.warning")}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-bull/10 text-bull border border-bull/20">
+                <CheckCircle2 size={11} />
+                {t("greyscale.layers.pass")}
+              </span>
+            )}
+          </div>
+          {layer1.warning_triggered && Object.keys(layer1.features_over_threshold).length > 0 ? (
+            <div className="space-y-1">
+              {Object.entries(layer1.features_over_threshold).slice(0, 10).map(([name, rate]) => (
+                <div key={name} className="flex items-center justify-between text-xs px-3 py-1.5 rounded bg-amber-500/5 border border-amber-500/15">
+                  <span className="text-foreground font-mono">{name}</span>
+                  <span className="text-amber-500 font-bold font-mono">{fmtPct(rate)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              max null rate <span className="font-mono text-foreground">{fmtPct(layer1.max_null_rate)}</span> — under threshold
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Weeks history */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden fade-in-up stagger-5">
+        <div className="px-5 py-4 border-b border-border bg-muted/10">
+          <h3 className="text-sm font-bold text-foreground">{t("greyscale.weeks.header")}</h3>
+        </div>
+        <WeeksTable weeks={data.weeks} />
+      </div>
     </div>
   );
 };

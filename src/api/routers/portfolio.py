@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Query
+import sqlalchemy as sa
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.deps import get_db
 from src.api.schemas.portfolio import (
     BudgetAllocation,
     BudgetResponse,
@@ -14,6 +19,9 @@ from src.api.schemas.portfolio import (
     RebalanceResponse,
 )
 from src.api.services.greyscale_reader import GreyscaleReader
+from src.data.db.models import Stock
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/portfolio", tags=["Portfolio"])
 GREYSCALE_REPORT_DIR = Path("data/reports/greyscale")
@@ -30,11 +38,45 @@ def _get_reader() -> GreyscaleReader:
     return _READER
 
 
+async def _enrich_with_stock_info(
+    db: AsyncSession, tickers: list[str]
+) -> dict[str, dict[str, str | None]]:
+    """Return {TICKER: {sector, company_name}} for the given tickers.
+
+    Returns {} on DB failure — caller should treat enrichment as best-effort.
+    Core portfolio data comes from greyscale report files, so DB issues should
+    not turn /api/portfolio/current into a 500.
+    """
+    if not tickers:
+        return {}
+    normalized = [t.upper() for t in tickers]
+    try:
+        result = await db.execute(
+            sa.select(Stock.ticker, Stock.sector, Stock.company_name).where(
+                Stock.ticker.in_(normalized)
+            )
+        )
+        return {
+            ticker.upper(): {"sector": sector, "company_name": company_name}
+            for ticker, sector, company_name in result.all()
+        }
+    except SQLAlchemyError as exc:
+        logger.warning("portfolio sector/company_name enrich skipped (DB error): %s", exc)
+        return {}
+
+
 @router.get("/current", response_model=PortfolioResponse)
-async def get_current_portfolio() -> PortfolioResponse:
+async def get_current_portfolio(
+    db: AsyncSession = Depends(get_db),
+) -> PortfolioResponse:
     reader = _get_reader()
     summary = reader.get_portfolio_summary()
     holdings = reader.get_portfolio_holdings()
+    try:
+        stock_info = await _enrich_with_stock_info(db, [h["ticker"] for h in holdings])
+    except Exception as exc:  # noqa: BLE001 — never let enrich failure kill the page
+        logger.warning("portfolio sector enrich raised unexpected: %s", exc)
+        stock_info = {}
 
     return PortfolioResponse(
         signal_date=summary.get("signal_date") if summary else None,
@@ -46,7 +88,16 @@ async def get_current_portfolio() -> PortfolioResponse:
         cvar_95=summary.get("cvar_95") if summary else None,
         turnover=summary.get("turnover") if summary else None,
         risk_pass=summary.get("risk_pass") if summary else None,
-        holdings=[PortfolioHolding(**holding) for holding in holdings],
+        holdings=[
+            PortfolioHolding(
+                ticker=holding["ticker"],
+                weight=holding["weight"],
+                score=holding.get("score"),
+                sector=(stock_info.get(holding["ticker"].upper()) or {}).get("sector"),
+                company_name=(stock_info.get(holding["ticker"].upper()) or {}).get("company_name"),
+            )
+            for holding in holdings
+        ],
     )
 
 
