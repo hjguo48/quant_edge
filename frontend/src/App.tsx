@@ -4,8 +4,8 @@ import Index from "./pages/Index";
 
 // fetchApi (hooks/useApi.ts) 内部已处理 network/timeout (3 次重试 ~1s 内),
 // React Query 再加 1 次重试 (~1.5s 后) 来扛 API 重启 (~5s)。
-// 总最坏: 4 (fetchApi 一轮) × 2 (RQ 0+1) = 8 次 HTTP — 比 retry:3 时的 16 次少一半。
-// 关 focus/reconnect 拉取避免切 tab 风暴。
+// 关键: refetchInterval-on-error — 失败状态下每 8s 自动重试,
+// 让用户不需要手动硬刷新就能从 API 重启之类的瞬时故障中恢复。
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -14,6 +14,9 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
       staleTime: 30_000,
+      // Auto-recover from cached errors — poll every 8s while query is errored.
+      refetchInterval: (query) => (query.state.error ? 8_000 : false),
+      refetchIntervalInBackground: false,
     },
   },
 });
