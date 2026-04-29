@@ -123,9 +123,9 @@ interface StockTechnicalsResponse {
   bb_position?: number | null;
 }
 
-type TabKey = "overview" | "factors" | "backtest" | "risk";
+type TabKey = "overview" | "factors";
 
-const tabs: TabKey[] = ["overview", "factors", "backtest", "risk"];
+const tabs: TabKey[] = ["overview", "factors"];
 
 const metricTokenMap: Record<string, string> = {
   adx: "ADX",
@@ -926,7 +926,7 @@ const SignalDetail = ({
 
       {activeTab === "overview" ? (
         renderOverview()
-      ) : activeTab === "factors" ? (
+      ) : (
         <div className="space-y-6 animate-in fade-in duration-500">
           {isPrediction404 ? (
             <div className="bg-card rounded-2xl border border-border p-20 flex flex-col items-center justify-center text-center fade-in-up stagger-2 shadow-2xl">
@@ -1071,19 +1071,6 @@ const SignalDetail = ({
               })()}
             </>
           )}
-        </div>
-      ) : (
-        <div className="bg-card rounded-2xl border border-border p-20 flex flex-col items-center justify-center text-center fade-in-up stagger-2 shadow-2xl">
-          <div className="p-4 rounded-3xl bg-muted/50 mb-6">
-            <Info size={64} className="text-muted-foreground opacity-20" />
-          </div>
-          <h3 className="text-xl font-black text-foreground mb-3 uppercase tracking-widest">{t("signalDetail.integration.title", { tab: t(`signalDetail.tabs.${activeTab}`) })}</h3>
-          <p className="text-sm text-muted-foreground max-w-md leading-relaxed font-medium">
-            {t("signalDetail.integration.detail", { tab: t(`signalDetail.tabs.${activeTab}`) })}
-          </p>
-          <div className="mt-8 px-6 py-2 rounded-xl bg-primary/10 text-[10px] font-black uppercase tracking-[0.2em] text-primary border border-primary/20 shadow-lg">
-            {t("signalDetail.integration.status")}
-          </div>
         </div>
       )}
     </div>

@@ -192,10 +192,7 @@
     "consensusPct": "{{value}}% Consensus",
     "tabs": {
       "overview": "Overview",
-      "factors": "Factors",
-      "fundamentals": "Fundamentals",
-      "technicals": "Technicals",
-      "history": "History"
+      "factors": "Factors"
     },
     "stats": {
       "marketCap": "Market Cap",
@@ -269,11 +266,6 @@
       "bufferHeld": "buffer-held (signal weakening)",
       "conviction": "Model Conviction",
       "stability": "Stability"
-    },
-    "integration": {
-      "title": "{{tab}} Integration",
-      "detail": "The {{tab}} engine is undergoing final stress testing and will be operational in the Phase 4 production release.",
-      "status": "Status: Phase 4 Milestone"
     }
   },
   "portfolio": {

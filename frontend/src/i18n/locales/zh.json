@@ -192,10 +192,7 @@
     "consensusPct": "{{value}}% 一致度",
     "tabs": {
       "overview": "概览",
-      "factors": "因子",
-      "fundamentals": "基本面",
-      "technicals": "技术面",
-      "history": "历史"
+      "factors": "因子"
     },
     "stats": {
       "marketCap": "市值",
@@ -269,11 +266,6 @@
       "bufferHeld": "缓冲持有（信号减弱）",
       "conviction": "模型确信度",
       "stability": "稳定性"
-    },
-    "integration": {
-      "title": "{{tab}} 集成",
-      "detail": "{{tab}} 引擎正在最终压测，Phase 4 生产版本上线。",
-      "status": "状态: Phase 4 里程碑"
     }
   },
   "portfolio": {
