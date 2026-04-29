@@ -101,16 +101,19 @@ const Portfolio = () => {
     return () => clearTimeout(timer);
   }, [totalBudget]);
 
-  // Use global QueryClient defaults (retry: 3 + 7s exponential backoff,
-  // refetchOnWindowFocus: false, staleTime: 30s) — see App.tsx
+  // Use global QueryClient defaults (retry: 3 + 7s exponential backoff).
+  // refetchOnMount: 'always' forces fresh fetch when navigating back to Portfolio,
+  // so a previously-cached error state (e.g. from API restart) doesn't persist.
   const currentQuery = useQuery<PortfolioCurrentResponse>({
     queryKey: ["portfolioCurrent"],
     queryFn: () => fetchApi<PortfolioCurrentResponse>("/api/portfolio/current"),
+    refetchOnMount: "always",
   });
 
   const summaryQuery = useQuery<PortfolioSummaryResponse>({
     queryKey: ["portfolioSummary"],
     queryFn: () => fetchApi<PortfolioSummaryResponse>("/api/portfolio/summary"),
+    refetchOnMount: "always",
   });
 
   const budgetQuery = useQuery<BudgetResponse>({
@@ -123,6 +126,7 @@ const Portfolio = () => {
   const rebalanceQuery = useQuery<RebalanceResponse>({
     queryKey: ["portfolioRebalance"],
     queryFn: () => fetchApi<RebalanceResponse>("/api/portfolio/rebalance"),
+    refetchOnMount: "always",
   });
 
   const performanceQuery = useQuery<GreyscalePerformanceResponse>({
@@ -149,11 +153,9 @@ const Portfolio = () => {
   }
 
   const isLoading = currentQuery.isLoading || summaryQuery.isLoading;
-  // Only show full-page error if BOTH primary queries failed AND we have no cached data.
-  // A transient single-query failure shouldn't blank the whole page.
-  const isError =
-    currentQuery.isError && summaryQuery.isError &&
-    !currentQuery.data && !summaryQuery.data;
+  // Show full-page error only when the primary holdings query has truly failed (no data).
+  // Summary failure alone is non-blocking; holdings is the page's core dataset.
+  const isError = currentQuery.isError && !currentQuery.data;
 
   const current = currentQuery.data;
   const summary = summaryQuery.data;
