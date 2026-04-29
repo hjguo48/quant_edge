@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -162,32 +163,64 @@ async def get_greyscale_monitor() -> GreyscaleMonitorResponse:
             checks=checks,
         )
 
-    weeks: list[GreyscaleWeekSummary] = []
+    # Build weeks list. Prefer gate_payload.per_week (richer, has aggregated risk_status),
+    # but fall back to scanning week_*.json files directly so the monitor page works
+    # even when g4_gate_summary.json hasn't been generated yet.
+    weeks_by_num: dict[int, GreyscaleWeekSummary] = {}
     if gate_payload:
         for entry in gate_payload.get("per_week", []) or []:
             if not isinstance(entry, dict):
                 continue
+            week_num = _safe_int(entry.get("week_number")) or 0
             risk = entry.get("risk_status", {}) or {}
             realized = entry.get("realized_ics") or {}
             ic_values = [
                 _safe_float(v) for v in realized.values() if _safe_float(v) is not None
             ]
             ic_mean = sum(ic_values) / len(ic_values) if ic_values else None
-            weeks.append(
-                GreyscaleWeekSummary(
-                    week_number=_safe_int(entry.get("week_number")) or 0,
-                    signal_date=entry.get("signal_date"),
-                    holding_count=_safe_int(entry.get("holding_count_after_risk")),
-                    turnover=_safe_float(entry.get("turnover_vs_previous")),
-                    layer1_pass=risk.get("layer1_pass"),
-                    layer2_pass=risk.get("layer2_pass"),
-                    layer3_pass=risk.get("layer3_pass"),
-                    layer4_pass=risk.get("layer4_pass"),
-                    weight_source=entry.get("weight_source"),
-                    realized_ic_mean=ic_mean,
-                )
+            weeks_by_num[week_num] = GreyscaleWeekSummary(
+                week_number=week_num,
+                signal_date=entry.get("signal_date"),
+                holding_count=_safe_int(entry.get("holding_count_after_risk")),
+                turnover=_safe_float(entry.get("turnover_vs_previous")),
+                layer1_pass=risk.get("layer1_pass"),
+                layer2_pass=risk.get("layer2_pass"),
+                layer3_pass=risk.get("layer3_pass"),
+                layer4_pass=risk.get("layer4_pass"),
+                weight_source=entry.get("weight_source"),
+                realized_ic_mean=ic_mean,
             )
-    weeks.sort(key=lambda w: w.week_number)
+
+    # Scan week_*.json directly for any weeks not already covered by gate_payload.
+    if GREYSCALE_REPORT_DIR.exists():
+        week_pattern = re.compile(r"^week_(\d+)\.json$")
+        for path in sorted(GREYSCALE_REPORT_DIR.glob("week_*.json")):
+            match = week_pattern.match(path.name)
+            if not match:
+                continue
+            week_num = int(match.group(1))
+            if week_num in weeks_by_num:
+                continue  # already loaded from gate_payload
+            week_data = _load_json_file(path)
+            if not week_data:
+                continue
+            risk_checks = (week_data.get("risk_checks") or {}) if isinstance(week_data, dict) else {}
+            live_outputs = (week_data.get("live_outputs") or {}) if isinstance(week_data, dict) else {}
+            holdings_after_risk = live_outputs.get("target_weights_after_risk") or {}
+            weeks_by_num[week_num] = GreyscaleWeekSummary(
+                week_number=week_num,
+                signal_date=live_outputs.get("signal_date"),
+                holding_count=len(holdings_after_risk) if holdings_after_risk else None,
+                turnover=_safe_float(live_outputs.get("turnover_vs_previous")),
+                layer1_pass=(risk_checks.get("layer1_data") or {}).get("pass"),
+                layer2_pass=(risk_checks.get("layer2_signal") or {}).get("pass"),
+                layer3_pass=(risk_checks.get("layer3_portfolio") or {}).get("pass"),
+                layer4_pass=(risk_checks.get("layer4_operational") or {}).get("pass"),
+                weight_source=live_outputs.get("weight_source"),
+                realized_ic_mean=None,
+            )
+
+    weeks: list[GreyscaleWeekSummary] = sorted(weeks_by_num.values(), key=lambda w: w.week_number)
 
     shadow: GreyscaleShadowDiagnostics | None = None
     layer1_diag: dict[str, Any] | None = None
