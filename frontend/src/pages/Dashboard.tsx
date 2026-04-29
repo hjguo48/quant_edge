@@ -306,7 +306,9 @@ const Dashboard = ({ onSelectSignal = () => {} }: DashboardProps) => {
     }
   }, [chartTicker]);
 
-  const sectorHeatmapCols = sectors.map((sector) => sector.sector);
+  const sectorHeatmapCols = sectors.map((sector) =>
+    t(`sectors.${sector.sector}`, { defaultValue: sector.sector })
+  );
   const sectorHeatmapValues = sectors.length > 0 ? [sectors.map((sector) => sector.avg_change_pct)] : undefined;
   const hasError = isOverviewError || isIndicesError || isSectorsError;
   const breadthTrend =

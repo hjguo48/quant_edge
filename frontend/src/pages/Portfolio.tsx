@@ -101,41 +101,33 @@ const Portfolio = () => {
     return () => clearTimeout(timer);
   }, [totalBudget]);
 
+  // Use global QueryClient defaults (retry: 3 + 7s exponential backoff,
+  // refetchOnWindowFocus: false, staleTime: 30s) — see App.tsx
   const currentQuery = useQuery<PortfolioCurrentResponse>({
     queryKey: ["portfolioCurrent"],
     queryFn: () => fetchApi<PortfolioCurrentResponse>("/api/portfolio/current"),
-    retry: 1,
-    refetchOnWindowFocus: false,
   });
 
   const summaryQuery = useQuery<PortfolioSummaryResponse>({
     queryKey: ["portfolioSummary"],
     queryFn: () => fetchApi<PortfolioSummaryResponse>("/api/portfolio/summary"),
-    retry: 1,
-    refetchOnWindowFocus: false,
   });
 
   const budgetQuery = useQuery<BudgetResponse>({
     queryKey: ["portfolioBudget", debouncedTotalBudget],
     queryFn: () => fetchApi<BudgetResponse>(`/api/portfolio/budget?total_budget=${debouncedTotalBudget}`),
-    retry: 1,
-    refetchOnWindowFocus: false,
     enabled: debouncedTotalBudget >= 1000,
-    staleTime: 10000, // Cache for 10 seconds
+    staleTime: 10000,
   });
 
   const rebalanceQuery = useQuery<RebalanceResponse>({
     queryKey: ["portfolioRebalance"],
     queryFn: () => fetchApi<RebalanceResponse>("/api/portfolio/rebalance"),
-    retry: 1,
-    refetchOnWindowFocus: false,
   });
 
   const performanceQuery = useQuery<GreyscalePerformanceResponse>({
     queryKey: ["greyscalePerformance"],
     queryFn: () => fetchApi<GreyscalePerformanceResponse>("/api/greyscale/performance"),
-    retry: 1,
-    refetchOnWindowFocus: false,
     staleTime: 60_000,
   });
 
@@ -157,7 +149,11 @@ const Portfolio = () => {
   }
 
   const isLoading = currentQuery.isLoading || summaryQuery.isLoading;
-  const isError = currentQuery.isError || summaryQuery.isError;
+  // Only show full-page error if BOTH primary queries failed AND we have no cached data.
+  // A transient single-query failure shouldn't blank the whole page.
+  const isError =
+    currentQuery.isError && summaryQuery.isError &&
+    !currentQuery.data && !summaryQuery.data;
 
   const current = currentQuery.data;
   const summary = summaryQuery.data;
@@ -562,7 +558,7 @@ const Portfolio = () => {
                               className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                               style={{ background: color.text }}
                             />
-                            <span className="text-foreground font-semibold truncate">{s.sector}</span>
+                            <span className="text-foreground font-semibold truncate">{t(`sectors.${s.sector}`, { defaultValue: s.sector })}</span>
                             <span className="text-muted-foreground">·</span>
                             <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: s.tickerCount })}</span>
                           </div>

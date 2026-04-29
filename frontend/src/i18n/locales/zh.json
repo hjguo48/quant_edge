@@ -100,6 +100,26 @@
     "watch": "观察",
     "buffer": "缓冲"
   },
+  "sectors": {
+    "Technology": "信息技术",
+    "Financial Services": "金融服务",
+    "Financials": "金融",
+    "Industrials": "工业",
+    "Consumer Cyclical": "可选消费",
+    "Consumer Discretionary": "可选消费",
+    "Consumer Defensive": "必需消费",
+    "Consumer Staples": "必需消费",
+    "Healthcare": "医疗保健",
+    "Health Care": "医疗保健",
+    "Energy": "能源",
+    "Real Estate": "房地产",
+    "Communication Services": "通信服务",
+    "Utilities": "公用事业",
+    "Basic Materials": "基础材料",
+    "Materials": "原材料",
+    "Information Technology": "信息技术",
+    "Unknown": "未分类"
+  },
   "signals": {
     "title": "信号流",
     "metaLine": "第 {{week}} 周 · {{date}}",

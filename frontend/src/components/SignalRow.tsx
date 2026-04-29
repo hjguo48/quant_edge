@@ -159,7 +159,7 @@ const SignalRow = ({
             borderColor: sColor.border 
           }}
         >
-          {sector || "—"}
+          {sector ? t(`sectors.${sector}`, { defaultValue: sector }) : "—"}
         </span>
       </div>
 

@@ -203,9 +203,75 @@ function formatMetricLabel(metric: string): string {
     .join(" ");
 }
 
-function shortenMetricLabel(metric: string): string {
-  const label = formatMetricLabel(metric);
-  return label.length > 20 ? `${label.slice(0, 19)}…` : label;
+// Chinese token translations — abbreviations like P/E, EBITDA stay as-is (universal),
+// only common English words get translated.
+const metricTokenZh: Record<string, string> = {
+  ratio: "比率",
+  margin: "利润率",
+  growth: "增长",
+  growthRate: "增长率",
+  rate: "率",
+  value: "值",
+  yield: "收益率",
+  return: "回报",
+  returns: "回报",
+  income: "收入",
+  revenue: "营收",
+  earnings: "盈利",
+  net: "净",
+  gross: "毛",
+  operating: "经营",
+  total: "总",
+  current: "流动",
+  quick: "速动",
+  debt: "负债",
+  equity: "权益",
+  asset: "资产",
+  assets: "资产",
+  liability: "负债",
+  liabilities: "负债",
+  cash: "现金",
+  flow: "流",
+  ebit: "EBIT",
+  book: "账面",
+  market: "市场",
+  cap: "市值",
+  price: "价格",
+  per: "每",
+  share: "股",
+  earning: "盈利",
+  dividend: "股息",
+  payout: "派息",
+  inventory: "存货",
+  turnover: "周转",
+  to: "对",
+  on: "对",
+  vs: "对比",
+  trend: "趋势",
+  momentum: "动量",
+  volatility: "波动率",
+  performance: "表现",
+  signal: "信号",
+  health: "健康度",
+  financial: "财务",
+  composition: "构成",
+  matrix: "矩阵",
+};
+
+function translateMetricToken(token: string): string {
+  // Preserve original abbreviations from metricTokenMap (P/E, EBITDA, etc.)
+  const lower = token.toLowerCase();
+  if (metricTokenMap[lower]) return metricTokenMap[lower];
+  return metricTokenZh[lower] ?? token;
+}
+
+function formatMetricLabelLocalized(metric: string, lang: string): string {
+  if (lang !== "zh") return formatMetricLabel(metric);
+  return metric
+    .split("_")
+    .map((token) => translateMetricToken(token))
+    .filter((s) => s.length > 0)
+    .join(" ");
 }
 
 function getTrend(value?: number | null): "up" | "down" | "neutral" {
@@ -323,7 +389,8 @@ const SignalDetail = ({
   ticker = "AAPL",
   onBack = () => {},
 }: SignalDetailProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = (i18n.resolvedLanguage ?? i18n.language ?? "en").split("-")[0];
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const normalizedTicker = (ticker || "AAPL").toUpperCase();
 
@@ -394,13 +461,16 @@ const SignalDetail = ({
 
   const topMetricData = metricEntries
     .filter(([, value]) => typeof value === "number" && Number.isFinite(value))
-    .map(([metric, value]) => ({
-      metric,
-      label: shortenMetricLabel(metric),
-      fullLabel: formatMetricLabel(metric),
-      value: Number(value),
-      positive: Number(value) >= 0,
-    }))
+    .map(([metric, value]) => {
+      const localized = formatMetricLabelLocalized(metric, lang);
+      return {
+        metric,
+        label: localized.length > 20 ? `${localized.slice(0, 19)}…` : localized,
+        fullLabel: localized,
+        value: Number(value),
+        positive: Number(value) >= 0,
+      };
+    })
     .sort((left, right) => Math.abs(right.value) - Math.abs(left.value))
     .slice(0, 10)
     .reverse();
@@ -689,7 +759,7 @@ const SignalDetail = ({
               <div className="space-y-3.5">
                 {metricEntries.map(([metric, value]) => (
                   <div key={metric} className="flex items-center justify-between gap-4 py-1 border-b border-white/[0.03] last:border-0 group transition-all duration-300">
-                    <span className="text-[11px] font-bold text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all">{formatMetricLabel(metric)}</span>
+                    <span className="text-[11px] font-bold text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all">{formatMetricLabelLocalized(metric, lang)}</span>
                     <span className={`text-[11px] font-black font-mono px-2 py-0.5 rounded bg-white/5 group-hover:bg-white/10 transition-colors ${typeof value === "number" && value < 0 ? "text-bear" : "text-foreground"}`}>
                       {typeof value === "number" ? formatCompactNumber(value) : "—"}
                     </span>
@@ -739,7 +809,7 @@ const SignalDetail = ({
                     borderColor: getSectorColor(detail.sector).border,
                   }}
                 >
-                  {detail.sector}
+                  {t(`sectors.${detail.sector}`, { defaultValue: detail.sector })}
                 </span>
               )}
               {detail?.industry && (

@@ -100,6 +100,26 @@
     "watch": "WATCH",
     "buffer": "BUFFER"
   },
+  "sectors": {
+    "Technology": "Technology",
+    "Financial Services": "Financial Services",
+    "Financials": "Financials",
+    "Industrials": "Industrials",
+    "Consumer Cyclical": "Consumer Cyclical",
+    "Consumer Discretionary": "Consumer Discretionary",
+    "Consumer Defensive": "Consumer Defensive",
+    "Consumer Staples": "Consumer Staples",
+    "Healthcare": "Healthcare",
+    "Health Care": "Health Care",
+    "Energy": "Energy",
+    "Real Estate": "Real Estate",
+    "Communication Services": "Communication Services",
+    "Utilities": "Utilities",
+    "Basic Materials": "Basic Materials",
+    "Materials": "Materials",
+    "Information Technology": "Information Technology",
+    "Unknown": "Unknown"
+  },
   "signals": {
     "title": "Signal Feed",
     "metaLine": "Week {{week}} · {{date}}",
