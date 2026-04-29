@@ -295,6 +295,8 @@ async def get_expected_returns() -> ExpectedReturnsResponse:
         data_source=expected_returns["data_source"],
         ci_level=expected_returns["ci_level"],
         n_observations=expected_returns["n_observations"],
+        n_bootstrap=expected_returns.get("n_bootstrap"),
+        block_size=expected_returns.get("block_size"),
         annualized_excess=ExpectedReturnBand(**expected_returns["annualized_excess"]),
         sharpe=ExpectedReturnBand(**expected_returns["sharpe"]),
     )
@@ -370,6 +372,8 @@ async def get_ticker_expected_return(ticker: str) -> TickerExpectedReturnRespons
         data_source=expected_returns["data_source"],
         ci_level=expected_returns["ci_level"],
         n_observations=expected_returns["n_observations"],
+        n_bootstrap=expected_returns.get("n_bootstrap"),
+        block_size=expected_returns.get("block_size"),
         annualized_excess=ExpectedReturnBand(**expected_returns["annualized_excess"]),
         sharpe=ExpectedReturnBand(**expected_returns["sharpe"]),
     )

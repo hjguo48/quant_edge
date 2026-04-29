@@ -88,6 +88,8 @@ class ExpectedReturnsResponse(BaseModel):
     data_source: str = "g3_gate_bootstrap"
     ci_level: float
     n_observations: int
+    n_bootstrap: int | None = None
+    block_size: int | None = None
     annualized_excess: ExpectedReturnBand
     sharpe: ExpectedReturnBand
 
@@ -100,5 +102,7 @@ class TickerExpectedReturnResponse(BaseModel):
     data_source: str = "g3_gate_bootstrap"
     ci_level: float
     n_observations: int
+    n_bootstrap: int | None = None
+    block_size: int | None = None
     annualized_excess: ExpectedReturnBand
     sharpe: ExpectedReturnBand

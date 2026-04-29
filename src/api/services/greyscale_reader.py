@@ -372,6 +372,12 @@ class GreyscaleReader:
                         ),
                         "ci_level": self._maybe_float(report.get("ci_level")),
                         "n_observations": self._maybe_int(quintile_payload.get("n_observations")),
+                        "n_bootstrap": self._maybe_int(
+                            quintile_payload.get("n_bootstrap") or report.get("n_bootstrap")
+                        ),
+                        "block_size": self._maybe_int(
+                            quintile_payload.get("block_size") or report.get("block_size")
+                        ),
                         "annualized_excess": {
                             "estimate": float(quintile_payload["annualized_excess"]["estimate"]),
                             "ci_lower": float(quintile_payload["annualized_excess"]["ci_lower"]),
@@ -396,6 +402,8 @@ class GreyscaleReader:
             "data_source": "g3_gate_bootstrap",
             "ci_level": self._maybe_float(bootstrap.get("ci_level")),
             "n_observations": self._maybe_int(bootstrap.get("n_observations")),
+            "n_bootstrap": self._maybe_int(bootstrap.get("n_bootstrap")),
+            "block_size": self._maybe_int(bootstrap.get("block_size")),
             "annualized_excess": {
                 "estimate": float(bootstrap["annualized_excess_estimate"]),
                 "ci_lower": float(bootstrap["annualized_excess_ci_lower"]),
