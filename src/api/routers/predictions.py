@@ -340,10 +340,11 @@ async def get_ticker_shap(
 ) -> TickerShapResponse:
     shap_result = get_shap_for_ticker(ticker.upper(), report_dir=GREYSCALE_REPORT_DIR, top_n=top_n)
     if shap_result is None:
-        raise HTTPException(status_code=404, detail=f"No SHAP data for ticker '{ticker.upper()}'")
+        raise HTTPException(status_code=404, detail=f"No attribution data for ticker '{ticker.upper()}'")
     return TickerShapResponse(
         ticker=shap_result["ticker"],
         signal_date=shap_result.get("signal_date"),
+        attribution_type=shap_result.get("attribution_type", "shap"),
         features=[ShapFeature(**feature) for feature in shap_result.get("features", [])],
     )
 

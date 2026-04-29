@@ -545,6 +545,46 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     week_number = extract_week_number(output_path)
+
+    # Linear attribution: when the active model is Ridge (W12 champion),
+    # SHAP isn't computed (tree-only), so persist `coef × feature` per
+    # holding ticker. The /api/predictions/{ticker}/shap endpoint reads
+    # this to render a Linear contribution waterfall when SHAP is empty.
+    # Note: ridge model is wrapped in RidgeBaselineModel; the sklearn
+    # estimator with coef_/intercept_ lives at .estimator_.
+    linear_attribution: dict[str, Any] | None = None
+    ridge_model = models.get("ridge")
+    ridge_estimator = getattr(ridge_model, "estimator_", None) if ridge_model is not None else None
+    if (
+        ridge_model is not None
+        and ridge_estimator is not None
+        and hasattr(ridge_estimator, "coef_")
+        and hasattr(ridge_model, "feature_names_")
+    ):
+        ridge_feature_names = list(ridge_model.feature_names_)
+        ridge_X = current_feature_matrix.reindex(columns=ridge_feature_names)
+        ridge_coefs = [float(c) for c in np.asarray(ridge_estimator.coef_).flatten().tolist()]
+        try:
+            ridge_intercept = float(np.asarray(ridge_estimator.intercept_).flatten()[0])
+        except (AttributeError, IndexError, TypeError):
+            ridge_intercept = 0.0
+        holding_tickers = list(constrained.weights.keys())
+        ticker_features: dict[str, list[float]] = {}
+        for ticker in holding_tickers:
+            if ticker not in ridge_X.index:
+                continue
+            row = ridge_X.loc[ticker].values
+            ticker_features[ticker] = [
+                float(v) if v is not None and np.isfinite(v) else 0.0 for v in row
+            ]
+        linear_attribution = {
+            "model_type": "ridge",
+            "feature_names": ridge_feature_names,
+            "coefficients": ridge_coefs,
+            "intercept": ridge_intercept,
+            "ticker_features": ticker_features,
+        }
+
     report = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "dry_run": bool(args.dry_run),
@@ -614,6 +654,7 @@ def main(argv: list[str] | None = None) -> int:
             ),
         },
         "shap_values": json_safe(shap_data),
+        "linear_attribution": json_safe(linear_attribution) if linear_attribution else None,
         "risk_checks": {
             "layer1_data": {
                 "pass": bool(not data_report.halt_pipeline),
