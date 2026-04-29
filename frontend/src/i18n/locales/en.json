@@ -211,7 +211,8 @@
       "sharpeRatio": "Sharpe Ratio",
       "disclaimer": "Based on historical model backtest performance. Past results do not guarantee future returns. Not investment advice.",
       "statisticalSource": "Statistical Source",
-      "bootstrapCount": "10K block bootstrap · {{n}} obs"
+      "bootstrapCount": "{{bootstrap}} block bootstrap (block={{block}}) · {{obs}} obs",
+      "bootstrapCountFallback": "block bootstrap · {{obs}} obs"
     },
     "signalHistory": {
       "title": "Model Signal History",

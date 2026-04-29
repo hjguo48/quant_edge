@@ -45,6 +45,8 @@ interface ExpectedReturnResponse {
   data_source: string;
   ci_level: number;
   n_observations: number;
+  n_bootstrap?: number | null;
+  block_size?: number | null;
   annualized_excess: { estimate: number; ci_lower: number; ci_upper: number };
   sharpe: { estimate: number; ci_lower: number; ci_upper: number };
 }
@@ -379,7 +381,17 @@ const ExpectedReturnCard = ({ data }: { data: ExpectedReturnResponse }) => {
         </div>
         <div className="flex items-center justify-between px-1">
           <span className="text-[8px] text-muted-foreground/40 font-black uppercase tracking-widest">{t("signalDetail.expectedPerformance.statisticalSource")}</span>
-          <span className="text-[9px] text-muted-foreground/60 font-mono">{t("signalDetail.expectedPerformance.bootstrapCount", { n: data.n_observations })}</span>
+          <span className="text-[9px] text-muted-foreground/60 font-mono">
+            {data.n_bootstrap != null
+              ? t("signalDetail.expectedPerformance.bootstrapCount", {
+                  bootstrap: (data.n_bootstrap >= 1000
+                    ? `${Math.round(data.n_bootstrap / 1000)}K`
+                    : `${data.n_bootstrap}`),
+                  obs: data.n_observations,
+                  block: data.block_size ?? "—",
+                })
+              : t("signalDetail.expectedPerformance.bootstrapCountFallback", { obs: data.n_observations })}
+          </span>
         </div>
       </div>
     </div>
