@@ -53,10 +53,12 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 import json
 import sys
+from typing import Any
 
 from sqlalchemy import text
 
 from src.data.db.session import get_engine
+from src.utils.io import write_json_atomic
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REPORT_DIR = REPO_ROOT / "data" / "reports" / "greyscale"
@@ -351,13 +353,15 @@ def aggregate_cumulative(per_week: list[dict]) -> dict[str, dict]:
     return cumulative
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
-    report_dir = Path(args.report_dir)
+def build_performance_payload(
+    *,
+    report_dir: Path,
+    benchmark: str = DEFAULT_BENCHMARK,
+    today: date | None = None,
+) -> dict[str, Any]:
     report_dir.mkdir(parents=True, exist_ok=True)
-
     weeks = list_week_reports(report_dir)
-    today = datetime.now(timezone.utc).date()
+    as_of_today = today or datetime.now(timezone.utc).date()
 
     engine = get_engine()
     per_week_results: list[dict] = []
@@ -365,25 +369,53 @@ def main(argv: list[str] | None = None) -> int:
         for path in weeks:
             week_data = load_week_report(path)
             result = compute_per_week(
-                week_data, benchmark=args.benchmark, today=today, conn=conn,
+                week_data,
+                benchmark=benchmark,
+                today=as_of_today,
+                conn=conn,
             )
             per_week_results.append(result)
 
     cumulative = aggregate_cumulative(per_week_results)
 
-    payload = {
+    return {
         "as_of_utc": datetime.now(timezone.utc).isoformat(),
-        "today": today.isoformat(),
+        "today": as_of_today.isoformat(),
         "horizons_supported": list(HORIZONS),
-        "benchmark": args.benchmark,
+        "benchmark": benchmark,
         "per_week": per_week_results,
         "cumulative": cumulative,
     }
 
-    out_path = report_dir / args.output_name
-    out_path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str))
+
+def write_performance_report(
+    *,
+    report_dir: Path,
+    benchmark: str = DEFAULT_BENCHMARK,
+    output_name: str = "greyscale_performance.json",
+    today: date | None = None,
+) -> tuple[Path, dict[str, Any]]:
+    payload = build_performance_payload(
+        report_dir=report_dir,
+        benchmark=benchmark,
+        today=today,
+    )
+    out_path = report_dir / output_name
+    write_json_atomic(out_path, payload)
+    return out_path, payload
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    report_dir = Path(args.report_dir)
+    out_path, payload = write_performance_report(
+        report_dir=report_dir,
+        benchmark=args.benchmark,
+        output_name=args.output_name,
+    )
 
     print(f"wrote {out_path}")
+    per_week_results = payload["per_week"]
     print(f"weeks processed: {len(per_week_results)}")
     for w in per_week_results:
         print(f"  Week {w['week_number']} ({w['signal_date']}):")

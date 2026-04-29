@@ -12,8 +12,9 @@ try:
     from airflow import DAG
     from airflow.exceptions import AirflowException
     from airflow.operators.python import PythonOperator
+    from airflow.utils.trigger_rule import TriggerRule
 except ImportError:
-    from dags._airflow_compat import DAG, AirflowException, PythonOperator
+    from dags._airflow_compat import DAG, AirflowException, PythonOperator, TriggerRule
 try:
     import pendulum
 except ImportError:
@@ -1081,6 +1082,47 @@ def store_to_db(**context: Any) -> dict[str, Any]:
     return _run_task("store_to_db", _store_to_db_impl, **context)
 
 
+def _compute_realized_returns_daily_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    report_dir = _artifact_path(repo_root, "data/reports/greyscale")
+    output_path = report_dir / "greyscale_performance.json"
+
+    try:
+        from scripts.compute_realized_returns import list_week_reports, write_performance_report
+
+        week_reports = list_week_reports(report_dir)
+        if not week_reports:
+            return _result(
+                "compute_realized_returns_daily",
+                "skipped",
+                reason="no_week_reports",
+                output_path=str(output_path),
+            )
+
+        written_path, payload = write_performance_report(report_dir=report_dir)
+        per_week = payload.get("per_week") or []
+        latest_signal_date = per_week[-1]["signal_date"] if per_week else None
+        return _result(
+            "compute_realized_returns_daily",
+            "ok",
+            output_path=str(written_path),
+            weeks_processed=len(per_week),
+            latest_signal_date=latest_signal_date,
+            as_of_utc=payload.get("as_of_utc"),
+        )
+    except Exception as exc:
+        LOGGER.exception("daily_data_pipeline compute_realized_returns_daily failed")
+        return _result(
+            "compute_realized_returns_daily",
+            "warning",
+            output_path=str(output_path),
+            error=str(exc),
+        )
+
+
+def compute_realized_returns_daily(**context: Any) -> dict[str, Any]:
+    return _run_task("compute_realized_returns_daily", _compute_realized_returns_daily_impl, **context)
+
+
 def _update_features_cache_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     from scripts._data_ops import get_tracked_tickers
     from scripts.build_feature_matrix import export_feature_panel
@@ -1232,8 +1274,14 @@ with DAG(
         task_id="update_features_cache",
         python_callable=update_features_cache,
     )
+    compute_realized_returns_daily_task = PythonOperator(
+        task_id="compute_realized_returns_daily",
+        python_callable=compute_realized_returns_daily,
+        trigger_rule=TriggerRule.ALL_DONE,
+    )
     fetch_prices_task >> store_to_db_task
     store_to_db_task >> sync_universe_membership_task
+    store_to_db_task >> compute_realized_returns_daily_task
     sync_universe_membership_task >> [fetch_fundamentals_task, fetch_alternative_data_task]
     if minute_incremental_enabled():
         from dags.task_groups.minute_incremental import build_minute_incremental_task_group

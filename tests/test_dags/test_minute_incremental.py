@@ -431,6 +431,19 @@ def test_dag_daily_data_parses_without_error(monkeypatch: pytest.MonkeyPatch) ->
     assert "fetch_prices" in module.dag.task_ids
 
 
+def test_compute_realized_returns_daily_task_is_non_blocking(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="false")
+
+    realized_returns_task = module.dag.get_task("compute_realized_returns_daily")
+    check_quality_task = module.dag.get_task("check_quality")
+
+    assert realized_returns_task.trigger_rule == TriggerRule.ALL_DONE
+    assert realized_returns_task.upstream_task_ids == {"store_to_db"}
+    assert "compute_realized_returns_daily" not in check_quality_task.upstream_task_ids
+
+
 def test_minute_incremental_group_instantiated_when_flag_on(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_daily_data_module(monkeypatch, enabled="true")
     expected = {
