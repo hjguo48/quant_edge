@@ -239,6 +239,8 @@
       "emptyDetail": "Factor-level decomposition is currently only available for tickers within the high-conviction signal universe.",
       "shapTitle": "Feature Contribution (SHAP)",
       "shapSubtitle": "Top 15 attributes impacting the current model cycle",
+      "linearTitle": "Feature Contribution (Linear)",
+      "linearSubtitle": "Top 15 features by Ridge coef × value · linear contribution",
       "reference": "REFERENCE: {{date}}",
       "running": "Running attribution engine...",
       "shapPending": "SHAP attribution pending",

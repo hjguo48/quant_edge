@@ -57,6 +57,7 @@ interface ShapFeature {
 interface ShapResponse {
   ticker: string;
   signal_date: string;
+  attribution_type?: "shap" | "linear";
   features: ShapFeature[];
 }
 
@@ -947,8 +948,16 @@ const SignalDetail = ({
                       <Layers size={18} className="text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">{t("signalDetail.factors.shapTitle")}</h3>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">{t("signalDetail.factors.shapSubtitle")}</p>
+                      <h3 className="text-sm font-black text-foreground uppercase tracking-widest">
+                        {shap?.attribution_type === "linear"
+                          ? t("signalDetail.factors.linearTitle")
+                          : t("signalDetail.factors.shapTitle")}
+                      </h3>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-0.5">
+                        {shap?.attribution_type === "linear"
+                          ? t("signalDetail.factors.linearSubtitle")
+                          : t("signalDetail.factors.shapSubtitle")}
+                      </p>
                     </div>
                   </div>
                   {prediction?.signal_date && (

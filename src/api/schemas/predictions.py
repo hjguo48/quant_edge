@@ -61,6 +61,9 @@ class ShapFeature(BaseModel):
 class TickerShapResponse(BaseModel):
     ticker: str
     signal_date: str | None = None
+    # 'shap' for tree-model SHAP attribution (W11 fusion);
+    # 'linear' for Ridge coef × feature attribution (W12 champion).
+    attribution_type: str = "shap"
     features: list[ShapFeature] = Field(default_factory=list)
 
 

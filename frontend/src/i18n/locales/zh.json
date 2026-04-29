@@ -239,6 +239,8 @@
       "emptyDetail": "因子级别分解目前仅对高信心信号池中的标的可用。",
       "shapTitle": "特征贡献 (SHAP)",
       "shapSubtitle": "影响本期模型的 top 15 特征",
+      "linearTitle": "特征贡献 (线性)",
+      "linearSubtitle": "Ridge coef × 特征值 · 线性贡献排序 top 15",
       "reference": "参考: {{date}}",
       "running": "归因引擎运行中…",
       "shapPending": "SHAP 归因待算",
