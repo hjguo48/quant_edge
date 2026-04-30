@@ -2,9 +2,12 @@
 <!--
   QuantEdge W12 Weekly Greyscale Task
 
-  Trigger:    Saturday 06:15 Asia/Shanghai (≈ Friday 18:15 ET during DST)
+  Trigger:    Saturday 13:00 Asia/Shanghai (≈ Saturday 01:00 ET during DST)
   Action:     Calls WSL to run scripts/run_w12_greyscale_once.sh
   Behavior:   Wakes computer, runs missed tasks, retries on failure
+  Note:       Updated from 06:15 → 13:00 to ensure today_et resolves to Saturday
+              so previous_session() returns Friday's close as signal_date
+              (06:15 China = Friday 18:15 ET → previous_session = Thursday).
 
   Import via Task Scheduler:
     1. Open Task Scheduler
@@ -21,7 +24,7 @@
   </RegistrationInfo>
   <Triggers>
     <CalendarTrigger>
-      <StartBoundary>2026-05-02T06:15:00</StartBoundary>
+      <StartBoundary>2026-05-02T13:00:00</StartBoundary>
       <Enabled>true</Enabled>
       <ScheduleByWeek>
         <DaysOfWeek>

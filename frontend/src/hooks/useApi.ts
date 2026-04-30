@@ -3,6 +3,20 @@ interface FetchOptions {
   timeout?: number;
 }
 
+/**
+ * Error subclass that preserves the HTTP status code.
+ * Lets callers do `if (err instanceof ApiError && err.status === 404)`
+ * instead of fragile string-matching against the message.
+ */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 export async function fetchApi<T>(
   path: string,
   options: FetchOptions = {},
@@ -22,7 +36,10 @@ export async function fetchApi<T>(
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body?.detail || `Request failed (${response.status})`);
+        throw new ApiError(
+          body?.detail || `Request failed (${response.status})`,
+          response.status,
+        );
       }
 
       return response.json();

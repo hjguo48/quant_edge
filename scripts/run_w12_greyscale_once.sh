@@ -184,8 +184,15 @@ try:
     ET = ZoneInfo("America/New_York")
     today_et = as_of.astimezone(ET).date()
     today_ts = pd.Timestamp(today_et)
-    # Always use previous_session as the conservative expected (T+1 lag means today's close not yet PIT-visible)
-    expected_latest = XNYS.previous_session(today_ts).date()
+    # Always use the most recent past session as the conservative expected
+    # (T+1 lag means today's close not yet PIT-visible, plus today_et may itself
+    # be a non-trading day like Saturday 5/2 — previous_session() raises
+    # NotSessionError on non-session input, so use date_to_session(direction='previous')
+    # which accepts any calendar date).
+    if XNYS.is_session(today_ts):
+        expected_latest = XNYS.previous_session(today_ts).date()
+    else:
+        expected_latest = XNYS.date_to_session(today_ts, direction="previous").date()
     # Allow 1 session tolerance for upstream batch delays
     tolerance_session = XNYS.previous_session(pd.Timestamp(expected_latest)).date()
 
@@ -351,6 +358,10 @@ echo "----- write success heartbeat -----"
 write_success
 
 echo "----- evaluate strategy health -----"
+# Disable set -e around the health check: sys.exit(10) is a *signal* (red state)
+# not a shell error. Without this, ERR trap fires before HEALTH_EXIT=$? can
+# capture the code, so red strategy state ends up in shell_error path.
+set +e
 python - <<'PY'
 import json
 import sys
@@ -369,6 +380,7 @@ print(f"OK: all layers green, gate={gate}")
 sys.exit(0)
 PY
 HEALTH_EXIT=$?
+set -e
 
 if [ $HEALTH_EXIT -eq 10 ]; then
     LATEST_SIGNAL_DATE=$(python -c "import json; print(json.load(open('$LAST_SUCCESS'))['signal_date'])")
