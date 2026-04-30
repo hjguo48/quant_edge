@@ -15,7 +15,7 @@ import KLineChart from "../components/KLineChart";
 import StatCard from "../components/StatCard";
 import ShapWaterfall from "../components/ShapWaterfall";
 import SignalHistory from "../components/SignalHistory";
-import { fetchApi } from "../hooks/useApi";
+import { fetchApi, ApiError } from "../hooks/useApi";
 import { getSectorColor } from "../constants/sectorColors";
 
 interface SignalDetailProps {
@@ -465,8 +465,8 @@ const SignalDetail = ({
   const expectedReturn = expectedReturnQuery.data;
   const history = historyQuery.data?.history || [];
 
-  const isPrediction404 = predictionQuery.error instanceof Error && predictionQuery.error.message.includes("404");
-  const isShap404 = shapQuery.error instanceof Error && shapQuery.error.message.includes("404");
+  const isPrediction404 = predictionQuery.error instanceof ApiError && predictionQuery.error.status === 404;
+  const isShap404 = shapQuery.error instanceof ApiError && shapQuery.error.status === 404;
 
   const metricEntries = Object.entries(fundamentals?.metrics ?? {}).sort(([left], [right]) =>
     left.localeCompare(right),
