@@ -102,7 +102,11 @@ def get_db_latest_trade_date() -> tuple[bool, str]:
                 "    print('NONE'); raise SystemExit(0)\n"
                 "XNYS = xcals.get_calendar('XNYS')\n"
                 "today_et = as_of.astimezone(ZoneInfo('America/New_York')).date()\n"
-                "expected = XNYS.previous_session(pd.Timestamp(today_et)).date()\n"
+                "today_ts = pd.Timestamp(today_et)\n"
+                "if XNYS.is_session(today_ts):\n"
+                "    expected = XNYS.previous_session(today_ts).date()\n"
+                "else:\n"
+                "    expected = XNYS.date_to_session(today_ts, direction='previous').date()\n"
                 "tolerance = XNYS.previous_session(pd.Timestamp(expected)).date()\n"
                 "print(f'{latest.isoformat()}|{expected.isoformat()}|{tolerance.isoformat()}')\n",
             ],

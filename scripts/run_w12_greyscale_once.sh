@@ -382,7 +382,7 @@ PY
 HEALTH_EXIT=$?
 set -e
 
-if [ $HEALTH_EXIT -eq 10 ]; then
+if [ "$HEALTH_EXIT" -eq 10 ]; then
     LATEST_SIGNAL_DATE=$(python -c "import json; print(json.load(open('$LAST_SUCCESS'))['signal_date'])")
     send_alert "RED" "[QuantEdge W12] strategy red state $LATEST_SIGNAL_DATE" \
         "Wrapper completed but layer or gate is red. Inspect last_success.json + week_*.json. Log: $LOG_FILE"
@@ -390,6 +390,14 @@ if [ $HEALTH_EXIT -eq 10 ]; then
     echo "Wrapper completed with red strategy state (exit 10)"
     echo "==================================================================="
     exit 10
+elif [ "$HEALTH_EXIT" -ne 0 ]; then
+    write_failure "health_check" "strategy health check exited non-zero ($HEALTH_EXIT)"
+    send_alert "RED" "[QuantEdge W12] health check failed" \
+        "Wrapper completed but strategy health check failed with exit code $HEALTH_EXIT. Inspect last_success.json + log. Log: $LOG_FILE"
+    echo "==================================================================="
+    echo "Wrapper health check failed (exit $HEALTH_EXIT)"
+    echo "==================================================================="
+    exit 1
 fi
 
 # All-green path — send confirmation email so silent days = real failure days.
