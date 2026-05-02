@@ -147,6 +147,8 @@ class PythonOperator(_DependencyNode):
     python_callable: Any
     dag: DAG | None = None
     trigger_rule: str = TriggerRule.ALL_SUCCESS
+    retries: int | None = None
+    retry_delay: Any | None = None
 
     def __post_init__(self) -> None:
         self.upstream_task_ids = set()

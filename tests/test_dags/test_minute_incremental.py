@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import importlib
 import inspect
 import sys
@@ -442,6 +442,25 @@ def test_compute_realized_returns_daily_task_is_non_blocking(
     assert realized_returns_task.trigger_rule == TriggerRule.ALL_DONE
     assert realized_returns_task.upstream_task_ids == {"store_to_db"}
     assert "compute_realized_returns_daily" not in check_quality_task.upstream_task_ids
+
+
+def test_daily_dag_wires_finra_and_source_coverage_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="false")
+
+    finra_task = module.dag.get_task("fetch_finra_short_volume")
+    coverage_task = module.dag.get_task("assert_source_coverage")
+    update_task = module.dag.get_task("update_features_cache")
+
+    assert finra_task.retries == 2
+    assert finra_task.retry_delay == timedelta(minutes=10)
+    assert finra_task.upstream_task_ids == {"sync_universe_membership"}
+    assert coverage_task.trigger_rule == TriggerRule.ALL_DONE
+    assert coverage_task.upstream_task_ids == {
+        "store_to_db",
+        "fetch_fundamentals",
+        "fetch_finra_short_volume",
+    }
+    assert "assert_source_coverage" in update_task.upstream_task_ids
 
 
 def test_minute_incremental_group_instantiated_when_flag_on(monkeypatch: pytest.MonkeyPatch) -> None:

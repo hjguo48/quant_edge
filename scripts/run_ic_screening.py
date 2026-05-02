@@ -510,6 +510,11 @@ def run_feature_pipeline_fast(
         logger.info("fast pipeline: skip_intraday=True, using empty intraday frame")
 
     macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
+    macro_context = self._compute_macro_composite_context_features(
+        stock_prices,
+        output_start=start,
+        as_of=as_of_ts,
+    )
 
     # W12 patch: include FINRA shorting features (champion retains short_sale_ratio_5d).
     # Without this, fast pipeline produces NaN for shorting columns → preprocess_features
@@ -531,7 +536,12 @@ def run_feature_pipeline_fast(
         [technical, fundamentals, alternative, intraday, macro, shorting],
         ignore_index=True,
     )
-    composite = pipeline_module.compute_composite_features(base_features)
+    composite = pipeline_module._compute_composite_features_for_window(
+        base_features,
+        macro_context_df=macro_context,
+        output_start=start,
+        output_end=end,
+    )
     all_features = pd.concat([base_features, composite], ignore_index=True)
 
     sector_rel_frames: list[pd.DataFrame] = []

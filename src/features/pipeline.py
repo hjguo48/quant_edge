@@ -62,6 +62,7 @@ COMPOSITE_FEATURE_NAMES = (
 )
 FEATURE_EXPORT_COLUMNS = ["ticker", "trade_date", "feature_name", "feature_value", "is_filled"]
 XNYS = xcals.get_calendar("XNYS")
+MACRO_COMPOSITE_LOOKBACK_DAYS = 400
 
 
 class IntradayHistoryError(RuntimeError):
@@ -238,6 +239,11 @@ class FeaturePipeline:
                     & (pd.to_datetime(intraday["trade_date"]).dt.date <= end)
                 ].copy()
         macro = self._compute_broadcast_macro_features(output_prices, as_of_ts)
+        macro_context = self._compute_macro_composite_context_features(
+            stock_prices,
+            output_start=start,
+            as_of=as_of_ts,
+        )
 
         # FINRA short-sale features (W12 fix: previously absent from live pipeline,
         # blocking deployment of 60D Ridge champion which retains short_sale_ratio_5d).
@@ -262,7 +268,12 @@ class FeaturePipeline:
             prices_df=prices,
         )
         base_features = pd.concat([base_features, sector_rotation], ignore_index=True)
-        composite = compute_composite_features(base_features)
+        composite = _compute_composite_features_for_window(
+            base_features,
+            macro_context_df=macro_context,
+            output_start=start,
+            output_end=end,
+        )
         all_features = pd.concat([base_features, composite], ignore_index=True)
 
         # S1.4: Sector-relative features (computed from raw fundamentals before rank normalization)
@@ -365,6 +376,34 @@ class FeaturePipeline:
         macro_by_date = pd.concat(macro_frames, ignore_index=True)
         broadcast = date_ticker_pairs.merge(macro_by_date, on="trade_date", how="left")
         return broadcast[["ticker", "trade_date", "feature_name", "feature_value"]]
+
+    def _compute_macro_composite_context_features(
+        self,
+        prices_df: pd.DataFrame,
+        *,
+        output_start: date,
+        as_of: datetime,
+    ) -> pd.DataFrame:
+        """Provide enough macro history for rolling composite features.
+
+        Daily incremental refreshes often emit a one-day output window. Composite
+        features such as ``high_vix_x_beta`` need 60+ prior macro observations for
+        their rolling z-score, so we include historical macro rows in the
+        composite calculation and filter them out before export.
+        """
+        if prices_df.empty:
+            return _empty_feature_frame()
+
+        prepared = prices_df[["ticker", "trade_date"]].drop_duplicates().copy()
+        prepared["trade_date"] = pd.to_datetime(prepared["trade_date"]).dt.date
+        context_start = output_start - timedelta(days=MACRO_COMPOSITE_LOOKBACK_DAYS)
+        context_prices = prepared.loc[
+            (prepared["trade_date"] >= context_start)
+            & (prepared["trade_date"] < output_start)
+        ].copy()
+        if context_prices.empty:
+            return _empty_feature_frame()
+        return self._compute_broadcast_macro_features(context_prices, as_of)
 
 
 def compute_alternative_features_batch(
@@ -1389,6 +1428,27 @@ def compute_composite_features(base_features_df: pd.DataFrame) -> pd.DataFrame:
         .reset_index(drop=True)
     )
     return long_frame
+
+
+def _compute_composite_features_for_window(
+    base_features_df: pd.DataFrame,
+    *,
+    macro_context_df: pd.DataFrame | None,
+    output_start: date,
+    output_end: date,
+) -> pd.DataFrame:
+    composite_input = base_features_df
+    if macro_context_df is not None and not macro_context_df.empty:
+        composite_input = pd.concat([macro_context_df, base_features_df], ignore_index=True)
+    composite = compute_composite_features(composite_input)
+    if composite.empty:
+        return composite
+    filtered = composite.copy()
+    filtered["trade_date"] = pd.to_datetime(filtered["trade_date"]).dt.date
+    return filtered.loc[
+        (filtered["trade_date"] >= output_start)
+        & (filtered["trade_date"] <= output_end)
+    ].reset_index(drop=True)
 
 
 def _safe_series_divide(left: pd.Series | None, right: pd.Series | float | int | None) -> pd.Series:
