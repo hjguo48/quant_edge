@@ -15,7 +15,7 @@ import src.features.preprocessing as preprocessing_module
 import src.features.technical as technical_module
 from src.features.fundamental import compute_fundamental_features
 from src.features.macro import compute_macro_features
-from src.features.pipeline import FeaturePipeline, compute_composite_features
+from src.features.pipeline import FeaturePipeline, _compute_composite_features_for_window, compute_composite_features
 from src.features.preprocessing import preprocess_features, winsorize_features
 from src.features.registry import FeatureRegistry
 from src.features.technical import compute_technical_features
@@ -906,6 +906,72 @@ def test_compute_composite_features_outputs_expected_feature_names() -> None:
     assert "macro_risk_on" in set(composite["feature_name"])
     assert "narrow_leadership_score" in set(composite["feature_name"])
     assert "credit_widening_x_leverage" in set(composite["feature_name"])
+
+
+def test_incremental_high_vix_x_beta_uses_macro_warmup_context() -> None:
+    output_date = date(2026, 4, 30)
+    tickers = [f"T{index:03d}" for index in range(120)]
+    dates = [value.date() for value in pd.bdate_range(end=output_date, periods=80)]
+    context_dates = dates[:-1]
+
+    macro_context = pd.DataFrame(
+        [
+            {
+                "ticker": ticker,
+                "trade_date": trade_date,
+                "feature_name": "vix",
+                "feature_value": 15.0 + date_index * 0.2,
+            }
+            for date_index, trade_date in enumerate(context_dates)
+            for ticker in tickers
+        ],
+    )
+    output_rows = []
+    for ticker_index, ticker in enumerate(tickers):
+        output_rows.extend(
+            [
+                {
+                    "ticker": ticker,
+                    "trade_date": output_date,
+                    "feature_name": "vix",
+                    "feature_value": 15.0 + (len(dates) - 1) * 0.2,
+                },
+                {
+                    "ticker": ticker,
+                    "trade_date": output_date,
+                    "feature_name": "stock_beta_252",
+                    "feature_value": 0.8 + ticker_index * 0.001,
+                },
+            ],
+        )
+    base_features = pd.DataFrame(output_rows)
+
+    without_context = _compute_composite_features_for_window(
+        base_features,
+        macro_context_df=None,
+        output_start=output_date,
+        output_end=output_date,
+    )
+    high_vix_without_context = without_context.loc[
+        without_context["feature_name"] == "high_vix_x_beta",
+        "feature_value",
+    ]
+    assert high_vix_without_context.isna().all()
+
+    with_context = _compute_composite_features_for_window(
+        base_features,
+        macro_context_df=macro_context,
+        output_start=output_date,
+        output_end=output_date,
+    )
+    high_vix = with_context.loc[
+        with_context["feature_name"] == "high_vix_x_beta",
+        "feature_value",
+    ]
+
+    assert len(high_vix) == len(tickers)
+    assert high_vix.notna().sum() > 100
+    assert (high_vix.dropna() > 0).sum() > 100
 
 
 def test_feature_registry_pre_registers_all_default_features() -> None:

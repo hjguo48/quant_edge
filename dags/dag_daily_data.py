@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 from typing import Any
+from zoneinfo import ZoneInfo
 
 try:
     from airflow import DAG
@@ -27,6 +28,11 @@ FAST_VIX_SERIES = ("VIXCLS",)
 SLOW_MACRO_SERIES = ("DGS10", "DGS2", "BAA10Y", "AAA10Y", "FEDFUNDS")
 DEFAULT_PRICE_BOOTSTRAP_DAYS = 30
 DEFAULT_FEATURE_BOOTSTRAP_DAYS = 30
+SOURCE_COVERAGE_THRESHOLDS = {
+    "stock_prices": 200,
+    "short_sale_volume_daily": 1000,
+    "fundamentals_pit": 200,
+}
 
 
 def minute_incremental_enabled() -> bool:
@@ -885,6 +891,142 @@ def fetch_alternative_data(**context: Any) -> dict[str, Any]:
     return _run_task("fetch_alternative_data", _fetch_alternative_data_impl, **context)
 
 
+def _fetch_finra_short_volume_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    import pandas as pd
+
+    from src.data.finra_short_sale import FINRAShortSaleSource, VALID_MARKETS, XNYS
+
+    target_date = datetime.now(ZoneInfo("America/New_York")).date() - timedelta(days=1)
+    target_ts = pd.Timestamp(target_date)
+    if not XNYS.is_session(target_ts):
+        return _result(
+            "fetch_finra_short_volume",
+            "skipped",
+            reason="target_date_not_market_session",
+            target_date=target_date.isoformat(),
+        )
+
+    source = FINRAShortSaleSource()
+    rows_written = source.fetch_historical(
+        start_date=target_date,
+        end_date=target_date,
+        markets=VALID_MARKETS,
+        force_refetch=True,
+    )
+    if rows_written < SOURCE_COVERAGE_THRESHOLDS["short_sale_volume_daily"]:
+        raise RuntimeError(
+            "FINRA daily short-volume fetch returned sparse coverage for "
+            f"{target_date}: {rows_written} rows"
+        )
+
+    return _result(
+        "fetch_finra_short_volume",
+        "ok",
+        target_date=target_date.isoformat(),
+        markets=list(VALID_MARKETS),
+        rows_written=rows_written,
+    )
+
+
+def fetch_finra_short_volume(**context: Any) -> dict[str, Any]:
+    return _run_task("fetch_finra_short_volume", _fetch_finra_short_volume_impl, **context)
+
+
+def _assert_source_coverage_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    from sqlalchemy import text
+
+    from src.data.db.session import get_engine
+
+    as_of = datetime.now(timezone.utc)
+    checks: dict[str, dict[str, Any]] = {}
+    failures: list[str] = []
+    with get_engine().connect() as conn:
+        stock_row = conn.execute(
+            text(
+                """
+                with latest as (
+                    select max(trade_date) as trade_date
+                    from stock_prices
+                    where knowledge_time <= :as_of
+                )
+                select latest.trade_date, count(distinct stock_prices.ticker) as ticker_count
+                from latest
+                left join stock_prices
+                  on stock_prices.trade_date = latest.trade_date
+                 and stock_prices.knowledge_time <= :as_of
+                group by latest.trade_date
+                """,
+            ),
+            {"as_of": as_of},
+        ).mappings().one()
+        checks["stock_prices"] = {
+            "latest_pit_visible_date": _serialize_date(stock_row["trade_date"]),
+            "ticker_count": int(stock_row["ticker_count"] or 0),
+            "minimum_ticker_count": SOURCE_COVERAGE_THRESHOLDS["stock_prices"],
+        }
+
+        short_row = conn.execute(
+            text(
+                """
+                with latest as (
+                    select max(trade_date) as trade_date
+                    from short_sale_volume_daily
+                    where knowledge_time <= :as_of
+                )
+                select latest.trade_date, count(distinct short_sale_volume_daily.ticker) as ticker_count
+                from latest
+                left join short_sale_volume_daily
+                  on short_sale_volume_daily.trade_date = latest.trade_date
+                 and short_sale_volume_daily.knowledge_time <= :as_of
+                group by latest.trade_date
+                """,
+            ),
+            {"as_of": as_of},
+        ).mappings().one()
+        checks["short_sale_volume_daily"] = {
+            "latest_pit_visible_date": _serialize_date(short_row["trade_date"]),
+            "ticker_count": int(short_row["ticker_count"] or 0),
+            "minimum_ticker_count": SOURCE_COVERAGE_THRESHOLDS["short_sale_volume_daily"],
+        }
+
+        fundamentals_row = conn.execute(
+            text(
+                """
+                select count(distinct ticker) as ticker_count
+                from fundamentals_pit
+                where knowledge_time <= :as_of
+                  and event_time >= (:as_of_date - interval '90 days')
+                """,
+            ),
+            {"as_of": as_of, "as_of_date": as_of.date()},
+        ).mappings().one()
+        checks["fundamentals_pit"] = {
+            "window_start": (as_of.date() - timedelta(days=90)).isoformat(),
+            "ticker_count": int(fundamentals_row["ticker_count"] or 0),
+            "minimum_ticker_count": SOURCE_COVERAGE_THRESHOLDS["fundamentals_pit"],
+        }
+
+    for source_name, check in checks.items():
+        ticker_count = int(check["ticker_count"])
+        minimum = int(check["minimum_ticker_count"])
+        if ticker_count < minimum:
+            failures.append(f"{source_name} ticker_count={ticker_count} < {minimum}")
+
+    if failures:
+        raise RuntimeError("Source coverage assertion failed: " + "; ".join(failures))
+
+    return _result(
+        "assert_source_coverage",
+        "ok",
+        as_of=_serialize_datetime(as_of),
+        checks=checks,
+    )
+
+
+def assert_source_coverage(**context: Any) -> dict[str, Any]:
+    return _run_task("assert_source_coverage", _assert_source_coverage_impl, **context)
+
+
 def _check_quality_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     import pandas as pd
     from sqlalchemy import text
@@ -1268,6 +1410,17 @@ with DAG(
         task_id="fetch_alternative_data",
         python_callable=fetch_alternative_data,
     )
+    fetch_finra_short_volume_task = PythonOperator(
+        task_id="fetch_finra_short_volume",
+        python_callable=fetch_finra_short_volume,
+        retries=2,
+        retry_delay=timedelta(minutes=10),
+    )
+    assert_source_coverage_task = PythonOperator(
+        task_id="assert_source_coverage",
+        python_callable=assert_source_coverage,
+        trigger_rule=TriggerRule.ALL_DONE,
+    )
     check_quality_task = PythonOperator(task_id="check_quality", python_callable=check_quality)
     store_to_db_task = PythonOperator(task_id="store_to_db", python_callable=store_to_db)
     update_features_cache_task = PythonOperator(
@@ -1282,7 +1435,12 @@ with DAG(
     fetch_prices_task >> store_to_db_task
     store_to_db_task >> sync_universe_membership_task
     store_to_db_task >> compute_realized_returns_daily_task
-    sync_universe_membership_task >> [fetch_fundamentals_task, fetch_alternative_data_task]
+    sync_universe_membership_task >> [
+        fetch_fundamentals_task,
+        fetch_alternative_data_task,
+        fetch_finra_short_volume_task,
+    ]
+    [store_to_db_task, fetch_fundamentals_task, fetch_finra_short_volume_task] >> assert_source_coverage_task
     if minute_incremental_enabled():
         from dags.task_groups.minute_incremental import build_minute_incremental_task_group
 
@@ -1290,7 +1448,7 @@ with DAG(
         sync_universe_membership_task >> minute_incremental_group
         minute_incremental_group >> update_features_cache_task
     [
-        store_to_db_task,
+        assert_source_coverage_task,
         fetch_vix_task,
         fetch_macro_task,
         fetch_fundamentals_task,
