@@ -17,20 +17,25 @@ export class ApiError extends Error {
   }
 }
 
+// Optional absolute base URL prefix. Set via VITE_API_BASE in .env.local
+// to bypass vite proxy (useful when WSL2 NAT mangles vite's proxied responses).
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
+
 export async function fetchApi<T>(
   path: string,
   options: FetchOptions = {},
 ): Promise<T> {
   const { retries = 3, timeout = 15000 } = options;
   let lastError: Error | null = null;
+  const url = API_BASE ? `${API_BASE}${path}` : path;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), timeout);
 
     try {
-      console.log(`[fetchApi] Attempt ${attempt + 1}/${retries + 1} for: ${path}`);
-      const response = await fetch(path, {
+      console.log(`[fetchApi] Attempt ${attempt + 1}/${retries + 1} for: ${url}`);
+      const response = await fetch(url, {
         signal: controller.signal,
       });
 

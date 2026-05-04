@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api.deps import close_resources, init_resources
 from src.api.middleware import RequestTimingMiddleware
@@ -33,6 +37,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Compress responses > 1KB. Critical when accessed via WSL2 portproxy
+# (large uncompressed responses tend to ERR_CONNECTION_RESET through NAT).
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(RequestTimingMiddleware)
 
 
@@ -46,3 +53,22 @@ async def health_check() -> HealthResponse:
 
 for router in ROUTERS:
     app.include_router(router)
+
+
+# Serve frontend production build (dist/) from the same origin as /api/*.
+# Eliminates CORS, vite proxy, and WSL2 portproxy multi-port complexity.
+_FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if _FRONTEND_DIST.is_dir():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=str(_FRONTEND_DIST / "assets")),
+        name="assets",
+    )
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str) -> FileResponse:
+        """SPA fallback: serve index.html for any non-/api/* path."""
+        candidate = _FRONTEND_DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(_FRONTEND_DIST / "index.html")
