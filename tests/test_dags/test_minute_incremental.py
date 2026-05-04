@@ -448,19 +448,31 @@ def test_daily_dag_wires_finra_and_source_coverage_gate(monkeypatch: pytest.Monk
     module = _load_daily_data_module(monkeypatch, enabled="false")
 
     finra_task = module.dag.get_task("fetch_finra_short_volume")
+    earnings_calendar_task = module.dag.get_task("fetch_earnings_calendar")
+    alternative_task = module.dag.get_task("fetch_alternative_data")
     coverage_task = module.dag.get_task("assert_source_coverage")
     update_task = module.dag.get_task("update_features_cache")
 
     assert finra_task.retries == 2
     assert finra_task.retry_delay == timedelta(minutes=10)
     assert finra_task.upstream_task_ids == {"sync_universe_membership"}
+    assert earnings_calendar_task.retries == 2
+    assert earnings_calendar_task.retry_delay == timedelta(minutes=10)
+    assert earnings_calendar_task.upstream_task_ids == {"fetch_alternative_data"}
+    assert "fetch_earnings_calendar" in alternative_task.downstream_task_ids
     assert coverage_task.trigger_rule == TriggerRule.ALL_DONE
     assert coverage_task.upstream_task_ids == {
         "store_to_db",
         "fetch_fundamentals",
         "fetch_finra_short_volume",
+        "fetch_earnings_calendar",
     }
     assert "assert_source_coverage" in update_task.upstream_task_ids
+    assert "fetch_earnings_calendar" in update_task.upstream_task_ids
+    assert module.SOURCE_COVERAGE_THRESHOLDS["earnings_calendar"] == 50
+    coverage_source = inspect.getsource(module._assert_source_coverage_impl)
+    assert "earnings_calendar" in coverage_source
+    assert "latest_announce_date" in coverage_source
 
 
 def test_minute_incremental_group_instantiated_when_flag_on(monkeypatch: pytest.MonkeyPatch) -> None:

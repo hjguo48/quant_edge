@@ -32,6 +32,7 @@ SOURCE_COVERAGE_THRESHOLDS = {
     "stock_prices": 200,
     "short_sale_volume_daily": 1000,
     "fundamentals_pit": 200,
+    "earnings_calendar": 50,
 }
 
 
@@ -932,6 +933,55 @@ def fetch_finra_short_volume(**context: Any) -> dict[str, Any]:
     return _run_task("fetch_finra_short_volume", _fetch_finra_short_volume_impl, **context)
 
 
+def _fetch_earnings_calendar_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
+    from sqlalchemy import text
+
+    from src.config import settings
+    from src.data.db.session import get_engine
+    from src.data.sources.fmp_earnings_calendar import FMPEarningsCalendarSource
+
+    if not settings.FMP_API_KEY:
+        raise RuntimeError("FMP_API_KEY is required for earnings_calendar ingestion.")
+
+    today = date.today()
+    start = today - timedelta(days=1)
+    end = today + timedelta(days=90)
+
+    with get_engine().connect() as conn:
+        latest_trade_date = conn.execute(
+            text("select max(trade_date) from stock_prices"),
+        ).scalar()
+        active_universe_date = latest_trade_date or today
+        active_tickers = _load_active_universe_tickers(conn, trade_date=active_universe_date)
+
+    if not active_tickers:
+        raise RuntimeError("No active universe tickers are available for earnings_calendar ingestion.")
+
+    source = FMPEarningsCalendarSource()
+    rows_written = source.fetch_historical(
+        tickers=active_tickers,
+        start_date=start,
+        end_date=end,
+    )
+    if rows_written < SOURCE_COVERAGE_THRESHOLDS["earnings_calendar"]:
+        raise RuntimeError(f"earnings_calendar fetch returned sparse coverage: {rows_written} rows")
+
+    return _result(
+        "fetch_earnings_calendar",
+        "ok",
+        datasource=source.source_name,
+        active_universe_date=active_universe_date.isoformat(),
+        ticker_count=len(active_tickers),
+        rows_written=rows_written,
+        start=start.isoformat(),
+        end=end.isoformat(),
+    )
+
+
+def fetch_earnings_calendar(**context: Any) -> dict[str, Any]:
+    return _run_task("fetch_earnings_calendar", _fetch_earnings_calendar_impl, **context)
+
+
 def _assert_source_coverage_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     from sqlalchemy import text
 
@@ -1006,11 +1056,45 @@ def _assert_source_coverage_impl(*, repo_root: Path, context: dict[str, Any]) ->
             "minimum_ticker_count": SOURCE_COVERAGE_THRESHOLDS["fundamentals_pit"],
         }
 
+        earnings_row = conn.execute(
+            text(
+                """
+                with latest as (
+                    select max(announce_date) as latest_announce_date
+                    from earnings_calendar
+                    where announce_date <= :as_of_date
+                )
+                select
+                    latest.latest_announce_date,
+                    count(distinct earnings_calendar.ticker) as ticker_count
+                from latest
+                left join earnings_calendar
+                  on earnings_calendar.announce_date = latest.latest_announce_date
+                group by latest.latest_announce_date
+                """,
+            ),
+            {"as_of_date": as_of.date()},
+        ).mappings().one()
+        earnings_stale_before = as_of.date() - timedelta(days=14)
+        checks["earnings_calendar"] = {
+            "latest_announce_date": _serialize_date(earnings_row["latest_announce_date"]),
+            "ticker_count": int(earnings_row["ticker_count"] or 0),
+            "minimum_ticker_count": SOURCE_COVERAGE_THRESHOLDS["earnings_calendar"],
+            "stale_before": earnings_stale_before.isoformat(),
+        }
+
     for source_name, check in checks.items():
         ticker_count = int(check["ticker_count"])
         minimum = int(check["minimum_ticker_count"])
         if ticker_count < minimum:
             failures.append(f"{source_name} ticker_count={ticker_count} < {minimum}")
+        if source_name == "earnings_calendar":
+            latest_announce_date = check["latest_announce_date"]
+            if latest_announce_date is None or date.fromisoformat(latest_announce_date) < earnings_stale_before:
+                failures.append(
+                    "earnings_calendar latest_announce_date="
+                    f"{latest_announce_date} < {earnings_stale_before.isoformat()}"
+                )
 
     if failures:
         raise RuntimeError("Source coverage assertion failed: " + "; ".join(failures))
@@ -1410,6 +1494,12 @@ with DAG(
         task_id="fetch_alternative_data",
         python_callable=fetch_alternative_data,
     )
+    fetch_earnings_calendar_task = PythonOperator(
+        task_id="fetch_earnings_calendar",
+        python_callable=fetch_earnings_calendar,
+        retries=2,
+        retry_delay=timedelta(minutes=10),
+    )
     fetch_finra_short_volume_task = PythonOperator(
         task_id="fetch_finra_short_volume",
         python_callable=fetch_finra_short_volume,
@@ -1440,7 +1530,13 @@ with DAG(
         fetch_alternative_data_task,
         fetch_finra_short_volume_task,
     ]
-    [store_to_db_task, fetch_fundamentals_task, fetch_finra_short_volume_task] >> assert_source_coverage_task
+    fetch_alternative_data_task >> fetch_earnings_calendar_task
+    [
+        store_to_db_task,
+        fetch_fundamentals_task,
+        fetch_finra_short_volume_task,
+        fetch_earnings_calendar_task,
+    ] >> assert_source_coverage_task
     if minute_incremental_enabled():
         from dags.task_groups.minute_incremental import build_minute_incremental_task_group
 
@@ -1453,6 +1549,7 @@ with DAG(
         fetch_macro_task,
         fetch_fundamentals_task,
         fetch_alternative_data_task,
+        fetch_earnings_calendar_task,
     ] >> update_features_cache_task
     update_features_cache_task >> check_quality_task
 
