@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import numpy as np
@@ -20,6 +20,113 @@ from src.features.preprocessing import preprocess_features, winsorize_features
 from src.features.registry import FeatureRegistry
 from src.features.technical import compute_technical_features
 from src.labels.forward_returns import compute_forward_returns
+
+
+def test_analyst_summary_uses_upcoming_estimates_and_revenue_coverage() -> None:
+    active_analyst = {
+        date(2026, 3, 31): {
+            "fiscal_date": date(2026, 3, 31),
+            "eps_avg": 1.0,
+            "revenue_avg": 100.0,
+            "num_analysts_eps": None,
+            "num_analysts_revenue": 5,
+        },
+        date(2026, 6, 30): {
+            "fiscal_date": date(2026, 6, 30),
+            "eps_avg": 1.2,
+            "revenue_avg": 120.0,
+            "num_analysts_eps": np.nan,
+            "num_analysts_revenue": 7,
+        },
+        date(2026, 9, 30): {
+            "fiscal_date": date(2026, 9, 30),
+            "eps_avg": 1.3,
+            "revenue_avg": 130.0,
+            "num_analysts_eps": 9,
+            "num_analysts_revenue": 8,
+        },
+    }
+
+    summary = pipeline_module._summarize_analyst_features(
+        active_analyst,
+        trade_date=date(2026, 4, 30),
+    )
+
+    assert summary["analyst_coverage"] == pytest.approx(7.0)
+    assert summary["revenue_revision_pct"] == pytest.approx(0.2)
+    assert summary["eps_revision_direction"] == pytest.approx(1.0)
+
+
+def test_analyst_summary_zero_fills_missing_revision_evidence() -> None:
+    summary = pipeline_module._summarize_analyst_features({}, trade_date=date(2026, 4, 30))
+
+    assert summary["analyst_coverage"] == pytest.approx(0.0)
+    assert summary["revenue_revision_pct"] == pytest.approx(0.0)
+    assert summary["eps_revision_direction"] == pytest.approx(0.0)
+
+
+def test_prepare_analyst_history_keeps_revenue_coverage_column() -> None:
+    frame = pd.DataFrame(
+        [
+            {
+                "ticker": "aapl",
+                "fiscal_date": date(2026, 6, 30),
+                "period": "quarter",
+                "eps_avg": "1.2",
+                "revenue_avg": "120000000",
+                "num_analysts_eps": None,
+                "num_analysts_revenue": "7",
+                "knowledge_time": datetime(2026, 4, 15, tzinfo=timezone.utc),
+            },
+        ],
+    )
+
+    prepared = pipeline_module._prepare_analyst_history(frame)
+
+    assert prepared.loc[0, "ticker"] == "AAPL"
+    assert prepared.loc[0, "num_analysts_revenue"] == pytest.approx(7.0)
+
+
+def test_insider_abnormal_buy_zero_fills_no_purchase_signal() -> None:
+    summary = pipeline_module._summarize_insider_features(
+        active_insider_window=[],
+        market_cap=1_000_000_000.0,
+        trade_date=date(2026, 4, 30),
+    )
+
+    assert summary["insider_abnormal_buy_90d"] == pytest.approx(0.0)
+
+
+def test_insider_abnormal_buy_computes_when_current_and_baseline_exist() -> None:
+    records = [
+        {
+            "filing_date": date(2025, 5, 1),
+            "transaction_type": "P-Purchase",
+            "securities_transacted": 1_000,
+            "price": 10,
+            "reporting_cik": "1",
+            "acquisition_or_disposition": "A",
+            "type_of_owner": "Director",
+        },
+        {
+            "filing_date": date(2026, 4, 15),
+            "transaction_type": "P-Purchase",
+            "securities_transacted": 2_000,
+            "price": 10,
+            "reporting_cik": "2",
+            "acquisition_or_disposition": "A",
+            "type_of_owner": "Director",
+        },
+    ]
+
+    summary = pipeline_module._summarize_insider_features(
+        active_insider_window=records,
+        market_cap=1_000_000_000.0,
+        trade_date=date(2026, 4, 30),
+    )
+
+    assert summary["insider_abnormal_buy_90d"] > 0.0
+    assert np.isfinite(summary["insider_abnormal_buy_90d"])
 
 
 def test_preprocess_features_forward_fills_then_ranks_and_adds_missing_flags() -> None:

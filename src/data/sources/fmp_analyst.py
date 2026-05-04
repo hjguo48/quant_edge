@@ -3,8 +3,9 @@
 Fetches forward-looking consensus estimates from FMP /stable/analyst-estimates.
 Key fields: epsAvg/High/Low, revenueAvg/High/Low, numAnalystsEps/Revenue.
 
-PIT: knowledge_time approximated as fiscal_date (the quarter end date the estimate targets).
-For revision momentum, we compare consecutive snapshots of the same future quarter.
+PIT: knowledge_time is the fetch/observation timestamp. These records describe
+future fiscal periods, so the fiscal date itself is not a safe availability
+proxy.
 """
 
 from __future__ import annotations
@@ -76,7 +77,13 @@ class FMPAnalystSource(DataSource):
         return self._http_session
 
     @DataSource.retryable()
-    def _fetch_ticker(self, ticker: str, period: str = "quarter") -> list[dict[str, Any]]:
+    def _fetch_ticker(
+        self,
+        ticker: str,
+        period: str = "quarter",
+        *,
+        observed_at: datetime | None = None,
+    ) -> list[dict[str, Any]]:
         self._before_request(f"analyst-estimates/{ticker}")
         session = self._get_session()
         r = session.get(f"{self.base_url}/analyst-estimates",
@@ -87,6 +94,7 @@ class FMPAnalystSource(DataSource):
         if not isinstance(raw, list):
             return []
         rows = []
+        knowledge_time = observed_at or datetime.now(timezone.utc)
         for rec in raw:
             fd = rec.get("date")
             if not fd:
@@ -103,7 +111,7 @@ class FMPAnalystSource(DataSource):
                 "revenue_low": _intv(rec.get("revenueLow")),
                 "num_analysts_eps": _intv(rec.get("numAnalystsEps")),
                 "num_analysts_revenue": _intv(rec.get("numAnalystsRevenue")),
-                "knowledge_time": datetime.combine(fiscal_date, datetime.max.time(), tzinfo=timezone.utc),
+                "knowledge_time": knowledge_time,
                 "source": "fmp",
             })
         return rows
@@ -111,8 +119,9 @@ class FMPAnalystSource(DataSource):
     def fetch_historical(self, tickers: Sequence[str], start_date: date | datetime, end_date: date | datetime) -> pd.DataFrame:
         start, end = self.coerce_date(start_date), self.coerce_date(end_date)
         all_rows = []
+        observed_at = datetime.now(timezone.utc)
         for t in self.normalize_tickers(tickers):
-            for row in self._fetch_ticker(t):
+            for row in self._fetch_ticker(t, observed_at=observed_at):
                 if start <= row["fiscal_date"] <= end:
                     all_rows.append(row)
         cols = ["ticker", "fiscal_date", "period", "eps_avg", "eps_high", "eps_low",
@@ -153,7 +162,10 @@ class FMPAnalystSource(DataSource):
                            "eps_low": stmt.excluded.eps_low, "revenue_avg": stmt.excluded.revenue_avg,
                            "revenue_high": stmt.excluded.revenue_high, "revenue_low": stmt.excluded.revenue_low,
                            "num_analysts_eps": stmt.excluded.num_analysts_eps,
-                           "num_analysts_revenue": stmt.excluded.num_analysts_revenue},
+                           "num_analysts_revenue": stmt.excluded.num_analysts_revenue,
+                           "knowledge_time": stmt.excluded.knowledge_time,
+                           "source": stmt.excluded.source,
+                           "updated_at": sa.func.now()},
                 )
                 session.execute(stmt)
             session.commit()

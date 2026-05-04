@@ -497,6 +497,16 @@ def load_alternative_histories_batch(
     cutoff = datetime.combine(max_trade_date, time.max, tzinfo=timezone.utc)
     insider_start = start_trade_date - timedelta(days=730)
     filing_start = start_trade_date - timedelta(days=365)
+    analyst_start = start_trade_date - timedelta(days=370)
+    analyst_end = max_trade_date + timedelta(days=730)
+    analyst_available_at = sa.func.least(
+        AnalystEstimate.knowledge_time,
+        sa.func.coalesce(
+            AnalystEstimate.updated_at,
+            AnalystEstimate.created_at,
+            AnalystEstimate.knowledge_time,
+        ),
+    ).label("knowledge_time")
 
     def _load_frame(statement: sa.sql.Select, empty_frame: pd.DataFrame, source_name: str) -> pd.DataFrame:
         try:
@@ -533,15 +543,17 @@ def load_alternative_histories_batch(
             AnalystEstimate.eps_avg,
             AnalystEstimate.revenue_avg,
             AnalystEstimate.num_analysts_eps,
-            AnalystEstimate.knowledge_time,
+            AnalystEstimate.num_analysts_revenue,
+            analyst_available_at,
         )
         .where(
             AnalystEstimate.ticker.in_(normalized_tickers),
             AnalystEstimate.period == "quarter",
-            AnalystEstimate.knowledge_time <= cutoff,
-            AnalystEstimate.fiscal_date <= max_trade_date,
+            analyst_available_at <= cutoff,
+            AnalystEstimate.fiscal_date >= analyst_start,
+            AnalystEstimate.fiscal_date <= analyst_end,
         )
-        .order_by(AnalystEstimate.ticker, AnalystEstimate.knowledge_time, AnalystEstimate.fiscal_date)
+        .order_by(AnalystEstimate.ticker, analyst_available_at, AnalystEstimate.fiscal_date)
     )
     short_interest_stmt = (
         sa.select(
@@ -848,7 +860,7 @@ def _compute_alternative_features_for_ticker_history(
                 trade_date=trade_date,
                 ret_5d=daily_values.get("ret_5d", np.nan),
             ),
-            **_summarize_analyst_features(active_analyst),
+            **_summarize_analyst_features(active_analyst, trade_date=trade_date),
             **_summarize_short_interest_features(
                 latest_short,
                 previous_short,
@@ -935,30 +947,51 @@ def _summarize_earnings_features(
     return result
 
 
-def _summarize_analyst_features(active_analyst: dict[date, dict[str, object]]) -> dict[str, float]:
+def _summarize_analyst_features(
+    active_analyst: dict[date, dict[str, object]],
+    *,
+    trade_date: date,
+) -> dict[str, float]:
     result = {
         "eps_revision_direction": 0.0,
-        "revenue_revision_pct": np.nan,
-        "analyst_coverage": np.nan,
+        "revenue_revision_pct": 0.0,
+        "analyst_coverage": 0.0,
     }
     if not active_analyst:
         return result
 
-    latest_records = sorted(active_analyst.values(), key=lambda row: row["fiscal_date"], reverse=True)[:2]
+    records = sorted(active_analyst.values(), key=lambda row: row["fiscal_date"])
+    upcoming = [row for row in records if row["fiscal_date"] >= trade_date]
+    if upcoming:
+        latest = upcoming[0]
+        prior_candidates = [row for row in records if row["fiscal_date"] < latest["fiscal_date"]]
+        latest_records = [latest]
+        if prior_candidates:
+            latest_records.append(prior_candidates[-1])
+        elif len(upcoming) > 1:
+            latest_records.append(upcoming[1])
+    else:
+        latest_records = list(reversed(records[-2:]))
+
     latest = latest_records[0]
-    if latest.get("num_analysts_eps") is not None:
-        result["analyst_coverage"] = float(latest["num_analysts_eps"])
+    analyst_coverage = _coerce_float(latest.get("num_analysts_eps"))
+    if analyst_coverage is None:
+        analyst_coverage = _coerce_float(latest.get("num_analysts_revenue"))
+    if analyst_coverage is not None:
+        result["analyst_coverage"] = analyst_coverage
     if len(latest_records) < 2:
         return result
 
     prior = latest_records[1]
-    if latest.get("eps_avg") is not None and prior.get("eps_avg") is not None and float(prior["eps_avg"]) != 0:
-        diff = float(latest["eps_avg"]) - float(prior["eps_avg"])
+    latest_eps = _coerce_float(latest.get("eps_avg"))
+    prior_eps = _coerce_float(prior.get("eps_avg"))
+    if latest_eps is not None and prior_eps is not None and prior_eps != 0:
+        diff = latest_eps - prior_eps
         result["eps_revision_direction"] = 1.0 if diff > 0 else (-1.0 if diff < 0 else 0.0)
-    if latest.get("revenue_avg") is not None and prior.get("revenue_avg") is not None and float(prior["revenue_avg"]) != 0:
-        result["revenue_revision_pct"] = (float(latest["revenue_avg"]) - float(prior["revenue_avg"])) / abs(
-            float(prior["revenue_avg"]),
-        )
+    latest_revenue = _coerce_float(latest.get("revenue_avg"))
+    prior_revenue = _coerce_float(prior.get("revenue_avg"))
+    if latest_revenue is not None and prior_revenue is not None and prior_revenue != 0:
+        result["revenue_revision_pct"] = (latest_revenue - prior_revenue) / abs(prior_revenue)
     return result
 
 
@@ -1078,9 +1111,11 @@ def _summarize_insider_features(
         "insider_buy_intensity_20d": np.nan,
         "insider_net_intensity_60d": np.nan,
         "insider_cluster_buy_30d_w": cluster_weight_30d,
-        "insider_abnormal_buy_90d": np.nan,
+        "insider_abnormal_buy_90d": 0.0,
         "insider_role_skew_30d": ceo_cfo_buy_30d - director_officer_sell_30d,
     }
+    if (market_cap is None or market_cap <= 0) and buy_intensity_90d > 0:
+        result["insider_abnormal_buy_90d"] = np.nan
     if market_cap is not None and market_cap > 0:
         result["insider_buy_intensity_20d"] = buy_intensity_20d / market_cap
         result["insider_net_intensity_60d"] = (buy_intensity_60d - sell_intensity_60d) / market_cap
@@ -1235,6 +1270,7 @@ def _prepare_analyst_history(frame: pd.DataFrame) -> pd.DataFrame:
     prepared["eps_avg"] = pd.to_numeric(prepared["eps_avg"], errors="coerce")
     prepared["revenue_avg"] = pd.to_numeric(prepared["revenue_avg"], errors="coerce")
     prepared["num_analysts_eps"] = pd.to_numeric(prepared["num_analysts_eps"], errors="coerce")
+    prepared["num_analysts_revenue"] = pd.to_numeric(prepared["num_analysts_revenue"], errors="coerce")
     prepared["knowledge_time"] = pd.to_datetime(prepared["knowledge_time"], utc=True)
     prepared.sort_values(["ticker", "knowledge_time", "fiscal_date"], inplace=True)
     return prepared.reset_index(drop=True)
@@ -1296,7 +1332,16 @@ def _empty_earnings_history() -> pd.DataFrame:
 
 def _empty_analyst_history() -> pd.DataFrame:
     return pd.DataFrame(
-        columns=["ticker", "fiscal_date", "period", "eps_avg", "revenue_avg", "num_analysts_eps", "knowledge_time"],
+        columns=[
+            "ticker",
+            "fiscal_date",
+            "period",
+            "eps_avg",
+            "revenue_avg",
+            "num_analysts_eps",
+            "num_analysts_revenue",
+            "knowledge_time",
+        ],
     )
 
 
