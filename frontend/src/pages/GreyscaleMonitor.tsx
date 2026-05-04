@@ -13,6 +13,29 @@ const fmtPct = (v: number | null | undefined, digits = 2) =>
 const fmtFloat = (v: number | null | undefined, digits = 4) =>
   v == null ? "—" : v.toFixed(digits);
 
+// Convert snake_case keys to human Title Case for display.
+// Preserves common acronyms (IC, OOS, CVaR, PSI, SPY, ADV).
+const humanize = (s: string): string => {
+  const acronyms: Record<string, string> = {
+    ic: "IC",
+    oos: "OOS",
+    cvar: "CVaR",
+    psi: "PSI",
+    spy: "SPY",
+    adv: "ADV",
+    dd: "DD",
+    ir: "IR",
+    pnl: "P&L",
+    layer12: "Layer 1+2",
+    layer3: "Layer 3",
+    layer4: "Layer 4",
+  };
+  return s
+    .split("_")
+    .map((w) => acronyms[w.toLowerCase()] ?? w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+};
+
 interface LayerPillProps {
   label: string;
   pass: boolean | null;
@@ -206,7 +229,7 @@ const GreyscaleMonitor = () => {
                   {t("greyscale.weeks.signalDate")}: <span className="font-mono">{heartbeat.signal_date ?? "—"}</span>
                 </h3>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium">
+              <p className="text-[10px] text-muted-foreground font-mono" spellCheck={false}>
                 {heartbeat.bundle_version ?? "—"}
               </p>
             </div>
@@ -307,7 +330,7 @@ const GreyscaleMonitor = () => {
                 <div key={name} className="flex items-center justify-between text-xs px-2 py-1.5 rounded bg-muted/10 border border-border/30">
                   <div className="flex items-center gap-2 min-w-0">
                     <StatusDot value={check.passed} />
-                    <span className="text-foreground font-medium truncate">{name}</span>
+                    <span className="text-foreground font-medium truncate" spellCheck={false}>{humanize(name)}</span>
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground font-mono text-[10px] flex-shrink-0">
                     <span>{check.threshold ?? "—"}</span>
@@ -414,10 +437,10 @@ const GreyscaleMonitor = () => {
             <div>
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <Activity size={14} className={layer1.warning_triggered ? "text-amber-500" : "text-primary"} />
-                {t("greyscale.layers.layer1")} · per-feature dropout
+                {t("greyscale.layers.layer1")} · Per-feature Dropout
               </h3>
-              <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
-                trade_date {layer1.latest_trade_date ?? "—"} · threshold {fmtPct(layer1.warn_threshold, 0)}
+              <p className="text-[10px] text-muted-foreground mt-0.5 font-medium" spellCheck={false}>
+                Trade Date {layer1.latest_trade_date ?? "—"} · Threshold {fmtPct(layer1.warn_threshold, 0)}
               </p>
             </div>
             {layer1.warning_triggered ? (
@@ -436,7 +459,7 @@ const GreyscaleMonitor = () => {
             <div className="space-y-1">
               {Object.entries(layer1.features_over_threshold).slice(0, 10).map(([name, rate]) => (
                 <div key={name} className="flex items-center justify-between text-xs px-3 py-1.5 rounded bg-amber-500/5 border border-amber-500/15">
-                  <span className="text-foreground font-mono">{name}</span>
+                  <span className="text-foreground font-mono" spellCheck={false}>{name}</span>
                   <span className="text-amber-500 font-bold font-mono">{fmtPct(rate)}</span>
                 </div>
               ))}
