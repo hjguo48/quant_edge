@@ -152,6 +152,8 @@ def _calculate_feature_snapshot_from_history(
     free_cash_flow_ttm = _free_cash_flow_ttm(history, operating_cash_flow_ttm)
     ebitda_ttm = _ttm(history, "ebitda")
     dividend_per_share = _first_non_nan(latest.get("annual_dividend"), latest.get("dividend_per_share"))
+    if pd.isna(dividend_per_share):
+        dividend_per_share = 0.0
     if pd.notna(dividend_per_share) and pd.isna(latest.get("annual_dividend")):
         dividend_per_share = dividend_per_share * 4
     cash = _first_non_nan(latest.get("cash"), latest.get("cash_and_cash_equivalents"))

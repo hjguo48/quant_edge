@@ -462,6 +462,94 @@ def test_compute_fundamental_features_uses_pit_shares_for_market_cap_dependent_f
     assert feature_map["ev_ebitda"] == pytest.approx((5000.0 + 35.0 - 5.0) / (18.0 + 19.0 + 20.0 + 21.0))
 
 
+def test_compute_fundamental_features_zero_fills_non_payer_dividend_yield(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pit_frame = pd.DataFrame(
+        [
+            {
+                "ticker": "TSLA",
+                "fiscal_period": fiscal_period,
+                "metric_name": metric_name,
+                "metric_value": metric_value,
+                "event_time": event_time,
+            }
+            for fiscal_period, event_time, metric_values in [
+                (
+                    "2023Q1",
+                    date(2023, 3, 31),
+                    {
+                        "revenue": 100.0,
+                        "net_income": 10.0,
+                        "total_assets": 80.0,
+                        "total_liabilities": 30.0,
+                        "weighted_average_shares_outstanding": 100.0,
+                        "operating_cash_flow": 14.0,
+                        "ebitda": 18.0,
+                        "eps": 1.0,
+                    },
+                ),
+                (
+                    "2023Q2",
+                    date(2023, 6, 30),
+                    {
+                        "revenue": 105.0,
+                        "net_income": 11.0,
+                        "total_assets": 85.0,
+                        "total_liabilities": 32.0,
+                        "weighted_average_shares_outstanding": 100.0,
+                        "operating_cash_flow": 15.0,
+                        "ebitda": 19.0,
+                        "eps": 1.1,
+                    },
+                ),
+                (
+                    "2023Q3",
+                    date(2023, 9, 30),
+                    {
+                        "revenue": 110.0,
+                        "net_income": 12.0,
+                        "total_assets": 90.0,
+                        "total_liabilities": 34.0,
+                        "weighted_average_shares_outstanding": 100.0,
+                        "operating_cash_flow": 16.0,
+                        "ebitda": 20.0,
+                        "eps": 1.2,
+                    },
+                ),
+                (
+                    "2023Q4",
+                    date(2023, 12, 31),
+                    {
+                        "revenue": 115.0,
+                        "net_income": 13.0,
+                        "total_assets": 95.0,
+                        "total_liabilities": 40.0,
+                        "weighted_average_shares_outstanding": 100.0,
+                        "operating_cash_flow": 17.0,
+                        "ebitda": 21.0,
+                        "eps": 1.3,
+                    },
+                ),
+            ]
+            for metric_name, metric_value in metric_values.items()
+        ],
+    )
+    prices = pd.DataFrame(
+        [
+            {"ticker": "TSLA", "trade_date": date(2024, 1, 15), "close": 200.0},
+        ],
+    )
+
+    monkeypatch.setattr(fundamental_module, "get_fundamentals_pit", lambda *args, **kwargs: pit_frame)
+
+    features = compute_fundamental_features("TSLA", date(2024, 1, 15), prices)
+    feature_map = {row.feature_name: row.feature_value for row in features.itertuples(index=False)}
+
+    assert feature_map["dividend_yield"] == pytest.approx(0.0)
+    assert not pd.isna(feature_map["dividend_yield"])
+
+
 def test_compute_fundamental_features_includes_accruals_and_asset_growth(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
