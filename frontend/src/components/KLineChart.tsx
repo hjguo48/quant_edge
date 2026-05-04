@@ -441,6 +441,49 @@ const KLineChart = ({
     return () => window.cancelAnimationFrame(animationFrame);
   }, [chartMode, data.length, liveCandles.length, selectedRange, ticker]);
 
+  // US market hours detection (NYSE 9:30 AM - 4:00 PM ET, Mon-Fri).
+  // Re-evaluates every minute to flip status at open/close.
+  const [isMarketOpen, setIsMarketOpen] = useState<boolean>(false);
+  useEffect(() => {
+    const compute = () => {
+      const now = new Date();
+      const etParts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        weekday: "short",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false,
+      }).formatToParts(now);
+      const weekday = etParts.find((p) => p.type === "weekday")?.value ?? "";
+      const hour = parseInt(etParts.find((p) => p.type === "hour")?.value ?? "0", 10);
+      const minute = parseInt(etParts.find((p) => p.type === "minute")?.value ?? "0", 10);
+      const isWeekday = !["Sat", "Sun"].includes(weekday);
+      const minutes = hour * 60 + minute;
+      const open = isWeekday && minutes >= 9 * 60 + 30 && minutes < 16 * 60;
+      setIsMarketOpen(open);
+    };
+    compute();
+    const id = window.setInterval(compute, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Pulse phase: smooth 0..1..0 sine wave at ~2s period. Drives breathing dot.
+  // Only animates while market is open; static dot otherwise.
+  const [pulsePhase, setPulsePhase] = useState<number>(0);
+  useEffect(() => {
+    if (!isMarketOpen) return;
+    let animationFrame = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const elapsed = (now - start) / 1000;
+      // Sine 0..1..0 with 2s period
+      setPulsePhase((Math.sin(elapsed * Math.PI) + 1) / 2);
+      animationFrame = window.requestAnimationFrame(tick);
+    };
+    animationFrame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [isMarketOpen]);
+
   const metrics = useMemo(() => {
     if (!chartWidth || data.length === 0) return null;
 
@@ -579,6 +622,36 @@ const KLineChart = ({
         else ctx.lineTo(x, y);
       });
       ctx.stroke();
+
+      // Latest-price marker: breathing dot when market open, static when closed.
+      if (visibleData.length > 0 && intradayRevealProgress >= 0.95) {
+        const lastVis = visibleData[visibleData.length - 1];
+        const x = metrics.padding.left + (visibleData.length - 1) * metrics.spacing + metrics.spacing / 2;
+        const y = toY(lastVis.close);
+
+        if (isMarketOpen) {
+          // Outer halo (breathing): radius 6→14, alpha 0.32→0
+          const haloR = 6 + pulsePhase * 8;
+          const haloAlpha = 0.32 * (1 - pulsePhase);
+          ctx.beginPath();
+          ctx.arc(x, y, haloR, 0, Math.PI * 2);
+          ctx.fillStyle = `${themeColor}${Math.round(haloAlpha * 255)
+            .toString(16)
+            .padStart(2, "0")}`;
+          ctx.fill();
+        }
+
+        // Inner solid dot
+        ctx.beginPath();
+        ctx.arc(x, y, isMarketOpen ? 4 : 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = themeColor;
+        ctx.fill();
+        // White inner highlight (subtle)
+        ctx.beginPath();
+        ctx.arc(x, y, isMarketOpen ? 1.5 : 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.fill();
+      }
     } else {
       // Draw Candlesticks
       data.forEach((candle, index) => {
@@ -704,7 +777,7 @@ const KLineChart = ({
         ctx.fillText(`$${activeCandle.close.toFixed(2)}`, width - metrics.padding.right - badgeWidth / 2 + 6, activeY + 4);
       }
     }
-  }, [chartMode, data, height, hoverState, intradayRevealProgress, isIntradayMode, metrics, selectedRange]);
+  }, [chartMode, data, height, hoverState, intradayRevealProgress, isIntradayMode, isMarketOpen, metrics, pulsePhase, selectedRange]);
 
   const handleMouseMove = (event: MouseEvent<HTMLCanvasElement>) => {
     if (!metrics) return;
