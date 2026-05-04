@@ -193,37 +193,68 @@ def compute_earnings_revision(
     """
     engine = get_engine()
     as_of_dt = datetime.combine(as_of, datetime.max.time(), tzinfo=timezone.utc)
+    fiscal_floor = as_of - timedelta(days=370)
+    fiscal_ceiling = as_of + timedelta(days=730)
 
     with engine.connect() as conn:
         rows = conn.execute(text("""
-            SELECT fiscal_date, eps_avg, revenue_avg, num_analysts_eps
+            SELECT fiscal_date, eps_avg, revenue_avg, num_analysts_eps, num_analysts_revenue
             FROM analyst_estimates
             WHERE ticker = :ticker
-              AND knowledge_time <= :as_of
+              AND LEAST(
+                    knowledge_time,
+                    COALESCE(updated_at, created_at, knowledge_time)
+                  ) <= :as_of
               AND period = 'quarter'
-            ORDER BY fiscal_date DESC
-            LIMIT 2
-        """), {"ticker": ticker, "as_of": as_of_dt}).fetchall()
+              AND fiscal_date >= :fiscal_floor
+              AND fiscal_date <= :fiscal_ceiling
+            ORDER BY fiscal_date ASC
+        """), {
+            "ticker": ticker,
+            "as_of": as_of_dt,
+            "fiscal_floor": fiscal_floor,
+            "fiscal_ceiling": fiscal_ceiling,
+        }).fetchall()
 
     result = {
         "eps_revision_direction": 0.0,
-        "revenue_revision_pct": np.nan,
-        "analyst_coverage": np.nan,
+        "revenue_revision_pct": 0.0,
+        "analyst_coverage": 0.0,
     }
 
     if not rows:
         return result
 
-    latest = rows[0]
-    result["analyst_coverage"] = float(latest[3]) if latest[3] is not None else np.nan
+    upcoming = [row for row in rows if pd.to_datetime(row[0]).date() >= as_of]
+    if upcoming:
+        latest = upcoming[0]
+        prior_candidates = [row for row in rows if row[0] < latest[0]]
+        selected = [latest]
+        if prior_candidates:
+            selected.append(prior_candidates[-1])
+        elif len(upcoming) > 1:
+            selected.append(upcoming[1])
+    else:
+        selected = list(reversed(rows[-2:]))
 
-    if len(rows) >= 2:
-        prior = rows[1]
-        if latest[1] is not None and prior[1] is not None and float(prior[1]) != 0:
-            diff = float(latest[1]) - float(prior[1])
+    latest = selected[0]
+    coverage = _safe_float(latest[3])
+    if coverage is None:
+        coverage = _safe_float(latest[4])
+    if coverage is not None:
+        result["analyst_coverage"] = coverage
+
+    if len(selected) >= 2:
+        prior = selected[1]
+        latest_eps = _safe_float(latest[1])
+        prior_eps = _safe_float(prior[1])
+        if latest_eps is not None and prior_eps is not None and prior_eps != 0:
+            diff = latest_eps - prior_eps
             result["eps_revision_direction"] = 1.0 if diff > 0 else (-1.0 if diff < 0 else 0.0)
-        if latest[2] is not None and prior[2] is not None and prior[2] != 0:
-            result["revenue_revision_pct"] = (float(latest[2]) - float(prior[2])) / abs(float(prior[2]))
+        latest_revenue = _safe_float(latest[2])
+        prior_revenue = _safe_float(prior[2])
+        if latest_revenue is not None and prior_revenue is not None and prior_revenue != 0:
+            result["revenue_revision_pct"] = (latest_revenue - prior_revenue) / abs(prior_revenue)
 
     return result
 
@@ -411,7 +442,7 @@ def compute_insider_features(
         "insider_buy_intensity_20d": np.nan,
         "insider_net_intensity_60d": np.nan,
         "insider_cluster_buy_30d_w": np.nan,
-        "insider_abnormal_buy_90d": np.nan,
+        "insider_abnormal_buy_90d": 0.0,
         "insider_role_skew_30d": np.nan,
     }
 
@@ -475,7 +506,6 @@ def compute_insider_features(
     if market_cap is not None and market_cap > 0:
         result["insider_buy_intensity_20d"] = buy_value_20d / market_cap
         result["insider_net_intensity_60d"] = (buy_value_60d - sell_value_60d) / market_cap
-        result["insider_abnormal_buy_90d"] = np.nan
         annual_bins: dict[int, float] = {}
         for filing_date, tx_type, shares, price, _, acq_disp, type_of_owner in rows:
             tx_type = tx_type or ""
@@ -495,6 +525,8 @@ def compute_insider_features(
             if baseline > 0:
                 current_intensity_90d = buy_value_90d / market_cap
                 result["insider_abnormal_buy_90d"] = current_intensity_90d / baseline
+    elif buy_value_90d > 0:
+        result["insider_abnormal_buy_90d"] = np.nan
     result["insider_cluster_buy_30d_w"] = cluster_weight_30d
     result["insider_role_skew_30d"] = ceo_cfo_buy_30d - director_officer_sell_30d
 
