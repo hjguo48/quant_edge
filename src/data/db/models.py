@@ -229,7 +229,8 @@ class UniverseMembership(Base):
             "index_name",
             unique=True,
             postgresql_where=sa.text("end_date IS NULL"),
-        ).ddl_if(dialect="postgresql"),
+            sqlite_where=sa.text("end_date IS NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
