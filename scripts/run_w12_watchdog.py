@@ -39,7 +39,9 @@ LAST_FAILURE = REPORT_DIR / "last_failure.json"
 WATCHDOG_STATE = REPORT_DIR / ".watchdog_state.json"
 
 API_URL = "http://127.0.0.1:8000/api/health"
-FRONTEND_URL = "http://127.0.0.1:5173/"  # WSL-side; Windows accesses via relay :15173
+# Single-port architecture (PR #27): uvicorn serves frontend dist + API on port 8000.
+# Probe uvicorn root path which serves index.html via SPA fallback.
+FRONTEND_URL = os.environ.get("QUANTEDGE_FRONTEND_URL", "http://127.0.0.1:8000/")
 DB_FRESHNESS_RED_DAYS = 4
 SUCCESS_STALE_RED_DAYS = 8
 DISK_FREE_RED_GB = 5
