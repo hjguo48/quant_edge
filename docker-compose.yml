@@ -75,7 +75,7 @@ services:
       - mkdir -p /opt/quantedge/data/reports/greyscale && chgrp -R 0 /opt/quantedge/data/reports/greyscale && chmod -R g+rwX /opt/quantedge/data/reports/greyscale
     restart: "no"
     volumes:
-      - .:/opt/quantedge
+      - ${PWD}:/opt/quantedge
       - airflow_home:/opt/airflow
     networks:
       - quantedge_net
@@ -105,7 +105,7 @@ services:
     ports:
       - "18081:8080"
     volumes:
-      - .:/opt/quantedge
+      - ${PWD}:/opt/quantedge
       - airflow_home:/opt/airflow
     depends_on:
       airflow-init:
@@ -152,7 +152,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
     volumes:
-      - .:/opt/quantedge
+      - ${PWD}:/opt/quantedge
     depends_on:
       redis:
         condition: service_healthy
