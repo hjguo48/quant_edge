@@ -31,6 +31,7 @@ dependencies = [
 dev = [
     # Phase 1 Week 1: testing and code quality
     "pytest",
+    "pip-audit",
     "ruff",
     "mypy",
 ]
