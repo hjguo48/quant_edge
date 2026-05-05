@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import re
 from pathlib import Path
@@ -23,6 +24,7 @@ from src.api.schemas.greyscale import (
 )
 
 router = APIRouter(prefix="/api/greyscale", tags=["Greyscale"])
+logger = logging.getLogger(__name__)
 
 GREYSCALE_REPORT_DIR = Path("data/reports/greyscale")
 PERFORMANCE_FILE = GREYSCALE_REPORT_DIR / "greyscale_performance.json"
@@ -58,21 +60,80 @@ def _load_json_file(path: Path) -> dict[str, Any] | None:
         return None
 
 
+def _load_performance_payload() -> dict[str, Any]:
+    try:
+        raw = PERFORMANCE_FILE.read_text()
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "performance_file_missing",
+                "message": (
+                    "greyscale_performance.json not found. "
+                    "Run scripts/compute_realized_returns.py first."
+                ),
+                "retryable": False,
+            },
+        ) from exc
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "performance_file_unreadable",
+                "message": "greyscale_performance.json exists but is not readable.",
+                "retryable": True,
+            },
+        ) from exc
+    except OSError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "performance_file_io_error",
+                "message": "Unable to read greyscale_performance.json.",
+                "retryable": True,
+            },
+        ) from exc
+    except Exception:
+        logger.exception("Unexpected error reading greyscale performance file")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "performance_file_unexpected_error",
+                "message": "Unexpected error reading greyscale performance data.",
+                "retryable": True,
+            },
+        )
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "performance_file_corrupt",
+                "message": "greyscale_performance.json is not valid JSON.",
+                "retryable": True,
+            },
+        ) from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "performance_file_invalid_shape",
+                "message": "greyscale_performance.json must contain a JSON object.",
+                "retryable": True,
+            },
+        )
+    return payload
+
+
 @router.get("/performance", response_model=GreyscalePerformanceResponse)
 async def get_greyscale_performance() -> GreyscalePerformanceResponse:
     """W13.2 paper P&L tracker — weekly + cumulative paper return vs SPY.
 
     Returns 404 if compute_realized_returns.py has not been run yet.
     """
-    if not PERFORMANCE_FILE.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                "greyscale_performance.json not found. "
-                "Run scripts/compute_realized_returns.py first."
-            ),
-        )
-    payload = json.loads(PERFORMANCE_FILE.read_text())
+    payload = _load_performance_payload()
 
     return GreyscalePerformanceResponse(
         as_of_utc=payload.get("as_of_utc"),
