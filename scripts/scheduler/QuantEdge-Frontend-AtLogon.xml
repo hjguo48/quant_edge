@@ -2,6 +2,9 @@
 <!--
   QuantEdge Frontend (Vite dev server) — At Logon
 
+  Deprecated after PR #27: FastAPI now serves the built frontend from port 8000.
+  Keep this XML only as a legacy Vite-dev reference; see scripts/scheduler/README.md.
+
   Trigger:    User logon
   Action:     Calls WSL to start Vite dev server on port 4173
   Behavior:   Restart on failure

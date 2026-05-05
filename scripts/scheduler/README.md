@@ -9,6 +9,13 @@
 | `QuantEdge-API-AtLogon.xml` | 用户登录 | 启 FastAPI 后端 |
 | `QuantEdge-Frontend-AtLogon.xml` | 用户登录 | 启 Vite 前端 |
 
+## Deprecation Note: Frontend AtLogon
+
+`QuantEdge-Frontend-AtLogon.xml` is deprecated after PR #27. The production frontend is
+served by FastAPI from `frontend/dist` on the same port as `/api/*` (`8000`), so the
+separate Vite dev-server task on port `5173` should be disabled or deleted on deployed
+machines. The XML is kept only as a legacy local-development reference.
+
 ## 导入步骤 (在 Windows 上做)
 
 ### 1. 找出 WSL distro 名
