@@ -223,6 +223,13 @@ class UniverseMembership(Base):
             "effective_date",
             name="uq_universe_membership_entry",
         ),
+        sa.Index(
+            "uq_universe_membership_one_active",
+            "ticker",
+            "index_name",
+            unique=True,
+            postgresql_where=sa.text("end_date IS NULL"),
+        ).ddl_if(dialect="postgresql"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
