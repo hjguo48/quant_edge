@@ -32,7 +32,7 @@ from pathlib import Path
 
 from src.utils.io import write_json_atomic
 
-REPO_ROOT = Path("/home/jiahao/quant_edge")
+REPO_ROOT = Path(__file__).resolve().parent.parent
 REPORT_DIR = REPO_ROOT / "data" / "reports" / "greyscale"
 LAST_SUCCESS = REPORT_DIR / "last_success.json"
 LAST_FAILURE = REPORT_DIR / "last_failure.json"
