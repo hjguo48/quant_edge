@@ -65,7 +65,7 @@ if _FRONTEND_DIST.is_dir():
         name="assets",
     )
 
-    @app.get("/{full_path:path}", include_in_schema=False)
+    @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     async def spa_fallback(full_path: str) -> FileResponse:
         """SPA fallback: serve index.html for any non-/api/* path."""
         candidate = _FRONTEND_DIST / full_path
