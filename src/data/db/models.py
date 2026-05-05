@@ -335,6 +335,21 @@ class Portfolio(Base):
     )
 
 
+class PaperPortfolioAudit(Base):
+    __tablename__ = "paper_portfolio_audit"
+    __table_args__ = (
+        sa.Index("idx_paper_portfolio_audit_signal_date", "signal_date"),
+    )
+
+    bundle_version: Mapped[str] = mapped_column(sa.Text, primary_key=True)
+    signal_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    ticker: Mapped[str] = mapped_column(String(16), primary_key=True)
+    target_weight: Mapped[Decimal] = mapped_column(Numeric(10, 8), nullable=False)
+    raw_score: Mapped[Decimal | None] = mapped_column(Numeric(12, 8))
+    generated_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    run_id: Mapped[str | None] = mapped_column(sa.Text)
+
+
 class BacktestResult(Base):
     __tablename__ = "backtest_results"
 

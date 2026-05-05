@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """W13.2 paper P&L tracker — compute realized returns for greyscale weeks.
 
-For each `data/reports/greyscale/week_*.json`:
-  1. Read `live_outputs.target_weights_after_risk` (the paper portfolio).
+For each paper portfolio signal:
+  1. Read `paper_portfolio_audit` as the authoritative paper portfolio source.
+     Fall back to `data/reports/greyscale/week_*.json` for backwards compatibility.
   2. Pull realized close prices from stock_prices for signal_date+1 ... signal_date+H.
   3. Compute weighted portfolio return at multiple horizons (1D, 5D, 20D, 60D)
      using only cash position assumption (cash earns 0%).
@@ -58,6 +59,10 @@ from typing import Any
 from sqlalchemy import text
 
 from src.data.db.session import get_engine
+from src.data.paper_portfolio_audit import (
+    load_db_paper_portfolio_reports,
+    load_paper_portfolio as load_audited_paper_portfolio,
+)
 from src.utils.io import write_json_atomic
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -96,6 +101,71 @@ def list_week_reports(report_dir: Path) -> list[Path]:
 
 def load_week_report(path: Path) -> dict:
     return json.loads(path.read_text())
+
+
+def load_paper_portfolio(
+    signal_date: date | str,
+    *,
+    report_dir: Path,
+    conn,
+) -> dict[str, float] | None:
+    """Load one paper portfolio, preferring DB audit rows over week JSON."""
+    return load_audited_paper_portfolio(signal_date, report_dir=report_dir, conn=conn)
+
+
+def load_file_week_reports(report_dir: Path) -> list[dict]:
+    reports = []
+    for path in list_week_reports(report_dir):
+        report = load_week_report(path)
+        report["paper_portfolio_source"] = "json"
+        reports.append(report)
+    return reports
+
+
+def load_paper_portfolio_reports(*, report_dir: Path, conn) -> list[dict]:
+    """Return merged paper portfolio reports, using DB weights when present.
+
+    JSON reports are still read for week numbering and compatibility. DB-only
+    signal dates are included so performance can be reconstructed even if a
+    gitignored week_*.json export is deleted.
+    """
+    file_reports = load_file_week_reports(report_dir)
+    db_reports = load_db_paper_portfolio_reports(conn)
+
+    reports_by_signal_date: dict[str, dict] = {}
+    for report in file_reports:
+        signal_date_str = report.get("live_outputs", {}).get("signal_date")
+        if signal_date_str:
+            reports_by_signal_date[str(signal_date_str)] = report
+
+    for db_report in db_reports:
+        signal_date_str = db_report.get("live_outputs", {}).get("signal_date")
+        if not signal_date_str:
+            continue
+        existing = reports_by_signal_date.get(str(signal_date_str))
+        if existing:
+            merged = dict(existing)
+            merged_live = dict(existing.get("live_outputs") or {})
+            merged_live["target_weights_after_risk"] = db_report["live_outputs"][
+                "target_weights_after_risk"
+            ]
+            merged["live_outputs"] = merged_live
+            merged["paper_portfolio_source"] = "db"
+            reports_by_signal_date[str(signal_date_str)] = merged
+        else:
+            reports_by_signal_date[str(signal_date_str)] = db_report
+
+    reports = [
+        report
+        for _, report in sorted(
+            reports_by_signal_date.items(),
+            key=lambda item: str(item[0]),
+        )
+    ]
+    for index, report in enumerate(reports, start=1):
+        if not report.get("week_number"):
+            report["week_number"] = index
+    return reports
 
 
 def load_close_series(
@@ -201,10 +271,16 @@ def compute_per_week(
     *,
     benchmark: str,
     today: date,
+    report_dir: Path,
     conn,
 ) -> dict:
-    weights = week_report.get("live_outputs", {}).get("target_weights_after_risk", {}) or {}
     signal_date_str = week_report.get("live_outputs", {}).get("signal_date")
+    weights = (
+        load_paper_portfolio(signal_date_str, report_dir=report_dir, conn=conn)
+        if signal_date_str
+        else None
+    )
+    weights = weights or week_report.get("live_outputs", {}).get("target_weights_after_risk", {}) or {}
     week_number = int(week_report.get("week_number") or 0)
     if not signal_date_str or not weights:
         return {
@@ -360,18 +436,18 @@ def build_performance_payload(
     today: date | None = None,
 ) -> dict[str, Any]:
     report_dir.mkdir(parents=True, exist_ok=True)
-    weeks = list_week_reports(report_dir)
     as_of_today = today or datetime.now(timezone.utc).date()
 
     engine = get_engine()
     per_week_results: list[dict] = []
     with engine.connect() as conn:
-        for path in weeks:
-            week_data = load_week_report(path)
+        week_reports = load_paper_portfolio_reports(report_dir=report_dir, conn=conn)
+        for week_data in week_reports:
             result = compute_per_week(
                 week_data,
                 benchmark=benchmark,
                 today=as_of_today,
+                report_dir=report_dir,
                 conn=conn,
             )
             per_week_results.append(result)
