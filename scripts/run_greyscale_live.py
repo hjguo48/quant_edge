@@ -51,6 +51,7 @@ from scripts.run_single_window_validation import fill_feature_matrix, long_to_fe
 from scripts.run_walkforward_comparison import json_safe
 from src.data.db.pit import get_prices_pit
 from src.data.db.session import get_engine, get_session_factory
+from src.data.paper_portfolio_audit import save_paper_portfolio_report
 from src.features.pipeline import FeaturePipeline
 from src.labels.forward_returns import compute_forward_returns
 from src.models.evaluation import information_coefficient, information_coefficient_series
@@ -598,6 +599,7 @@ def main(argv: list[str] | None = None) -> int:
         },
         "model_bundle": {
             "path": str((REPO_ROOT / args.bundle_path).resolve()),
+            "version": str(bundle.get("version") or Path(args.bundle_path).parent.name),
             "window_id": str(bundle["window_id"]),
             "horizon_days": int(bundle["horizon_days"]),
             "retained_feature_count": int(len(retained_features)),
@@ -706,12 +708,17 @@ def main(argv: list[str] | None = None) -> int:
         ],
     }
     write_json_atomic(output_path, json_safe(report))
+    rows_saved = save_paper_portfolio_report(
+        report,
+        run_id=output_path.stem,
+    )
     logger.info(
-        "saved greyscale live report to {} trade_date={} top_ticker={} dry_run={}",
+        "saved greyscale live report to {} trade_date={} top_ticker={} dry_run={} paper_audit_rows={}",
         output_path,
         live_trade_date,
         fused_scores_by_ticker.index[0],
         args.dry_run,
+        rows_saved,
     )
     return 0
 
