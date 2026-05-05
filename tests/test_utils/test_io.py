@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import stat
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,27 @@ def test_write_json_atomic_writes_complete_payload(tmp_path: Path) -> None:
     write_json_atomic(target, {"status": "ok", "value": 7})
 
     assert json.loads(target.read_text()) == {"status": "ok", "value": 7}
+
+
+def test_write_json_atomic_sets_world_readable_mode(tmp_path: Path) -> None:
+    target = tmp_path / "state.json"
+
+    write_json_atomic(target, {"status": "ok"})
+
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644
+
+
+def test_write_json_atomic_overwrites_restrictive_mode_with_world_readable(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "state.json"
+    target.write_text(json.dumps({"status": "old"}))
+    target.chmod(0o600)
+
+    write_json_atomic(target, {"status": "new"})
+
+    assert json.loads(target.read_text()) == {"status": "new"}
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644
 
 
 def test_write_json_atomic_preserves_existing_file_on_interrupt(
