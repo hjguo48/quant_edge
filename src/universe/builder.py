@@ -479,8 +479,35 @@ def _replace_membership_rows(
                 ),
             )
 
-            if rows:
-                statement = insert(UniverseMembership).values(rows)
+            rows_to_insert = [dict(row) for row in rows]
+            for row in rows_to_insert:
+                if row.get("end_date") is not None:
+                    continue
+                ticker = str(row["ticker"])
+                effective_date = row["effective_date"]
+                next_active_date = session.execute(
+                    sa.select(sa.func.min(UniverseMembership.effective_date)).where(
+                        UniverseMembership.index_name == index_name,
+                        UniverseMembership.ticker == ticker,
+                        UniverseMembership.end_date.is_(None),
+                        UniverseMembership.effective_date > effective_date,
+                    ),
+                ).scalar()
+                if next_active_date is not None:
+                    row["end_date"] = next_active_date
+                session.execute(
+                    sa.update(UniverseMembership)
+                    .where(
+                        UniverseMembership.index_name == index_name,
+                        UniverseMembership.ticker == ticker,
+                        UniverseMembership.end_date.is_(None),
+                        UniverseMembership.effective_date < effective_date,
+                    )
+                    .values(end_date=effective_date),
+                )
+
+            if rows_to_insert:
+                statement = insert(UniverseMembership).values(rows_to_insert)
                 upsert = statement.on_conflict_do_update(
                     constraint="uq_universe_membership_entry",
                     set_={

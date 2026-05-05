@@ -97,12 +97,14 @@ def test_monthly_sync_preserves_historical_anchors(monkeypatch: pytest.MonkeyPat
             .scalars()
             .all()
         )
-    # AAPL should now have TWO rows: 2016-01-01 anchor (preserved) + 2026-04-01 monthly sync
+    # AAPL should now have TWO rows: 2016-01-01 anchor (preserved as history
+    # but closed) + 2026-04-01 monthly sync as the only active row.
     assert len(rows) == 2, f"expected 2 AAPL rows (anchor + monthly), got {[r.effective_date for r in rows]}"
     assert rows[0].effective_date == date(2016, 1, 1)
-    assert rows[0].end_date is None
+    assert rows[0].end_date == date(2026, 4, 1)
     assert rows[0].reason == "historical_backfill_anchor"
     assert rows[1].effective_date == date(2026, 4, 1)
+    assert rows[1].end_date is None
     assert rows[1].reason == "monthly_sync"
 
     # ATVI exit row also preserved (control)
