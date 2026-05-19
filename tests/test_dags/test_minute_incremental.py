@@ -475,6 +475,30 @@ def test_daily_dag_wires_finra_and_source_coverage_gate(monkeypatch: pytest.Monk
     assert "latest_announce_date" in coverage_source
 
 
+def test_earnings_calendar_floor_is_high_during_earnings_season(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="false")
+
+    assert module.expected_earnings_calendar_floor(date(2026, 1, 15)) == 50
+    assert module.expected_earnings_calendar_floor(date(2026, 2, 28)) == 50
+    assert module.expected_earnings_calendar_floor(date(2026, 4, 15)) == 50
+    assert module.expected_earnings_calendar_floor(date(2026, 5, 30)) == 50
+    assert module.expected_earnings_calendar_floor(date(2026, 5, 31)) == 50
+    assert module.expected_earnings_calendar_floor(date(2026, 7, 15)) == 50
+    assert module.expected_earnings_calendar_floor(date(2026, 8, 31)) == 50
+    assert module.expected_earnings_calendar_floor(date(2026, 10, 15)) == 50
+    assert module.expected_earnings_calendar_floor(date(2026, 11, 30)) == 50
+
+
+def test_earnings_calendar_floor_is_zero_outside_earnings_season(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="false")
+
+    assert module.expected_earnings_calendar_floor(date(2026, 1, 14)) == 0
+    assert module.expected_earnings_calendar_floor(date(2026, 3, 1)) == 0
+    assert module.expected_earnings_calendar_floor(date(2026, 6, 1)) == 0
+    assert module.expected_earnings_calendar_floor(date(2026, 9, 1)) == 0
+    assert module.expected_earnings_calendar_floor(date(2026, 12, 1)) == 0
+
+
 def test_minute_incremental_group_instantiated_when_flag_on(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_daily_data_module(monkeypatch, enabled="true")
     expected = {
