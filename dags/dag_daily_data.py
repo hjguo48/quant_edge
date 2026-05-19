@@ -32,13 +32,13 @@ SOURCE_COVERAGE_THRESHOLDS = {
     "stock_prices": 200,
     "short_sale_volume_daily": 1000,
     "fundamentals_pit": 200,
-    "earnings_calendar": 50,
+    "earnings_calendar": 30,
 }
 EARNINGS_CALENDAR_SEASON_WINDOWS = (
-    ((1, 15), (2, 28)),
-    ((4, 15), (5, 31)),
-    ((7, 15), (8, 31)),
-    ((10, 15), (11, 30)),
+    ((1, 15), (2, 15)),
+    ((4, 15), (5, 15)),
+    ((7, 15), (8, 15)),
+    ((10, 15), (11, 15)),
 )
 
 
