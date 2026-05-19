@@ -161,6 +161,7 @@ def test_metadata_roundtrip(tmp_path: Path) -> None:
 
 
 def test_validate_recency_treats_latest_all_null_feature_as_sparse(tmp_path: Path) -> None:
+    latest_calc_date = date.today()
     bundle_path = _write_bundle(
         tmp_path,
         required_features=["curve_inverted_x_growth", "vol_60d"],
@@ -170,8 +171,8 @@ def test_validate_recency_treats_latest_all_null_feature_as_sparse(tmp_path: Pat
     result = validator.validate_recency(
         _FakeRecencySession(
             latest_by_feature={
-                "curve_inverted_x_growth": date(2026, 4, 28),
-                "vol_60d": date(2026, 4, 28),
+                "curve_inverted_x_growth": latest_calc_date,
+                "vol_60d": latest_calc_date,
             },
             coverage_by_feature={
                 "curve_inverted_x_growth": 0,   # latest date rows all NULL

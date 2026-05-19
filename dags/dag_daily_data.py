@@ -34,6 +34,20 @@ SOURCE_COVERAGE_THRESHOLDS = {
     "fundamentals_pit": 200,
     "earnings_calendar": 50,
 }
+EARNINGS_CALENDAR_SEASON_WINDOWS = (
+    ((1, 15), (2, 28)),
+    ((4, 15), (5, 31)),
+    ((7, 15), (8, 31)),
+    ((10, 15), (11, 30)),
+)
+
+
+def expected_earnings_calendar_floor(today: date) -> int:
+    month_day = (today.month, today.day)
+    for start, end in EARNINGS_CALENDAR_SEASON_WINDOWS:
+        if start <= month_day <= end:
+            return SOURCE_COVERAGE_THRESHOLDS["earnings_calendar"]
+    return 0
 
 
 def minute_incremental_enabled() -> bool:
@@ -963,8 +977,12 @@ def _fetch_earnings_calendar_impl(*, repo_root: Path, context: dict[str, Any]) -
         start_date=start,
         end_date=end,
     )
-    if rows_written < SOURCE_COVERAGE_THRESHOLDS["earnings_calendar"]:
-        raise RuntimeError(f"earnings_calendar fetch returned sparse coverage: {rows_written} rows")
+    minimum_rows = expected_earnings_calendar_floor(today)
+    if rows_written < minimum_rows:
+        raise RuntimeError(
+            "earnings_calendar fetch returned sparse coverage: "
+            f"{rows_written} rows < {minimum_rows}"
+        )
 
     return _result(
         "fetch_earnings_calendar",
@@ -973,6 +991,7 @@ def _fetch_earnings_calendar_impl(*, repo_root: Path, context: dict[str, Any]) -
         active_universe_date=active_universe_date.isoformat(),
         ticker_count=len(active_tickers),
         rows_written=rows_written,
+        minimum_rows=minimum_rows,
         start=start.isoformat(),
         end=end.isoformat(),
     )
@@ -1076,10 +1095,11 @@ def _assert_source_coverage_impl(*, repo_root: Path, context: dict[str, Any]) ->
             {"as_of_date": as_of.date()},
         ).mappings().one()
         earnings_stale_before = as_of.date() - timedelta(days=14)
+        earnings_calendar_minimum = expected_earnings_calendar_floor(as_of.date())
         checks["earnings_calendar"] = {
             "latest_announce_date": _serialize_date(earnings_row["latest_announce_date"]),
             "ticker_count": int(earnings_row["ticker_count"] or 0),
-            "minimum_ticker_count": SOURCE_COVERAGE_THRESHOLDS["earnings_calendar"],
+            "minimum_ticker_count": earnings_calendar_minimum,
             "stale_before": earnings_stale_before.isoformat(),
         }
 
@@ -1090,7 +1110,13 @@ def _assert_source_coverage_impl(*, repo_root: Path, context: dict[str, Any]) ->
             failures.append(f"{source_name} ticker_count={ticker_count} < {minimum}")
         if source_name == "earnings_calendar":
             latest_announce_date = check["latest_announce_date"]
-            if latest_announce_date is None or date.fromisoformat(latest_announce_date) < earnings_stale_before:
+            if (
+                minimum > 0
+                and (
+                    latest_announce_date is None
+                    or date.fromisoformat(latest_announce_date) < earnings_stale_before
+                )
+            ):
                 failures.append(
                     "earnings_calendar latest_announce_date="
                     f"{latest_announce_date} < {earnings_stale_before.isoformat()}"
