@@ -34,6 +34,7 @@ SOURCE_COVERAGE_THRESHOLDS = {
     "fundamentals_pit": 200,
     "earnings_calendar": 30,
 }
+FINRA_GAP_FILL_TRADING_DAYS = 30
 EARNINGS_CALENDAR_SEASON_WINDOWS = (
     ((1, 15), (2, 15)),
     ((4, 15), (5, 15)),
@@ -48,6 +49,56 @@ def expected_earnings_calendar_floor(today: date) -> int:
         if start <= month_day <= end:
             return SOURCE_COVERAGE_THRESHOLDS["earnings_calendar"]
     return 0
+
+
+def _recent_market_sessions(XNYS: Any, *, end_date: date, trading_days: int) -> list[date]:
+    import pandas as pd
+
+    end_ts = pd.Timestamp(end_date)
+    if XNYS.is_session(end_ts):
+        end_session = end_ts
+    else:
+        end_session = XNYS.date_to_session(end_ts, direction="previous")
+    lookback_start = end_session - pd.Timedelta(days=max(trading_days * 3, 10))
+    sessions = XNYS.sessions_in_range(lookback_start, end_session)
+    return [pd.Timestamp(session).date() for session in sessions[-trading_days:]]
+
+
+def _missing_finra_short_volume_dates(
+    conn: Any,
+    XNYS: Any,
+    *,
+    end_date: date,
+    trading_days: int = FINRA_GAP_FILL_TRADING_DAYS,
+    minimum_ticker_count: int = SOURCE_COVERAGE_THRESHOLDS["short_sale_volume_daily"],
+) -> list[date]:
+    from sqlalchemy import text
+
+    session_dates = _recent_market_sessions(XNYS, end_date=end_date, trading_days=trading_days)
+    if not session_dates:
+        return []
+
+    rows = conn.execute(
+        text(
+            """
+            select trade_date, count(distinct ticker) as ticker_count
+            from short_sale_volume_daily
+            where trade_date between :start_date and :end_date
+            group by trade_date
+            """
+        ),
+        {"start_date": min(session_dates), "end_date": max(session_dates)},
+    ).mappings().all()
+    coverage_by_date: dict[date, int] = {}
+    for row in rows:
+        raw_trade_date = row["trade_date"]
+        trade_date = raw_trade_date if isinstance(raw_trade_date, date) else date.fromisoformat(str(raw_trade_date))
+        coverage_by_date[trade_date] = int(row["ticker_count"] or 0)
+    return [
+        trade_date
+        for trade_date in session_dates
+        if coverage_by_date.get(trade_date, 0) < minimum_ticker_count
+    ]
 
 
 def minute_incremental_enabled() -> bool:
@@ -909,37 +960,101 @@ def fetch_alternative_data(**context: Any) -> dict[str, Any]:
 def _fetch_finra_short_volume_impl(*, repo_root: Path, context: dict[str, Any]) -> dict[str, Any]:
     import pandas as pd
 
+    from src.data.db.session import get_engine
     from src.data.finra_short_sale import FINRAShortSaleSource, VALID_MARKETS, XNYS
 
     target_date = datetime.now(ZoneInfo("America/New_York")).date() - timedelta(days=1)
     target_ts = pd.Timestamp(target_date)
-    if not XNYS.is_session(target_ts):
+    target_is_session = bool(XNYS.is_session(target_ts))
+
+    with get_engine().connect() as conn:
+        missing_dates = _missing_finra_short_volume_dates(
+            conn,
+            XNYS,
+            end_date=target_date,
+        )
+
+    dates_to_fetch = list(missing_dates)
+    if target_is_session and target_date not in dates_to_fetch:
+        dates_to_fetch.append(target_date)
+
+    if not dates_to_fetch:
         return _result(
             "fetch_finra_short_volume",
             "skipped",
-            reason="target_date_not_market_session",
+            reason="target_date_not_market_session" if not target_is_session else "no_missing_finra_dates",
             target_date=target_date.isoformat(),
+            missing_dates=[],
+            fetched_dates=[],
+            missing_dates_filled=[],
+            failed_dates=[],
+            sparse_dates=[],
+            total_rows_written=0,
         )
 
     source = FINRAShortSaleSource()
-    rows_written = source.fetch_historical(
-        start_date=target_date,
-        end_date=target_date,
-        markets=VALID_MARKETS,
-        force_refetch=True,
-    )
-    if rows_written < SOURCE_COVERAGE_THRESHOLDS["short_sale_volume_daily"]:
-        raise RuntimeError(
-            "FINRA daily short-volume fetch returned sparse coverage for "
-            f"{target_date}: {rows_written} rows"
+    total_rows_written = 0
+    rows_by_date: dict[str, int] = {}
+    fetched_dates: list[str] = []
+    missing_dates_filled: list[str] = []
+    failed_dates: list[dict[str, str]] = []
+    sparse_dates: list[dict[str, Any]] = []
+    minimum_rows = SOURCE_COVERAGE_THRESHOLDS["short_sale_volume_daily"]
+
+    for trade_date in dates_to_fetch:
+        try:
+            rows_written = source.fetch_historical(
+                start_date=trade_date,
+                end_date=trade_date,
+                markets=VALID_MARKETS,
+                force_refetch=True,
+            )
+        except Exception as exc:
+            LOGGER.warning("FINRA short-volume gap-fill failed for %s: %s", trade_date, exc)
+            failed_dates.append({"trade_date": trade_date.isoformat(), "error": str(exc)})
+            continue
+
+        total_rows_written += rows_written
+        rows_by_date[trade_date.isoformat()] = rows_written
+        fetched_dates.append(trade_date.isoformat())
+        if rows_written < minimum_rows:
+            LOGGER.warning(
+                "FINRA daily short-volume fetch returned sparse coverage for %s: %s rows < %s",
+                trade_date,
+                rows_written,
+                minimum_rows,
+            )
+            sparse_dates.append(
+                {
+                    "trade_date": trade_date.isoformat(),
+                    "rows_written": rows_written,
+                    "minimum_rows": minimum_rows,
+                },
+            )
+        elif trade_date in missing_dates:
+            missing_dates_filled.append(trade_date.isoformat())
+
+    with get_engine().connect() as conn:
+        after_missing_dates = _missing_finra_short_volume_dates(
+            conn,
+            XNYS,
+            end_date=target_date,
         )
 
     return _result(
         "fetch_finra_short_volume",
         "ok",
         target_date=target_date.isoformat(),
+        target_is_session=target_is_session,
         markets=list(VALID_MARKETS),
-        rows_written=rows_written,
+        missing_dates=[trade_date.isoformat() for trade_date in missing_dates],
+        fetched_dates=fetched_dates,
+        missing_dates_filled=missing_dates_filled,
+        failed_dates=failed_dates,
+        sparse_dates=sparse_dates,
+        remaining_missing_dates=[trade_date.isoformat() for trade_date in after_missing_dates],
+        rows_by_date=rows_by_date,
+        total_rows_written=total_rows_written,
     )
 
 
