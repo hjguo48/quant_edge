@@ -505,6 +505,74 @@ def test_earnings_calendar_floor_is_zero_outside_earnings_season(monkeypatch: py
     assert module.expected_earnings_calendar_floor(date(2026, 12, 1)) == 0
 
 
+def test_finra_gap_fill_fetches_missing_sessions_and_target_date(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="false")
+    calls: list[date] = []
+    end_date = date(2026, 5, 20)
+    coverage = _complete_finra_coverage(module, end_date=end_date)
+    coverage.pop(date(2026, 5, 19))
+
+    _patch_finra_gap_fill_dependencies(monkeypatch, module, coverage=coverage, calls=calls)
+
+    result = module._fetch_finra_short_volume_impl(repo_root=SimpleNamespace(), context={})
+
+    assert result["target_date"] == "2026-05-20"
+    assert result["missing_dates"] == ["2026-05-19"]
+    assert result["missing_dates_filled"] == ["2026-05-19"]
+    assert result["remaining_missing_dates"] == []
+    assert result["total_rows_written"] == 3000
+    assert calls == [date(2026, 5, 19), date(2026, 5, 20)]
+    assert "2026-05-16" not in result["fetched_dates"]
+    assert "2026-05-17" not in result["fetched_dates"]
+
+
+def test_finra_gap_fill_fetches_only_target_when_recent_sessions_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="false")
+    calls: list[date] = []
+    end_date = date(2026, 5, 20)
+    coverage = _complete_finra_coverage(module, end_date=end_date)
+
+    _patch_finra_gap_fill_dependencies(monkeypatch, module, coverage=coverage, calls=calls)
+
+    result = module._fetch_finra_short_volume_impl(repo_root=SimpleNamespace(), context={})
+
+    assert result["missing_dates"] == []
+    assert result["missing_dates_filled"] == []
+    assert result["remaining_missing_dates"] == []
+    assert result["total_rows_written"] == 1500
+    assert calls == [date(2026, 5, 20)]
+
+
+def test_finra_gap_fill_reports_failed_missing_date_without_blocking_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_daily_data_module(monkeypatch, enabled="false")
+    calls: list[date] = []
+    end_date = date(2026, 5, 20)
+    coverage = _complete_finra_coverage(module, end_date=end_date)
+    coverage.pop(date(2026, 5, 19))
+
+    _patch_finra_gap_fill_dependencies(
+        monkeypatch,
+        module,
+        coverage=coverage,
+        calls=calls,
+        fail_dates={date(2026, 5, 19)},
+    )
+
+    result = module._fetch_finra_short_volume_impl(repo_root=SimpleNamespace(), context={})
+
+    assert result["missing_dates"] == ["2026-05-19"]
+    assert result["missing_dates_filled"] == []
+    assert result["remaining_missing_dates"] == ["2026-05-19"]
+    assert result["failed_dates"][0]["trade_date"] == "2026-05-19"
+    assert result["fetched_dates"] == ["2026-05-20"]
+    assert result["total_rows_written"] == 1500
+    assert calls == [date(2026, 5, 19), date(2026, 5, 20)]
+
+
 def test_minute_incremental_group_instantiated_when_flag_on(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_daily_data_module(monkeypatch, enabled="true")
     expected = {
@@ -600,6 +668,84 @@ def _load_daily_data_module(monkeypatch: pytest.MonkeyPatch, *, enabled: str):
         sys.modules.pop(module_name, None)
     importlib.invalidate_caches()
     return importlib.import_module("dags.dag_daily_data")
+
+
+def _complete_finra_coverage(module, *, end_date: date) -> dict[date, int]:  # noqa: ANN001
+    from src.data.finra_short_sale import XNYS
+
+    return {
+        trade_date: module.SOURCE_COVERAGE_THRESHOLDS["short_sale_volume_daily"] + 500
+        for trade_date in module._recent_market_sessions(
+            XNYS,
+            end_date=end_date,
+            trading_days=module.FINRA_GAP_FILL_TRADING_DAYS,
+        )
+    }
+
+
+def _patch_finra_gap_fill_dependencies(
+    monkeypatch: pytest.MonkeyPatch,
+    module,  # noqa: ANN001
+    *,
+    coverage: dict[date, int],
+    calls: list[date],
+    fail_dates: set[date] | None = None,
+) -> None:
+    import src.data.db.session as db_session_module
+    import src.data.finra_short_sale as finra_module
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN001
+            return datetime(2026, 5, 21, 12, 0, tzinfo=tz)
+
+    class FakeMappingResult:
+        def __init__(self, rows: list[dict[str, object]]) -> None:
+            self._rows = rows
+
+        def mappings(self):
+            return self
+
+        def all(self) -> list[dict[str, object]]:
+            return list(self._rows)
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # noqa: ANN001
+            return False
+
+        def execute(self, _statement, params=None):  # noqa: ANN001
+            params = params or {}
+            start = params["start_date"]
+            end = params["end_date"]
+            return FakeMappingResult(
+                [
+                    {"trade_date": trade_date, "ticker_count": ticker_count}
+                    for trade_date, ticker_count in sorted(coverage.items())
+                    if start <= trade_date <= end
+                ],
+            )
+
+    class FakeEngine:
+        def connect(self):
+            return FakeConnection()
+
+    class FakeSource:
+        def fetch_historical(self, *, start_date, end_date, markets, force_refetch):  # noqa: ANN001
+            assert start_date == end_date
+            assert force_refetch is True
+            assert markets
+            calls.append(start_date)
+            if fail_dates and start_date in fail_dates:
+                raise RuntimeError(f"simulated FINRA failure for {start_date}")
+            coverage[start_date] = module.SOURCE_COVERAGE_THRESHOLDS["short_sale_volume_daily"] + 500
+            return coverage[start_date]
+
+    monkeypatch.setattr(module, "datetime", FixedDateTime)
+    monkeypatch.setattr(db_session_module, "get_engine", lambda: FakeEngine())
+    monkeypatch.setattr(finra_module, "FINRAShortSaleSource", FakeSource)
 
 
 def _build_minute_frame(ticker: str, trade_day: date, count: int) -> pd.DataFrame:
