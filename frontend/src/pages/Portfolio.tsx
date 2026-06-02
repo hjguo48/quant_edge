@@ -680,13 +680,24 @@ const Portfolio = () => {
                     style={{ animationDelay: `${i * 30}ms` }}
                   >
                     <div className="w-32">
-                      <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{h.ticker}</div>
-                      <div
-                        className="text-[10px] uppercase font-mono tracking-tighter truncate"
-                        style={{ color: h.sector ? getSectorColor(h.sector).text : undefined }}
-                      >
-                        {h.sector || t("portfolio.table.equityComponent")}
-                      </div>
+                      <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors mb-1">{h.ticker}</div>
+                      {h.sector ? (
+                        (() => {
+                          const sc = getSectorColor(h.sector);
+                          return (
+                            <span
+                              className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-md border truncate max-w-full"
+                              style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.border }}
+                            >
+                              {h.sector}
+                            </span>
+                          );
+                        })()
+                      ) : (
+                        <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">
+                          {t("portfolio.table.equityComponent")}
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-4">
@@ -799,15 +810,18 @@ const Portfolio = () => {
             ) : rebalanceQuery.data?.orders.map((order) => (
               <div key={order.ticker} className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
                 <div className="w-32">
-                  <div className="text-sm font-black text-foreground">{order.ticker}</div>
-                  {order.sector && (
-                    <div
-                      className="text-[10px] uppercase font-mono tracking-tighter truncate"
-                      style={{ color: getSectorColor(order.sector).text }}
-                    >
-                      {order.sector}
-                    </div>
-                  )}
+                  <div className="text-sm font-black text-foreground mb-1">{order.ticker}</div>
+                  {order.sector && (() => {
+                    const sc = getSectorColor(order.sector);
+                    return (
+                      <span
+                        className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-md border truncate max-w-full"
+                        style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.border }}
+                      >
+                        {order.sector}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="w-32 flex justify-center">
                   <span className={`text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${
@@ -919,15 +933,18 @@ const Portfolio = () => {
                     {budgetQuery.data.allocations.map((alloc) => (
                       <div key={alloc.ticker} className="flex items-center px-5 py-4 rounded-xl border border-white/[0.03] bg-muted/20 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group">
                         <div className="w-32">
-                          <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{alloc.ticker}</div>
-                          {alloc.sector && (
-                            <div
-                              className="text-[10px] uppercase font-mono tracking-tighter truncate"
-                              style={{ color: getSectorColor(alloc.sector).text }}
-                            >
-                              {alloc.sector}
-                            </div>
-                          )}
+                          <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors mb-1">{alloc.ticker}</div>
+                          {alloc.sector && (() => {
+                            const sc = getSectorColor(alloc.sector);
+                            return (
+                              <span
+                                className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-md border truncate max-w-full"
+                                style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.border }}
+                              >
+                                {alloc.sector}
+                              </span>
+                            );
+                          })()}
                         </div>
                         <div className="w-32 text-right text-xs font-mono text-muted-foreground font-bold">{(alloc.weight * 100).toFixed(2)}%</div>
                         <div className="flex-1 text-right text-base font-mono font-black text-bull group-hover:scale-105 transition-transform origin-right">
