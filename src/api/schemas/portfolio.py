@@ -42,6 +42,7 @@ class BudgetAllocation(BaseModel):
     ticker: str
     weight: float
     dollar_amount: float
+    sector: str | None = None
 
 
 class BudgetResponse(BaseModel):
@@ -55,6 +56,7 @@ class RebalanceOrder(BaseModel):
     weight_prev: float
     weight_new: float
     weight_delta: float
+    sector: str | None = None
 
 
 class RebalanceResponse(BaseModel):
