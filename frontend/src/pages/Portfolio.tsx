@@ -679,14 +679,14 @@ const Portfolio = () => {
                     className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-primary/[0.02] transition-colors group"
                     style={{ animationDelay: `${i * 30}ms` }}
                   >
-                    <div className="w-44">
-                      <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors mb-1">{h.ticker}</div>
+                    <div className="w-44 flex items-center gap-2 min-w-0">
+                      <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors flex-shrink-0">{h.ticker}</div>
                       {h.sector ? (
                         (() => {
                           const sc = getSectorColor(h.sector);
                           return (
                             <span
-                              className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-sm border truncate max-w-full"
+                              className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-none border truncate min-w-0"
                               style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.border }}
                             >
                               {h.sector}
@@ -694,7 +694,7 @@ const Portfolio = () => {
                           );
                         })()
                       ) : (
-                        <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">
+                        <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter truncate">
                           {t("portfolio.table.equityComponent")}
                         </div>
                       )}
@@ -809,13 +809,13 @@ const Portfolio = () => {
               <div className="p-12 text-center text-xs text-muted-foreground animate-pulse">{t("portfolio.trades.calculating")}</div>
             ) : rebalanceQuery.data?.orders.map((order) => (
               <div key={order.ticker} className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
-                <div className="w-44">
-                  <div className="text-sm font-black text-foreground mb-1">{order.ticker}</div>
+                <div className="w-44 flex items-center gap-2 min-w-0">
+                  <div className="text-sm font-black text-foreground flex-shrink-0">{order.ticker}</div>
                   {order.sector && (() => {
                     const sc = getSectorColor(order.sector);
                     return (
                       <span
-                        className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-sm border truncate max-w-full"
+                        className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-none border truncate min-w-0"
                         style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.border }}
                       >
                         {order.sector}
@@ -932,13 +932,13 @@ const Portfolio = () => {
                   <div className="space-y-3 animate-in fade-in duration-500">
                     {budgetQuery.data.allocations.map((alloc) => (
                       <div key={alloc.ticker} className="flex items-center px-5 py-4 rounded-xl border border-white/[0.03] bg-muted/20 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group">
-                        <div className="w-44">
-                          <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors mb-1">{alloc.ticker}</div>
+                        <div className="w-44 flex items-center gap-2 min-w-0">
+                          <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors flex-shrink-0">{alloc.ticker}</div>
                           {alloc.sector && (() => {
                             const sc = getSectorColor(alloc.sector);
                             return (
                               <span
-                                className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-sm border truncate max-w-full"
+                                className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-none border truncate min-w-0"
                                 style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.border }}
                               >
                                 {alloc.sector}
