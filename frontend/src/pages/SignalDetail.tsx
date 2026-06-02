@@ -1071,7 +1071,7 @@ const SignalDetail = ({
                           <div className="h-3 bg-muted rounded-full overflow-hidden border border-white/5 p-0.5">
                             <div
                               className={`h-full rounded-full transition-all duration-1000 ${prediction && prediction.fusion_score > 0 ? "bg-bull shadow-[0_0_10px_#00C805]" : "bg-bear shadow-[0_0_10px_#FF5252]"}`}
-                              style={{ width: `${prediction ? Math.min(Math.abs(prediction.fusion_score) * 20, 100) : 0}%` }}
+                              style={{ width: `${prediction ? Math.min(Math.abs(prediction.fusion_score) * 400, 100) : 0}%` }}
                             />
                           </div>
                         </div>
