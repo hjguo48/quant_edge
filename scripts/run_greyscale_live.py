@@ -569,14 +569,18 @@ def main(argv: list[str] | None = None) -> int:
             ridge_intercept = float(np.asarray(ridge_estimator.intercept_).flatten()[0])
         except (AttributeError, IndexError, TypeError):
             ridge_intercept = 0.0
-        holding_tickers = list(constrained.weights.keys())
+        # Write ticker_features for the FULL universe (not just holdings):
+        # users can click any stock on the Signals page and inspect its
+        # attribution, even non-holding tickers (these have score below the
+        # buffer threshold but the model still ranked them).
+        # Earlier holdings-only path produced 0 rows due to constrained.weights
+        # vs ridge_X.index alignment issues — iterating ridge_X directly
+        # sidesteps that. ~500 tickers × 62 features ≈ 600KB JSON, acceptable.
         ticker_features: dict[str, list[float]] = {}
-        for ticker in holding_tickers:
-            if ticker not in ridge_X.index:
-                continue
-            row = ridge_X.loc[ticker].values
-            ticker_features[ticker] = [
-                float(v) if v is not None and np.isfinite(v) else 0.0 for v in row
+        for ticker, row in ridge_X.iterrows():
+            ticker_features[str(ticker)] = [
+                float(v) if v is not None and np.isfinite(v) else 0.0
+                for v in row.values
             ]
         linear_attribution = {
             "model_type": "ridge",
