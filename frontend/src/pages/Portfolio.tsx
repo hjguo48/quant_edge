@@ -656,7 +656,7 @@ const Portfolio = () => {
           return (
             <div className="animate-in fade-in duration-500">
               <div className="flex items-center px-6 py-3 border-b border-border bg-muted/20 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                <div className="w-32">{t("portfolio.table.security")}</div>
+                <div className="w-44">{t("portfolio.table.security")}</div>
                 <div className="flex-1">{t("portfolio.table.targetWeight")}</div>
                 <div className="w-32 text-right">{t("portfolio.table.alphaScore")}</div>
                 <div className="w-32 text-center">{t("portfolio.table.direction")}</div>
@@ -679,14 +679,14 @@ const Portfolio = () => {
                     className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-primary/[0.02] transition-colors group"
                     style={{ animationDelay: `${i * 30}ms` }}
                   >
-                    <div className="w-32">
+                    <div className="w-44">
                       <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors mb-1">{h.ticker}</div>
                       {h.sector ? (
                         (() => {
                           const sc = getSectorColor(h.sector);
                           return (
                             <span
-                              className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-md border truncate max-w-full"
+                              className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-sm border truncate max-w-full"
                               style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.border }}
                             >
                               {h.sector}
@@ -799,7 +799,7 @@ const Portfolio = () => {
         {tab === "trades" && (
           <div className="animate-in slide-in-from-bottom-2 duration-500">
             <div className="flex items-center px-6 py-3 border-b border-border bg-muted/20 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-              <div className="w-32">{t("portfolio.table.ticker")}</div>
+              <div className="w-44">{t("portfolio.table.ticker")}</div>
               <div className="w-32 text-center">{t("portfolio.table.action")}</div>
               <div className="w-32 text-right">{t("portfolio.table.prevPct")}</div>
               <div className="w-32 text-right">{t("portfolio.table.targetPct")}</div>
@@ -809,13 +809,13 @@ const Portfolio = () => {
               <div className="p-12 text-center text-xs text-muted-foreground animate-pulse">{t("portfolio.trades.calculating")}</div>
             ) : rebalanceQuery.data?.orders.map((order) => (
               <div key={order.ticker} className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
-                <div className="w-32">
+                <div className="w-44">
                   <div className="text-sm font-black text-foreground mb-1">{order.ticker}</div>
                   {order.sector && (() => {
                     const sc = getSectorColor(order.sector);
                     return (
                       <span
-                        className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-md border truncate max-w-full"
+                        className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-sm border truncate max-w-full"
                         style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.border }}
                       >
                         {order.sector}
@@ -932,13 +932,13 @@ const Portfolio = () => {
                   <div className="space-y-3 animate-in fade-in duration-500">
                     {budgetQuery.data.allocations.map((alloc) => (
                       <div key={alloc.ticker} className="flex items-center px-5 py-4 rounded-xl border border-white/[0.03] bg-muted/20 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group">
-                        <div className="w-32">
+                        <div className="w-44">
                           <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors mb-1">{alloc.ticker}</div>
                           {alloc.sector && (() => {
                             const sc = getSectorColor(alloc.sector);
                             return (
                               <span
-                                className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-md border truncate max-w-full"
+                                className="inline-block text-[9px] font-semibold px-2 py-0.5 rounded-sm border truncate max-w-full"
                                 style={{ backgroundColor: sc.bg, color: sc.text, borderColor: sc.border }}
                               >
                                 {alloc.sector}
