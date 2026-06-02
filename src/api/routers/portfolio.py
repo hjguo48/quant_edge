@@ -113,14 +113,21 @@ async def get_portfolio_summary() -> PortfolioSummaryResponse:
 @router.get("/budget", response_model=BudgetResponse)
 async def get_budget_allocation(
     total_budget: float = Query(default=100000, ge=1000, le=100_000_000, description="Total investment budget in USD"),
+    db: AsyncSession = Depends(get_db),
 ) -> BudgetResponse:
     reader = _get_reader()
     holdings = reader.get_portfolio_holdings()
+    try:
+        stock_info = await _enrich_with_stock_info(db, [h["ticker"] for h in holdings])
+    except Exception as exc:  # noqa: BLE001 — never let enrich failure kill the page
+        logger.warning("budget sector enrich raised unexpected: %s", exc)
+        stock_info = {}
     allocations = [
         BudgetAllocation(
             ticker=holding["ticker"],
             weight=holding["weight"],
             dollar_amount=round(holding["weight"] * total_budget, 2),
+            sector=(stock_info.get(holding["ticker"].upper()) or {}).get("sector"),
         )
         for holding in holdings
     ]
@@ -128,7 +135,9 @@ async def get_budget_allocation(
 
 
 @router.get("/rebalance", response_model=RebalanceResponse)
-async def get_rebalance_orders() -> RebalanceResponse:
+async def get_rebalance_orders(
+    db: AsyncSession = Depends(get_db),
+) -> RebalanceResponse:
     reader = _get_reader()
     reports = reader.get_reports()
     weeks = sorted(reports)
@@ -136,6 +145,11 @@ async def get_rebalance_orders() -> RebalanceResponse:
     if len(weeks) < 2:
         latest = reader.get_latest_report()
         holdings = reader.get_portfolio_holdings()
+        try:
+            stock_info = await _enrich_with_stock_info(db, [h["ticker"] for h in holdings])
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("rebalance sector enrich raised unexpected: %s", exc)
+            stock_info = {}
         return RebalanceResponse(
             signal_date=latest.get("live_outputs", {}).get("signal_date") if latest else None,
             orders=[
@@ -145,6 +159,7 @@ async def get_rebalance_orders() -> RebalanceResponse:
                     weight_prev=0.0,
                     weight_new=holding["weight"],
                     weight_delta=holding["weight"],
+                    sector=(stock_info.get(holding["ticker"].upper()) or {}).get("sector"),
                 )
                 for holding in holdings
             ],
@@ -155,6 +170,12 @@ async def get_rebalance_orders() -> RebalanceResponse:
     current_weights = current_report.get("live_outputs", {}).get("target_weights_after_risk", {})
     all_tickers = sorted(set(previous_weights) | set(current_weights))
 
+    try:
+        stock_info = await _enrich_with_stock_info(db, all_tickers)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("rebalance sector enrich raised unexpected: %s", exc)
+        stock_info = {}
+
     orders = [
         RebalanceOrder(
             ticker=ticker,
@@ -162,6 +183,7 @@ async def get_rebalance_orders() -> RebalanceResponse:
             weight_prev=round(float(previous_weights.get(ticker, 0.0)), 6),
             weight_new=round(float(current_weights.get(ticker, 0.0)), 6),
             weight_delta=round(float(current_weights.get(ticker, 0.0)) - float(previous_weights.get(ticker, 0.0)), 6),
+            sector=(stock_info.get(ticker.upper()) or {}).get("sector"),
         )
         for ticker in all_tickers
     ]

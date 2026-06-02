@@ -49,6 +49,7 @@ interface BudgetAllocation {
   ticker: string;
   weight: number;
   dollar_amount: number;
+  sector?: string | null;
 }
 
 interface BudgetResponse {
@@ -62,6 +63,7 @@ interface RebalanceOrder {
   weight_prev: number;
   weight_new: number;
   weight_delta: number;
+  sector?: string | null;
 }
 
 interface RebalanceResponse {
@@ -679,7 +681,12 @@ const Portfolio = () => {
                   >
                     <div className="w-32">
                       <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{h.ticker}</div>
-                      <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">{t("portfolio.table.equityComponent")}</div>
+                      <div
+                        className="text-[10px] uppercase font-mono tracking-tighter truncate"
+                        style={{ color: h.sector ? getSectorColor(h.sector).text : undefined }}
+                      >
+                        {h.sector || t("portfolio.table.equityComponent")}
+                      </div>
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-4">
@@ -791,7 +798,17 @@ const Portfolio = () => {
               <div className="p-12 text-center text-xs text-muted-foreground animate-pulse">{t("portfolio.trades.calculating")}</div>
             ) : rebalanceQuery.data?.orders.map((order) => (
               <div key={order.ticker} className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
-                <div className="w-32 text-sm font-black text-foreground">{order.ticker}</div>
+                <div className="w-32">
+                  <div className="text-sm font-black text-foreground">{order.ticker}</div>
+                  {order.sector && (
+                    <div
+                      className="text-[10px] uppercase font-mono tracking-tighter truncate"
+                      style={{ color: getSectorColor(order.sector).text }}
+                    >
+                      {order.sector}
+                    </div>
+                  )}
+                </div>
                 <div className="w-32 flex justify-center">
                   <span className={`text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${
                     order.action === "buy" ? "bg-bull text-white shadow-lg shadow-bull/20" : order.action === "sell" ? "bg-bear text-white shadow-lg shadow-bear/20" : "bg-muted text-muted-foreground"
@@ -901,7 +918,17 @@ const Portfolio = () => {
                   <div className="space-y-3 animate-in fade-in duration-500">
                     {budgetQuery.data.allocations.map((alloc) => (
                       <div key={alloc.ticker} className="flex items-center px-5 py-4 rounded-xl border border-white/[0.03] bg-muted/20 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group">
-                        <div className="w-24 text-sm font-black text-foreground group-hover:text-primary transition-colors">{alloc.ticker}</div>
+                        <div className="w-32">
+                          <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{alloc.ticker}</div>
+                          {alloc.sector && (
+                            <div
+                              className="text-[10px] uppercase font-mono tracking-tighter truncate"
+                              style={{ color: getSectorColor(alloc.sector).text }}
+                            >
+                              {alloc.sector}
+                            </div>
+                          )}
+                        </div>
                         <div className="w-32 text-right text-xs font-mono text-muted-foreground font-bold">{(alloc.weight * 100).toFixed(2)}%</div>
                         <div className="flex-1 text-right text-base font-mono font-black text-bull group-hover:scale-105 transition-transform origin-right">
                           ${alloc.dollar_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
