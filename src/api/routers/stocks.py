@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -33,7 +33,12 @@ def _normalize_ticker(ticker: str) -> str:
 
 
 def _resolve_as_of(as_of: datetime | None) -> datetime:
-    resolved = as_of or datetime.now(timezone.utc)
+    # UI 默认请求加 +2d buffer 看穿 historical PIT 写入延迟 (knowledge_time = T+1 16:00 ET)
+    # 显式传 as_of 时保留严格 PIT 语义, 供回测/研究复用同一接口
+    if as_of is None:
+        resolved = datetime.now(timezone.utc) + timedelta(days=2)
+    else:
+        resolved = as_of
     if resolved.tzinfo is None:
         return resolved.replace(tzinfo=timezone.utc)
     return resolved.astimezone(timezone.utc)
