@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { TrendingUp, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Sector } from "recharts";
+import { AreaChart, Area, LineChart, Line, ComposedChart, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Sector, ReferenceLine } from "recharts";
 import { useTranslation } from "react-i18next";
 import StatCard from "../components/StatCard";
 import { fetchApi } from "../hooks/useApi";
@@ -428,8 +428,6 @@ const Portfolio = () => {
             const colorOf = (v: number | null) =>
               v == null ? "text-muted-foreground" : v >= 0 ? "text-bull" : "text-bear";
 
-            const isPending = weeksRealized === 0 || cumReturn == null;
-
             return (
               <>
                 <div className="flex items-start justify-between mb-4">
@@ -456,15 +454,14 @@ const Portfolio = () => {
                   </div>
                 </div>
 
-                {isPending ? (
-                  <div className="flex flex-col items-center justify-center min-h-[180px] border border-dashed border-border rounded-lg bg-surface text-xs text-muted-foreground space-y-1">
-                    <p className="font-bold uppercase tracking-widest">{t("portfolio.performanceTracking.awaitingFirstClose")}</p>
-                    <p className="text-[10px] opacity-70 text-center px-2">
-                      {t("portfolio.performanceTracking.awaitingFirstCloseDetail", { horizon: activeHorizon })}
-                    </p>
-                  </div>
-                ) : (
+                {(
                   <>
+                    {weeksRealized === 0 && (
+                      <div className="mb-3 px-3 py-1.5 rounded-md bg-muted/20 border border-border/40 text-[10px] text-muted-foreground">
+                        <span className="font-bold uppercase tracking-wider">{t("portfolio.performanceTracking.awaitingFirstClose")}</span>
+                        <span className="ml-2 opacity-70">— {t("portfolio.performanceTracking.awaitingFirstCloseDetail", { horizon: activeHorizon })}</span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-4 gap-3 mb-4">
                       <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t("portfolio.performanceTracking.cumulative")}</p>
@@ -561,29 +558,53 @@ const Portfolio = () => {
                       const portfolioUp = lastPoint.portfolio_cum_return >= 0;
                       const portfolioColor = portfolioUp ? "#00C805" : "#FF5252";
 
+                      // Compute the y=0 offset for the split gradient (green above 0, red below 0)
+                      const excessVals = equitySeries.map((p) => p.excess_cum_return);
+                      const maxEx = Math.max(...excessVals, 0);
+                      const minEx = Math.min(...excessVals, 0);
+                      const totalRange = maxEx - minEx;
+                      const zeroOffset = totalRange > 0 ? maxEx / totalRange : 0.5;
+
+                      // Outperform area = portfolio when above SPY, NaN otherwise (recharts skips NaN)
+                      const seriesWithSplit = equitySeries.map((p) => ({
+                        ...p,
+                        outperform_band: p.portfolio_cum_return >= p.spy_cum_return ? p.portfolio_cum_return : NaN,
+                        underperform_band: p.portfolio_cum_return < p.spy_cum_return ? p.portfolio_cum_return : NaN,
+                      }));
+
                       return (
                         <div className="mb-3" style={{ height: FRAME_H }}>
                           <div style={{ height: CHART_H }}>
                             <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={equitySeries} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
+                              <ComposedChart data={seriesWithSplit} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
                                 <defs>
-                                  <linearGradient id="portfolioEquityGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={portfolioColor} stopOpacity={0.25} />
-                                    <stop offset="95%" stopColor={portfolioColor} stopOpacity={0} />
+                                  <linearGradient id="excessSplitGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#00C805" stopOpacity={0.35} />
+                                    <stop offset={`${(zeroOffset * 100).toFixed(2)}%`} stopColor="#00C805" stopOpacity={0.05} />
+                                    <stop offset={`${(zeroOffset * 100).toFixed(2)}%`} stopColor="#FF5252" stopOpacity={0.05} />
+                                    <stop offset="100%" stopColor="#FF5252" stopOpacity={0.35} />
                                   </linearGradient>
                                 </defs>
                                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} interval="preserveStartEnd" minTickGap={48} />
-                                <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v: number) => `${(v * 100).toFixed(1)}%`} domain={["auto", "auto"]} width={42} />
+                                <YAxis yAxisId="ret" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v: number) => `${(v * 100).toFixed(1)}%`} domain={["auto", "auto"]} width={42} />
                                 <Tooltip
                                   contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
                                   formatter={(value: number, name: string) => {
-                                    const label = name === "portfolio_cum_return" ? t("portfolio.performanceTracking.portfolio") : name === "spy_cum_return" ? t("portfolio.performanceTracking.spy") : name;
-                                    return [`${(value * 100).toFixed(2)}%`, label];
+                                    if (name === "portfolio_cum_return") return [`${(value * 100).toFixed(2)}%`, t("portfolio.performanceTracking.portfolio")];
+                                    if (name === "spy_cum_return") return [`${(value * 100).toFixed(2)}%`, t("portfolio.performanceTracking.spy")];
+                                    if (name === "excess_cum_return") return [`${(value * 100).toFixed(2)}%`, t("portfolio.performanceTracking.excess")];
+                                    return null;
                                   }}
                                 />
-                                <Line type="monotone" dataKey="spy_cum_return" stroke="#888888" strokeWidth={1.2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
-                                <Line type="monotone" dataKey="portfolio_cum_return" stroke={portfolioColor} strokeWidth={2.4} dot={false} isAnimationActive={false} />
-                              </LineChart>
+                                <ReferenceLine yAxisId="ret" y={0} stroke="var(--border)" strokeDasharray="2 2" />
+                                {/* Excess area (split green above 0 / red below 0) */}
+                                <Area yAxisId="ret" type="monotone" dataKey="excess_cum_return" stroke="none" fill="url(#excessSplitGrad)" isAnimationActive={false} />
+                                {/* SPY benchmark dashed line */}
+                                <Line yAxisId="ret" type="monotone" dataKey="spy_cum_return" stroke="#888888" strokeWidth={1.2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+                                {/* Portfolio line, split into two overlays: outperform (green) and underperform (red) */}
+                                <Line yAxisId="ret" type="monotone" dataKey="outperform_band" stroke="#00C805" strokeWidth={2.4} dot={false} isAnimationActive={false} connectNulls={false} />
+                                <Line yAxisId="ret" type="monotone" dataKey="underperform_band" stroke="#FF5252" strokeWidth={2.4} dot={false} isAnimationActive={false} connectNulls={false} />
+                              </ComposedChart>
                             </ResponsiveContainer>
                           </div>
                           <div className="flex justify-between items-center text-[9px] text-muted-foreground mt-1 px-1" style={{ height: 16 }}>
@@ -648,9 +669,9 @@ const Portfolio = () => {
               </>
             );
           })()}
-        </div>
+        </div>{/* PT_PANEL_END */}
 
-        <div className="w-72 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3">
+        <div className="w-72 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3 flex flex-col">
           {currentQuery.isLoading ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
               <PieChart size={28} className="text-muted-foreground mb-3 opacity-20 animate-pulse" />
@@ -744,8 +765,8 @@ const Portfolio = () => {
                   </p>
                 </div>
 
-                <div className="mb-4">
-                  <ResponsiveContainer width="100%" height={170}>
+                <div className="mb-4 flex-shrink-0">
+                  <ResponsiveContainer width="100%" height={220}>
                     <RePieChart>
                       <Pie
                         data={pieData}
@@ -753,8 +774,8 @@ const Portfolio = () => {
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        innerRadius={42}
-                        outerRadius={64}
+                        innerRadius={56}
+                        outerRadius={86}
                         paddingAngle={2}
                         activeIndex={activeIdx >= 0 ? activeIdx : undefined}
                         activeShape={renderActiveShape}
@@ -784,7 +805,7 @@ const Portfolio = () => {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3 flex-1 flex flex-col justify-around">
                   {visible.map((s) => {
                     const color = getSectorColor(s.sector);
                     const pct = (s.weight / totalWeight) * 100;
@@ -868,6 +889,20 @@ const Portfolio = () => {
                       </div>
                     );
                   })()}
+                </div>
+
+                {/* Footer: top sector summary + holdings count */}
+                <div className="mt-4 pt-3 border-t border-border/40 flex justify-between items-center text-[10px] flex-shrink-0">
+                  <div>
+                    <span className="text-muted-foreground uppercase tracking-wider font-bold">{t("portfolio.sectorWeights.topSector", { defaultValue: "Top" })}</span>
+                    <span className="ml-1.5 text-foreground font-semibold">{t(`sectors.${sectorAggregation[0]?.sector ?? ""}`, { defaultValue: sectorAggregation[0]?.sector ?? "—" })}</span>
+                    <span className="ml-1.5 font-mono font-bold text-foreground">{sectorAggregation[0] ? ((sectorAggregation[0].weight / totalWeight) * 100).toFixed(1) + "%" : "—"}</span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span className="font-bold">{sectorAggregation.length}</span> {t("portfolio.sectorWeights.sectors", { defaultValue: "sectors" })}
+                    <span className="mx-1.5">·</span>
+                    <span className="font-bold">{current?.holding_count ?? 0}</span> {t("portfolio.sectorWeights.tickersShort", { defaultValue: "tickers" })}
+                  </div>
                 </div>
               </>
             );
