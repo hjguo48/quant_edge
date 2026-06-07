@@ -456,12 +456,6 @@ const Portfolio = () => {
 
                 {(
                   <>
-                    {weeksRealized === 0 && (
-                      <div className="mb-3 px-3 py-1.5 rounded-md bg-muted/20 border border-border/40 text-[10px] text-muted-foreground">
-                        <span className="font-bold uppercase tracking-wider">{t("portfolio.performanceTracking.awaitingFirstClose")}</span>
-                        <span className="ml-2 opacity-70">— {t("portfolio.performanceTracking.awaitingFirstCloseDetail", { horizon: activeHorizon })}</span>
-                      </div>
-                    )}
                     <div className="grid grid-cols-4 gap-3 mb-4">
                       <div className="bg-muted/20 rounded-lg p-3 border border-border/50">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t("portfolio.performanceTracking.cumulative")}</p>
@@ -555,34 +549,28 @@ const Portfolio = () => {
                       }
 
                       const lastPoint = equitySeries[equitySeries.length - 1];
-                      const portfolioUp = lastPoint.portfolio_cum_return >= 0;
-                      const portfolioColor = portfolioUp ? "#00C805" : "#FF5252";
+                      const portfolioFinalUp = lastPoint.excess_cum_return >= 0;
+                      const portfolioColor = portfolioFinalUp ? "#00C805" : "#FF5252";
 
-                      // Compute the y=0 offset for the split gradient (green above 0, red below 0)
+                      // Compute the y=0 offset for the split gradient on the excess area
+                      // (green above y=0 = outperform, red below = underperform)
                       const excessVals = equitySeries.map((p) => p.excess_cum_return);
                       const maxEx = Math.max(...excessVals, 0);
                       const minEx = Math.min(...excessVals, 0);
                       const totalRange = maxEx - minEx;
                       const zeroOffset = totalRange > 0 ? maxEx / totalRange : 0.5;
 
-                      // Outperform area = portfolio when above SPY, NaN otherwise (recharts skips NaN)
-                      const seriesWithSplit = equitySeries.map((p) => ({
-                        ...p,
-                        outperform_band: p.portfolio_cum_return >= p.spy_cum_return ? p.portfolio_cum_return : NaN,
-                        underperform_band: p.portfolio_cum_return < p.spy_cum_return ? p.portfolio_cum_return : NaN,
-                      }));
-
                       return (
                         <div className="mb-3" style={{ height: FRAME_H }}>
                           <div style={{ height: CHART_H }}>
                             <ResponsiveContainer width="100%" height="100%">
-                              <ComposedChart data={seriesWithSplit} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
+                              <ComposedChart data={equitySeries} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
                                 <defs>
                                   <linearGradient id="excessSplitGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#00C805" stopOpacity={0.35} />
+                                    <stop offset="0%" stopColor="#00C805" stopOpacity={0.45} />
                                     <stop offset={`${(zeroOffset * 100).toFixed(2)}%`} stopColor="#00C805" stopOpacity={0.05} />
                                     <stop offset={`${(zeroOffset * 100).toFixed(2)}%`} stopColor="#FF5252" stopOpacity={0.05} />
-                                    <stop offset="100%" stopColor="#FF5252" stopOpacity={0.35} />
+                                    <stop offset="100%" stopColor="#FF5252" stopOpacity={0.45} />
                                   </linearGradient>
                                 </defs>
                                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} interval="preserveStartEnd" minTickGap={48} />
@@ -597,13 +585,12 @@ const Portfolio = () => {
                                   }}
                                 />
                                 <ReferenceLine yAxisId="ret" y={0} stroke="var(--border)" strokeDasharray="2 2" />
-                                {/* Excess area (split green above 0 / red below 0) */}
+                                {/* Excess area (split green above 0 / red below 0) — visual signal of out/underperform */}
                                 <Area yAxisId="ret" type="monotone" dataKey="excess_cum_return" stroke="none" fill="url(#excessSplitGrad)" isAnimationActive={false} />
                                 {/* SPY benchmark dashed line */}
                                 <Line yAxisId="ret" type="monotone" dataKey="spy_cum_return" stroke="#888888" strokeWidth={1.2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
-                                {/* Portfolio line, split into two overlays: outperform (green) and underperform (red) */}
-                                <Line yAxisId="ret" type="monotone" dataKey="outperform_band" stroke="#00C805" strokeWidth={2.4} dot={false} isAnimationActive={false} connectNulls={false} />
-                                <Line yAxisId="ret" type="monotone" dataKey="underperform_band" stroke="#FF5252" strokeWidth={2.4} dot={false} isAnimationActive={false} connectNulls={false} />
+                                {/* Portfolio line, single continuous line */}
+                                <Line yAxisId="ret" type="monotone" dataKey="portfolio_cum_return" stroke={portfolioColor} strokeWidth={2.4} dot={false} isAnimationActive={false} />
                               </ComposedChart>
                             </ResponsiveContainer>
                           </div>
@@ -657,7 +644,14 @@ const Portfolio = () => {
                     )}
 
                     <div className="flex justify-between items-center mt-3 text-[10px] text-muted-foreground">
-                      <span>{t("portfolio.performanceTracking.weeksRealized", { count: weeksRealized, date: latestBlock?.horizon_end_date ?? "—" })}</span>
+                      <span>
+                        {t("portfolio.performanceTracking.weeksRealized", { count: weeksRealized, date: latestBlock?.horizon_end_date ?? "—" })}
+                        {weeksRealized === 0 && (
+                          <span className="ml-2 text-amber-500/80 font-semibold">
+                            {t("portfolio.performanceTracking.partialNote", { defaultValue: "* partial — horizon not yet matured" })}
+                          </span>
+                        )}
+                      </span>
                       {latestBlock && (
                         <span>
                           {t("portfolio.performanceTracking.coverage", { used: latestBlock.tickers_used, total: latestBlock.tickers_used + latestBlock.tickers_missing })}
