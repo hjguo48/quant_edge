@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { TrendingUp, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AreaChart, Area, LineChart, Line, ComposedChart, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Sector, ReferenceLine } from "recharts";
@@ -120,6 +121,11 @@ const SECTOR_PANEL_TOP_N = 6;
 
 const Portfolio = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const goToStock = useCallback(
+    (ticker: string) => navigate(`/signals/${ticker.toUpperCase()}`),
+    [navigate],
+  );
   const [tab, setTab] = useState("holdings");
   const [budgetStr, setBudgetStr] = useState("100000");
   const [, setBudgetStrPrev] = useState("100000");
@@ -1004,7 +1010,11 @@ const Portfolio = () => {
                 return (
                   <div
                     key={h.ticker}
-                    className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-primary/[0.02] transition-colors group"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => goToStock(h.ticker)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToStock(h.ticker); } }}
+                    className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-primary/[0.02] transition-colors group cursor-pointer"
                     style={{ animationDelay: `${i * 30}ms` }}
                   >
                     <div className="w-20">
@@ -1139,9 +1149,16 @@ const Portfolio = () => {
             {rebalanceQuery.isLoading ? (
               <div className="p-12 text-center text-xs text-muted-foreground animate-pulse">{t("portfolio.trades.calculating")}</div>
             ) : rebalanceQuery.data?.orders.map((order) => (
-              <div key={order.ticker} className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
+              <div
+                key={order.ticker}
+                role="button"
+                tabIndex={0}
+                onClick={() => goToStock(order.ticker)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToStock(order.ticker); } }}
+                className="flex items-center px-6 py-4 border-b border-border last:border-0 hover:bg-accent/40 transition-colors cursor-pointer group"
+              >
                 <div className="w-20">
-                  <div className="text-sm font-black text-foreground">{order.ticker}</div>
+                  <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{order.ticker}</div>
                 </div>
                 <div className="w-44 pr-2 min-w-0">
                   {order.sector && (() => {
@@ -1264,7 +1281,14 @@ const Portfolio = () => {
                 ) : budgetQuery.data?.allocations && budgetQuery.data.allocations.length > 0 ? (
                   <div className="space-y-3 animate-in fade-in duration-500">
                     {budgetQuery.data.allocations.map((alloc) => (
-                      <div key={alloc.ticker} className="flex items-center px-5 py-4 rounded-xl border border-white/[0.03] bg-muted/20 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group">
+                      <div
+                        key={alloc.ticker}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => goToStock(alloc.ticker)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToStock(alloc.ticker); } }}
+                        className="flex items-center px-5 py-4 rounded-xl border border-white/[0.03] bg-muted/20 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group cursor-pointer"
+                      >
                         <div className="w-20">
                           <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{alloc.ticker}</div>
                         </div>
