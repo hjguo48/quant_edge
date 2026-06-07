@@ -12,12 +12,14 @@ from src.api.deps import get_db
 from src.api.schemas.portfolio import (
     BudgetAllocation,
     BudgetResponse,
+    DailyPortfolioPerformanceResponse,
     PortfolioHolding,
     PortfolioResponse,
     PortfolioSummaryResponse,
     RebalanceOrder,
     RebalanceResponse,
 )
+from src.api.services.daily_performance import PerformanceHorizon, compute_daily_portfolio_performance
 from src.api.services.greyscale_reader import GreyscaleReader
 from src.data.db.models import Stock
 
@@ -200,3 +202,16 @@ def _get_rebalance_action(weight_delta: float) -> str:
     if weight_delta > 0.0:
         return "buy"
     return "sell"
+
+
+@router.get("/performance/daily", response_model=DailyPortfolioPerformanceResponse)
+async def get_daily_performance(
+    horizon: PerformanceHorizon = Query(default="60d"),
+    bundle_version: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> DailyPortfolioPerformanceResponse:
+    return await compute_daily_portfolio_performance(
+        db,
+        horizon=horizon,
+        bundle_version=bundle_version,
+    )

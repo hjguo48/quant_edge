@@ -62,3 +62,29 @@ class RebalanceOrder(BaseModel):
 class RebalanceResponse(BaseModel):
     signal_date: str | None = None
     orders: list[RebalanceOrder] = Field(default_factory=list)
+
+
+class DailyPerformancePoint(BaseModel):
+    date: str
+    cumulative_portfolio: float
+    cumulative_spy: float
+    cumulative_excess: float
+    tranche_day: int
+
+
+class DailyPerformanceTranche(BaseModel):
+    signal_date: str
+    tranche_index: int
+    entry_date: str | None = None
+    horizon_end_date: str | None = None
+    tickers_used: list[str] = Field(default_factory=list)
+    tickers_dropped: list[str] = Field(default_factory=list)
+    series: list[DailyPerformancePoint] = Field(default_factory=list)
+
+
+class DailyPortfolioPerformanceResponse(BaseModel):
+    horizon: Literal["1d", "5d", "20d", "60d"]
+    bundle_version: str | None = None
+    weeks_count: int = 0
+    latest_horizon_end_date: str | None = None
+    tranches: list[DailyPerformanceTranche] = Field(default_factory=list)
