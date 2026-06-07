@@ -412,16 +412,58 @@ const Portfolio = () => {
               </span>
             </div>
           ) : (() => {
-            const cumBlock = performance.cumulative?.[activeHorizon];
+            // Lookback-semantics: cards derived from equity curve slice (same source as chart),
+            // so 1d/5d/20d/60d 切换 cards 和 chart 完全一致 (lookback window).
             const latestWeek = performance.per_week?.[performance.per_week.length - 1];
             const latestBlock = latestWeek?.horizons?.[activeHorizon];
-            const cumReturn = cumBlock?.return ?? null;
-            const cumExcess = cumBlock?.excess ?? null;
-            const dd = cumBlock?.max_drawdown ?? null;
-            const winrate = cumBlock?.winrate_vs_spy ?? null;
-            const weeksRealized = cumBlock?.weeks_realized ?? 0;
-            const weeklyCurve = cumBlock?.weekly_curve ?? [];
             const recentWeeks = (performance.per_week ?? []).slice(-5).reverse();
+            const horizonWindowSize: Record<"1d" | "5d" | "20d" | "60d", number> = { "1d": 1, "5d": 5, "20d": 20, "60d": 60 };
+            const lookbackN = horizonWindowSize[activeHorizon];
+            const equityFull = equityQuery.data?.series ?? [];
+
+            // Slice the most recent N+1 points (need N+1 to compute N daily returns from the window start)
+            const equitySlice = equityFull.length >= 2 ? equityFull.slice(-Math.max(lookbackN + 1, 2)) : [];
+            const basePort = equitySlice[0]?.portfolio_nav ?? 1.0;
+            const baseSpy = equitySlice[0]?.spy_nav ?? 1.0;
+            const lookbackSeries = equitySlice.map((p) => ({
+              ...p,
+              port_rebased: basePort > 0 ? p.portfolio_nav / basePort - 1 : 0,
+              spy_rebased: baseSpy > 0 ? p.spy_nav / baseSpy - 1 : 0,
+            }));
+
+            const cumReturn = lookbackSeries.length > 1 ? lookbackSeries[lookbackSeries.length - 1].port_rebased : null;
+            const cumSpy = lookbackSeries.length > 1 ? lookbackSeries[lookbackSeries.length - 1].spy_rebased : null;
+            const cumExcess = cumReturn != null && cumSpy != null ? cumReturn - cumSpy : null;
+
+            // Max drawdown over the lookback window (peak-to-trough on port_rebased)
+            let dd: number | null = null;
+            if (lookbackSeries.length > 1) {
+              let peak = lookbackSeries[0].portfolio_nav;
+              let worst = 0;
+              for (const p of lookbackSeries) {
+                if (p.portfolio_nav > peak) peak = p.portfolio_nav;
+                const trough = peak > 0 ? p.portfolio_nav / peak - 1 : 0;
+                if (trough < worst) worst = trough;
+              }
+              dd = worst;
+            }
+
+            // Win rate: pct of days portfolio daily return >= spy daily return
+            let winrate: number | null = null;
+            if (lookbackSeries.length > 1) {
+              let winDays = 0;
+              let totalDays = 0;
+              for (let i = 1; i < lookbackSeries.length; i++) {
+                const dPort = lookbackSeries[i].portfolio_nav / lookbackSeries[i - 1].portfolio_nav - 1;
+                const dSpy = lookbackSeries[i].spy_nav / lookbackSeries[i - 1].spy_nav - 1;
+                if (dPort >= dSpy) winDays += 1;
+                totalDays += 1;
+              }
+              winrate = totalDays > 0 ? winDays / totalDays : null;
+            }
+
+            const lookbackDays = Math.max(0, lookbackSeries.length - 1);
+            const partial = lookbackDays < lookbackN;
 
             const fmtPct = (v: number | null, digits = 2) =>
               v == null ? "—" : `${(v * 100).toFixed(digits)}%`;
@@ -508,24 +550,15 @@ const Portfolio = () => {
                         );
                       }
 
-                      const equity = equityQuery.data;
-                      const fullSeries = equity?.series ?? [];
-                      // Slice to the most recent N trading days per horizon, then rebase
-                      // (relative to window start so 5d/20d/60d show distinct ranges).
-                      const horizonWindow: Record<"1d" | "5d" | "20d" | "60d", number> = { "1d": 1, "5d": 5, "20d": 20, "60d": 60 };
-                      const windowSize = horizonWindow[activeHorizon];
-                      const slice = fullSeries.slice(-Math.max(windowSize, 2));
-                      const basePortNav = slice.length > 0 ? slice[0].portfolio_nav : 1.0;
-                      const baseSpyNav = slice.length > 0 ? slice[0].spy_nav : 1.0;
-                      const equitySeries = slice.map((p) => ({
+                      // Use the same lookbackSeries computed above for cards — chart and cards
+                      // share identical slice (N+1 points: 1 base at 0% + N daily returns)
+                      const equitySeries = lookbackSeries.map((p) => ({
                         ...p,
-                        portfolio_cum_return: basePortNav > 0 ? p.portfolio_nav / basePortNav - 1 : 0,
-                        spy_cum_return: baseSpyNav > 0 ? p.spy_nav / baseSpyNav - 1 : 0,
-                        excess_cum_return:
-                          (basePortNav > 0 ? p.portfolio_nav / basePortNav - 1 : 0) -
-                          (baseSpyNav > 0 ? p.spy_nav / baseSpyNav - 1 : 0),
+                        portfolio_cum_return: p.port_rebased,
+                        spy_cum_return: p.spy_rebased,
+                        excess_cum_return: p.port_rebased - p.spy_rebased,
                       }));
-                      const windowRebalances = equity?.rebalance_dates.filter((d) =>
+                      const windowRebalances = equityQuery.data?.rebalance_dates.filter((d) =>
                         equitySeries.some((p) => p.date === d),
                       ) ?? [];
 
@@ -645,10 +678,11 @@ const Portfolio = () => {
 
                     <div className="flex justify-between items-center mt-3 text-[10px] text-muted-foreground">
                       <span>
-                        {t("portfolio.performanceTracking.weeksRealized", { count: weeksRealized, date: latestBlock?.horizon_end_date ?? "—" })}
-                        {weeksRealized === 0 && (
+                        <span className="font-bold">{lookbackDays}</span>
+                        {" "}{t("portfolio.performanceTracking.daysLookback", { defaultValue: "trading days lookback" })}
+                        {partial && (
                           <span className="ml-2 text-amber-500/80 font-semibold">
-                            {t("portfolio.performanceTracking.partialNote", { defaultValue: "* partial — horizon not yet matured" })}
+                            {t("portfolio.performanceTracking.lookbackPartial", { defaultValue: "* partial — only", actual: lookbackDays, target: lookbackN }) + ` ${lookbackDays}/${lookbackN}d available`}
                           </span>
                         )}
                       </span>
