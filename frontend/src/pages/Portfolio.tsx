@@ -493,43 +493,68 @@ const Portfolio = () => {
                     </div>
 
                     {(() => {
+                      // Fixed chart frame: 200px chart + 20px legend = 220px no matter what.
+                      const FRAME_H = 220;
+                      const CHART_H = 200;
+
                       // 1d horizon: equity curve 不适用 (1d = T+1 single-day return)
                       if (activeHorizon === "1d") {
                         return (
-                          <div className="mb-3 flex flex-col items-center justify-center min-h-[160px] border border-dashed border-border rounded-lg bg-surface text-xs text-muted-foreground space-y-1">
-                            <p className="font-bold uppercase tracking-widest">{t("portfolio.performanceTracking.noDataAvailable", "No data available")}</p>
-                            <p className="text-[10px] opacity-70 text-center px-2">
-                              {t("portfolio.performanceTracking.equityCurveNeedsMultiDay", "Equity curve requires a multi-day horizon (5d / 20d / 60d).")}
-                            </p>
+                          <div className="mb-3" style={{ height: FRAME_H }}>
+                            <div className="flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-surface text-xs text-muted-foreground space-y-1" style={{ height: CHART_H }}>
+                              <p className="font-bold uppercase tracking-widest">{t("portfolio.performanceTracking.noDataAvailable", "No data available")}</p>
+                              <p className="text-[10px] opacity-70 text-center px-2">
+                                {t("portfolio.performanceTracking.equityCurveNeedsMultiDay", "Equity curve requires a multi-day horizon (5d / 20d / 60d).")}
+                              </p>
+                            </div>
+                            <div className="flex justify-between items-center text-[9px] text-muted-foreground mt-1 px-1" style={{ height: 16 }}>
+                              <span className="uppercase tracking-wider font-bold">
+                                {t("portfolio.performanceTracking.equityCurveLegend", "Equity curve (rebased) vs SPY")} · 1d
+                              </span>
+                              <span>—</span>
+                            </div>
                           </div>
                         );
                       }
 
                       const equity = equityQuery.data;
-                      const equitySeries = equity?.series ?? [];
+                      const fullSeries = equity?.series ?? [];
+                      // Slice to the most recent N trading days per horizon, then rebase
+                      // (relative to window start so 5d/20d/60d show distinct ranges).
+                      const horizonWindow: Record<"1d" | "5d" | "20d" | "60d", number> = { "1d": 1, "5d": 5, "20d": 20, "60d": 60 };
+                      const windowSize = horizonWindow[activeHorizon];
+                      const slice = fullSeries.slice(-Math.max(windowSize, 2));
+                      const basePortNav = slice.length > 0 ? slice[0].portfolio_nav : 1.0;
+                      const baseSpyNav = slice.length > 0 ? slice[0].spy_nav : 1.0;
+                      const equitySeries = slice.map((p) => ({
+                        ...p,
+                        portfolio_cum_return: basePortNav > 0 ? p.portfolio_nav / basePortNav - 1 : 0,
+                        spy_cum_return: baseSpyNav > 0 ? p.spy_nav / baseSpyNav - 1 : 0,
+                        excess_cum_return:
+                          (basePortNav > 0 ? p.portfolio_nav / basePortNav - 1 : 0) -
+                          (baseSpyNav > 0 ? p.spy_nav / baseSpyNav - 1 : 0),
+                      }));
+                      const windowRebalances = equity?.rebalance_dates.filter((d) =>
+                        equitySeries.some((p) => p.date === d),
+                      ) ?? [];
+
                       if (equitySeries.length < 2) {
-                        return weeklyCurve.length > 0 ? (
-                          <div className="mb-3">
-                            <ResponsiveContainer width="100%" height={140}>
-                              <AreaChart data={weeklyCurve} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                                <defs>
-                                  <linearGradient id="portfolioCumGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0.35} />
-                                    <stop offset="95%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0} />
-                                  </linearGradient>
-                                </defs>
-                                <XAxis dataKey="signal_date" hide />
-                                <YAxis hide domain={["auto", "auto"]} />
-                                <Tooltip
-                                  contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
-                                  formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, t("portfolio.performanceTracking.cumulative")]}
-                                  labelFormatter={(label: string) => t("portfolio.performanceTracking.weekOf", { date: label })}
-                                />
-                                <Area type="monotone" dataKey="cumulative_return" stroke={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} strokeWidth={2} fill="url(#portfolioCumGrad)" />
-                              </AreaChart>
-                            </ResponsiveContainer>
+                        return (
+                          <div className="mb-3" style={{ height: FRAME_H }}>
+                            <div className="flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-surface text-xs text-muted-foreground space-y-1" style={{ height: CHART_H }}>
+                              <p className="font-bold uppercase tracking-widest">{t("portfolio.performanceTracking.noDataAvailable", "No data available")}</p>
+                              <p className="text-[10px] opacity-70 text-center px-2">
+                                {t("portfolio.performanceTracking.equityCurveNeedsMultiDay", "Equity curve requires a multi-day horizon (5d / 20d / 60d).")}
+                              </p>
+                            </div>
+                            <div className="flex justify-between items-center text-[9px] text-muted-foreground mt-1 px-1" style={{ height: 16 }}>
+                              <span className="uppercase tracking-wider font-bold">
+                                {t("portfolio.performanceTracking.equityCurveLegend", "Equity curve (rebased) vs SPY")} · {activeHorizon}
+                              </span>
+                              <span>—</span>
+                            </div>
                           </div>
-                        ) : null;
+                        );
                       }
 
                       const lastPoint = equitySeries[equitySeries.length - 1];
@@ -537,62 +562,35 @@ const Portfolio = () => {
                       const portfolioColor = portfolioUp ? "#00C805" : "#FF5252";
 
                       return (
-                        <div className="mb-3">
-                          <ResponsiveContainer width="100%" height={200}>
-                            <LineChart data={equitySeries} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
-                              <defs>
-                                <linearGradient id="portfolioEquityGrad" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor={portfolioColor} stopOpacity={0.25} />
-                                  <stop offset="95%" stopColor={portfolioColor} stopOpacity={0} />
-                                </linearGradient>
-                              </defs>
-                              <XAxis
-                                dataKey="date"
-                                tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-                                interval="preserveStartEnd"
-                                minTickGap={48}
-                              />
-                              <YAxis
-                                tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-                                tickFormatter={(v: number) => `${(v * 100).toFixed(1)}%`}
-                                domain={["auto", "auto"]}
-                                width={42}
-                              />
-                              <Tooltip
-                                contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
-                                formatter={(value: number, name: string) => {
-                                  const label = name === "portfolio_cum_return"
-                                    ? t("portfolio.performanceTracking.portfolio")
-                                    : name === "spy_cum_return"
-                                      ? t("portfolio.performanceTracking.spy")
-                                      : name;
-                                  return [`${(value * 100).toFixed(2)}%`, label];
-                                }}
-                              />
-                              <Line
-                                type="monotone"
-                                dataKey="spy_cum_return"
-                                stroke="#888888"
-                                strokeWidth={1.2}
-                                strokeDasharray="4 3"
-                                dot={false}
-                                isAnimationActive={false}
-                              />
-                              <Line
-                                type="monotone"
-                                dataKey="portfolio_cum_return"
-                                stroke={portfolioColor}
-                                strokeWidth={2.4}
-                                dot={false}
-                                isAnimationActive={false}
-                              />
-                            </LineChart>
-                          </ResponsiveContainer>
-                          <div className="flex justify-between items-center text-[9px] text-muted-foreground mt-1 px-1">
+                        <div className="mb-3" style={{ height: FRAME_H }}>
+                          <div style={{ height: CHART_H }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={equitySeries} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
+                                <defs>
+                                  <linearGradient id="portfolioEquityGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={portfolioColor} stopOpacity={0.25} />
+                                    <stop offset="95%" stopColor={portfolioColor} stopOpacity={0} />
+                                  </linearGradient>
+                                </defs>
+                                <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} interval="preserveStartEnd" minTickGap={48} />
+                                <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v: number) => `${(v * 100).toFixed(1)}%`} domain={["auto", "auto"]} width={42} />
+                                <Tooltip
+                                  contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
+                                  formatter={(value: number, name: string) => {
+                                    const label = name === "portfolio_cum_return" ? t("portfolio.performanceTracking.portfolio") : name === "spy_cum_return" ? t("portfolio.performanceTracking.spy") : name;
+                                    return [`${(value * 100).toFixed(2)}%`, label];
+                                  }}
+                                />
+                                <Line type="monotone" dataKey="spy_cum_return" stroke="#888888" strokeWidth={1.2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+                                <Line type="monotone" dataKey="portfolio_cum_return" stroke={portfolioColor} strokeWidth={2.4} dot={false} isAnimationActive={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="flex justify-between items-center text-[9px] text-muted-foreground mt-1 px-1" style={{ height: 16 }}>
                             <span className="uppercase tracking-wider font-bold">
-                              {t("portfolio.performanceTracking.equityCurveLegend", "Portfolio equity curve (rebalance-aware) vs SPY")}
+                              {t("portfolio.performanceTracking.equityCurveLegend", "Equity curve (rebased) vs SPY")} · {activeHorizon}
                             </span>
-                            <span>{equitySeries.length} days · {equity?.rebalance_dates.length ?? 0} rebalances</span>
+                            <span>{equitySeries.length} days · {windowRebalances.length} rebalances</span>
                           </div>
                         </div>
                       );
