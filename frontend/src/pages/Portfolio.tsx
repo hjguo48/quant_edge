@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { TrendingUp, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useTranslation } from "react-i18next";
 import StatCard from "../components/StatCard";
 import { fetchApi } from "../hooks/useApi";
@@ -71,6 +71,32 @@ interface RebalanceResponse {
   orders: RebalanceOrder[];
 }
 
+interface DailyPerformancePoint {
+  date: string;
+  cumulative_portfolio: number;
+  cumulative_spy: number;
+  cumulative_excess: number;
+  tranche_day: number;
+}
+
+interface DailyPerformanceTranche {
+  signal_date: string;
+  tranche_index: number;
+  entry_date: string | null;
+  horizon_end_date: string | null;
+  tickers_used: string[];
+  tickers_dropped: string[];
+  series: DailyPerformancePoint[];
+}
+
+interface DailyPortfolioPerformanceResponse {
+  horizon: "1d" | "5d" | "20d" | "60d";
+  bundle_version: string | null;
+  weeks_count: number;
+  latest_horizon_end_date: string | null;
+  tranches: DailyPerformanceTranche[];
+}
+
 const HOLDINGS_PAGE_SIZE = 5;
 const SECTOR_PANEL_TOP_N = 6;
 
@@ -138,6 +164,15 @@ const Portfolio = () => {
   });
 
   const [activeHorizon, setActiveHorizon] = useState<GreyscaleHorizonKey>("1d");
+
+  const dailyPerfQuery = useQuery<DailyPortfolioPerformanceResponse>({
+    queryKey: ["portfolioPerformanceDaily", activeHorizon],
+    queryFn: () =>
+      fetchApi<DailyPortfolioPerformanceResponse>(
+        `/api/portfolio/performance/daily?horizon=${activeHorizon}`,
+      ),
+    staleTime: 60_000,
+  });
 
   // Auto-pick the shortest horizon with realized data once loaded
   const performance = performanceQuery.data;
@@ -432,39 +467,124 @@ const Portfolio = () => {
                       </div>
                     </div>
 
-                    {weeklyCurve.length > 0 && (
-                      <div className="mb-3">
-                        <ResponsiveContainer width="100%" height={120}>
-                          <AreaChart data={weeklyCurve} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="portfolioCumGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0.35} />
-                                <stop offset="95%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <XAxis dataKey="signal_date" hide />
-                            <YAxis hide domain={["auto", "auto"]} />
-                            <Tooltip
-                              contentStyle={{
-                                background: "var(--popover)",
-                                border: "1px solid var(--border)",
-                                borderRadius: 8,
-                                fontSize: 11,
-                              }}
-                              formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, t("portfolio.performanceTracking.cumulative")]}
-                              labelFormatter={(label: string) => t("portfolio.performanceTracking.weekOf", { date: label })}
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="cumulative_return"
-                              stroke={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"}
-                              strokeWidth={2}
-                              fill="url(#portfolioCumGrad)"
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
+                    {(() => {
+                      const tranches = dailyPerfQuery.data?.tranches ?? [];
+                      const hasDaily = tranches.some((tr) => tr.series.length > 0);
+                      if (!hasDaily) {
+                        return weeklyCurve.length > 0 ? (
+                          <div className="mb-3">
+                            <ResponsiveContainer width="100%" height={140}>
+                              <AreaChart data={weeklyCurve} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
+                                <defs>
+                                  <linearGradient id="portfolioCumGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0.35} />
+                                    <stop offset="95%" stopColor={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} stopOpacity={0} />
+                                  </linearGradient>
+                                </defs>
+                                <XAxis dataKey="signal_date" hide />
+                                <YAxis hide domain={["auto", "auto"]} />
+                                <Tooltip
+                                  contentStyle={{
+                                    background: "var(--popover)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: 8,
+                                    fontSize: 11,
+                                  }}
+                                  formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, t("portfolio.performanceTracking.cumulative")]}
+                                  labelFormatter={(label: string) => t("portfolio.performanceTracking.weekOf", { date: label })}
+                                />
+                                <Area type="monotone" dataKey="cumulative_return" stroke={cumReturn != null && cumReturn >= 0 ? "#00C805" : "#FF5252"} strokeWidth={2} fill="url(#portfolioCumGrad)" />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : null;
+                      }
+
+                      // Merge all tranches into a single timeline keyed by date
+                      const dateSet = new Set<string>();
+                      tranches.forEach((tr) => tr.series.forEach((p) => dateSet.add(p.date)));
+                      const dates = Array.from(dateSet).sort();
+                      const chartData = dates.map((date) => {
+                        const row: Record<string, string | number> = { date };
+                        tranches.forEach((tr) => {
+                          const point = tr.series.find((p) => p.date === date);
+                          if (point) {
+                            row[`tranche_${tr.tranche_index}`] = point.cumulative_portfolio;
+                            row[`spy_${tr.tranche_index}`] = point.cumulative_spy;
+                          }
+                        });
+                        return row;
+                      });
+
+                      const trancheCount = tranches.length;
+                      // Color ramp: oldest tranche = lightest, newest = boldest bull/bear color
+                      const colorFor = (idx: number) => {
+                        const tr = tranches.find((t) => t.tranche_index === idx);
+                        const lastPoint = tr?.series[tr.series.length - 1];
+                        const isUp = lastPoint ? lastPoint.cumulative_portfolio >= 0 : true;
+                        const baseColor = isUp ? "#00C805" : "#FF5252";
+                        const opacity = 0.35 + (idx / trancheCount) * 0.65;
+                        return { stroke: baseColor, opacity };
+                      };
+
+                      return (
+                        <div className="mb-3">
+                          <ResponsiveContainer width="100%" height={160}>
+                            <LineChart data={chartData} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
+                              <XAxis
+                                dataKey="date"
+                                tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                                interval="preserveStartEnd"
+                                minTickGap={48}
+                              />
+                              <YAxis
+                                tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                                tickFormatter={(v: number) => `${(v * 100).toFixed(1)}%`}
+                                domain={["auto", "auto"]}
+                                width={42}
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  background: "var(--popover)",
+                                  border: "1px solid var(--border)",
+                                  borderRadius: 8,
+                                  fontSize: 11,
+                                }}
+                                formatter={(value: number, name: string) => {
+                                  const m = name.match(/tranche_(\d+)/);
+                                  if (m) {
+                                    const idx = Number(m[1]);
+                                    const tr = tranches.find((t) => t.tranche_index === idx);
+                                    return [`${(value * 100).toFixed(2)}%`, `W${idx} ${tr?.signal_date ?? ""}`];
+                                  }
+                                  return [`${(value * 100).toFixed(2)}%`, name];
+                                }}
+                              />
+                              {tranches.map((tr) => {
+                                const c = colorFor(tr.tranche_index);
+                                return (
+                                  <Line
+                                    key={tr.tranche_index}
+                                    type="monotone"
+                                    dataKey={`tranche_${tr.tranche_index}`}
+                                    stroke={c.stroke}
+                                    strokeOpacity={c.opacity}
+                                    strokeWidth={tr.tranche_index === trancheCount ? 2.5 : 1.4}
+                                    dot={false}
+                                    isAnimationActive={false}
+                                    connectNulls={false}
+                                  />
+                                );
+                              })}
+                            </LineChart>
+                          </ResponsiveContainer>
+                          <div className="flex justify-between items-center text-[9px] text-muted-foreground mt-1 px-1">
+                            <span className="uppercase tracking-wider font-bold">{t("portfolio.performanceTracking.dailyCurveLegend", "Daily curves per signal — newest = bold")}</span>
+                            <span>{tranches.length} tranches · {chartData.length} days</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {recentWeeks.length > 0 && (
                       <div>
