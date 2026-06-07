@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { TrendingUp, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Sector } from "recharts";
 import { useTranslation } from "react-i18next";
 import StatCard from "../components/StatCard";
 import { fetchApi } from "../hooks/useApi";
@@ -97,6 +97,24 @@ interface DailyPortfolioPerformanceResponse {
   tranches: DailyPerformanceTranche[];
 }
 
+interface EquityCurvePoint {
+  date: string;
+  portfolio_nav: number;
+  spy_nav: number;
+  portfolio_cum_return: number;
+  spy_cum_return: number;
+  excess_cum_return: number;
+  is_rebalance: boolean;
+}
+
+interface EquityCurveResponse {
+  bundle_version: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  rebalance_dates: string[];
+  series: EquityCurvePoint[];
+}
+
 const HOLDINGS_PAGE_SIZE = 5;
 const SECTOR_PANEL_TOP_N = 6;
 
@@ -108,6 +126,7 @@ const Portfolio = () => {
   const totalBudget = parseInt(budgetStr) || 0;
   const [debouncedTotalBudget, setDebouncedTotalBudget] = useState(100000);
   const [holdingsPage, setHoldingsPage] = useState(1);
+  const [hoveredSector, setHoveredSector] = useState<string | null>(null);
 
   // Reset Optimal Allocation page when switching tabs
   useEffect(() => {
@@ -171,6 +190,12 @@ const Portfolio = () => {
       fetchApi<DailyPortfolioPerformanceResponse>(
         `/api/portfolio/performance/daily?horizon=${activeHorizon}`,
       ),
+    staleTime: 60_000,
+  });
+
+  const equityQuery = useQuery<EquityCurveResponse>({
+    queryKey: ["portfolioEquity"],
+    queryFn: () => fetchApi<EquityCurveResponse>("/api/portfolio/equity"),
     staleTime: 60_000,
   });
 
@@ -468,9 +493,21 @@ const Portfolio = () => {
                     </div>
 
                     {(() => {
-                      const tranches = dailyPerfQuery.data?.tranches ?? [];
-                      const hasDaily = tranches.some((tr) => tr.series.length > 0);
-                      if (!hasDaily) {
+                      // 1d horizon: equity curve 不适用 (1d = T+1 single-day return)
+                      if (activeHorizon === "1d") {
+                        return (
+                          <div className="mb-3 flex flex-col items-center justify-center min-h-[160px] border border-dashed border-border rounded-lg bg-surface text-xs text-muted-foreground space-y-1">
+                            <p className="font-bold uppercase tracking-widest">{t("portfolio.performanceTracking.noDataAvailable", "No data available")}</p>
+                            <p className="text-[10px] opacity-70 text-center px-2">
+                              {t("portfolio.performanceTracking.equityCurveNeedsMultiDay", "Equity curve requires a multi-day horizon (5d / 20d / 60d).")}
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      const equity = equityQuery.data;
+                      const equitySeries = equity?.series ?? [];
+                      if (equitySeries.length < 2) {
                         return weeklyCurve.length > 0 ? (
                           <div className="mb-3">
                             <ResponsiveContainer width="100%" height={140}>
@@ -484,12 +521,7 @@ const Portfolio = () => {
                                 <XAxis dataKey="signal_date" hide />
                                 <YAxis hide domain={["auto", "auto"]} />
                                 <Tooltip
-                                  contentStyle={{
-                                    background: "var(--popover)",
-                                    border: "1px solid var(--border)",
-                                    borderRadius: 8,
-                                    fontSize: 11,
-                                  }}
+                                  contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
                                   formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, t("portfolio.performanceTracking.cumulative")]}
                                   labelFormatter={(label: string) => t("portfolio.performanceTracking.weekOf", { date: label })}
                                 />
@@ -500,37 +532,20 @@ const Portfolio = () => {
                         ) : null;
                       }
 
-                      // Merge all tranches into a single timeline keyed by date
-                      const dateSet = new Set<string>();
-                      tranches.forEach((tr) => tr.series.forEach((p) => dateSet.add(p.date)));
-                      const dates = Array.from(dateSet).sort();
-                      const chartData = dates.map((date) => {
-                        const row: Record<string, string | number> = { date };
-                        tranches.forEach((tr) => {
-                          const point = tr.series.find((p) => p.date === date);
-                          if (point) {
-                            row[`tranche_${tr.tranche_index}`] = point.cumulative_portfolio;
-                            row[`spy_${tr.tranche_index}`] = point.cumulative_spy;
-                          }
-                        });
-                        return row;
-                      });
-
-                      const trancheCount = tranches.length;
-                      // Color ramp: oldest tranche = lightest, newest = boldest bull/bear color
-                      const colorFor = (idx: number) => {
-                        const tr = tranches.find((t) => t.tranche_index === idx);
-                        const lastPoint = tr?.series[tr.series.length - 1];
-                        const isUp = lastPoint ? lastPoint.cumulative_portfolio >= 0 : true;
-                        const baseColor = isUp ? "#00C805" : "#FF5252";
-                        const opacity = 0.35 + (idx / trancheCount) * 0.65;
-                        return { stroke: baseColor, opacity };
-                      };
+                      const lastPoint = equitySeries[equitySeries.length - 1];
+                      const portfolioUp = lastPoint.portfolio_cum_return >= 0;
+                      const portfolioColor = portfolioUp ? "#00C805" : "#FF5252";
 
                       return (
                         <div className="mb-3">
-                          <ResponsiveContainer width="100%" height={160}>
-                            <LineChart data={chartData} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <LineChart data={equitySeries} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="portfolioEquityGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={portfolioColor} stopOpacity={0.25} />
+                                  <stop offset="95%" stopColor={portfolioColor} stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
                               <XAxis
                                 dataKey="date"
                                 tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
@@ -544,43 +559,40 @@ const Portfolio = () => {
                                 width={42}
                               />
                               <Tooltip
-                                contentStyle={{
-                                  background: "var(--popover)",
-                                  border: "1px solid var(--border)",
-                                  borderRadius: 8,
-                                  fontSize: 11,
-                                }}
+                                contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
                                 formatter={(value: number, name: string) => {
-                                  const m = name.match(/tranche_(\d+)/);
-                                  if (m) {
-                                    const idx = Number(m[1]);
-                                    const tr = tranches.find((t) => t.tranche_index === idx);
-                                    return [`${(value * 100).toFixed(2)}%`, `W${idx} ${tr?.signal_date ?? ""}`];
-                                  }
-                                  return [`${(value * 100).toFixed(2)}%`, name];
+                                  const label = name === "portfolio_cum_return"
+                                    ? t("portfolio.performanceTracking.portfolio")
+                                    : name === "spy_cum_return"
+                                      ? t("portfolio.performanceTracking.spy")
+                                      : name;
+                                  return [`${(value * 100).toFixed(2)}%`, label];
                                 }}
                               />
-                              {tranches.map((tr) => {
-                                const c = colorFor(tr.tranche_index);
-                                return (
-                                  <Line
-                                    key={tr.tranche_index}
-                                    type="monotone"
-                                    dataKey={`tranche_${tr.tranche_index}`}
-                                    stroke={c.stroke}
-                                    strokeOpacity={c.opacity}
-                                    strokeWidth={tr.tranche_index === trancheCount ? 2.5 : 1.4}
-                                    dot={false}
-                                    isAnimationActive={false}
-                                    connectNulls={false}
-                                  />
-                                );
-                              })}
+                              <Line
+                                type="monotone"
+                                dataKey="spy_cum_return"
+                                stroke="#888888"
+                                strokeWidth={1.2}
+                                strokeDasharray="4 3"
+                                dot={false}
+                                isAnimationActive={false}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="portfolio_cum_return"
+                                stroke={portfolioColor}
+                                strokeWidth={2.4}
+                                dot={false}
+                                isAnimationActive={false}
+                              />
                             </LineChart>
                           </ResponsiveContainer>
                           <div className="flex justify-between items-center text-[9px] text-muted-foreground mt-1 px-1">
-                            <span className="uppercase tracking-wider font-bold">{t("portfolio.performanceTracking.dailyCurveLegend", "Daily curves per signal — newest = bold")}</span>
-                            <span>{tranches.length} tranches · {chartData.length} days</span>
+                            <span className="uppercase tracking-wider font-bold">
+                              {t("portfolio.performanceTracking.equityCurveLegend", "Portfolio equity curve (rebalance-aware) vs SPY")}
+                            </span>
+                            <span>{equitySeries.length} days · {equity?.rebalance_dates.length ?? 0} rebalances</span>
                           </div>
                         </div>
                       );
@@ -661,26 +673,142 @@ const Portfolio = () => {
             const otherWeight = overflow.reduce((sum, s) => sum + s.weight, 0);
             const otherTickerCount = overflow.reduce((sum, s) => sum + s.tickerCount, 0);
             const maxWeight = Math.max(...visible.map((s) => s.weight), otherWeight);
+
+            type PieSlice = { name: string; value: number; tickerCount: number; color: string; isOther: boolean };
+            const pieData: PieSlice[] = visible.map((s) => ({
+              name: s.sector,
+              value: s.weight,
+              tickerCount: s.tickerCount,
+              color: getSectorColor(s.sector).text,
+              isOther: false,
+            }));
+            if (overflow.length > 0 && otherWeight > 0) {
+              pieData.push({
+                name: "Other",
+                value: otherWeight,
+                tickerCount: otherTickerCount,
+                color: "#94a3b8",
+                isOther: true,
+              });
+            }
+            const activeIdx = pieData.findIndex((p) => p.name === hoveredSector);
+
+            interface ActiveShapeProps {
+              cx: number;
+              cy: number;
+              innerRadius: number;
+              outerRadius: number;
+              startAngle: number;
+              endAngle: number;
+              fill: string;
+              payload: PieSlice;
+            }
+            const renderActiveShape = (props: unknown) => {
+              const p = props as ActiveShapeProps;
+              const pct = totalWeight > 0 ? (p.payload.value / totalWeight) * 100 : 0;
+              return (
+                <g>
+                  <Sector
+                    cx={p.cx}
+                    cy={p.cy}
+                    innerRadius={p.innerRadius}
+                    outerRadius={p.outerRadius + 6}
+                    startAngle={p.startAngle}
+                    endAngle={p.endAngle}
+                    fill={p.fill}
+                  />
+                  <Sector
+                    cx={p.cx}
+                    cy={p.cy}
+                    innerRadius={p.outerRadius + 8}
+                    outerRadius={p.outerRadius + 10}
+                    startAngle={p.startAngle}
+                    endAngle={p.endAngle}
+                    fill={p.fill}
+                    opacity={0.4}
+                  />
+                  <text x={p.cx} y={p.cy - 4} textAnchor="middle" fill="currentColor" className="text-foreground" style={{ fontSize: 10, fontWeight: 700 }}>
+                    {p.payload.name.length > 12 ? p.payload.name.slice(0, 11) + "…" : p.payload.name}
+                  </text>
+                  <text x={p.cx} y={p.cy + 10} textAnchor="middle" fill="currentColor" className="text-muted-foreground" style={{ fontSize: 10, fontWeight: 600 }}>
+                    {pct.toFixed(1)}%
+                  </text>
+                </g>
+              );
+            };
+
             return (
               <>
-                <div className="mb-4">
+                <div className="mb-3">
                   <h3 className="text-sm font-bold text-foreground">{t("portfolio.sectorWeights.title")}</h3>
                   <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">
                     {t("portfolio.sectorWeights.subtitle")}
                   </p>
                 </div>
+
+                <div className="mb-4">
+                  <ResponsiveContainer width="100%" height={170}>
+                    <RePieChart>
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={42}
+                        outerRadius={64}
+                        paddingAngle={2}
+                        activeIndex={activeIdx >= 0 ? activeIdx : undefined}
+                        activeShape={renderActiveShape}
+                        onMouseEnter={(_data, idx) => {
+                          if (typeof idx === "number" && pieData[idx]) setHoveredSector(pieData[idx].name);
+                        }}
+                        onMouseLeave={() => setHoveredSector(null)}
+                        isAnimationActive={true}
+                        animationDuration={400}
+                      >
+                        {pieData.map((slice) => (
+                          <Cell
+                            key={slice.name}
+                            fill={slice.color}
+                            stroke="var(--card)"
+                            strokeWidth={1.5}
+                            style={{
+                              transition: "opacity 250ms ease, transform 250ms ease",
+                              opacity:
+                                hoveredSector == null || hoveredSector === slice.name ? 1 : 0.35,
+                              cursor: "pointer",
+                            }}
+                          />
+                        ))}
+                      </Pie>
+                    </RePieChart>
+                  </ResponsiveContainer>
+                </div>
+
                 <div className="space-y-2.5">
                   {visible.map((s) => {
                     const color = getSectorColor(s.sector);
                     const pct = (s.weight / totalWeight) * 100;
                     const barWidth = maxWeight > 0 ? (s.weight / maxWeight) * 100 : 0;
+                    const isActive = hoveredSector === s.sector;
+                    const isDimmed = hoveredSector != null && !isActive;
                     return (
-                      <div key={s.sector}>
+                      <div
+                        key={s.sector}
+                        onMouseEnter={() => setHoveredSector(s.sector)}
+                        onMouseLeave={() => setHoveredSector(null)}
+                        className="cursor-pointer rounded-md px-1 -mx-1 py-0.5 transition-all duration-200"
+                        style={{
+                          opacity: isDimmed ? 0.45 : 1,
+                          background: isActive ? "rgba(255,255,255,0.04)" : "transparent",
+                        }}
+                      >
                         <div className="flex items-center justify-between text-[10px] mb-1">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <div
-                              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                              style={{ background: color.text }}
+                              className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-transform duration-200"
+                              style={{ background: color.text, transform: isActive ? "scale(1.5)" : "scale(1)" }}
                             />
                             <span className="text-foreground font-semibold truncate">{t(`sectors.${s.sector}`, { defaultValue: s.sector })}</span>
                             <span className="text-muted-foreground">·</span>
@@ -692,38 +820,56 @@ const Portfolio = () => {
                         </div>
                         <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
                           <div
-                            className="h-full rounded-full transition-all"
+                            className="h-full rounded-full transition-all duration-300"
                             style={{
                               width: `${barWidth}%`,
                               background: color.text,
-                              opacity: 0.7,
+                              opacity: isActive ? 1 : 0.7,
                             }}
                           />
                         </div>
                       </div>
                     );
                   })}
-                  {overflow.length > 0 && (
-                    <div>
-                      <div className="flex items-center justify-between text-[10px] mb-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-muted-foreground/50" />
-                          <span className="text-muted-foreground font-semibold truncate">+{overflow.length} {t("common.of").replace(/\W/g, "")}</span>
-                          <span className="text-muted-foreground">·</span>
-                          <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: otherTickerCount })}</span>
+                  {overflow.length > 0 && (() => {
+                    const isActive = hoveredSector === "Other";
+                    const isDimmed = hoveredSector != null && !isActive;
+                    return (
+                      <div
+                        onMouseEnter={() => setHoveredSector("Other")}
+                        onMouseLeave={() => setHoveredSector(null)}
+                        className="cursor-pointer rounded-md px-1 -mx-1 py-0.5 transition-all duration-200"
+                        style={{
+                          opacity: isDimmed ? 0.45 : 1,
+                          background: isActive ? "rgba(255,255,255,0.04)" : "transparent",
+                        }}
+                      >
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div
+                              className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-muted-foreground/50 transition-transform duration-200"
+                              style={{ transform: isActive ? "scale(1.5)" : "scale(1)" }}
+                            />
+                            <span className="text-muted-foreground font-semibold truncate">+{overflow.length} {t("common.of").replace(/\W/g, "")}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: otherTickerCount })}</span>
+                          </div>
+                          <span className="font-mono font-bold text-muted-foreground flex-shrink-0">
+                            {((otherWeight / totalWeight) * 100).toFixed(1)}%
+                          </span>
                         </div>
-                        <span className="font-mono font-bold text-muted-foreground flex-shrink-0">
-                          {((otherWeight / totalWeight) * 100).toFixed(1)}%
-                        </span>
+                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-muted-foreground/40 transition-all duration-300"
+                            style={{
+                              width: `${maxWeight > 0 ? (otherWeight / maxWeight) * 100 : 0}%`,
+                              opacity: isActive ? 1 : 0.7,
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-muted-foreground/40"
-                          style={{ width: `${maxWeight > 0 ? (otherWeight / maxWeight) * 100 : 0}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </>
             );

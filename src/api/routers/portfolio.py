@@ -13,6 +13,7 @@ from src.api.schemas.portfolio import (
     BudgetAllocation,
     BudgetResponse,
     DailyPortfolioPerformanceResponse,
+    EquityCurveResponse,
     PortfolioHolding,
     PortfolioResponse,
     PortfolioSummaryResponse,
@@ -20,6 +21,7 @@ from src.api.schemas.portfolio import (
     RebalanceResponse,
 )
 from src.api.services.daily_performance import PerformanceHorizon, compute_daily_portfolio_performance
+from src.api.services.equity_curve import compute_portfolio_equity_curve
 from src.api.services.greyscale_reader import GreyscaleReader
 from src.data.db.models import Stock
 
@@ -215,3 +217,11 @@ async def get_daily_performance(
         horizon=horizon,
         bundle_version=bundle_version,
     )
+
+
+@router.get("/equity", response_model=EquityCurveResponse)
+async def get_equity_curve(
+    bundle_version: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> EquityCurveResponse:
+    return await compute_portfolio_equity_curve(db, bundle_version=bundle_version)
