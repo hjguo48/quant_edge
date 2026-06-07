@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 import json
+from datetime import date, datetime, timezone
+from decimal import Decimal
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.api.routers import portfolio as portfolio_router
+from src.api.services import daily_performance as dp_service
 
 
 @pytest.fixture()
@@ -118,3 +122,83 @@ def test_get_rebalance_orders(client: TestClient) -> None:
     assert actions["AA"]["weight_delta"] == pytest.approx(0.01)
     assert actions["AAPL"]["action"] == "sell"
     assert actions["OGN"]["action"] == "hold"
+
+
+def test_compute_daily_performance_open_to_open() -> None:
+    asyncio.run(_run_open_to_open())
+
+
+async def _run_open_to_open() -> None:
+    """单 tranche: 5d horizon, AAPL 50% + MSFT 50%, 1 名 dropped (NEW), 校验
+    OPEN-to-OPEN 加权累计 + 权重重新归一 + SPY excess.
+    """
+    signal_date = date(2026, 4, 24)
+    entry_date = date(2026, 4, 27)
+    audit_rows = [
+        (signal_date, "AAPL", Decimal("0.50")),
+        (signal_date, "MSFT", Decimal("0.50")),
+        (signal_date, "NEW", Decimal("0.10")),  # T+1 open 缺失, 应剔除
+    ]
+    # 价格: entry day + 后续 2 天
+    price_rows: list[tuple[str, date, Decimal]] = [
+        ("AAPL", entry_date, Decimal("100.0000")),
+        ("AAPL", date(2026, 4, 28), Decimal("102.0000")),
+        ("AAPL", date(2026, 4, 29), Decimal("101.0000")),
+        ("MSFT", entry_date, Decimal("200.0000")),
+        ("MSFT", date(2026, 4, 28), Decimal("204.0000")),
+        ("MSFT", date(2026, 4, 29), Decimal("210.0000")),
+        ("SPY", entry_date, Decimal("500.0000")),
+        ("SPY", date(2026, 4, 28), Decimal("505.0000")),
+        ("SPY", date(2026, 4, 29), Decimal("507.5000")),
+    ]
+    as_of = datetime(2026, 4, 30, tzinfo=timezone.utc)
+
+    db = AsyncMock()
+    with (
+        patch.object(dp_service, "_latest_bundle_version", AsyncMock(return_value="test_bundle")),
+        patch.object(dp_service, "_load_paper_portfolio_rows", AsyncMock(return_value=audit_rows)),
+        patch.object(dp_service, "_load_open_prices", AsyncMock(return_value=price_rows)),
+    ):
+        resp = await dp_service.compute_daily_portfolio_performance(
+            db, horizon="5d", bundle_version="test_bundle", as_of=as_of
+        )
+
+    assert resp.horizon == "5d"
+    assert resp.bundle_version == "test_bundle"
+    assert resp.weeks_count == 1
+    assert len(resp.tranches) == 1
+    tranche = resp.tranches[0]
+    assert tranche.signal_date == "2026-04-24"
+    assert tranche.entry_date == "2026-04-27"
+    assert tranche.tickers_used == ["AAPL", "MSFT"]
+    assert tranche.tickers_dropped == ["NEW"]
+    # 3 个交易日: 4/27 (entry, 0), 4/28, 4/29
+    assert len(tranche.series) == 3
+    # entry day: cumulative = 0
+    assert tranche.series[0].date == "2026-04-27"
+    assert tranche.series[0].cumulative_portfolio == pytest.approx(0.0)
+    assert tranche.series[0].cumulative_spy == pytest.approx(0.0)
+    # day 2 (4/28): NEW(0.1) 剔除后 sum_orig=1.1, sum_remain=1.0, scale=1.1,
+    # AAPL 权重 = 0.55, MSFT 权重 = 0.55; AAPL +2%, MSFT +2%
+    # portfolio = 0.55*0.02 + 0.55*0.02 = 0.022; SPY = 5/500 = 0.01
+    assert tranche.series[1].date == "2026-04-28"
+    assert tranche.series[1].cumulative_portfolio == pytest.approx(0.022)
+    assert tranche.series[1].cumulative_spy == pytest.approx(0.01)
+    assert tranche.series[1].cumulative_excess == pytest.approx(0.012)
+    # day 3 (4/29): AAPL +1%, MSFT +5%, portfolio = 0.55*0.01 + 0.55*0.05 = 0.033; SPY = 7.5/500 = 0.015
+    assert tranche.series[2].cumulative_portfolio == pytest.approx(0.033)
+    assert tranche.series[2].cumulative_spy == pytest.approx(0.015)
+
+
+def test_compute_daily_performance_empty_bundle() -> None:
+    asyncio.run(_run_empty_bundle())
+
+
+async def _run_empty_bundle() -> None:
+    """空 bundle → 返回 valid 空响应, 不抛错."""
+    db = AsyncMock()
+    with patch.object(dp_service, "_latest_bundle_version", AsyncMock(return_value=None)):
+        resp = await dp_service.compute_daily_portfolio_performance(db, horizon="60d")
+    assert resp.horizon == "60d"
+    assert resp.weeks_count == 0
+    assert resp.tranches == []
