@@ -88,3 +88,21 @@ class DailyPortfolioPerformanceResponse(BaseModel):
     weeks_count: int = 0
     latest_horizon_end_date: str | None = None
     tranches: list[DailyPerformanceTranche] = Field(default_factory=list)
+
+
+class EquityCurvePoint(BaseModel):
+    date: str
+    portfolio_nav: float
+    spy_nav: float
+    portfolio_cum_return: float
+    spy_cum_return: float
+    excess_cum_return: float
+    is_rebalance: bool = False
+
+
+class EquityCurveResponse(BaseModel):
+    bundle_version: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    rebalance_dates: list[str] = Field(default_factory=list)
+    series: list[EquityCurvePoint] = Field(default_factory=list)
