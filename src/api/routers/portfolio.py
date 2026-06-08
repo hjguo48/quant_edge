@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import sqlalchemy as sa
@@ -222,6 +223,10 @@ async def get_daily_performance(
 @router.get("/equity", response_model=EquityCurveResponse)
 async def get_equity_curve(
     bundle_version: str | None = Query(default=None),
+    as_of: datetime | None = Query(
+        default=None,
+        description="Point-in-time cutoff (UTC). Default: now + 2d buffer to see through historical PIT write delay; explicit value enforces strict PIT.",
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> EquityCurveResponse:
-    return await compute_portfolio_equity_curve(db, bundle_version=bundle_version)
+    return await compute_portfolio_equity_curve(db, bundle_version=bundle_version, as_of=as_of)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import exchange_calendars as xcals
@@ -31,7 +31,11 @@ async def compute_portfolio_equity_curve(
     Between rebalances, daily return uses adj_close-to-adj_close on the active weights.
     Missing tickers at rebalance time are dropped + remaining weights renormalized.
     """
-    as_of_utc = as_of or datetime.now(timezone.utc)
+    # UI 默认请求加 +2d buffer 看穿 historical PIT 写入延迟 (knowledge_time = T+1 16:00 ET).
+    # buffer 只用于 PIT 查询; end_date 仍以真实当前时间为上限, 防止 series 包含未来日期.
+    # 显式传 as_of 时两者都用显式值, 保留严格 PIT 语义, 对应 PR #47 stocks router 处理.
+    real_now_utc = as_of if as_of is not None else datetime.now(timezone.utc)
+    as_of_utc = as_of if as_of is not None else real_now_utc + timedelta(days=2)
     resolved_bundle = bundle_version or await _latest_bundle_version(db)
     if resolved_bundle is None:
         return EquityCurveResponse()
@@ -58,12 +62,12 @@ async def compute_portfolio_equity_curve(
     sorted_rebalances = sorted(rebalance_map.values())
     start_date = sorted_rebalances[0]
 
-    as_of_date = as_of_utc.date()
-    as_of_ts = pd.Timestamp(as_of_date)
+    real_now_date = real_now_utc.date()
+    real_now_ts = pd.Timestamp(real_now_date)
     end_session = (
-        as_of_ts
-        if XNYS.is_session(as_of_ts)
-        else XNYS.date_to_session(as_of_ts, direction="previous")
+        real_now_ts
+        if XNYS.is_session(real_now_ts)
+        else XNYS.date_to_session(real_now_ts, direction="previous")
     )
     end_date = pd.Timestamp(end_session).date()
     if end_date < start_date:
