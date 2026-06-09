@@ -536,26 +536,6 @@ const Portfolio = () => {
                       const FRAME_H = 220;
                       const CHART_H = 200;
 
-                      // 1d horizon: equity curve 不适用 (1d = T+1 single-day return)
-                      if (activeHorizon === "1d") {
-                        return (
-                          <div className="mb-3" style={{ height: FRAME_H }}>
-                            <div className="flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-surface text-xs text-muted-foreground space-y-1" style={{ height: CHART_H }}>
-                              <p className="font-bold uppercase tracking-widest">{t("portfolio.performanceTracking.noDataAvailable", "No data available")}</p>
-                              <p className="text-[10px] opacity-70 text-center px-2">
-                                {t("portfolio.performanceTracking.equityCurveNeedsMultiDay", "Equity curve requires a multi-day horizon (5d / 20d / 60d).")}
-                              </p>
-                            </div>
-                            <div className="flex justify-between items-center text-[9px] text-muted-foreground mt-1 px-1" style={{ height: 16 }}>
-                              <span className="uppercase tracking-wider font-bold">
-                                {t("portfolio.performanceTracking.equityCurveLegend", "Equity curve (rebased) vs SPY")} · 1d
-                              </span>
-                              <span>—</span>
-                            </div>
-                          </div>
-                        );
-                      }
-
                       // Use the same lookbackSeries computed above for cards — chart and cards
                       // share identical slice (N+1 points: 1 base at 0% + N daily returns)
                       const equitySeries = lookbackSeries.map((p) => ({
