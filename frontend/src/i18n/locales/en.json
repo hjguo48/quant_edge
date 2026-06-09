@@ -38,12 +38,30 @@
     "userRole": "Model Output Only"
   },
   "pageTitles": {
-    "dashboard": { "title": "Dashboard", "subtitle": "Model Output · Not Investment Advice" },
-    "signals": { "title": "Signal Feed", "subtitle": "Quantitative Model Signals · SEC Compliant" },
-    "signalDetail": { "title": "Signal Detail", "subtitle": "Factor Decomposition · Model Output Only" },
-    "portfolio": { "title": "Portfolio", "subtitle": "Model Portfolio Analytics · Hypothetical" },
-    "backtest": { "title": "Backtest Engine", "subtitle": "Hypothetical Simulation · Not Predictive of Future Results" },
-    "greyscale": { "title": "Greyscale Monitor", "subtitle": "Trust Premium/Discount Tracker · Model Output" }
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Model Output · Not Investment Advice"
+    },
+    "signals": {
+      "title": "Signal Feed",
+      "subtitle": "Quantitative Model Signals · SEC Compliant"
+    },
+    "signalDetail": {
+      "title": "Signal Detail",
+      "subtitle": "Factor Decomposition · Model Output Only"
+    },
+    "portfolio": {
+      "title": "Portfolio",
+      "subtitle": "Model Portfolio Analytics · Hypothetical"
+    },
+    "backtest": {
+      "title": "Backtest Engine",
+      "subtitle": "Hypothetical Simulation · Not Predictive of Future Results"
+    },
+    "greyscale": {
+      "title": "Greyscale Monitor",
+      "subtitle": "Trust Premium/Discount Tracker · Model Output"
+    }
   },
   "dashboard": {
     "secBanner": {
@@ -340,9 +358,18 @@
       "budget": "Budget"
     },
     "tabHeaders": {
-      "holdings": { "title": "Optimal Allocation", "subtitle": "Calculated by mean-variance optimizer" },
-      "trades": { "title": "Rebalance Instructions", "subtitle": "Execution orders for target weights" },
-      "budget": { "title": "Capital Configurator", "subtitle": "Adjust your trading capital" }
+      "holdings": {
+        "title": "Optimal Allocation",
+        "subtitle": "Calculated by mean-variance optimizer"
+      },
+      "trades": {
+        "title": "Rebalance Instructions",
+        "subtitle": "Execution orders for target weights"
+      },
+      "budget": {
+        "title": "Capital Configurator",
+        "subtitle": "Adjust your trading capital"
+      }
     },
     "table": {
       "security": "Security",
@@ -421,6 +448,44 @@
       "avgWinLoss": "Avg Win / Avg Loss",
       "betaSpx": "Beta vs SPX",
       "turnoverMonthly": "Turnover (Monthly)"
+    },
+    "vsLive": {
+      "subtitle": "Champion backtest archive vs live greyscale — is live tracking expectations?",
+      "loadError": "Failed to load backtest comparison data.",
+      "championTitle": "W10 Champion Backtest Archive",
+      "noChampion": "Backtest truth table not found on server.",
+      "netAnnExcess": "Net Ann Excess",
+      "grossAnnExcess": "Gross Ann Excess",
+      "maxDrawdown": "Max Drawdown",
+      "avgTurnover": "Avg Turnover/wk",
+      "costDrag": "Cost Drag/yr",
+      "periods": "Periods",
+      "coneTitle": "Expectation Cone vs Live Excess",
+      "coneSubtitle": "Center line = backtest expected cumulative excess drift; bands = ±1σ / ±2σ; bold line = live greyscale cumulative excess (vs SPY)",
+      "inBandChip": "Within ±2σ band",
+      "outOfBandChip": "Outside ±2σ band",
+      "band1": "±1σ band",
+      "band2": "±2σ band",
+      "expected": "Backtest expected",
+      "liveExcess": "Live excess",
+      "noConeData": "Not enough live data to draw the cone yet.",
+      "coneLegend": "Anchored at first live entry (T+1 open)",
+      "tradingDays": "trading days",
+      "comparisonTitle": "Backtest vs Live Metrics",
+      "metric": "Metric",
+      "backtestCol": "Backtest",
+      "liveCol": "Live",
+      "statusCol": "Status",
+      "statusPending": "Pending",
+      "statusInBand": "On Track",
+      "statusDeviating": "Deviating",
+      "statusSevere": "Severe {{ratio}}x",
+      "metrics": {
+        "weekly_excess": "Weekly Excess (mean)",
+        "turnover": "Weekly Turnover",
+        "max_drawdown": "Max Drawdown",
+        "ic": "Realized IC (60d)"
+      }
     }
   },
   "greyscale": {

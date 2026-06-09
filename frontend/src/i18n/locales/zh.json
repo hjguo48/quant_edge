@@ -38,12 +38,30 @@
     "userRole": "仅模型输出"
   },
   "pageTitles": {
-    "dashboard": { "title": "驾驶舱", "subtitle": "模型输出 · 非投资建议" },
-    "signals": { "title": "信号流", "subtitle": "量化模型信号 · 符合 SEC 合规" },
-    "signalDetail": { "title": "信号详情", "subtitle": "因子分解 · 仅模型输出" },
-    "portfolio": { "title": "组合分析", "subtitle": "模型组合分析 · 假设性持仓" },
-    "backtest": { "title": "回测引擎", "subtitle": "假设性模拟 · 不代表未来表现" },
-    "greyscale": { "title": "灰度监控", "subtitle": "周度信号跑批跟踪 · 模型输出" }
+    "dashboard": {
+      "title": "驾驶舱",
+      "subtitle": "模型输出 · 非投资建议"
+    },
+    "signals": {
+      "title": "信号流",
+      "subtitle": "量化模型信号 · 符合 SEC 合规"
+    },
+    "signalDetail": {
+      "title": "信号详情",
+      "subtitle": "因子分解 · 仅模型输出"
+    },
+    "portfolio": {
+      "title": "组合分析",
+      "subtitle": "模型组合分析 · 假设性持仓"
+    },
+    "backtest": {
+      "title": "回测引擎",
+      "subtitle": "假设性模拟 · 不代表未来表现"
+    },
+    "greyscale": {
+      "title": "灰度监控",
+      "subtitle": "周度信号跑批跟踪 · 模型输出"
+    }
   },
   "dashboard": {
     "secBanner": {
@@ -340,9 +358,18 @@
       "budget": "资金"
     },
     "tabHeaders": {
-      "holdings": { "title": "最优配置", "subtitle": "由均值-方差优化器计算" },
-      "trades": { "title": "调仓指令", "subtitle": "目标权重的执行订单" },
-      "budget": { "title": "资金配置", "subtitle": "调整你的交易本金" }
+      "holdings": {
+        "title": "最优配置",
+        "subtitle": "由均值-方差优化器计算"
+      },
+      "trades": {
+        "title": "调仓指令",
+        "subtitle": "目标权重的执行订单"
+      },
+      "budget": {
+        "title": "资金配置",
+        "subtitle": "调整你的交易本金"
+      }
     },
     "table": {
       "security": "标的",
@@ -421,6 +448,44 @@
       "avgWinLoss": "平均盈/平均亏",
       "betaSpx": "对 SPX 的 Beta",
       "turnoverMonthly": "月度换手"
+    },
+    "vsLive": {
+      "subtitle": "W10 冠军回测档案 vs 灰度实盘 — 实盘是否在回测预期轨道内?",
+      "loadError": "回测对照数据加载失败。",
+      "championTitle": "W10 冠军回测档案",
+      "noChampion": "服务器上未找到回测 truth table 文件。",
+      "netAnnExcess": "净年化超额",
+      "grossAnnExcess": "毛年化超额",
+      "maxDrawdown": "最大回撤",
+      "avgTurnover": "周均换手",
+      "costDrag": "年成本拖累",
+      "periods": "样本期数",
+      "coneTitle": "预期锥形带 vs 实盘超额",
+      "coneSubtitle": "中线 = 回测期望累计超额漂移; 阴影带 = ±1σ / ±2σ; 粗线 = 灰度实盘累计超额 (对 SPY)",
+      "inBandChip": "±2σ 带内",
+      "outOfBandChip": "超出 ±2σ 带",
+      "band1": "±1σ 带",
+      "band2": "±2σ 带",
+      "expected": "回测期望",
+      "liveExcess": "实盘超额",
+      "noConeData": "实盘数据还不足以绘制锥形带。",
+      "coneLegend": "锚定首个实盘开仓日 (T+1 开盘)",
+      "tradingDays": "个交易日",
+      "comparisonTitle": "回测 vs 实盘指标对照",
+      "metric": "指标",
+      "backtestCol": "回测",
+      "liveCol": "实盘",
+      "statusCol": "状态",
+      "statusPending": "待成熟",
+      "statusInBand": "在轨",
+      "statusDeviating": "偏离",
+      "statusSevere": "严重偏离 {{ratio}}x",
+      "metrics": {
+        "weekly_excess": "周度超额 (均值)",
+        "turnover": "周换手率",
+        "max_drawdown": "最大回撤",
+        "ic": "已实现 IC (60d)"
+      }
     }
   },
   "greyscale": {

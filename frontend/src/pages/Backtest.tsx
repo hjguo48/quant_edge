@@ -1,58 +1,139 @@
-import { useState } from "react";
-import { Play, Settings2, BarChart2, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import StatCard from "../components/StatCard";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, ReferenceLine, Cell } from "recharts";
+import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, FlaskConical, Target, TrendingUp } from "lucide-react";
+import {
+  ComposedChart,
+  Area,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ReferenceLine,
+  ResponsiveContainer,
+} from "recharts";
+import { fetchApi } from "../hooks/useApi";
 
-function generateEquityCurve(n: number) {
-  let equity = 1;
-  let benchmark = 1;
-  return Array.from({ length: n }, (_, i) => {
-    const ret = (Math.random() - 0.46) * 0.025;
-    const bret = (Math.random() - 0.48) * 0.015;
-    equity = Math.max(0.3, equity * (1 + ret));
-    benchmark = Math.max(0.3, benchmark * (1 + bret));
-    return {
-      day: i + 1,
-      equity: parseFloat(equity.toFixed(4)),
-      benchmark: parseFloat(benchmark.toFixed(4)),
-      drawdown: parseFloat((Math.min(0, ret * 4) * 100).toFixed(2)),
-    };
-  });
+interface ChampionProfile {
+  strategy: string;
+  horizon_days: number;
+  net_ann_excess: number;
+  gross_ann_excess: number;
+  ir: number;
+  sharpe: number;
+  max_drawdown: number;
+  avg_turnover_weekly: number;
+  cost_drag_ann: number;
+  n_periods: number;
+  backtest_as_of: string | null;
+  cost_model: Record<string, number> | string | null;
 }
 
-function generateMonthlyReturns() {
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return months.map((month) => ({
-    month,
-    ret: parseFloat(((Math.random() - 0.4) * 8).toFixed(2)),
-  }));
+interface ConePoint {
+  date: string;
+  day_index: number;
+  expected: number;
+  upper_1s: number;
+  lower_1s: number;
+  upper_2s: number;
+  lower_2s: number;
 }
 
-const equityData = generateEquityCurve(252);
-const monthlyData = generateMonthlyReturns();
+interface LiveExcessPoint {
+  date: string;
+  excess_cum_return: number;
+  is_rebalance: boolean;
+}
 
-const UNIVERSE = ["S&P 500", "NASDAQ 100", "Russell 2000", "Custom List"];
-const FACTORS = ["Momentum", "Value + Momentum", "Quality", "Multi-Factor", "Custom"];
+interface MetricComparison {
+  backtest: number | null;
+  live: number | null;
+  unit: string | null;
+  note: string | null;
+}
+
+interface BacktestVsLiveResponse {
+  champion: ChampionProfile | null;
+  expectation: { weekly_excess_mean: number; weekly_excess_std: number; source: string } | null;
+  cone: ConePoint[];
+  live: LiveExcessPoint[];
+  comparison: Record<string, MetricComparison>;
+}
+
+const fmtPct = (v: number | null | undefined, digits = 2) =>
+  v == null ? "—" : `${(v * 100).toFixed(digits)}%`;
 
 const Backtest = () => {
   const { t } = useTranslation();
-  const [running, setRunning] = useState(false);
-  const [, setRan] = useState(true);
-  const [universe, setUniverse] = useState("S&P 500");
-  const [factor, setFactor] = useState("Multi-Factor");
-  const [startYear, setStartYear] = useState("2020");
-  const [endYear, setEndYear] = useState("2024");
-  const [rebalance, setRebalance] = useState("Monthly");
 
-  const handleRun = () => {
-    setRunning(true);
-    setTimeout(() => { setRunning(false); setRan(true); }, 2200);
+  const query = useQuery<BacktestVsLiveResponse>({
+    queryKey: ["backtestVsLive"],
+    queryFn: () => fetchApi<BacktestVsLiveResponse>("/api/backtest/vs-live"),
+    staleTime: 5 * 60_000,
+  });
+
+  const data = query.data;
+  const champion = data?.champion ?? null;
+
+  // Merge cone + live onto one date grid for the chart
+  const chartData = (data?.cone ?? []).map((c, i) => ({
+    date: c.date,
+    band2: [c.lower_2s, c.upper_2s] as [number, number],
+    band1: [c.lower_1s, c.upper_1s] as [number, number],
+    expected: c.expected,
+    live: data?.live?.[i]?.excess_cum_return ?? null,
+  }));
+
+  const lastLive = data?.live?.length ? data.live[data.live.length - 1] : null;
+  const lastCone = data?.cone?.length ? data.cone[data.cone.length - 1] : null;
+  const liveInBand =
+    lastLive != null && lastCone != null
+      ? lastLive.excess_cum_return >= lastCone.lower_2s && lastLive.excess_cum_return <= lastCone.upper_2s
+      : null;
+  const liveColor = lastLive != null && lastLive.excess_cum_return >= 0 ? "#00C805" : "#FF5252";
+
+  const comparison = data?.comparison ?? {};
+
+  const statusChip = (kind: string, c: MetricComparison) => {
+    if (c.backtest == null || c.live == null) {
+      return { label: t("backtest.vsLive.statusPending"), cls: "bg-muted text-muted-foreground" };
+    }
+    if (kind === "turnover") {
+      const ratio = c.backtest > 0 ? c.live / c.backtest : Infinity;
+      if (ratio <= 2) return { label: t("backtest.vsLive.statusInBand"), cls: "bg-bull/10 text-bull" };
+      if (ratio <= 5) return { label: t("backtest.vsLive.statusDeviating"), cls: "bg-amber-500/10 text-amber-500" };
+      return { label: t("backtest.vsLive.statusSevere", { ratio: ratio.toFixed(0) }), cls: "bg-bear/10 text-bear" };
+    }
+    if (kind === "max_drawdown") {
+      return Math.abs(c.live) <= Math.abs(c.backtest)
+        ? { label: t("backtest.vsLive.statusInBand"), cls: "bg-bull/10 text-bull" }
+        : { label: t("backtest.vsLive.statusDeviating"), cls: "bg-amber-500/10 text-amber-500" };
+    }
+    // weekly_excess: positive and >= half of backtest expectation = on track
+    if (c.live >= c.backtest * 0.5) return { label: t("backtest.vsLive.statusInBand"), cls: "bg-bull/10 text-bull" };
+    if (c.live >= 0) return { label: t("backtest.vsLive.statusDeviating"), cls: "bg-amber-500/10 text-amber-500" };
+    return { label: t("backtest.vsLive.statusSevere", { ratio: "" }), cls: "bg-bear/10 text-bear" };
   };
 
-  const finalEquity = equityData[equityData.length - 1].equity;
-  const totalReturn = ((finalEquity - 1) * 100).toFixed(2);
-  const isPositive = parseFloat(totalReturn) >= 0;
+  let costModelLabel = "";
+  if (champion?.cost_model != null) {
+    costModelLabel =
+      typeof champion.cost_model === "string"
+        ? champion.cost_model
+        : `AC η=${champion.cost_model.eta} γ=${champion.cost_model.gamma}`;
+  }
+
+  const championStats = champion
+    ? [
+        { label: t("backtest.vsLive.netAnnExcess"), value: fmtPct(champion.net_ann_excess, 1), accent: champion.net_ann_excess >= 0 },
+        { label: t("backtest.vsLive.grossAnnExcess"), value: fmtPct(champion.gross_ann_excess, 1), accent: null },
+        { label: "IR", value: champion.ir.toFixed(2), accent: null },
+        { label: "Sharpe", value: champion.sharpe.toFixed(2), accent: null },
+        { label: t("backtest.vsLive.maxDrawdown"), value: fmtPct(-Math.abs(champion.max_drawdown), 1), accent: false },
+        { label: t("backtest.vsLive.avgTurnover"), value: fmtPct(champion.avg_turnover_weekly, 2), accent: null },
+        { label: t("backtest.vsLive.costDrag"), value: fmtPct(champion.cost_drag_ann, 2), accent: null },
+        { label: t("backtest.vsLive.periods"), value: String(champion.n_periods), accent: null },
+      ]
+    : [];
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5">
@@ -60,9 +141,7 @@ const Backtest = () => {
       <div className="flex items-center justify-between fade-in-up">
         <div>
           <h2 className="text-xl font-bold text-foreground">{t("backtest.title")}</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t("backtest.subtitle")}
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">{t("backtest.vsLive.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-xs text-muted-foreground">
           <AlertTriangle size={13} className="text-yellow-500" />
@@ -70,197 +149,136 @@ const Backtest = () => {
         </div>
       </div>
 
-      <div className="flex gap-5">
-        {/* Config Panel */}
-        <div className="w-64 flex-shrink-0 space-y-4 fade-in-up stagger-1">
-          <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-border">
-              <Settings2 size={14} className="text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">{t("backtest.configuration")}</h3>
-            </div>
-
-            {[
-              { key: "universe", label: t("backtest.fields.universe"), value: universe, setValue: setUniverse, options: UNIVERSE },
-              { key: "strategy", label: t("backtest.fields.strategy"), value: factor, setValue: setFactor, options: FACTORS },
-              { key: "startYear", label: t("backtest.fields.startYear"), value: startYear, setValue: setStartYear, options: ["2015","2016","2017","2018","2019","2020","2021"] },
-              { key: "endYear", label: t("backtest.fields.endYear"), value: endYear, setValue: setEndYear, options: ["2022","2023","2024","2025"] },
-              { key: "rebalance", label: t("backtest.fields.rebalance"), value: rebalance, setValue: setRebalance, options: ["Daily","Weekly","Monthly","Quarterly"] },
-            ].map(({ key, label, value, setValue, options }) => (
-              <div key={key}>
-                <label className="text-xs text-muted-foreground mb-1.5 block">{label}</label>
-                <select
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  className="w-full bg-muted text-sm text-foreground px-3 py-2 rounded-lg border border-transparent outline-none cursor-pointer hover:bg-accent transition-colors"
-                >
-                  {options.map((o) => <option key={o} value={o} className="bg-popover">{o}</option>)}
-                </select>
-              </div>
-            ))}
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">{t("backtest.fields.maxPositionSize")}</label>
-              <div className="flex items-center gap-2">
-                <input type="range" min={1} max={20} defaultValue={5} className="flex-1 accent-primary" />
-                <span className="text-xs font-mono text-foreground w-6">5%</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">{t("backtest.fields.stopLoss")}</label>
-              <div className="flex items-center gap-2">
-                <input type="range" min={1} max={15} defaultValue={8} className="flex-1 accent-primary" />
-                <span className="text-xs font-mono text-bear w-7">-8%</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleRun}
-              disabled={running}
-              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                running
-                  ? "bg-primary/50 text-primary-foreground cursor-not-allowed"
-                  : "btn-primary text-primary-foreground"
-              }`}
-            >
-              {running ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  {t("backtest.running")}
-                </>
-              ) : (
-                <>
-                  <Play size={14} fill="currentColor" />
-                  {t("backtest.runButton")}
-                </>
-              )}
-            </button>
-          </div>
+      {query.isLoading ? (
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground">
+          <FlaskConical size={32} className="opacity-20 animate-pulse mb-3" />
+          <p className="text-xs">{t("common.loading")}</p>
         </div>
-
-        {/* Results */}
-        <div className="flex-1 space-y-5">
-          {/* Stats */}
-          <div className="flex gap-4 fade-in-up stagger-1">
-            {[
-              { label: t("backtest.results.totalReturn"), value: `${isPositive ? "+" : ""}${totalReturn}%`, change: parseFloat(totalReturn), changeLabel: t("backtest.results.vsBenchmark", { value: (parseFloat(totalReturn) * 0.6).toFixed(1) }), trend: isPositive ? "up" as const : "down" as const },
-              { label: t("backtest.results.sharpe"), value: "1.87", change: 0.12, changeLabel: t("backtest.results.annualized"), trend: "up" as const },
-              { label: t("backtest.results.maxDrawdown"), value: "-12.4%", change: -1.2, changeLabel: t("backtest.results.fromPeak"), trend: "down" as const },
-              { label: t("backtest.results.calmar"), value: "1.42", change: 0.08, changeLabel: t("backtest.results.returnPerDrawdown"), trend: "up" as const },
-            ].map((s, i) => (
-              <div key={s.label} className="flex-1">
-                <StatCard {...s} delay={i * 60} />
-              </div>
-            ))}
-          </div>
-
-          {/* Equity Curve */}
-          <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
+      ) : query.isError || !data ? (
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground">
+          <AlertTriangle size={32} className="opacity-30 mb-3" />
+          <p className="text-xs">{t("backtest.vsLive.loadError")}</p>
+        </div>
+      ) : (
+        <>
+          {/* Section 1: Champion archive */}
+          <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-1">
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">{t("backtest.equityCurve.title")}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("backtest.equityCurve.subtitle", { start: startYear, end: endYear })}</p>
+              <div className="flex items-center gap-2">
+                <FlaskConical size={15} className="text-primary" />
+                <h3 className="text-sm font-bold text-foreground">{t("backtest.vsLive.championTitle")}</h3>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5"><div className="w-2.5 h-0.5 bg-primary" /><span className="text-xs text-muted-foreground">{t("backtest.equityCurve.strategy")}</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2.5 h-0.5" style={{ backgroundColor: "#607B96" }} /><span className="text-xs text-muted-foreground">{t("backtest.equityCurve.benchmark")}</span></div>
-              </div>
+              {champion && (
+                <div className="text-[10px] text-muted-foreground font-mono">
+                  {champion.strategy} · {champion.horizon_days}D · {costModelLabel}
+                  {champion.backtest_as_of ? ` · as of ${champion.backtest_as_of}` : ""}
+                </div>
+              )}
             </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={equityData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00C805" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="#00C805" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="bmGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#607B96" stopOpacity={0.1} />
-                    <stop offset="95%" stopColor="#607B96" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} interval={40} />
-                <YAxis tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  cursor={{ stroke: "rgba(255,255,255,0.1)" }}
-                  content={({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) => {
-                    if (!active || !payload?.length) return null;
-                    return (
-                      <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-custom space-y-1">
-                        {payload.map((p) => (
-                          <div key={p.name} className="flex gap-2">
-                            <span className="text-xs text-muted-foreground capitalize">{p.name}:</span>
-                            <span className={`text-xs font-bold ${p.name === "equity" ? "text-bull" : "text-muted-foreground"}`}>
-                              {(p.value).toFixed(3)}x
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }}
-                />
-                <Area type="monotone" dataKey="benchmark" stroke="#607B96" strokeWidth={1.5} fill="url(#bmGrad)" strokeDasharray="4 2" />
-                <Area type="monotone" dataKey="equity" stroke="#00C805" strokeWidth={2} fill="url(#eqGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Monthly Returns */}
-          <div className="flex gap-5">
-            <div className="flex-1 bg-card rounded-xl border border-border p-5 fade-in-up stagger-3">
-              <h3 className="text-sm font-semibold text-foreground mb-1">{t("backtest.monthlyReturns.title")}</h3>
-              <p className="text-xs text-muted-foreground mb-4">{t("backtest.monthlyReturns.subtitle")}</p>
-              <ResponsiveContainer width="100%" height={150}>
-                <BarChart data={monthlyData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
-                  <XAxis dataKey="month" tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "#607B96", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" />
-                  <Tooltip
-                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
-                    content={({ active, payload }: { active?: boolean; payload?: { value: number }[] }) => {
-                      if (!active || !payload?.length) return null;
-                      const v = payload[0].value;
-                      return (
-                        <div className="bg-popover border border-border rounded-lg px-2.5 py-1.5 shadow-custom">
-                          <p className={`text-xs font-bold ${v >= 0 ? "text-bull" : "text-bear"}`}>{v >= 0 ? "+" : ""}{v.toFixed(2)}%</p>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Bar dataKey="ret" radius={[3, 3, 0, 0]}>
-                    {monthlyData.map((entry, i) => (
-                      <Cell key={i} fill={entry.ret >= 0 ? "#00C805" : "#FF5252"} fillOpacity={0.8} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            {/* Risk Metrics */}
-            <div className="w-64 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-4">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart2 size={14} className="text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">{t("backtest.riskMetrics.title")}</h3>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { key: "annualizedVol", label: t("backtest.riskMetrics.annualizedVol"), value: "14.2%", color: "text-foreground" },
-                  { key: "var95", label: t("backtest.riskMetrics.var95"), value: "-1.8%", color: "text-bear" },
-                  { key: "cvar95", label: t("backtest.riskMetrics.cvar95"), value: "-2.4%", color: "text-bear" },
-                  { key: "winRate", label: t("backtest.riskMetrics.winRate"), value: "58.3%", color: "text-bull" },
-                  { key: "profitFactor", label: t("backtest.riskMetrics.profitFactor"), value: "1.74", color: "text-bull" },
-                  { key: "avgWinLoss", label: t("backtest.riskMetrics.avgWinLoss"), value: "1.82", color: "text-bull" },
-                  { key: "betaSpx", label: t("backtest.riskMetrics.betaSpx"), value: "0.72", color: "text-foreground" },
-                  { key: "turnoverMonthly", label: t("backtest.riskMetrics.turnoverMonthly"), value: "18.4%", color: "text-muted-foreground" },
-                ].map(({ key, label, value, color }) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{label}</span>
-                    <span className={`text-xs font-bold font-mono ${color}`}>{value}</span>
+            {champion ? (
+              <div className="grid grid-cols-8 gap-3">
+                {championStats.map((s) => (
+                  <div key={s.label} className="bg-muted/20 rounded-lg p-3 border border-border/50">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 truncate">{s.label}</p>
+                    <p className={`text-base font-black font-mono ${
+                      s.accent == null ? "text-foreground" : s.accent ? "text-bull" : "text-bear"
+                    }`}>
+                      {s.value}
+                    </p>
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-xs text-muted-foreground py-6 text-center">{t("backtest.vsLive.noChampion")}</p>
+            )}
+          </div>
+
+          {/* Section 2: Expectation cone vs live */}
+          <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-2">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <Target size={15} className="text-primary" />
+                <h3 className="text-sm font-bold text-foreground">{t("backtest.vsLive.coneTitle")}</h3>
+              </div>
+              {liveInBand != null && (
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${
+                  liveInBand ? "bg-bull/10 text-bull" : "bg-bear/10 text-bear"
+                }`}>
+                  {liveInBand ? t("backtest.vsLive.inBandChip") : t("backtest.vsLive.outOfBandChip")}
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground mb-3">{t("backtest.vsLive.coneSubtitle")}</p>
+            {chartData.length >= 2 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={chartData} margin={{ left: 0, right: 6, top: 4, bottom: 0 }}>
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} interval="preserveStartEnd" minTickGap={48} />
+                  <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v: number) => `${(v * 100).toFixed(1)}%`} domain={["auto", "auto"]} width={46} />
+                  <Tooltip
+                    contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
+                    formatter={(value: number | [number, number], name: string) => {
+                      if (Array.isArray(value)) {
+                        const label = name === "band2" ? t("backtest.vsLive.band2") : t("backtest.vsLive.band1");
+                        return [`${(value[0] * 100).toFixed(2)}% ~ ${(value[1] * 100).toFixed(2)}%`, label];
+                      }
+                      const label = name === "expected" ? t("backtest.vsLive.expected") : name === "live" ? t("backtest.vsLive.liveExcess") : name;
+                      return [`${(value * 100).toFixed(2)}%`, label];
+                    }}
+                  />
+                  <ReferenceLine y={0} stroke="var(--border)" strokeDasharray="2 2" />
+                  <Area dataKey="band2" stroke="none" fill="#8884d8" fillOpacity={0.08} isAnimationActive={false} />
+                  <Area dataKey="band1" stroke="none" fill="#8884d8" fillOpacity={0.15} isAnimationActive={false} />
+                  <Line dataKey="expected" stroke="#888888" strokeWidth={1.4} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+                  <Line dataKey="live" stroke={liveColor} strokeWidth={2.4} dot={false} isAnimationActive={false} connectNulls />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-xs text-muted-foreground border border-dashed border-border rounded-lg">
+                {t("backtest.vsLive.noConeData")}
+              </div>
+            )}
+            <div className="flex justify-between items-center text-[9px] text-muted-foreground mt-2 px-1">
+              <span className="uppercase tracking-wider font-bold">{t("backtest.vsLive.coneLegend")}</span>
+              <span>
+                {data.live.length} {t("backtest.vsLive.tradingDays")}
+                {data.expectation && ` · μ=${fmtPct(data.expectation.weekly_excess_mean)}/wk σ=${fmtPct(data.expectation.weekly_excess_std)}/wk`}
+              </span>
             </div>
           </div>
-        </div>
-      </div>
+
+          {/* Section 3: Metric comparison */}
+          <div className="bg-card rounded-xl border border-border p-5 fade-in-up stagger-3">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={15} className="text-primary" />
+              <h3 className="text-sm font-bold text-foreground">{t("backtest.vsLive.comparisonTitle")}</h3>
+            </div>
+            <div className="flex items-center px-3 py-2 border-b border-border bg-muted/10 text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em]">
+              <div className="flex-1">{t("backtest.vsLive.metric")}</div>
+              <div className="w-32 text-right">{t("backtest.vsLive.backtestCol")}</div>
+              <div className="w-32 text-right">{t("backtest.vsLive.liveCol")}</div>
+              <div className="w-36 text-right">{t("backtest.vsLive.statusCol")}</div>
+            </div>
+            {(["weekly_excess", "turnover", "max_drawdown", "ic"] as const).map((key) => {
+              const c = comparison[key];
+              if (!c) return null;
+              const chip = statusChip(key, c);
+              return (
+                <div key={key} className="flex items-center px-3 py-3 border-b border-border/50 last:border-0 text-xs">
+                  <div className="flex-1">
+                    <span className="text-foreground font-semibold">{t(`backtest.vsLive.metrics.${key}`)}</span>
+                    {c.note && <span className="ml-2 text-[10px] text-muted-foreground">{c.note}</span>}
+                  </div>
+                  <div className="w-32 text-right font-mono text-muted-foreground">{fmtPct(c.backtest)}</div>
+                  <div className="w-32 text-right font-mono font-bold text-foreground">{fmtPct(c.live)}</div>
+                  <div className="w-36 text-right">
+                    <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${chip.cls}`}>{chip.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 };
