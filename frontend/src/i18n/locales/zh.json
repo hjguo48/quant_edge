@@ -192,7 +192,8 @@
   },
   "signalRow": {
     "trendPriceLabel": "20 日价格",
-    "trendExcessLabel": "对比 SPY"
+    "trendExcessLabel": "对比 SPY",
+    "shortSignal": "做空信号"
   },
   "signalDetail": {
     "back": "返回信号流",
@@ -309,7 +310,12 @@
       "portfolio": "组合",
       "spy": "SPY",
       "excess": "超额",
-      "status": "状态"
+      "status": "状态",
+      "noDataAvailable": "暂无数据",
+      "equityCurveNeedsMultiDay": "净值曲线需要多日窗口 (5d / 20d / 60d)。",
+      "equityCurveLegend": "净值曲线 (窗口起点归零) vs SPY",
+      "daysLookback": "个交易日回看",
+      "lookbackPartial": "* 数据不足 — 仅 {{actual}}/{{target}} 个交易日可用"
     },
     "sectorWeights": {
       "title": "板块权重",
@@ -317,7 +323,10 @@
       "noHoldings": "暂无持仓",
       "weight": "权重",
       "tickers": "{{count}} 只",
-      "underMigrationDetail": "当前 universe 板块归类正在处理。"
+      "underMigrationDetail": "当前 universe 板块归类正在处理。",
+      "topSector": "最大板块",
+      "sectors": "个板块",
+      "tickersShort": "只股票"
     },
     "stats": {
       "holdings": "持仓数",
@@ -383,7 +392,8 @@
       "allocationShift": "权重变动",
       "equityComponent": "权益组件",
       "bullish": "看多",
-      "bearish": "看空"
+      "bearish": "看空",
+      "sector": "板块"
     }
   },
   "kline": {
@@ -528,5 +538,10 @@
       "wouldReduce": "本会减仓",
       "cvarTriggered": "CVaR 触发"
     }
+  },
+  "errorBoundary": {
+    "title": "该页面出现异常",
+    "detail": "应用其他部分不受影响, 可尝试重新加载本页。",
+    "retry": "重新加载"
   }
 }

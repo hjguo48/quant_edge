@@ -688,7 +688,7 @@ const Portfolio = () => {
                         {" "}{t("portfolio.performanceTracking.daysLookback", { defaultValue: "trading days lookback" })}
                         {partial && (
                           <span className="ml-2 text-amber-500/80 font-semibold">
-                            {t("portfolio.performanceTracking.lookbackPartial", { defaultValue: "* partial — only", actual: lookbackDays, target: lookbackN }) + ` ${lookbackDays}/${lookbackN}d available`}
+                            {t("portfolio.performanceTracking.lookbackPartial", { actual: lookbackDays, target: lookbackN })}
                           </span>
                         )}
                       </span>
