@@ -4,18 +4,27 @@ from datetime import datetime
 from uuid import uuid4
 
 from celery.result import AsyncResult
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.deps import get_db
 from src.api.schemas.backtest import (
     BacktestRequest,
     BacktestResponse,
     BacktestResultResponse,
     BacktestStatusResponse,
+    BacktestVsLiveResponse,
 )
+from src.api.services.backtest_vs_live import compute_backtest_vs_live
 from src.celery_app import celery_app
 from src.tasks.backtest_task import run_backtest_task
 
 router = APIRouter(prefix="/api/backtest", tags=["Backtest"])
+
+
+@router.get("/vs-live", response_model=BacktestVsLiveResponse)
+async def get_backtest_vs_live(db: AsyncSession = Depends(get_db)) -> BacktestVsLiveResponse:
+    return await compute_backtest_vs_live(db)
 
 
 @router.post("/run", response_model=BacktestResponse)
