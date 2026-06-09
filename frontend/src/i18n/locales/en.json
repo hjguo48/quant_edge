@@ -192,7 +192,8 @@
   },
   "signalRow": {
     "trendPriceLabel": "20D Price",
-    "trendExcessLabel": "vs SPY"
+    "trendExcessLabel": "vs SPY",
+    "shortSignal": "SHORT SIGNAL"
   },
   "signalDetail": {
     "back": "Back to Signals",
@@ -309,7 +310,12 @@
       "portfolio": "Portfolio",
       "spy": "SPY",
       "excess": "Excess",
-      "status": "Status"
+      "status": "Status",
+      "noDataAvailable": "No data available",
+      "equityCurveNeedsMultiDay": "Equity curve requires a multi-day horizon (5d / 20d / 60d).",
+      "equityCurveLegend": "Equity curve (rebased) vs SPY",
+      "daysLookback": "trading days lookback",
+      "lookbackPartial": "* partial — only {{actual}}/{{target}}d available"
     },
     "sectorWeights": {
       "title": "Sector Weights",
@@ -317,7 +323,10 @@
       "noHoldings": "No holdings to display",
       "weight": "Weight",
       "tickers": "{{count}} tickers",
-      "underMigrationDetail": "Sector classification for the current universe is processing."
+      "underMigrationDetail": "Sector classification for the current universe is processing.",
+      "topSector": "Top",
+      "sectors": "sectors",
+      "tickersShort": "tickers"
     },
     "stats": {
       "holdings": "Holdings",
@@ -383,7 +392,8 @@
       "allocationShift": "Allocation Shift",
       "equityComponent": "Equity Component",
       "bullish": "BULLISH",
-      "bearish": "BEARISH"
+      "bearish": "BEARISH",
+      "sector": "Sector"
     }
   },
   "kline": {
@@ -528,5 +538,10 @@
       "wouldReduce": "Would Reduce",
       "cvarTriggered": "CVaR Triggered"
     }
+  },
+  "errorBoundary": {
+    "title": "Something went wrong on this page",
+    "detail": "The rest of the app is unaffected. Try reloading this page.",
+    "retry": "Reload page"
   }
 }

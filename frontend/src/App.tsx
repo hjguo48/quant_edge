@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Index from "./pages/Index";
 
 // fetchApi (hooks/useApi.ts) 内部已处理 network/timeout (3 次重试 ~1s 内),
@@ -23,16 +24,18 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/signals" element={<Index />} />
-        <Route path="/signals/:ticker" element={<Index />} />
-        <Route path="/portfolio" element={<Index />} />
-        <Route path="/backtest" element={<Index />} />
-        <Route path="/greyscale" element={<Index />} />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/signals" element={<Index />} />
+          <Route path="/signals/:ticker" element={<Index />} />
+          <Route path="/portfolio" element={<Index />} />
+          <Route path="/backtest" element={<Index />} />
+          <Route path="/greyscale" element={<Index />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   </QueryClientProvider>
 );
 

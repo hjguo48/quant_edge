@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 const Dashboard = lazy(() => import("./Dashboard"));
 const Signals = lazy(() => import("./Signals"));
@@ -104,7 +105,9 @@ const Index = () => {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar title={meta.title} subtitle={meta.subtitle} />
         <div className="flex-1 overflow-hidden flex flex-col">
-          <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
+          <ErrorBoundary resetKey={location.pathname}>
+            <Suspense fallback={<PageFallback />}>{renderPage()}</Suspense>
+          </ErrorBoundary>
         </div>
       </div>
     </div>
