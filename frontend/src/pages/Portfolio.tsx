@@ -686,7 +686,7 @@ const Portfolio = () => {
           })()}
         </div>{/* PT_PANEL_END */}
 
-        <div className="w-96 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3 flex flex-col">
+        <div className="w-72 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3 flex flex-col">
           {currentQuery.isLoading ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
               <PieChart size={28} className="text-muted-foreground mb-3 opacity-20 animate-pulse" />
@@ -701,10 +701,12 @@ const Portfolio = () => {
               </p>
             </div>
           ) : (() => {
+            const totalWeight = sectorAggregation.reduce((sum, s) => sum + s.weight, 0);
             const visible = sectorAggregation.slice(0, SECTOR_PANEL_TOP_N);
             const overflow = sectorAggregation.slice(SECTOR_PANEL_TOP_N);
             const otherWeight = overflow.reduce((sum, s) => sum + s.weight, 0);
             const otherTickerCount = overflow.reduce((sum, s) => sum + s.tickerCount, 0);
+            const maxWeight = Math.max(...visible.map((s) => s.weight), otherWeight);
 
             const slices: SectorSlice[] = visible.map((s) => ({
               name: s.sector,
@@ -724,12 +726,115 @@ const Portfolio = () => {
                     {t("portfolio.sectorWeights.subtitle")}
                   </p>
                 </div>
-                <SectorDonut
-                  slices={slices}
-                  totalTickers={current?.holding_count ?? 0}
-                  hovered={hoveredSector}
-                  onHover={setHoveredSector}
-                />
+
+                <div className="mb-4 flex-shrink-0">
+                  <SectorDonut
+                    slices={slices}
+                    totalTickers={current?.holding_count ?? 0}
+                    hovered={hoveredSector}
+                    onHover={setHoveredSector}
+                  />
+                </div>
+
+                <div className="space-y-3 flex-1 flex flex-col justify-around">
+                  {visible.map((s) => {
+                    const color = getSectorColor(s.sector);
+                    const pct = (s.weight / totalWeight) * 100;
+                    const barWidth = maxWeight > 0 ? (s.weight / maxWeight) * 100 : 0;
+                    const isActive = hoveredSector === s.sector;
+                    const isDimmed = hoveredSector != null && !isActive;
+                    return (
+                      <div
+                        key={s.sector}
+                        onMouseEnter={() => setHoveredSector(s.sector)}
+                        onMouseLeave={() => setHoveredSector(null)}
+                        className="cursor-pointer rounded-md px-1 -mx-1 py-0.5 transition-all duration-200"
+                        style={{
+                          opacity: isDimmed ? 0.45 : 1,
+                          background: isActive ? "rgba(255,255,255,0.04)" : "transparent",
+                        }}
+                      >
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div
+                              className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-transform duration-200"
+                              style={{ background: color.text, transform: isActive ? "scale(1.5)" : "scale(1)" }}
+                            />
+                            <span className="text-foreground font-semibold truncate">{t(`sectors.${s.sector}`, { defaultValue: s.sector })}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: s.tickerCount })}</span>
+                          </div>
+                          <span className="font-mono font-bold text-foreground flex-shrink-0">
+                            {pct.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{
+                              width: `${barWidth}%`,
+                              background: color.text,
+                              opacity: isActive ? 1 : 0.7,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {overflow.length > 0 && (() => {
+                    const isActive = hoveredSector === "Other";
+                    const isDimmed = hoveredSector != null && !isActive;
+                    return (
+                      <div
+                        onMouseEnter={() => setHoveredSector("Other")}
+                        onMouseLeave={() => setHoveredSector(null)}
+                        className="cursor-pointer rounded-md px-1 -mx-1 py-0.5 transition-all duration-200"
+                        style={{
+                          opacity: isDimmed ? 0.45 : 1,
+                          background: isActive ? "rgba(255,255,255,0.04)" : "transparent",
+                        }}
+                      >
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div
+                              className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-muted-foreground/50 transition-transform duration-200"
+                              style={{ transform: isActive ? "scale(1.5)" : "scale(1)" }}
+                            />
+                            <span className="text-muted-foreground font-semibold truncate">+{overflow.length} {t("common.of").replace(/\W/g, "")}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: otherTickerCount })}</span>
+                          </div>
+                          <span className="font-mono font-bold text-muted-foreground flex-shrink-0">
+                            {((otherWeight / totalWeight) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-muted-foreground/40 transition-all duration-300"
+                            style={{
+                              width: `${maxWeight > 0 ? (otherWeight / maxWeight) * 100 : 0}%`,
+                              opacity: isActive ? 1 : 0.7,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Footer: top sector summary + holdings count */}
+                <div className="mt-4 pt-3 border-t border-border/40 flex justify-between items-center text-[10px] flex-shrink-0">
+                  <div>
+                    <span className="text-muted-foreground uppercase tracking-wider font-bold">{t("portfolio.sectorWeights.topSector", { defaultValue: "Top" })}</span>
+                    <span className="ml-1.5 text-foreground font-semibold">{t(`sectors.${sectorAggregation[0]?.sector ?? ""}`, { defaultValue: sectorAggregation[0]?.sector ?? "—" })}</span>
+                    <span className="ml-1.5 font-mono font-bold text-foreground">{sectorAggregation[0] ? ((sectorAggregation[0].weight / totalWeight) * 100).toFixed(1) + "%" : "—"}</span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span className="font-bold">{sectorAggregation.length}</span> {t("portfolio.sectorWeights.sectors", { defaultValue: "sectors" })}
+                    <span className="mx-1.5">·</span>
+                    <span className="font-bold">{current?.holding_count ?? 0}</span> {t("portfolio.sectorWeights.tickersShort", { defaultValue: "tickers" })}
+                  </div>
+                </div>
               </>
             );
           })()}
