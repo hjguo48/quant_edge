@@ -326,7 +326,11 @@
       "underMigrationDetail": "当前 universe 板块归类正在处理。",
       "topSector": "最大板块",
       "sectors": "个板块",
-      "tickersShort": "只股票"
+      "tickersShort": "只股票",
+      "totalTickers": "总持仓数",
+      "other": "其他",
+      "leadsAt": "{{sector}} 领先, 占比 {{pct}}%",
+      "showing": "当前持仓板块权重 · {{sectors}} 个板块 · {{tickers}} 只股票"
     },
     "stats": {
       "holdings": "持仓数",

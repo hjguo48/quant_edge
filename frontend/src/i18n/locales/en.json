@@ -326,7 +326,11 @@
       "underMigrationDetail": "Sector classification for the current universe is processing.",
       "topSector": "Top",
       "sectors": "sectors",
-      "tickersShort": "tickers"
+      "tickersShort": "tickers",
+      "totalTickers": "Total Tickers",
+      "other": "Other",
+      "leadsAt": "{{sector}} leads at {{pct}}%",
+      "showing": "Showing sector weights for current holdings · {{sectors}} sectors · {{tickers}} tickers"
     },
     "stats": {
       "holdings": "Holdings",

@@ -2,9 +2,10 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { TrendingUp, PieChart, DollarSign, RefreshCw, Calculator, ShoppingCart, ShieldCheck, ArrowRight, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { AreaChart, Area, LineChart, Line, ComposedChart, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Sector, ReferenceLine } from "recharts";
+import { AreaChart, Area, LineChart, Line, ComposedChart, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { useTranslation } from "react-i18next";
 import StatCard from "../components/StatCard";
+import SectorDonut, { type SectorSlice } from "../components/SectorDonut";
 import { fetchApi } from "../hooks/useApi";
 import { getSectorColor } from "../constants/sectorColors";
 import {
@@ -685,7 +686,7 @@ const Portfolio = () => {
           })()}
         </div>{/* PT_PANEL_END */}
 
-        <div className="w-72 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3 flex flex-col">
+        <div className="w-96 bg-card rounded-xl border border-border p-5 flex-shrink-0 fade-in-up stagger-3 flex flex-col">
           {currentQuery.isLoading ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
               <PieChart size={28} className="text-muted-foreground mb-3 opacity-20 animate-pulse" />
@@ -700,75 +701,20 @@ const Portfolio = () => {
               </p>
             </div>
           ) : (() => {
-            const totalWeight = sectorAggregation.reduce((sum, s) => sum + s.weight, 0);
             const visible = sectorAggregation.slice(0, SECTOR_PANEL_TOP_N);
             const overflow = sectorAggregation.slice(SECTOR_PANEL_TOP_N);
             const otherWeight = overflow.reduce((sum, s) => sum + s.weight, 0);
             const otherTickerCount = overflow.reduce((sum, s) => sum + s.tickerCount, 0);
-            const maxWeight = Math.max(...visible.map((s) => s.weight), otherWeight);
 
-            type PieSlice = { name: string; value: number; tickerCount: number; color: string; isOther: boolean };
-            const pieData: PieSlice[] = visible.map((s) => ({
+            const slices: SectorSlice[] = visible.map((s) => ({
               name: s.sector,
-              value: s.weight,
+              weight: s.weight,
               tickerCount: s.tickerCount,
-              color: getSectorColor(s.sector).text,
               isOther: false,
             }));
             if (overflow.length > 0 && otherWeight > 0) {
-              pieData.push({
-                name: "Other",
-                value: otherWeight,
-                tickerCount: otherTickerCount,
-                color: "#94a3b8",
-                isOther: true,
-              });
+              slices.push({ name: "Other", weight: otherWeight, tickerCount: otherTickerCount, isOther: true });
             }
-            const activeIdx = pieData.findIndex((p) => p.name === hoveredSector);
-
-            interface ActiveShapeProps {
-              cx: number;
-              cy: number;
-              innerRadius: number;
-              outerRadius: number;
-              startAngle: number;
-              endAngle: number;
-              fill: string;
-              payload: PieSlice;
-            }
-            const renderActiveShape = (props: unknown) => {
-              const p = props as ActiveShapeProps;
-              const pct = totalWeight > 0 ? (p.payload.value / totalWeight) * 100 : 0;
-              return (
-                <g>
-                  <Sector
-                    cx={p.cx}
-                    cy={p.cy}
-                    innerRadius={p.innerRadius}
-                    outerRadius={p.outerRadius + 6}
-                    startAngle={p.startAngle}
-                    endAngle={p.endAngle}
-                    fill={p.fill}
-                  />
-                  <Sector
-                    cx={p.cx}
-                    cy={p.cy}
-                    innerRadius={p.outerRadius + 8}
-                    outerRadius={p.outerRadius + 10}
-                    startAngle={p.startAngle}
-                    endAngle={p.endAngle}
-                    fill={p.fill}
-                    opacity={0.4}
-                  />
-                  <text x={p.cx} y={p.cy - 4} textAnchor="middle" fill="currentColor" className="text-foreground" style={{ fontSize: 10, fontWeight: 700 }}>
-                    {p.payload.name.length > 12 ? p.payload.name.slice(0, 11) + "…" : p.payload.name}
-                  </text>
-                  <text x={p.cx} y={p.cy + 10} textAnchor="middle" fill="currentColor" className="text-muted-foreground" style={{ fontSize: 10, fontWeight: 600 }}>
-                    {pct.toFixed(1)}%
-                  </text>
-                </g>
-              );
-            };
 
             return (
               <>
@@ -778,146 +724,12 @@ const Portfolio = () => {
                     {t("portfolio.sectorWeights.subtitle")}
                   </p>
                 </div>
-
-                <div className="mb-4 flex-shrink-0">
-                  <ResponsiveContainer width="100%" height={220}>
-                    <RePieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={56}
-                        outerRadius={86}
-                        paddingAngle={2}
-                        activeIndex={activeIdx >= 0 ? activeIdx : undefined}
-                        activeShape={renderActiveShape}
-                        onMouseEnter={(_data, idx) => {
-                          if (typeof idx === "number" && pieData[idx]) setHoveredSector(pieData[idx].name);
-                        }}
-                        onMouseLeave={() => setHoveredSector(null)}
-                        isAnimationActive={true}
-                        animationDuration={400}
-                      >
-                        {pieData.map((slice) => (
-                          <Cell
-                            key={slice.name}
-                            fill={slice.color}
-                            stroke="var(--card)"
-                            strokeWidth={1.5}
-                            style={{
-                              transition: "opacity 250ms ease, transform 250ms ease",
-                              opacity:
-                                hoveredSector == null || hoveredSector === slice.name ? 1 : 0.35,
-                              cursor: "pointer",
-                            }}
-                          />
-                        ))}
-                      </Pie>
-                    </RePieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="space-y-3 flex-1 flex flex-col justify-around">
-                  {visible.map((s) => {
-                    const color = getSectorColor(s.sector);
-                    const pct = (s.weight / totalWeight) * 100;
-                    const barWidth = maxWeight > 0 ? (s.weight / maxWeight) * 100 : 0;
-                    const isActive = hoveredSector === s.sector;
-                    const isDimmed = hoveredSector != null && !isActive;
-                    return (
-                      <div
-                        key={s.sector}
-                        onMouseEnter={() => setHoveredSector(s.sector)}
-                        onMouseLeave={() => setHoveredSector(null)}
-                        className="cursor-pointer rounded-md px-1 -mx-1 py-0.5 transition-all duration-200"
-                        style={{
-                          opacity: isDimmed ? 0.45 : 1,
-                          background: isActive ? "rgba(255,255,255,0.04)" : "transparent",
-                        }}
-                      >
-                        <div className="flex items-center justify-between text-[10px] mb-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <div
-                              className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-transform duration-200"
-                              style={{ background: color.text, transform: isActive ? "scale(1.5)" : "scale(1)" }}
-                            />
-                            <span className="text-foreground font-semibold truncate">{t(`sectors.${s.sector}`, { defaultValue: s.sector })}</span>
-                            <span className="text-muted-foreground">·</span>
-                            <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: s.tickerCount })}</span>
-                          </div>
-                          <span className="font-mono font-bold text-foreground flex-shrink-0">
-                            {pct.toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-300"
-                            style={{
-                              width: `${barWidth}%`,
-                              background: color.text,
-                              opacity: isActive ? 1 : 0.7,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {overflow.length > 0 && (() => {
-                    const isActive = hoveredSector === "Other";
-                    const isDimmed = hoveredSector != null && !isActive;
-                    return (
-                      <div
-                        onMouseEnter={() => setHoveredSector("Other")}
-                        onMouseLeave={() => setHoveredSector(null)}
-                        className="cursor-pointer rounded-md px-1 -mx-1 py-0.5 transition-all duration-200"
-                        style={{
-                          opacity: isDimmed ? 0.45 : 1,
-                          background: isActive ? "rgba(255,255,255,0.04)" : "transparent",
-                        }}
-                      >
-                        <div className="flex items-center justify-between text-[10px] mb-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <div
-                              className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-muted-foreground/50 transition-transform duration-200"
-                              style={{ transform: isActive ? "scale(1.5)" : "scale(1)" }}
-                            />
-                            <span className="text-muted-foreground font-semibold truncate">+{overflow.length} {t("common.of").replace(/\W/g, "")}</span>
-                            <span className="text-muted-foreground">·</span>
-                            <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: otherTickerCount })}</span>
-                          </div>
-                          <span className="font-mono font-bold text-muted-foreground flex-shrink-0">
-                            {((otherWeight / totalWeight) * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-muted-foreground/40 transition-all duration-300"
-                            style={{
-                              width: `${maxWeight > 0 ? (otherWeight / maxWeight) * 100 : 0}%`,
-                              opacity: isActive ? 1 : 0.7,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Footer: top sector summary + holdings count */}
-                <div className="mt-4 pt-3 border-t border-border/40 flex justify-between items-center text-[10px] flex-shrink-0">
-                  <div>
-                    <span className="text-muted-foreground uppercase tracking-wider font-bold">{t("portfolio.sectorWeights.topSector", { defaultValue: "Top" })}</span>
-                    <span className="ml-1.5 text-foreground font-semibold">{t(`sectors.${sectorAggregation[0]?.sector ?? ""}`, { defaultValue: sectorAggregation[0]?.sector ?? "—" })}</span>
-                    <span className="ml-1.5 font-mono font-bold text-foreground">{sectorAggregation[0] ? ((sectorAggregation[0].weight / totalWeight) * 100).toFixed(1) + "%" : "—"}</span>
-                  </div>
-                  <div className="text-muted-foreground">
-                    <span className="font-bold">{sectorAggregation.length}</span> {t("portfolio.sectorWeights.sectors", { defaultValue: "sectors" })}
-                    <span className="mx-1.5">·</span>
-                    <span className="font-bold">{current?.holding_count ?? 0}</span> {t("portfolio.sectorWeights.tickersShort", { defaultValue: "tickers" })}
-                  </div>
-                </div>
+                <SectorDonut
+                  slices={slices}
+                  totalTickers={current?.holding_count ?? 0}
+                  hovered={hoveredSector}
+                  onHover={setHoveredSector}
+                />
               </>
             );
           })()}
