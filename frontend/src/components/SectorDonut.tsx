@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getSectorColor } from "../constants/sectorColors";
 
@@ -68,7 +68,7 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
 
   const totalWeight = slices.reduce((sum, s) => sum + s.weight, 0);
 
-  const { bars, hitArcs } = useMemo(() => {
+  const { bars, hitArcs, sectorMidDeg } = useMemo(() => {
     const counts = allocateBars(slices, totalWeight);
     const step = 360 / TOTAL_BARS;
     const barList: {
@@ -83,6 +83,7 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
       sectorBarCount: number;
     }[] = [];
     const hitList: { sector: string; path: string }[] = [];
+    const midDegBySector: Record<string, number> = {};
     let barCursor = 0;
     slices.forEach((s, si) => {
       const color = s.isOther ? OTHER_COLOR : getSectorColor(s.name).text;
@@ -106,14 +107,28 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
       const startDeg = barCursor * step - step / 2;
       const endDeg = (barCursor + counts[si]) * step - step / 2;
       hitList.push({ sector: s.name, path: arcPath(R_MID, startDeg, endDeg) });
+      midDegBySector[s.name] = (startDeg + endDeg) / 2;
       barCursor += counts[si];
     });
-    return { bars: barList, hitArcs: hitList };
+    return { bars: barList, hitArcs: hitList, sectorMidDeg: midDegBySector };
   }, [slices, totalWeight]);
 
   const hoveredSlice = slices.find((s) => s.name === hovered) ?? null;
   const hoveredPct =
     hoveredSlice && totalWeight > 0 ? (hoveredSlice.weight / totalWeight) * 100 : null;
+
+  // Direction-aware sweep: the fill runs clockwise when the newly hovered sector
+  // sits clockwise of the previous reference sector, counter-clockwise otherwise.
+  // Initial reference = the largest sector (slices[0]); afterwards = last hovered.
+  const [sweep, setSweep] = useState<{ ref: string | null; dir: 1 | -1 }>({ ref: null, dir: 1 });
+  if (hovered != null && hovered !== sweep.ref) {
+    const refName = sweep.ref ?? slices[0]?.name ?? hovered;
+    const refMid = sectorMidDeg[refName] ?? 0;
+    const newMid = sectorMidDeg[hovered] ?? 0;
+    const deltaCw = (newMid - refMid + 360) % 360;
+    const dir: 1 | -1 = refName === hovered ? 1 : deltaCw <= 180 ? 1 : -1;
+    setSweep({ ref: hovered, dir });
+  }
 
   return (
     <div className="relative mx-auto" style={{ width: SIZE, height: SIZE }}>
@@ -121,8 +136,12 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
         {bars.map((bar) => {
           const isActive = hovered === bar.sector;
           const isDimmed = hovered != null && !isActive;
+          // dir=1: clockwise (bars laid out in increasing-angle order)
+          // dir=-1: counter-clockwise (reverse the staggering order)
+          const orderIdx =
+            sweep.dir === 1 ? bar.idxInSector : bar.sectorBarCount - 1 - bar.idxInSector;
           const delayMs = isActive
-            ? (bar.idxInSector / Math.max(bar.sectorBarCount - 1, 1)) * SWEEP_TOTAL_MS
+            ? (orderIdx / Math.max(bar.sectorBarCount - 1, 1)) * SWEEP_TOTAL_MS
             : 0;
           return (
             <line
