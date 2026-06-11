@@ -21,14 +21,23 @@ const CX = SIZE / 2;
 const CY = SIZE / 2;
 const R_INNER = 66;
 const R_OUTER = 90;
-const TOTAL_BARS = 64;
-const BAR_WIDTH = 5;
+const R_MID = (R_INNER + R_OUTER) / 2;
+const TOTAL_BARS = 80;
+const BAR_WIDTH = 3;
 const SWEEP_TOTAL_MS = 420;
 const OTHER_COLOR = "#94a3b8";
 
 function polar(r: number, angleDeg: number): [number, number] {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
   return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)];
+}
+
+function arcPath(r: number, startDeg: number, endDeg: number): string {
+  const clampedEnd = Math.min(endDeg, startDeg + 359.9);
+  const [sx, sy] = polar(r, startDeg);
+  const [ex, ey] = polar(r, clampedEnd);
+  const largeArc = clampedEnd - startDeg > 180 ? 1 : 0;
+  return `M ${sx.toFixed(3)} ${sy.toFixed(3)} A ${r} ${r} 0 ${largeArc} 1 ${ex.toFixed(3)} ${ey.toFixed(3)}`;
 }
 
 /** Allocate TOTAL_BARS bars across slices proportionally (largest remainder). */
@@ -59,10 +68,10 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
 
   const totalWeight = slices.reduce((sum, s) => sum + s.weight, 0);
 
-  const bars = useMemo(() => {
+  const { bars, hitArcs } = useMemo(() => {
     const counts = allocateBars(slices, totalWeight);
     const step = 360 / TOTAL_BARS;
-    const result: {
+    const barList: {
       key: string;
       sector: string;
       color: string;
@@ -73,6 +82,7 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
       idxInSector: number;
       sectorBarCount: number;
     }[] = [];
+    const hitList: { sector: string; path: string }[] = [];
     let barCursor = 0;
     slices.forEach((s, si) => {
       const color = s.isOther ? OTHER_COLOR : getSectorColor(s.name).text;
@@ -80,7 +90,7 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
         const angle = (barCursor + j) * step;
         const [x1, y1] = polar(R_INNER, angle);
         const [x2, y2] = polar(R_OUTER, angle);
-        result.push({
+        barList.push({
           key: `${s.name}-${j}`,
           sector: s.name,
           color,
@@ -92,9 +102,13 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
           sectorBarCount: counts[si],
         });
       }
+      // Invisible hit arc covering the sector's full angular span (incl. gaps between bars)
+      const startDeg = barCursor * step - step / 2;
+      const endDeg = (barCursor + counts[si]) * step - step / 2;
+      hitList.push({ sector: s.name, path: arcPath(R_MID, startDeg, endDeg) });
       barCursor += counts[si];
     });
-    return result;
+    return { bars: barList, hitArcs: hitList };
   }, [slices, totalWeight]);
 
   const hoveredSlice = slices.find((s) => s.name === hovered) ?? null;
@@ -120,25 +134,37 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
               stroke={bar.color}
               strokeWidth={BAR_WIDTH}
               strokeLinecap="round"
+              pointerEvents="none"
               style={
                 isActive
                   ? {
                       // Sequential fill: bars light up one after another along the arc
                       opacity: 0.25,
                       animation: `sectorBarFill 220ms ease-out ${delayMs.toFixed(0)}ms forwards`,
-                      cursor: "pointer",
                     }
                   : {
                       opacity: isDimmed ? 0.22 : 0.9,
                       transition: "opacity 250ms ease",
-                      cursor: "pointer",
                     }
               }
-              onMouseEnter={() => onHover(bar.sector)}
-              onMouseLeave={() => onHover(null)}
             />
           );
         })}
+        {/* Transparent hit arcs: hovering anywhere within a sector's ring span
+            (including gaps between bars) triggers that sector */}
+        {hitArcs.map((hit) => (
+          <path
+            key={`hit-${hit.sector}`}
+            d={hit.path}
+            fill="none"
+            stroke="transparent"
+            strokeWidth={R_OUTER - R_INNER + 14}
+            pointerEvents="stroke"
+            style={{ cursor: "pointer" }}
+            onMouseEnter={() => onHover(hit.sector)}
+            onMouseLeave={() => onHover(null)}
+          />
+        ))}
       </svg>
       {/* Center label */}
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
