@@ -765,12 +765,12 @@ const Portfolio = () => {
                           </span>
                         </div>
                         <span className="text-[11px] font-mono flex-shrink-0 whitespace-nowrap">
-                          {/* Fixed-width right-aligned columns so counts and pcts line up across rows */}
-                          <span className="inline-block min-w-[62px] text-right text-muted-foreground">
+                          {/* Fixed-width left-aligned columns so counts and pcts line up across rows */}
+                          <span className="inline-block min-w-[62px] text-left text-muted-foreground">
                             {t("portfolio.sectorWeights.tickers", { count: s.tickerCount })}
                           </span>
                           <span className="text-muted-foreground/50 mx-1">·</span>
-                          <span className="inline-block w-[42px] text-right font-bold text-foreground">{pct.toFixed(1)}%</span>
+                          <span className="inline-block w-[42px] text-left font-bold text-foreground">{pct.toFixed(1)}%</span>
                         </span>
                       </div>
                     );
