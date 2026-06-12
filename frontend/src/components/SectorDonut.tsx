@@ -213,7 +213,7 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
             <span className="text-xl font-black text-foreground font-mono leading-none">
               {hoveredPct.toFixed(1)}%
             </span>
-            <span className="text-[10px] text-muted-foreground font-semibold mt-1 max-w-[100px] truncate text-center">
+            <span className="text-[10px] text-muted-foreground font-semibold mt-1 max-w-[108px] text-center break-words leading-tight line-clamp-2">
               {hoveredSlice.isOther
                 ? t("portfolio.sectorWeights.other", { defaultValue: "Other" })
                 : t(`sectors.${hoveredSlice.name}`, { defaultValue: hoveredSlice.name })}
