@@ -32,11 +32,15 @@ function polar(r: number, angleDeg: number): [number, number] {
   return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)];
 }
 
-function arcPath(r: number, startDeg: number, endDeg: number): string {
+function arcPath(r: number, startDeg: number, endDeg: number, reverse = false): string {
   const clampedEnd = Math.min(endDeg, startDeg + 359.9);
   const [sx, sy] = polar(r, startDeg);
   const [ex, ey] = polar(r, clampedEnd);
   const largeArc = clampedEnd - startDeg > 180 ? 1 : 0;
+  if (reverse) {
+    // Path starts at the clockwise end and draws back: dash animation runs CCW
+    return `M ${ex.toFixed(3)} ${ey.toFixed(3)} A ${r} ${r} 0 ${largeArc} 0 ${sx.toFixed(3)} ${sy.toFixed(3)}`;
+  }
   return `M ${sx.toFixed(3)} ${sy.toFixed(3)} A ${r} ${r} 0 ${largeArc} 1 ${ex.toFixed(3)} ${ey.toFixed(3)}`;
 }
 
@@ -82,7 +86,7 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
       idxInSector: number;
       sectorBarCount: number;
     }[] = [];
-    const hitList: { sector: string; path: string }[] = [];
+    const hitList: { sector: string; path: string; pathReverse: string; arcLen: number }[] = [];
     const midDegBySector: Record<string, number> = {};
     let barCursor = 0;
     slices.forEach((s, si) => {
@@ -106,7 +110,12 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
       // Invisible hit arc covering the sector's full angular span (incl. gaps between bars)
       const startDeg = barCursor * step - step / 2;
       const endDeg = (barCursor + counts[si]) * step - step / 2;
-      hitList.push({ sector: s.name, path: arcPath(R_MID, startDeg, endDeg) });
+      hitList.push({
+        sector: s.name,
+        path: arcPath(R_MID, startDeg, endDeg),
+        pathReverse: arcPath(R_MID, startDeg, endDeg, true),
+        arcLen: ((endDeg - startDeg) * Math.PI * R_MID) / 180,
+      });
       midDegBySector[s.name] = (startDeg + endDeg) / 2;
       barCursor += counts[si];
     });
@@ -134,15 +143,7 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
     <div className="relative mx-auto" style={{ width: SIZE, height: SIZE }}>
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
         {bars.map((bar) => {
-          const isActive = hovered === bar.sector;
-          const isDimmed = hovered != null && !isActive;
-          // dir=1: clockwise (bars laid out in increasing-angle order)
-          // dir=-1: counter-clockwise (reverse the staggering order)
-          const orderIdx =
-            sweep.dir === 1 ? bar.idxInSector : bar.sectorBarCount - 1 - bar.idxInSector;
-          const delayMs = isActive
-            ? (orderIdx / Math.max(bar.sectorBarCount - 1, 1)) * SWEEP_TOTAL_MS
-            : 0;
+          const isDimmed = hovered != null && hovered !== bar.sector;
           return (
             <line
               key={bar.key}
@@ -154,21 +155,40 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
               strokeWidth={BAR_WIDTH}
               strokeLinecap="round"
               pointerEvents="none"
-              style={
-                isActive
-                  ? {
-                      // Sequential fill: bars light up one after another along the arc
-                      opacity: 0.25,
-                      animation: `sectorBarFill 220ms ease-out ${delayMs.toFixed(0)}ms forwards`,
-                    }
-                  : {
-                      opacity: isDimmed ? 0.22 : 0.9,
-                      transition: "opacity 250ms ease",
-                    }
-              }
+              style={{
+                opacity: isDimmed ? 0.22 : 0.9,
+                transition: "opacity 250ms ease",
+              }}
             />
           );
         })}
+        {/* Solid fill sweep: hovered sector's stripes get covered by a solid
+            ring segment drawing itself from one end to the other.
+            dir=1 → clockwise draw, dir=-1 → counter-clockwise draw */}
+        {(() => {
+          const hit = hitArcs.find((h) => h.sector === hovered);
+          if (!hit) return null;
+          const seg = bars.find((b) => b.sector === hovered);
+          const color = seg?.color ?? OTHER_COLOR;
+          return (
+            <path
+              key={`fill-${hit.sector}-${sweep.dir}`}
+              d={sweep.dir === 1 ? hit.path : hit.pathReverse}
+              fill="none"
+              stroke={color}
+              strokeWidth={R_OUTER - R_INNER}
+              strokeLinecap="butt"
+              pointerEvents="none"
+              style={
+                {
+                  "--sweep-len": `${hit.arcLen.toFixed(2)}px`,
+                  strokeDasharray: `${hit.arcLen.toFixed(2)}px`,
+                  animation: `sectorSweep ${SWEEP_TOTAL_MS}ms ease-out forwards`,
+                } as React.CSSProperties
+              }
+            />
+          );
+        })()}
         {/* Transparent hit arcs: hovering anywhere within a sector's ring span
             (including gaps between bars) triggers that sector */}
         {hitArcs.map((hit) => (
