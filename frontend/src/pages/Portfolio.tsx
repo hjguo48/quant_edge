@@ -757,13 +757,14 @@ const Portfolio = () => {
                             className="w-2 h-2 rounded-[2px] flex-shrink-0 transition-transform duration-200"
                             style={{ background: color, transform: isActive ? "scale(1.4)" : "scale(1)" }}
                           />
-                          <span className="text-[11px] text-muted-foreground font-medium truncate">
+                          {/* Long names wrap to a second line instead of truncating */}
+                          <span className="text-[11px] text-muted-foreground font-medium break-words leading-snug">
                             {s.isOther
                               ? t("portfolio.sectorWeights.other", { defaultValue: "Other" })
                               : t(`sectors.${s.name}`, { defaultValue: s.name })}
                           </span>
                         </div>
-                        <span className="text-[11px] font-mono flex-shrink-0">
+                        <span className="text-[11px] font-mono flex-shrink-0 whitespace-nowrap">
                           <span className="text-muted-foreground">{t("portfolio.sectorWeights.tickers", { count: s.tickerCount })}</span>
                           <span className="text-muted-foreground/50 mx-1">·</span>
                           <span className="font-bold text-foreground">{pct.toFixed(1)}%</span>
