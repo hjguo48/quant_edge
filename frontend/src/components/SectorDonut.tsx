@@ -23,7 +23,7 @@ const R_INNER = 66;
 const R_OUTER = 90;
 const R_MID = (R_INNER + R_OUTER) / 2;
 const TOTAL_BARS = 80;
-const BAR_WIDTH = 2.5;
+const BAR_WIDTH = 2;
 const SWEEP_TOTAL_MS = 420;
 const OTHER_COLOR = "#94a3b8";
 
