@@ -176,7 +176,8 @@ const SectorDonut = ({ slices, totalTickers, hovered, onHover }: SectorDonutProp
               d={sweep.dir === 1 ? hit.path : hit.pathReverse}
               fill="none"
               stroke={color}
-              strokeWidth={R_OUTER - R_INNER}
+              // +4: cover the 1px round-cap overhang of the stripes on both rims
+              strokeWidth={R_OUTER - R_INNER + 4}
               strokeLinecap="butt"
               pointerEvents="none"
               style={
