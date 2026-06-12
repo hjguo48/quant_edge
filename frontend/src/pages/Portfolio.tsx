@@ -763,8 +763,10 @@ const Portfolio = () => {
                               : t(`sectors.${s.name}`, { defaultValue: s.name })}
                           </span>
                         </div>
-                        <span className="text-[11px] font-mono font-bold text-foreground flex-shrink-0">
-                          {pct.toFixed(1)}%
+                        <span className="text-[11px] font-mono flex-shrink-0">
+                          <span className="text-muted-foreground">{s.tickerCount}</span>
+                          <span className="text-muted-foreground/50 mx-1">·</span>
+                          <span className="font-bold text-foreground">{pct.toFixed(1)}%</span>
                         </span>
                       </div>
                     );
